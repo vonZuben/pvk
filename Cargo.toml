@@ -1,0 +1,18 @@
+[package]
+name = "pvk"
+version = "0.1.0"
+authors = ["Chris von Zuben <chris.vonzuben@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+vkxml = "*"
+proc-macro2 = "*"
+
+[dependencies.quote]
+version = "0.6.12"
+
+[dependencies.syn]
+version = "0.15.34"
+
+[dependencies.vk-parse]
+path = "../vk-parse"
