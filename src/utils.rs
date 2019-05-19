@@ -40,7 +40,7 @@ impl<T> StrAsCode for T where T: AsRef<str> {
              quote!( #number )
         }
         else {
-            let ident = candidate.as_ident();
+            let ident = candidate.replace("FlagBits", "Flags").as_ident();
             quote!( #ident )
         }
     }
@@ -84,7 +84,7 @@ pub fn handle_field(field: &vkxml::Field) -> TokenStream {
 }
 
 pub fn make_field_type(field: &vkxml::Field) -> TokenStream {
-    let basetype = field.basetype.as_token_stream();
+    let basetype = field.basetype.as_code();
     let ref_type = get_reference_type(&field);
 
     field.array.as_ref().and_then(|a| match a {
@@ -181,9 +181,9 @@ pub fn platform_specific_types() -> TokenStream {
         // NOTE These type are included only for compilation purposes
         // These types should NOT be used because they are no necessarily
         // the correct type definitions (i.e. just c_void by default)
-        pub type GgpStreamDescriptor = c_void;
-        pub type CAMetalLayer = c_void;
-        pub type GgpFrameToken = c_void;
-        pub type HMONITOR = c_void;
+        pub type GgpStreamDescriptor = *const c_void;
+        pub type CAMetalLayer = *const c_void;
+        pub type GgpFrameToken = *const c_void;
+        pub type HMONITOR = *const c_void;
     }
 }

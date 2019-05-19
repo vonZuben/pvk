@@ -9,3 +9,6 @@ run:
 
 dbg:
 	cargo run 2>&1 | less
+
+dbg-fmt:
+	rustfmt /tmp/tmp.rs 2>&1 | less

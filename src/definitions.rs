@@ -32,14 +32,16 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
             },
             DefinitionsElement::Bitmask(bitmask) => {
                 // TODO do somthing with the enumref
-                let actual_type = bitmask.basetype.as_ident();
-                let name = bitmask.name.as_ident();
+                let actual_type = bitmask.basetype.as_code();
+                let name = bitmask.name.as_code();
                 quote!{
-                    pub type #name = #actual_type;
+                    #[repr(transparent)]
+                    #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                    pub struct #name(pub(crate) #actual_type);
                 }
             },
             DefinitionsElement::Struct(stct) => {
-                let name = stct.name.as_ident();
+                let name = stct.name.as_code();
 
                 let params = stct.elements.iter().filter_map( |elem| match elem {
                     StructElement::Member(field) => Some(handle_field(field)),
@@ -47,7 +49,9 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
                 });
 
                 quote!{
-                    struct #name {
+                    #[repr(C)]
+                    #[derive(Copy, Clone)]
+                    pub struct #name {
                         #( #params ),*
                     }
                 }
@@ -57,6 +61,8 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
                 let params = uni.elements.iter().map(handle_field);
 
                 quote!{
+                    #[repr(C)]
+                    #[derive(Copy, Clone)]
                     union #name {
                         #( #params ),*
                     }
