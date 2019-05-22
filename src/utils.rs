@@ -1,29 +1,10 @@
 
+use syn::{Expr};
+
 use quote::quote;
+use quote::ToTokens;
 
-use proc_macro2::{TokenStream, Ident, Literal, Span};
-
-pub trait AsIdent {
-    fn as_ident(&self) -> Ident;
-}
-
-impl<T> AsIdent for T where T: AsRef<str> {
-    fn as_ident(&self) -> Ident {
-        Ident::new(ctype_to_rtype(self.as_ref()), Span::call_site())
-    }
-}
-
-pub trait AsTokenStream {
-    fn as_token_stream(&self) -> TokenStream;
-}
-
-impl<T> AsTokenStream for T where T: AsIdent {
-
-    fn as_token_stream(&self) -> TokenStream {
-        let ident = self.as_ident();
-        quote!(#ident)
-    }
-}
+use proc_macro2::{TokenStream};
 
 pub trait StrAsCode {
     fn as_code(&self) -> TokenStream;
@@ -34,15 +15,10 @@ pub trait StrAsCode {
 // If you simply want a literal string then don't use this
 impl<T> StrAsCode for T where T: AsRef<str> {
     fn as_code(&self) -> TokenStream {
-        let candidate = self.as_ref();
-        if let Ok(number) = candidate.parse::<isize>() {
-            let number = Literal::isize_unsuffixed(number);
-             quote!( #number )
-        }
-        else {
-            let ident = candidate.replace("FlagBits", "Flags").as_ident();
-            quote!( #ident )
-        }
+        let rstr = ctype_to_rtype(self.as_ref());
+        syn::parse_str::<Expr>(&rstr)
+            .expect(format!("error: can't parse {{{}}} as an expresion", &rstr).as_ref())
+            .into_token_stream()
     }
 }
 
@@ -73,7 +49,7 @@ pub fn handle_field(field: &vkxml::Field) -> TokenStream {
 
     // if there is no name, then "field" is set as a default name
     // maybe change this later
-    let name = field.name.as_ref().map_or(quote!(field), |v| v.as_token_stream());
+    let name = field.name.as_ref().map_or(quote!(field), |v| v.as_code());
 
     let field_type = make_field_type(field);
 
@@ -103,7 +79,7 @@ pub fn make_field_type(field: &vkxml::Field) -> TokenStream {
 
 }
 
-pub fn ctype_to_rtype(type_name: &str) -> &str {
+pub fn ctype_to_rtype(type_name: &str) -> String {
     match type_name {
         "uint8_t" => "u8",
         "uint16_t" => "u16",
@@ -123,7 +99,7 @@ pub fn ctype_to_rtype(type_name: &str) -> &str {
         x if x.starts_with("Vk") => &type_name[2..],
         x if x.starts_with("VK_") => &type_name[3..],
         _ => type_name,
-    }
+    }.replace("FlagBits", "Flags")
 }
 
 macro_rules! one_option {

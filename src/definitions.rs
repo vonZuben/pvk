@@ -13,8 +13,8 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
 
         match def {
             DefinitionsElement::Typedef(type_def) => {
-                let actual_type = type_def.basetype.as_ident();
-                let name = type_def.name.as_ident();
+                let actual_type = type_def.basetype.as_code();
+                let name = type_def.name.as_code();
                 quote!{
                     pub type #name = #actual_type;
                 }
@@ -57,7 +57,7 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
                 }
             },
             DefinitionsElement::Union(uni) => {
-                let name = uni.name.as_ident();
+                let name = uni.name.as_code();
                 let params = uni.elements.iter().map(handle_field);
 
                 quote!{
