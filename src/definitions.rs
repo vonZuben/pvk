@@ -81,10 +81,10 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
                     // sizes on 32bit and 64 bit computers
                     // but nondispatchable handles will always be 64 bits
                     HandleType::Dispatch => {
-                        quote!(pub type #name = usize;)
+                        quote!(pub type #name = *const c_void;)
                     },
                     HandleType::NoDispatch => {
-                        quote!(pub type #name = u64;)
+                        quote!(pub type #name = u64;) // uint64_t
                     },
                 }
             },

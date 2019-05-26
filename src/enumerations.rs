@@ -31,15 +31,15 @@ pub fn handle_enumerations(enumerations: &Enums) -> TokenStream {
                     EnumerationElement::Enum(enum_constant) => {
                         let const_name = enum_constant.name.as_code();
                         let val = one_option!(
+
                             &enum_constant.number , |num: &i32| num.to_string().as_code() ;
-                            &enum_constant.hex , |hex_str| u32::from_str_radix(hex_str, 16)
-                                .expect(format!("error: enumeration hex decode error -> {}", hex_str).as_ref())
-                                .to_string()
-                                .as_code() ;
-                            &enum_constant.bitpos , |pos: &u32| 1u32.checked_shl(*pos)
-                                .expect(format!("error: overflowed shift left in enum bitpos {}", enum_constant.name).as_ref())
-                                .to_string().as_code() ;
+
+                            &enum_constant.hex , |hex_str| format!("0x{:0>8}", hex_str).as_code() ;
+
+                            &enum_constant.bitpos , |bitpos: &u32| format!("0x{:0>8X}", (1u32 << bitpos)).as_code() ;
+
                             &enum_constant.c_expression , |_| panic!("error: c_expression for enumeration val") ;
+
                             );
 
                         Some( quote!{ pub const #const_name: Self = #name(#val); } )

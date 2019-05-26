@@ -59,14 +59,9 @@ impl ConstExt for vkxml::Constant {
 
             &self.number , |num: &i32| { num.to_string().as_code() } ;
 
-            &self.hex , |hex_str| {
-                usize::from_str_radix(hex_str, 16)
-                    .expect(format!("error: constant hex decode error -> {}", hex_str).as_ref())
-                    .to_string()
-                    .as_code()
-            } ;
+            &self.hex , |hex_str| format!("0x{:0>8}", hex_str).as_code() ;
 
-            &self.bitpos , |_| panic!("error: trying to take bit pos for constant") ;
+            &self.bitpos , |_| panic!("error: trying to take bit pos for constant not implemented") ;
 
             &self.c_expression , |expr: &String| {
                 let v = expr
