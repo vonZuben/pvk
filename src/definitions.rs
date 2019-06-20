@@ -63,7 +63,7 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
                 quote!{
                     #[repr(C)]
                     #[derive(Copy, Clone)]
-                    union #name {
+                    pub union #name {
                         #( #params ),*
                     }
                 }
@@ -115,4 +115,28 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
 
     quote!( #(#q)* )
 
+}
+
+pub fn generate_aliases_of_types<'a>(types: &'a vk_parse::Types) -> TokenStream {
+    let aliases = types
+        .children
+        .iter()
+        .filter_map(|child| match child {
+            vk_parse::TypesChild::Type(ty) => Some((ty.name.as_ref()?, ty.alias.as_ref()?)),
+            _ => None,
+        })
+        .filter_map(|(name, alias)| {
+            if name.contains("FlagBits") { // be carful of this since as_code will convert FlagBits to Flags
+                return None;
+            }
+            let name_ident = name.as_code();
+            let alias_ident = alias.as_code();
+            let tokens = quote! {
+                pub type #name_ident = #alias_ident;
+            };
+            Some(tokens)
+        });
+    quote! {
+        #(#aliases)*
+    }
 }
