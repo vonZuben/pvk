@@ -6,8 +6,9 @@ use vkxml::*;
 use proc_macro2::{TokenStream};
 
 use crate::utils::*;
+use crate::ParseState;
 
-pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
+pub fn handle_definitions(definitions: &Definitions, parse_state: &mut ParseState) -> TokenStream {
 
     let q = definitions.elements.iter().map(|def| {
 
@@ -75,13 +76,18 @@ pub fn handle_definitions(definitions: &Definitions) -> TokenStream {
             //}
             DefinitionsElement::Handle(handle) => {
                 let name = handle.name.as_code();
+
                 match handle.ty {
                     // based on the spec, i understand that dispatchable
                     // handles will be pointers, thus, they will be different
                     // sizes on 32bit and 64 bit computers
                     // but nondispatchable handles will always be 64 bits
                     HandleType::Dispatch => {
-                        quote!(pub type #name = *const c_void;)
+
+                        // get list of functions where the first parameter is the
+
+
+                        quote!(pub type #name = *const c_void;) // object pointer???
                     },
                     HandleType::NoDispatch => {
                         quote!(pub type #name = u64;) // uint64_t

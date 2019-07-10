@@ -13,6 +13,10 @@ mod enumerations;
 mod commands;
 mod features;
 
+mod removable_linked_list;
+
+use removable_linked_list as rll;
+
 use std::path::Path;
 
 use vkxml::*;
@@ -24,10 +28,14 @@ use constants::*;
 use commands::*;
 use features::*;
 
-pub fn vkxml_registry_token_stream(reg_elem: &vkxml::RegistryElement) -> TokenStream {
+// keep certain mutable state while parsing the registry
+pub struct ParseState {
+}
+
+pub fn vkxml_registry_token_stream(reg_elem: &vkxml::RegistryElement, parse_state: &mut ParseState) -> TokenStream {
     match reg_elem {
         RegistryElement::Definitions(definition) => {
-            handle_definitions(definition)
+            handle_definitions(definition, parse_state)
         },
         RegistryElement::Constants(cnts) => {
             handle_constants(cnts)
@@ -46,12 +54,21 @@ pub fn vkxml_registry_token_stream(reg_elem: &vkxml::RegistryElement) -> TokenSt
 }
 
 fn main() {
+    // this it the easier to parse registry
     let registry = vk_parse::parse_file_as_vkxml(Path::new("vk.xml"));
+
+    // this registry is closer to the xml formate, but it sucks to parse
+    // but it does include the aliases
     let registry2 = vk_parse::parse_file(Path::new("vk.xml"));
+
+    let mut command_list: rll::RList<_> = rll::RList::new();
+    command_list.add(5);
+
+    let mut parse_state = ParseState {};
 
     //println!("{:#?}", registry2);
 
-    let tokens = registry.elements.iter().map(vkxml_registry_token_stream);
+    let tokens = registry.elements.iter().map(|relem| vkxml_registry_token_stream(relem, &mut parse_state));
 
     let aliases = registry2
         .0
