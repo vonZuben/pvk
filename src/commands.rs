@@ -80,8 +80,16 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
         let pfn_loader_name = make_pfn_loader_name(&cmd);
         quote!( #name : #pfn_loader_name )
     }
-    let instance_command_params = instance_commands.map(make_param);
-    let device_command_params = device_commands.map(make_param);
+    let instance_command_params = instance_commands.clone().map(make_param);
+    let device_command_params = device_commands.clone().map(make_param);
+
+    fn make_cmd_inits(cmd: &Command) -> TokenStream {
+        let name = cmd.name.as_code();
+        let pfn_loader_name = make_pfn_loader_name(&cmd);
+        quote!( #name : #pfn_loader_name::new() )
+    }
+    let instance_cmd_inits = instance_commands.clone().map(make_cmd_inits);
+    let device_cmd_inits = device_commands.clone().map(make_cmd_inits);
 
     // make definitions for instance and device (non-static) commands
     let non_static_command_definitions = instance_and_device_commands.map(|cmd| {
@@ -118,7 +126,11 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
         };
         let device_macro_name = make_macro_name_device(&cmd.name);
         let is_device_cmd = match command_category(&cmd) {
-            CommandCategory::Device => quote!( $cmd_container.#name.load() ),
+            CommandCategory::Device => quote!( $cmd_container.#name.load(
+                    |raw_cmd_name| {
+                        unsafe { GetDeviceProcAddr(*$device, raw_cmd_name.as_ptr()) }
+                    })
+                ),
             _ => quote!(),
         };
 
@@ -156,7 +168,7 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
                 ( $instance:ident, $cmd_container:ident ) => { #is_instance_cmd }
             }
             macro_rules! #device_macro_name {
-                ( $instance:ident, $cmd_container:ident ) => { #is_device_cmd }
+                ( $device:ident, $cmd_container:ident ) => { #is_device_cmd }
             }
         }
     });
@@ -196,7 +208,7 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
                 ( $instance:ident, $cmd_container:ident ) => { }
             }
             macro_rules! #device_macro_name {
-                ( $instance:ident, $cmd_container:ident ) => { }
+                ( $device:ident, $cmd_container:ident ) => { }
             }
 
 
@@ -219,9 +231,23 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
         struct InstanceCommands {
             #( #instance_command_params ),*
         }
+        impl InstanceCommands {
+            fn new() -> Self {
+                Self {
+                    #( #instance_cmd_inits, )*
+                }
+            }
+        }
 
         struct DeviceCommands {
             #( #device_command_params ),*
+        }
+        impl DeviceCommands {
+            fn new() -> Self {
+                Self {
+                    #( #device_cmd_inits, )*
+                }
+            }
         }
 
         #( #non_static_command_definitions )*

@@ -41,6 +41,10 @@ pub fn handle_features(features: &Features) -> TokenStream {
             quote!( #instance_macro_name )
         });
 
+        let device_macro_names = requiered_command_names.clone().map(|cmd_name| {
+            let device_macro_name = make_macro_name_device(&cmd_name);
+            quote!( #device_macro_name )
+        });
 
         quote!{
 
@@ -63,6 +67,9 @@ pub fn handle_features(features: &Features) -> TokenStream {
             impl #name {
                 fn load_instance_commands(instance: &Instance, inst_cmds: &mut InstanceCommands) {
                     #( #instance_macro_names!(instance, inst_cmds); )*
+                }
+                fn load_device_commands(device: &Device, dev_cmds: &mut DeviceCommands) {
+                    #( #device_macro_names!(device, dev_cmds); )*
                 }
             }
         }
