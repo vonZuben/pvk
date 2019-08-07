@@ -13,9 +13,7 @@ mod enumerations;
 mod commands;
 mod features;
 
-mod removable_linked_list;
-
-use removable_linked_list as rll;
+//mod take_list;
 
 use std::path::Path;
 
@@ -29,7 +27,9 @@ use commands::*;
 use features::*;
 
 // keep certain mutable state while parsing the registry
-pub struct ParseState {
+pub struct ParseState<'a> {
+    //command_list: take_list::TakeList<&'a vkxml::Command>,
+    phantom: ::std::marker::PhantomData<&'a ()>,
 }
 
 pub fn vkxml_registry_token_stream(reg_elem: &vkxml::RegistryElement, parse_state: &mut ParseState) -> TokenStream {
@@ -49,7 +49,34 @@ pub fn vkxml_registry_token_stream(reg_elem: &vkxml::RegistryElement, parse_stat
         RegistryElement::Features(features) => {
             handle_features(features)
         }
+        //RegistryElement::Extensions(extensions) => {
+        //    dbg!(extensions);
+        //    quote!()
+        //}
         _ => quote!(),
+    }
+}
+
+#[allow(unused)]
+fn debug(registry: &Registry) {
+    // collect all of the commands for use in defining dispatchable handles
+    //let mut command_list: take_list::TakeList<_> = registry.elements.iter()
+    let command_list: Vec<_> = registry.elements.iter()
+        .filter_map(|elem| match elem {
+                RegistryElement::Commands(cmds) => Some(cmds.elements.iter()),
+                _ => None,
+            })
+        .flatten()
+        .collect();
+
+    for cn in command_list.iter().filter(|node| { node.name.contains("Cmd") }) {
+        println!();
+        print!("{} : ", &cn.name);
+        for param in &cn.param {
+            print!("{}, ", &param.name.as_ref().unwrap());
+            //dbg!(&param);
+        }
+        print!(" -> {}", &cn.return_type.name.as_ref().map(|name| name.as_str() ).unwrap_or(&"NO RETURN"));
     }
 }
 
@@ -61,10 +88,13 @@ fn main() {
     // but it does include the aliases
     let registry2 = vk_parse::parse_file(Path::new("vk.xml"));
 
-    let mut command_list: rll::RList<_> = rll::RList::new();
-    command_list.add(5);
+    //debug(&registry);
 
-    let mut parse_state = ParseState {};
+    // TODO remove this later if it dosnt get used
+    let mut parse_state = ParseState {
+        //command_list,
+        phantom: ::std::marker::PhantomData,
+    };
 
     //println!("{:#?}", registry2);
 
@@ -89,7 +119,47 @@ fn main() {
 
     let initial_test_code = quote!{
         use std::os::raw::*;
-        fn main(){}
+        macro_rules! vk_make_version {
+            ($major:expr, $minor:expr, $patch:expr) => {
+                (($major as u32) << 22) | (($minor as u32) << 12) | $patch as u32
+            };
+        }
+        fn main(){
+            let mut inst: Instance = ::std::ptr::null();
+
+            let app_name = ::std::ffi::CString::new("Hello World!").unwrap();
+            let engine_name = ::std::ffi::CString::new("Hello Engine!").unwrap();
+
+            let app_info = ApplicationInfo {
+                sType: StructureType::STRUCTURE_TYPE_APPLICATION_INFO,
+                pNext: ::std::ptr::null(),
+                pApplicationName: app_name.as_c_str().as_ptr(),
+                applicationVersion: vk_make_version!(1, 0, 0),
+                pEngineName: engine_name.as_c_str().as_ptr(),
+                engineVersion: vk_make_version!(1, 0, 0),
+                apiVersion: vk_make_version!(1, 1, 0),
+            };
+
+            let create_info = InstanceCreateInfo {
+                sType: StructureType::STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+                pNext: ::std::ptr::null(),
+                flags: InstanceCreateFlags(0),
+                pApplicationInfo: &app_info as *const ApplicationInfo,
+                enabledLayerCount: 0,
+                ppEnabledLayerNames: ::std::ptr::null(),
+                enabledExtensionCount: 0,
+                ppEnabledExtensionNames: ::std::ptr::null(),
+            };
+
+            let res = unsafe {
+                CreateInstance(
+                    &create_info as *const InstanceCreateInfo,
+                    ::std::ptr::null(),
+                    &mut inst as *mut Instance,
+                    )
+            };
+            println!("{}", res.0 as u32);
+        }
     };
 
     let platform_specific_types = utils::platform_specific_types();
@@ -101,6 +171,11 @@ fn main() {
         #(#tokens)*
         #(#aliases)*
     };
+
+    //for node in parse_state.command_list.iter() {
+    //    dbg!(&node.data().name);
+    //    dbg!(commands::command_category(node.data()));
+    //}
 
     println!("{}", q);
 

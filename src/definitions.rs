@@ -7,8 +7,13 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 use crate::ParseState;
+//use crate::commands;
 
-pub fn handle_definitions(definitions: &Definitions, parse_state: &mut ParseState) -> TokenStream {
+pub fn make_manager_name(name: &str) -> TokenStream {
+    format!("{}Manager", name).as_code()
+}
+
+pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseState) -> TokenStream {
 
     let q = definitions.elements.iter().map(|def| {
 
@@ -75,7 +80,8 @@ pub fn handle_definitions(definitions: &Definitions, parse_state: &mut ParseStat
             //    quote!()
             //}
             DefinitionsElement::Handle(handle) => {
-                let name = handle.name.as_code();
+
+                let handle_name = handle.name.as_code();
 
                 match handle.ty {
                     // based on the spec, i understand that dispatchable
@@ -83,16 +89,73 @@ pub fn handle_definitions(definitions: &Definitions, parse_state: &mut ParseStat
                     // sizes on 32bit and 64 bit computers
                     // but nondispatchable handles will always be 64 bits
                     HandleType::Dispatch => {
+                        // get list of functions where the first parameter is the the handle type
+                        //let commands: Vec<_> = parse_state.command_list.iter()
+                        //    .filter_map(|command_node| {
+                        //        if command_node.data().param[0].basetype == handle.name {
+                        //            Some(command_node.take())
+                        //        }
+                        //        else {
+                        //            None
+                        //        }
+                        //    }).collect();
 
-                        // get list of functions where the first parameter is the
+                        //let pfn_params = commands.iter()
+                        //    .map(|command| {
+                        //        let name = command.name.as_code();
+                        //        let pfn_name = commands::make_pfn_loader_name(&command);
 
+                        //        quote!( #name: #pfn_name )
+                        //    });
 
-                        quote!(pub type #name = *const c_void;) // object pointer???
+                        //let pfn_names = commands.iter()
+                        //    .map(|command| {
+                        //        let name = command.name.as_code();
+
+                        //        quote!( #name )
+                        //    });
+
+                        let manager_members = match handle.name.as_str() {
+                            "VkInstance" => quote!( commands: InstanceCommands, ),
+                            "VkDevice" => quote!( commands: DeviceCommands, ),
+                            _ => {
+                                let parent = handle.parent.as_ref().expect("error: expected parent for handle").as_code();
+                                quote!( parent: #parent, )
+                            }
+                        };
+
+                        // each dispatchable handle will have a manager type that will handle
+                        // creation and destruciton automatically, and will provide convinience
+                        // methods for their respective vulkan commands (i.e. where the respective
+                        // handle is the first parameter)
+                        //
+                        // check commands.rs for method definitions
+                        let custum_type_name = make_manager_name(handle.name.as_str());
+
+                        // make the handle type
+                        quote!{
+
+                            pub type #handle_name = *const c_void; // object pointer???
+
+                            pub struct #custum_type_name {
+                                handle: #handle_name,
+                                #manager_members
+                                //#( #pfn_params ),*
+                            }
+
+                            //impl #name {
+
+                            //    fn load_function_pointers(&mut self) {
+                            //        #( self.#pfn_names.load(); )*
+                            //    }
+                            //}
+                        }
                     },
                     HandleType::NoDispatch => {
-                        quote!(pub type #name = u64;) // uint64_t
+                        quote!(pub type #handle_name = u64;) // uint64_t
                     },
                 }
+
             },
             // We will ignor this because the enum elements
             // are defined elsewhere, and rust dosn't need the

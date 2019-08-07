@@ -97,6 +97,7 @@ pub fn ctype_to_rtype(type_name: &str) -> String {
         "long" => "c_ulong",
         "type" => "ty",
         x if x.starts_with("Vk") => &type_name[2..],
+        x if x.starts_with("vk") => &type_name[2..],
         x if x.starts_with("VK_") => &type_name[3..],
         _ => type_name,
     }.replace("FlagBits", "Flags")
