@@ -54,12 +54,188 @@ pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseSta
                     StructElement::Notation(_) => None,
                 });
 
+                let builder_code;
+
+                // gererate bulders and initializers for only non return types
+                fn not_return(stct: &Struct) -> bool {
+                    if stct.name.contains("BaseOutStructure") || stct.name.contains("BaseInStructure") {
+                        return false;
+                    }
+                    !stct.is_return
+                }
+                if not_return(&stct) {
+                    //dbg!(&stct);
+                    let param_setters = stct.elements.iter().filter_map( |elem| match elem {
+                        StructElement::Member(field) => {
+                            //println!("type: {}; is_ref: {:?}; is_array: {:?}; size: {:?}; size_er: {:?}; c_size: {:?}",
+                            //         field.basetype, field.reference, field.array, field.size.as_ref().map(|_| ""), field.size_enumref, field.c_size);
+                            //println!("is_ref: {:?}; is_array: {:?}; size: {:?}; size_er: {:?}; c_size: {:?}",
+                            //         field.reference, field.array, field.size.as_ref().map(|_| ""), field.size_enumref, field.c_size);
+
+                            //if field.basetype.as_str() == "void" && field.name.as_ref().unwrap().as_str() != "pNext" {
+                            //    eprintln!("stct_name: {}; field_name: {}; field_size: {:?}, is_array: {:?}",
+                            //              stct.name, field.name.as_ref().unwrap(), field.size,
+                            //              field.array)
+                            //}
+
+                            let field_name = field.name.as_ref().expect("error, field with no name");
+                            let raw_name = field_name.as_code();
+                            let setter_name = case::camel_to_snake(field_name).as_code();
+
+                            let mut arg_type = quote!();
+                            let mut val_setter = quote!();
+                            let mut count_setter = quote!();
+
+                            let arg_mut = match field.is_const {
+                                true => quote!(),
+                                false => quote!(mut),
+                            };
+
+                            let ptr_mut = match field.is_const {
+                                true => quote!(as_ptr()),
+                                false => quote!(as_mut_ptr()),
+                            };
+
+                            match &field.array {
+                                Some(ArrayType::Dynamic) => {
+                                    if field.basetype.as_str() == "char" {
+                                        match &field.reference {
+                                            Some(ReferenceType::Pointer) => {
+                                                arg_type = quote!(&'a #arg_mut ::std::ffi::CStr);
+                                                val_setter = quote!(self.inner.#raw_name = val.#ptr_mut;);
+                                            }
+                                            Some(ReferenceType::PointerToConstPointer) => {
+                                                arg_type = quote!(&'a #arg_mut [*const c_char]);
+                                                val_setter = quote!(self.inner.#raw_name = val.#ptr_mut;);
+                                                let count_name = field.size.as_ref()
+                                                    .expect("char PointerToConstPointer with no size error")
+                                                    .as_code();
+                                                count_setter = quote!(self.inner.#count_name = val.len() as _;);
+                                            }
+                                            _ => panic!("unhandled refernce case for char field"),
+                                        }
+                                    }
+                                    else if field.basetype.as_str() == "void" {
+                                        match &field.reference {
+                                            Some(ReferenceType::Pointer) => {
+                                                arg_type = quote!(&'a #arg_mut [u8]);
+                                                val_setter = quote!(self.inner.#raw_name = val.#ptr_mut as *const c_void;);
+                                                let count_name = field.size.as_ref()
+                                                    .expect("void Pointer with no size error")
+                                                    .as_code();
+                                                count_setter = quote!(self.inner.#count_name = val.len() as _;);
+                                            }
+                                            _ => panic!("unhandled refernce case for void field"),
+                                        }
+                                    }
+                                    else { // any other possible type
+                                        match &field.reference {
+                                            Some(ReferenceType::Pointer) => {
+                                                // the size of pCode and pSampleMask are provided
+                                                // as c code or latext math. maybe provide some
+                                                // more complex code later to parse properly?
+                                                if field.name.as_ref().unwrap() == "pCode" {
+                                                    arg_type = quote!(&'a #arg_mut [u32]);
+                                                    val_setter = quote!(self.inner.#raw_name = val.#ptr_mut;);
+                                                    let c_count_code = field.c_size.as_ref().unwrap();
+                                                    count_setter = quote!(self.inner.codeSize = val.len() as usize * 4;);
+                                                }
+                                                else if field.name.as_ref().unwrap() == "pSampleMask" {
+                                                    arg_type = quote!(&'a #arg_mut [SampleMask]);
+                                                    val_setter = quote!(self.inner.#raw_name = val.#ptr_mut;);
+                                                }
+                                                else if field.size.is_some() {
+                                                    let basetype = field.basetype.as_code();
+                                                    arg_type = quote!(&'a #arg_mut [#basetype]);
+                                                    val_setter = quote!(self.inner.#raw_name = val.#ptr_mut;);
+                                                    let count_name = field.size.as_ref()
+                                                        .unwrap()
+                                                        .as_code();
+                                                    count_setter = quote!(self.inner.#count_name = val.len() as _;);
+                                                }
+                                                else {
+                                                    panic!("error: no size for array type")
+                                                }
+                                            }
+                                            _ => panic!("unhandled refernce case for 'any' field"),
+                                        }
+                                    }
+                                }
+                                Some(ArrayType::Static) => {
+                                    let basetype = field.basetype.as_code();
+                                    let size = field.size.as_ref()
+                                        .expect("error: static array with no size")
+                                        .as_code();
+                                    arg_type = quote!( [#basetype; #size] );
+                                    val_setter = quote!(self.inner.#raw_name = val;);
+                                }
+                                None => {
+                                    match field.reference {
+                                        Some(ReferenceType::Pointer) => {
+                                            let basetype = field.basetype.as_code();
+                                            arg_type = quote!(&'a #arg_mut #basetype);
+                                            val_setter = quote!(self.inner.#raw_name = val;);
+                                        }
+                                        None => {
+                                            let basetype = field.basetype.as_code();
+                                            arg_type = quote!(#basetype);
+                                            val_setter = quote!(self.inner.#raw_name = val;);
+                                        }
+                                        _ => panic!("error: unexpected case for none array type"),
+                                    }
+                                }
+                            }
+
+                            Some(quote!{
+                                pub fn #setter_name(&mut self, val : #arg_type) {
+                                    #val_setter
+                                    #count_setter
+                                }
+                            })
+                        }
+                        StructElement::Notation(_) => None,
+                    });
+
+                    let builder_name = format!("{}Builder", stct.name).as_code();
+
+                    builder_code = Some(quote!{
+                        impl #name {
+                            fn zeroed() -> Self {
+                                unsafe { ::std::mem::zeroed() }
+                            }
+                            pub fn builder<'a>() -> #builder_name<'a> {
+                                #builder_name {
+                                    inner: Self::zeroed(),
+                                    phantom: ::std::marker::PhantomData,
+                                }
+                            }
+                        }
+                        pub struct #builder_name<'a> {
+                            inner: #name,
+                            phantom: ::std::marker::PhantomData<&'a ()>,
+                        }
+                        impl<'a> ::std::ops::Deref for #builder_name<'a> {
+                            type Target = #name;
+                            fn deref(&self) -> &Self::Target {
+                                &self.inner
+                            }
+                        }
+                        impl<'a> #builder_name<'a> {
+                            #( #param_setters )*
+                        }
+                    });
+                }
+                else {
+                    builder_code = None;
+                }
+
                 quote!{
                     #[repr(C)]
                     #[derive(Copy, Clone)]
                     pub struct #name {
                         #( #params ),*
                     }
+                    #( #builder_code )*
                 }
             },
             DefinitionsElement::Union(uni) => {
@@ -115,6 +291,10 @@ pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseSta
                         //        quote!( #name )
                         //    });
 
+                        // handle managers will provide convinience usage of dipatchable handles
+                        // define the members that each type should have
+                        // the instance and device managers should hold function pointers
+                        // the other managers should have references to their parent
                         let manager_members = match handle.name.as_str() {
                             "VkInstance" => quote!( commands: InstanceCommands, ),
                             "VkDevice" => quote!( commands: DeviceCommands, ),

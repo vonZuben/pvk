@@ -102,19 +102,14 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
         let params1 = cmd.param.iter().map(handle_field);
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
-        //let load_function = match command_category(&cmd) {
-        //    CommandCategory::Instance => quote!( GetInstanceProcAddr ),
-        //    CommandCategory::Device => quote!( GetDeviceProcAddr ),
-        //    _ => quote!(),
-        //};
-
-        //let command_category = match command_category(&cmd) {
-        //    CommandCategory::Instance => quote!(CommandCategory::Instance),
-        //    CommandCategory::Device => quote!(CommandCategory::Device),
-        //    _ => panic!("unexpected command category for command definition"),
-        //    //CommandCategory::Static => quote!(CommandCategory::Static),
-        //};
-
+        // this is for generating the code to load funtion pointers based on the feature
+        // these generate the code for only the respective device/instance commands
+        //
+        // they are called from the feature generated code to load a funtion pointer
+        // for a command container's member
+        //
+        // e.g. InstanceCommand ($cmd_container) will have a member (#name)
+        // when called from the feature loading code
         let instance_macro_name = make_macro_name_instance(&cmd.name);
         let is_instance_cmd = match command_category(&cmd) {
             CommandCategory::Instance => quote!( $cmd_container.#name.load(
@@ -133,8 +128,6 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
                 ),
             _ => quote!(),
         };
-
-        //dbg!(get_command_parts(&cmd));
 
         quote!{
             #[allow(non_camel_case_types)]
@@ -160,10 +153,15 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
                         self.0 = unsafe { ::std::mem::transmute(function_pointer) };
                     }
                 }
-                //const fn command_category() -> CommandCategory {
-                //    #command_category
-                //}
             }
+
+            // define macro that can be used by the feature loader
+            //
+            // the feature loader only know what commands to load
+            // but not what commands a device and instance commands
+            //
+            // these macros can be called on every command, but will only
+            // actually produce code for the correct situation (instance/device)
             macro_rules! #instance_macro_name{
                 ( $instance:ident, $cmd_container:ident ) => { #is_instance_cmd }
             }
@@ -180,7 +178,6 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
         let params2 = params1.clone();
 
         let pfn_name = make_pfn_name(&cmd);
-        let pfn_loader_name = make_pfn_loader_name(&cmd);
 
         let raw_name = &cmd.name;
 
@@ -192,25 +189,12 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
                 #( #params1 ),*
             ) -> #return_type;
 
-            // this is provided for type uniformity
-            // this makes it easier to deal with feature/extention loading
-            //struct #pfn_loader_name;
-            //impl #pfn_loader_name {
-            //    fn load<F>(&mut self, mut f: F) where F: FnMut(&::std::ffi::CStr) -> *const c_void {
-            //        panic!("shouldn't actually try loading static functions");
-            //    }
-            //    //const fn command_category() -> CommandCategory {
-            //    //    CommandCategory::Static
-            //    //}
-            //}
-
             macro_rules! #instance_macro_name {
                 ( $instance:ident, $cmd_container:ident ) => { }
             }
             macro_rules! #device_macro_name {
                 ( $device:ident, $cmd_container:ident ) => { }
             }
-
 
             #[link(name = "vulkan")]
             extern "system" {

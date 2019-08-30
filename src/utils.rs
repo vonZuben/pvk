@@ -6,6 +6,14 @@ use quote::ToTokens;
 
 use proc_macro2::{TokenStream};
 
+pub fn create_entry_code() -> TokenStream {
+
+    quote!{
+        //pub fn create_instance(
+    }
+
+}
+
 pub trait StrAsCode {
     fn as_code(&self) -> TokenStream;
 }
@@ -49,7 +57,7 @@ pub fn handle_field(field: &vkxml::Field) -> TokenStream {
 
     // if there is no name, then "field" is set as a default name
     // maybe change this later
-    let name = field.name.as_ref().map_or(quote!(field), |v| v.as_code());
+    let name = field.name.as_ref().map_or(quote!(un_named_field), |v| v.as_code());
 
     let field_type = make_field_type(field);
 
@@ -78,6 +86,31 @@ pub fn make_field_type(field: &vkxml::Field) -> TokenStream {
     .unwrap_or( quote!( #ref_type #basetype ) )
 
 }
+
+//pub fn rust_type_from_c_type(field: &vkxml::Field) -> TokenStream {
+//    let basetype = field.basetype.as_code(); // NOTE should convert to rust equivelent
+//    let ref_type = match &field.reference {
+//        Some(r) => match r {
+//            vkxml::ReferenceType::Pointer => {
+//                if field.is_const {
+//                    quote!(&'a)
+//                } else {
+//                    quote!(&'a mut)
+//                }
+//            }
+//            vkxml::ReferenceType::PointerToPointer => quote!(*mut *mut),
+//            vkxml::ReferenceType::PointerToConstPointer => {
+//                if field.is_const {
+//                    quote!(*const *const)
+//                } else {
+//                    quote!(*mut *const)
+//                }
+//            }
+//        },
+//        None => quote!(),
+//    }
+//    quote!( #ref_type #basetype )
+//}
 
 pub fn ctype_to_rtype(type_name: &str) -> String {
     match type_name {
@@ -164,3 +197,36 @@ pub fn platform_specific_types() -> TokenStream {
         pub type HMONITOR = *const c_void;
     }
 }
+
+pub mod case {
+
+    pub fn camel_to_snake(s: &str) -> String {
+
+        let mut out = String::new();
+        let mut chars = s.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            if c.is_lowercase() && chars.peek().map_or(false, |c| c.is_uppercase()) {
+                out.extend(c.to_lowercase());
+                out.push('_');
+            }
+            else if c.is_alphabetic() && chars.peek().map_or(false, |c| c.is_numeric()) {
+                out.extend(c.to_lowercase());
+                out.push('_');
+            }
+            else if c.is_numeric() && chars.peek().map_or(false, |c| c.is_alphabetic())
+                && chars.peek().map_or(false, |c| *c != 'D')
+                {
+                out.push(c);
+                out.push('_');
+            }
+            else {
+                out.extend(c.to_lowercase());
+            }
+        }
+
+        out
+    }
+
+}
+
