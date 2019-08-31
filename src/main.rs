@@ -135,39 +135,18 @@ fn main() {
             let engine_name = ::std::ffi::CString::new("Hello Engine!").unwrap();
 
             let mut app_info = ApplicationInfo::builder();
-
-            app_info.s_type(StructureType::STRUCTURE_TYPE_APPLICATION_INFO);
-            app_info.p_application_name(app_name.as_c_str());
-            app_info.application_version(vk_make_version!(1, 0, 0));
-            app_info.p_engine_name(engine_name.as_c_str());
-            app_info.engine_version(vk_make_version!(1, 0, 0));
-            app_info.api_version(vk_make_version!(1, 1, 1));
-
-            //let app_info = ApplicationInfo {
-            //    sType: StructureType::STRUCTURE_TYPE_APPLICATION_INFO,
-            //    pNext: ::std::ptr::null(),
-            //    pApplicationName: app_name.as_c_str().as_ptr(),
-            //    applicationVersion: vk_make_version!(1, 0, 0),
-            //    pEngineName: engine_name.as_c_str().as_ptr(),
-            //    engineVersion: vk_make_version!(1, 0, 0),
-            //    apiVersion: vk_make_version!(1, 1, 0),
-            //};
+            app_info
+                .s_type(StructureType::STRUCTURE_TYPE_APPLICATION_INFO)
+                .p_application_name(app_name.as_c_str())
+                .application_version(vk_make_version!(1, 0, 0))
+                .p_engine_name(engine_name.as_c_str())
+                .engine_version(vk_make_version!(1, 0, 0))
+                .api_version(vk_make_version!(1, 1, 1));
 
             let mut create_info = InstanceCreateInfo::builder();
-
-            create_info.s_type(StructureType::STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
-            create_info.p_application_info(&*app_info);
-
-            //let create_info = InstanceCreateInfo {
-            //    sType: StructureType::STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-            //    pNext: ::std::ptr::null(),
-            //    flags: InstanceCreateFlags(0),
-            //    pApplicationInfo: &app_info as *const ApplicationInfo,
-            //    enabledLayerCount: 0,
-            //    ppEnabledLayerNames: ::std::ptr::null(),
-            //    enabledExtensionCount: 0,
-            //    ppEnabledExtensionNames: ::std::ptr::null(),
-            //};
+            create_info
+                .s_type(StructureType::STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
+                .p_application_info(&app_info);
 
             let res = unsafe {
                 CreateInstance(
