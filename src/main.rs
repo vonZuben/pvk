@@ -1,4 +1,4 @@
-#![recursion_limit = "200"]
+#![recursion_limit = "250"]
 
 use quote::quote;
 
@@ -136,7 +136,7 @@ fn main() {
 
             let mut app_info = ApplicationInfo::builder();
             app_info
-                .s_type(StructureType::STRUCTURE_TYPE_APPLICATION_INFO)
+                .s_type(StructureType::APPLICATION_INFO)
                 .p_application_name(app_name.as_c_str())
                 .application_version(vk_make_version!(1, 0, 0))
                 .p_engine_name(engine_name.as_c_str())
@@ -145,7 +145,7 @@ fn main() {
 
             let mut create_info = InstanceCreateInfo::builder();
             create_info
-                .s_type(StructureType::STRUCTURE_TYPE_INSTANCE_CREATE_INFO)
+                .s_type(StructureType::INSTANCE_CREATE_INFO)
                 .p_application_info(&app_info);
 
             let res = unsafe {
@@ -155,7 +155,7 @@ fn main() {
                     &mut inst as *mut Instance,
                     )
             };
-            println!("{}", res.0 as u32);
+            println!("{}", res);
             let mut instance_commands = InstanceCommands::new();
             let ver = VERSION_1_1;
             ver.load_instance_commands(&inst, &mut instance_commands);
@@ -163,7 +163,15 @@ fn main() {
             let mut phd: PhysicalDevice = std::ptr::null();
             let mut phd_count: u32 = 0;
             instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
-            println!("{}", phd_count);
+            println!("num physical devices: {}", phd_count);
+
+            // test Flags printing
+            let flags: QueueFlags = unsafe { std::mem::transmute(0x5) };
+            println!("{}", flags);
+            let flags: ShaderStageFlags = ShaderStageFlags::SHADER_STAGE_ALL;
+            println!("{}", flags);
+            let flags: ShaderStageFlags = unsafe { std::mem::transmute(0x5) };
+            println!("{}", flags);
 
             // test 1_1 feature command ?
             //let mut phd: PhysicalDevice = std::ptr::null();
@@ -175,9 +183,26 @@ fn main() {
 
     let platform_specific_types = utils::platform_specific_types();
 
+    let util_code = quote!{
+        // used for printing flagbits
+        // find and return the lowest bit in the input
+        // then remove the lowest bit from the input
+        fn take_lowest_bit(input: &mut i32) -> Option<i32> {
+            let lowest_bit = *input & -*input;
+            *input = *input ^ lowest_bit;
+            if lowest_bit == 0 {
+                None
+            }
+            else {
+                Some(lowest_bit)
+            }
+        }
+    };
+
     let q = quote!{
         #allow_vulkan_name_formats
         #initial_test_code
+        #util_code
         #platform_specific_types
         #(#tokens)*
         #(#aliases)*
