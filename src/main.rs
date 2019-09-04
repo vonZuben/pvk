@@ -183,12 +183,13 @@ fn main() {
 
     let platform_specific_types = utils::platform_specific_types();
 
+    // code used internally by the generated vk.rs
     let util_code = quote!{
         // used for printing flagbits
         // find and return the lowest bit in the input
         // then remove the lowest bit from the input
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
-            let lowest_bit = *input & -*input;
+            let lowest_bit = *input & (*input).wrapping_neg();
             *input = *input ^ lowest_bit;
             if lowest_bit == 0 {
                 None
