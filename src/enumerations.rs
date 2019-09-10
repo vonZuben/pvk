@@ -6,10 +6,15 @@ use proc_macro2::{TokenStream};
 use crate::utils::*;
 
 fn make_varient_name(enumeration: &Enumeration, varient: &Constant) -> TokenStream {
-    let mut enum_name = case::camel_to_snake(enumeration.name.as_str());
+    let ename = enumeration.name.find("FlagBits").map(|i| &enumeration.name[..i])
+        .unwrap_or(enumeration.name.as_str());
+
+    let mut enum_name = case::camel_to_snake(ename);
     enum_name.make_ascii_uppercase();
     enum_name.push('_');
-    let const_name_string = varient.name.replace(&enum_name, "");
+
+    let const_name_string = varient.name.replace(&enum_name, "").replace("_BIT", "");
+
     let is_numeric = const_name_string.chars().nth(0).map(char::is_numeric).unwrap_or(false);
     if is_numeric {
         format!("TYPE_{}", const_name_string).as_code()
@@ -153,12 +158,22 @@ pub fn handle_enumerations(enumerations: &Enums) -> TokenStream {
             //else {
             //};
 
+            let tool_code = if enm.name.contains("FlagBits") {
+                quote!{
+                    vk_bitflags_wrapped!(#name);
+                }
+            }
+            else {
+                quote!()
+            };
+
             let q = quote!{
                 #type_decleration
                 impl #name {
                     #( #vals )*
                 }
                 #display_code
+                #tool_code
             };
 
             Some(q)

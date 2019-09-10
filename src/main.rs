@@ -155,7 +155,7 @@ fn main() {
                     &mut inst as *mut Instance,
                     )
             };
-            println!("{}", res);
+            println!("instance creation: {}", res);
             let mut instance_commands = InstanceCommands::new();
             let ver = VERSION_1_1;
             ver.load_instance_commands(&inst, &mut instance_commands);
@@ -166,11 +166,14 @@ fn main() {
             println!("num physical devices: {}", phd_count);
 
             // test Flags printing
-            let flags: QueueFlags = unsafe { std::mem::transmute(0x5) };
+            let flags: QueueFlags = QueueFlags::GRAPHICS | QueueFlags::COMPUTE;
             println!("{}", flags);
-            let flags: ShaderStageFlags = ShaderStageFlags::SHADER_STAGE_ALL;
+            let flags: ShaderStageFlags = ShaderStageFlags::ALL;
             println!("{}", flags);
-            let flags: ShaderStageFlags = unsafe { std::mem::transmute(0x5) };
+            let flags: ShaderStageFlags = ShaderStageFlags::VERTEX
+                | ShaderStageFlags::FRAGMENT | ShaderStageFlags::TESSELLATION_CONTROL;
+            println!("{}", flags);
+            let flags: ShaderStageFlags = ShaderStageFlags::ALL_GRAPHICS;
             println!("{}", flags);
 
             // test 1_1 feature command ?
@@ -188,6 +191,20 @@ fn main() {
         // used for printing flagbits
         // find and return the lowest bit in the input
         // then remove the lowest bit from the input
+        //struct OnesIter(u32);
+        //impl Iterator for OnesIter {
+        //    type Item = u32;
+        //    fn next(&mut self) -> Option<Self::Item> {
+        //        let lowest_bit = self.0 & (self.0 as i32).wrapping_neg() as u32;
+        //        if lowest_bit == 0 {
+        //            None
+        //        }
+        //        else {
+        //            self.0 ^= lowest_bit;
+        //            Some(lowest_bit)
+        //        }
+        //    }
+        //}
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
             *input = *input ^ lowest_bit;
@@ -196,6 +213,134 @@ fn main() {
             }
             else {
                 Some(lowest_bit)
+            }
+        }
+        macro_rules! vk_bitflags_wrapped {
+            ($name: ident) => {
+
+                impl Default for $name{
+                    fn default() -> $name {
+                        $name(0)
+                    }
+                }
+                impl ::std::fmt::Debug for $name {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        write!(f, "{}({:b})", stringify!($name), self.0)
+                    }
+                }
+
+                impl $name {
+                    #[inline]
+                    pub fn empty() -> $name {
+                        $name(0)
+                    }
+
+                    // TODO fix $all
+                    //#[inline]
+                    //pub fn all() -> $name {
+                    //    $name($all)
+                    //}
+
+                    #[inline]
+                    pub fn from_raw(x: Flags) -> Self { $name(x) }
+
+                    #[inline]
+                    pub fn as_raw(self) -> Flags { self.0 }
+
+                    #[inline]
+                    pub fn is_empty(self) -> bool {
+                        self == $name::empty()
+                    }
+
+                    //#[inline]
+                    //pub fn is_all(self) -> bool {
+                    //    self & $name::all() == $name::all()
+                    //}
+
+                    //#[inline]
+                    //pub fn intersects(self, other: $name) -> bool {
+                    //    self & other != $name::empty()
+                    //}
+
+                    /// Returns whether `other` is a subset of `self`
+                    #[inline]
+                    pub fn contains(self, other: $name) -> bool {
+                        self & other == other
+                    }
+                }
+
+                impl ::std::ops::BitOr for $name {
+                    type Output = $name;
+
+                    #[inline]
+                    fn bitor(self, rhs: $name) -> $name {
+                        $name (self.0 | rhs.0 )
+                    }
+                }
+
+                impl ::std::ops::BitOrAssign for $name {
+                    #[inline]
+                    fn bitor_assign(&mut self, rhs: $name) {
+                        *self = *self | rhs
+                    }
+                }
+
+                impl ::std::ops::BitAnd for $name {
+                    type Output = $name;
+
+                    #[inline]
+                    fn bitand(self, rhs: $name) -> $name {
+                        $name (self.0 & rhs.0)
+                    }
+                }
+
+                impl ::std::ops::BitAndAssign for $name {
+                    #[inline]
+                    fn bitand_assign(&mut self, rhs: $name) {
+                        *self = *self & rhs
+                    }
+                }
+
+                impl ::std::ops::BitXor for $name {
+                    type Output = $name;
+
+                    #[inline]
+                    fn bitxor(self, rhs: $name) -> $name {
+                        $name (self.0 ^ rhs.0 )
+                    }
+                }
+
+                impl ::std::ops::BitXorAssign for $name {
+                    #[inline]
+                    fn bitxor_assign(&mut self, rhs: $name) {
+                        *self = *self ^ rhs
+                    }
+                }
+
+                //impl ::std::ops::Sub for $name {
+                //    type Output = $name;
+
+                //    #[inline]
+                //    fn sub(self, rhs: $name) -> $name {
+                //        self & !rhs
+                //    }
+                //}
+
+                //impl ::std::ops::SubAssign for $name {
+                //    #[inline]
+                //    fn sub_assign(&mut self, rhs: $name) {
+                //        *self = *self - rhs
+                //    }
+                //}
+
+                //impl ::std::ops::Not for $name {
+                //    type Output = $name;
+
+                //    #[inline]
+                //    fn not(self) -> $name {
+                //        self ^ $name::all()
+                //    }
+                //}
             }
         }
     };
