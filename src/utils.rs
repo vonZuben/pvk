@@ -6,13 +6,13 @@ use quote::ToTokens;
 
 use proc_macro2::{TokenStream};
 
-pub fn create_entry_code() -> TokenStream {
-
-    quote!{
-        //pub fn create_instance(
-    }
-
-}
+//pub fn create_entry_code() -> TokenStream {
+//
+//    quote!{
+//        //pub fn create_instance(
+//    }
+//
+//}
 
 pub trait StrAsCode {
     fn as_code(&self) -> TokenStream;

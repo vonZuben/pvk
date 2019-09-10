@@ -77,8 +77,8 @@ pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseSta
 
                             let basetype = field.basetype.as_code();
 
-                            let mut arg_type = quote!();
-                            let mut val_setter = quote!();
+                            let mut arg_type;
+                            let mut val_setter;
                             let mut count_setter = quote!();
 
                             let arg_mut = match field.is_const {
@@ -146,7 +146,6 @@ pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseSta
                                                 if field.name.as_ref().unwrap() == "pCode" {
 
                                                     // special case for setting count
-                                                    let c_count_code = field.c_size.as_ref().unwrap();
                                                     count_setter = quote!(self.inner.codeSize = val.len() as usize * 4;);
 
                                                 }

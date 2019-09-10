@@ -23,18 +23,18 @@ pub fn make_macro_name_device(cmd_name: &str) -> TokenStream {
     format!("get_device_cmd_{}", cmd_name).as_code()
 }
 
-#[derive(Debug)]
-struct CommandParts<'a> {
-    verb: &'a str,
-}
-
-fn get_command_parts(cmd: &Command) -> CommandParts {
-    let second_capital = cmd.name[3..].find(char::is_uppercase).expect("can't find delimiter to command verb") + 3;
-    let verb = &cmd.name[2..second_capital];
-    CommandParts {
-        verb
-    }
-}
+//#[derive(Debug)]
+//struct CommandParts<'a> {
+//    verb: &'a str,
+//}
+//
+//fn get_command_parts(cmd: &Command) -> CommandParts {
+//    let second_capital = cmd.name[3..].find(char::is_uppercase).expect("can't find delimiter to command verb") + 3;
+//    let verb = &cmd.name[2..second_capital];
+//    CommandParts {
+//        verb
+//    }
+//}
 
 #[derive(Debug)]
 pub enum CommandCategory {
