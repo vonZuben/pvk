@@ -5,15 +5,15 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 
-fn make_varient_name(enumeration: &Enumeration, varient: &Constant) -> TokenStream {
-    let ename = enumeration.name.find("FlagBits").map(|i| &enumeration.name[..i])
-        .unwrap_or(enumeration.name.as_str());
+pub fn make_varient_name(enumeration_name: &str, varient_name: &str) -> TokenStream {
+    let ename = enumeration_name.find("FlagBits").map(|i| &enumeration_name[..i])
+        .unwrap_or(enumeration_name);
 
     let mut enum_name = case::camel_to_snake(ename);
     enum_name.make_ascii_uppercase();
     enum_name.push('_');
 
-    let const_name_string = varient.name.replace(&enum_name, "").replace("_BIT", "");
+    let const_name_string = varient_name.replace(&enum_name, "").replace("_BIT", "");
 
     let is_numeric = const_name_string.chars().nth(0).map(char::is_numeric).unwrap_or(false);
     if is_numeric {
@@ -49,7 +49,7 @@ pub fn handle_enumerations(enumerations: &Enums) -> TokenStream {
                 match elem {
                     EnumerationElement::Enum(enum_constant) => {
 
-                        let const_name = make_varient_name(&enm, &enum_constant);
+                        let const_name = make_varient_name(enm.name.as_str(), enum_constant.name.as_str());
 
                         let val = one_option!(
 
@@ -70,7 +70,7 @@ pub fn handle_enumerations(enumerations: &Enums) -> TokenStream {
             let display_cases = enm.elements.iter().filter_map( |elem| {
                 match elem {
                     EnumerationElement::Enum(enum_constant) => {
-                        let const_name = make_varient_name(&enm, &enum_constant);
+                        let const_name = make_varient_name(enm.name.as_str(), enum_constant.name.as_str());
                         Some( quote!( Self::#const_name => Some(stringify!(#const_name)), ) )
                     },
                     EnumerationElement::Notation(_notation) => None,

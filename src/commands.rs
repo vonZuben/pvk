@@ -7,12 +7,12 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 
-pub fn make_pfn_name(cmd: &Command) -> TokenStream {
-    format!("PFN_{}", cmd.name).as_code()
+pub fn make_pfn_name(cmd_name: &str) -> TokenStream {
+    format!("PFN_{}", cmd_name).as_code()
 }
 
-pub fn make_pfn_loader_name(cmd: &Command) -> TokenStream {
-    format!("PFN_Loader_{}", cmd.name).as_code()
+pub fn make_pfn_loader_name(cmd_name: &str) -> TokenStream {
+    format!("PFN_Loader_{}", cmd_name).as_code()
 }
 
 pub fn make_macro_name_instance(cmd_name: &str) -> TokenStream {
@@ -77,7 +77,7 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
     // but they need to be separated
     fn make_param(cmd: &Command) -> TokenStream {
         let name = cmd.name.as_code();
-        let pfn_loader_name = make_pfn_loader_name(&cmd);
+        let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
         quote!( #name : #pfn_loader_name )
     }
     let instance_command_params = instance_commands.clone().map(make_param);
@@ -85,7 +85,7 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
 
     fn make_cmd_inits(cmd: &Command) -> TokenStream {
         let name = cmd.name.as_code();
-        let pfn_loader_name = make_pfn_loader_name(&cmd);
+        let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
         quote!( #name : #pfn_loader_name::new() )
     }
     let instance_cmd_inits = instance_commands.clone().map(make_cmd_inits);
@@ -94,8 +94,8 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
     // make definitions for instance and device (non-static) commands
     let non_static_command_definitions = instance_and_device_commands.map(|cmd| {
         let name = cmd.name.as_code();
-        let pfn_name = make_pfn_name(&cmd);
-        let pfn_loader_name = make_pfn_loader_name(&cmd);
+        let pfn_name = make_pfn_name(cmd.name.as_str());
+        let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
         let raw_name = &cmd.name;
 
         let return_type = make_field_type(&cmd.return_type);
@@ -177,7 +177,7 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
         let params1 = cmd.param.iter().map(handle_field);
         let params2 = params1.clone();
 
-        let pfn_name = make_pfn_name(&cmd);
+        let pfn_name = make_pfn_name(cmd.name.as_str());
 
         let raw_name = &cmd.name;
 

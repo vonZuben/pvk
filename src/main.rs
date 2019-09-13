@@ -12,6 +12,7 @@ mod definitions;
 mod enumerations;
 mod commands;
 mod features;
+mod extensions;
 
 //mod take_list;
 
@@ -25,16 +26,20 @@ use enumerations::*;
 use constants::*;
 use commands::*;
 use features::*;
+use extensions::*;
 
 // keep certain mutable state while parsing the registry
 pub struct ParseState<'a> {
     //command_list: take_list::TakeList<&'a vkxml::Command>,
     previous_feature_instance: Option<TokenStream>,
     previous_feature_device: Option<TokenStream>,
+
+    enum_constants_name_cache: std::collections::HashMap<&'a str, ()>,
+
     phantom: ::std::marker::PhantomData<&'a ()>,
 }
 
-pub fn vkxml_registry_token_stream(reg_elem: &vkxml::RegistryElement, parse_state: &mut ParseState) -> TokenStream {
+pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, parse_state: &mut ParseState<'a>) -> TokenStream {
     match reg_elem {
         RegistryElement::Definitions(definition) => {
             handle_definitions(definition, parse_state)
@@ -51,10 +56,9 @@ pub fn vkxml_registry_token_stream(reg_elem: &vkxml::RegistryElement, parse_stat
         RegistryElement::Features(features) => {
             handle_features(features, parse_state)
         }
-        //RegistryElement::Extensions(extensions) => {
-        //    dbg!(extensions);
-        //    quote!()
-        //}
+        RegistryElement::Extensions(extensions) => {
+            handle_extensions(extensions, parse_state)
+        }
         _ => quote!(),
     }
 }
@@ -97,6 +101,9 @@ fn main() {
         //command_list,
         previous_feature_instance: None,
         previous_feature_device: None,
+
+        enum_constants_name_cache: std::collections::HashMap::new(),
+
         phantom: ::std::marker::PhantomData,
     };
 

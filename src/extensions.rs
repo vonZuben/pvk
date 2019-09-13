@@ -12,6 +12,12 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
 
     let q = extensions.elements.iter().map(|extension| {
 
+        // some extensions are just placeholders and do not have a type
+        // thus, we should not generate any code for them since they have no function
+        if extension.ty.is_none() {
+            return quote!();
+        }
+
         macro_rules! filter_varients {
             ( $varient:path ) => {
                 |spec| {
@@ -98,16 +104,56 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 quote!( pub const #name: #ty = #val; )
             });
 
-        let commands_to_load = extension.elements.iter()
-            .filter_map(filter_varients!(ExtensionElement::Require))
-            .map(|extension_spec| extension_spec.elements.iter()
-                 .filter_map(filter_varients!(ExtensionSpecificationElement::CommandReference))
-                 )
-            .flatten();
+        //let commands_to_load = extension.elements.iter()
+        //    .filter_map(filter_varients!(ExtensionElement::Require))
+        //    .map(|extension_spec| extension_spec.elements.iter()
+        //         .filter_map(filter_varients!(ExtensionSpecificationElement::CommandReference))
+        //         )
+        //    .flatten()
+        //    .map(|command_ref| {
+        //        let name = command_ref.name.as_code();
+        //        match extension.ty.as_ref().expect(format!("error: extension without type {}", extension.name).as_str()) {
+        //            ExtensionType::Instance => {
+        //                quote!( cmds.#name.load( |raw_cmd_name|
+        //                                         unsafe { GetInstanceProcAddr(*handle, raw_cmd_name.as_ptr()) } ) )
+        //            }
+        //            ExtensionType::Device => {
+        //                quote!( cmds.#name.load( |raw_cmd_name|
+        //                                         unsafe { GetDeviceProcAddr(*handle, raw_cmd_name.as_ptr()) } ) )
+        //            }
+        //        }
+
+        //    });
+
+        //for x in commands_to_load {
+        //    dbg!(&extension);
+        //    dbg!(extension.name.as_str());
+        //    dbg!(x);
+        //}
+
+        //let name = extension.name.as_code();
+        //let handle_type;
+        //let handle_type_commands;
+        //match extension.ty.as_ref().expect(format!("error: extension without type {}", extension.name).as_str()) {
+        //    ExtensionType::Instance => {
+        //        handle_type = quote!(Instance);
+        //        handle_type_commands = quote!(InstanceCommands);
+        //    }
+        //    ExtensionType::Device => {
+        //        handle_type = quote!(Device);
+        //        handle_type_commands = quote!(DeviceCommands);
+        //    }
+        //}
 
         quote!{
             #( #enum_extensions )*
             #( #constant_extensions )*
+            //struct #name;
+            //impl #name {
+            //    fn load_commands(&self, handle: &#handle_type, cmds: &mut #handle_type_commands) {
+            //        #( #commands_to_load; )*
+            //    }
+            //}
         }
 
     });
