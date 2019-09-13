@@ -34,6 +34,10 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         // any functions in any features or extensions. Thus, we ignore the
         // Remove case for now
 
+        let enum_constants_name_cache = &mut parse_state.enum_constants_name_cache;
+        let command_type_cache = &parse_state.command_type_cache;
+        let command_alias_cache = &parse_state.command_alias_cache;
+
         let enum_extensions = extension.elements.iter()
             .filter_map(filter_varients!(ExtensionElement::Require))
             .map(|extension_spec| extension_spec.elements.iter()
@@ -44,7 +48,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
 
                 // add enum constant names to cache and if the name already exists, then do not
                 // generate duplicate
-                match parse_state.enum_constants_name_cache.insert(enum_extension.name.as_str(), ()) {
+                match enum_constants_name_cache.insert(enum_extension.name.as_str(), ()) {
                     Some(_) => return quote!() ,
                     None => {}
                 }
@@ -104,26 +108,33 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 quote!( pub const #name: #ty = #val; )
             });
 
-        //let commands_to_load = extension.elements.iter()
-        //    .filter_map(filter_varients!(ExtensionElement::Require))
-        //    .map(|extension_spec| extension_spec.elements.iter()
-        //         .filter_map(filter_varients!(ExtensionSpecificationElement::CommandReference))
-        //         )
-        //    .flatten()
-        //    .map(|command_ref| {
-        //        let name = command_ref.name.as_code();
-        //        match extension.ty.as_ref().expect(format!("error: extension without type {}", extension.name).as_str()) {
-        //            ExtensionType::Instance => {
-        //                quote!( cmds.#name.load( |raw_cmd_name|
-        //                                         unsafe { GetInstanceProcAddr(*handle, raw_cmd_name.as_ptr()) } ) )
-        //            }
-        //            ExtensionType::Device => {
-        //                quote!( cmds.#name.load( |raw_cmd_name|
-        //                                         unsafe { GetDeviceProcAddr(*handle, raw_cmd_name.as_ptr()) } ) )
-        //            }
-        //        }
+        let commands_to_load = extension.elements.iter()
+            .filter_map(filter_varients!(ExtensionElement::Require))
+            .map(|extension_spec| extension_spec.elements.iter()
+                 .filter_map(filter_varients!(ExtensionSpecificationElement::CommandReference))
+                 )
+            .flatten()
+            .map(|command_ref| {
+                // check the command_alias_cache to see if the extension identifies an alias
+                let name = command_alias_cache.get(command_ref.name.as_str())
+                    .map_or(command_ref.name.as_str(), |alias| *alias);
+                let name_code = name.as_code();
+                match command_type_cache.get(name) {
+                    Some(CommandCategory::Instance) => {
+                        quote!( inst_cmds.#name_code.load( |raw_cmd_name|
+                                                 unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.as_ptr()) } ) )
+                    }
+                    Some(CommandCategory::Device) => {
+                        quote!( dev_cmds.#name_code.load( |raw_cmd_name|
+                                                 unsafe { GetDeviceProcAddr(*device, raw_cmd_name.as_ptr()) } ) )
+                    }
+                    _ => panic!(
+                        format!("error: extension command is either static or wasn't defined previously: {}",
+                                command_ref.name.as_str()) ),
+                }
+            });
 
-        //    });
+        //for _ in commands_to_load {}
 
         //for x in commands_to_load {
         //    dbg!(&extension);
@@ -131,29 +142,47 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         //    dbg!(x);
         //}
 
-        //let name = extension.name.as_code();
-        //let handle_type;
-        //let handle_type_commands;
-        //match extension.ty.as_ref().expect(format!("error: extension without type {}", extension.name).as_str()) {
-        //    ExtensionType::Instance => {
-        //        handle_type = quote!(Instance);
-        //        handle_type_commands = quote!(InstanceCommands);
-        //    }
-        //    ExtensionType::Device => {
-        //        handle_type = quote!(Device);
-        //        handle_type_commands = quote!(DeviceCommands);
-        //    }
-        //}
+        let name = extension.name.as_code();
+        let command_load_code;
+        if commands_to_load.clone().count() == 0 || extension.name.as_str() == "VK_EXT_debug_utils" {
+            command_load_code = quote!();
+        }
+        else {
+            match extension.ty.as_ref().expect(format!("error: extension without type {}", extension.name).as_str()) {
+                ExtensionType::Instance => {
+                    // when loading instance extensions, only instance commands can be loaded
+                    //
+                    // NOTE there is one known exception to the above
+                    // in particular, EXT_debug_utils is a combination of a
+                    // previously separate instance and device extensions
+                    command_load_code = quote!{
+                        fn load_commands(&self,
+                                         instance: &Instance, inst_cmds: &mut InstanceCommands) {
+                            #( #commands_to_load; )*
+                        }
+                    };
+                }
+                ExtensionType::Device => {
+                    // when loading device extensions, it is possible to also load some instance
+                    // commands
+                    command_load_code = quote!{
+                        fn load_commands(&self,
+                                         instance: &Instance, inst_cmds: &mut InstanceCommands,
+                                         device: &Device, dev_cmds: &mut DeviceCommands) {
+                            #( #commands_to_load; )*
+                        }
+                    };
+                }
+            }
+        }
 
         quote!{
             #( #enum_extensions )*
             #( #constant_extensions )*
-            //struct #name;
-            //impl #name {
-            //    fn load_commands(&self, handle: &#handle_type, cmds: &mut #handle_type_commands) {
-            //        #( #commands_to_load; )*
-            //    }
-            //}
+            struct #name;
+            impl #name {
+                #command_load_code
+            }
         }
 
     });

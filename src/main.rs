@@ -17,6 +17,7 @@ mod extensions;
 //mod take_list;
 
 use std::path::Path;
+use std::collections::HashMap;
 
 use vkxml::*;
 use proc_macro2::{TokenStream};
@@ -34,7 +35,14 @@ pub struct ParseState<'a> {
     previous_feature_instance: Option<TokenStream>,
     previous_feature_device: Option<TokenStream>,
 
-    enum_constants_name_cache: std::collections::HashMap<&'a str, ()>,
+    // register command types when processing commands
+    // then use in features and extension code
+    // NOTE assumes that commands are always parsed first
+    command_type_cache: HashMap<&'a str, commands::CommandCategory>,
+
+    enum_constants_name_cache: HashMap<&'a str, ()>,
+
+    command_alias_cache: HashMap<&'a str, &'a str>,
 
     phantom: ::std::marker::PhantomData<&'a ()>,
 }
@@ -51,7 +59,7 @@ pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, par
             handle_enumerations(enums)
         }
         RegistryElement::Commands(cmds) => {
-            handle_commands(cmds)
+            handle_commands(cmds, parse_state)
         }
         RegistryElement::Features(features) => {
             handle_features(features, parse_state)
@@ -90,9 +98,19 @@ fn main() {
     // this it the easier to parse registry
     let registry = vk_parse::parse_file_as_vkxml(Path::new("vk.xml"));
 
-    // this registry is closer to the xml formate, but it sucks to parse
+    // this registry is closer to the xml format, but it sucks to parse
     // but it does include the aliases
     let registry2 = vk_parse::parse_file(Path::new("vk.xml"));
+
+    let cmd_alias_iter = registry2.0.iter()
+        .filter_map(
+            |elem| match elem
+            { vk_parse::RegistryChild::Commands(cmd) => Some(cmd), _ => None } )
+        .map(|commands|commands.children.iter())
+        .flatten()
+        .filter_map(
+            |command| match command
+            { vk_parse::Command::Alias { name, alias } => Some((name.as_str(), alias.as_str())), _ => None } );
 
     //debug(&registry);
 
@@ -102,12 +120,21 @@ fn main() {
         previous_feature_instance: None,
         previous_feature_device: None,
 
-        enum_constants_name_cache: std::collections::HashMap::new(),
+        command_type_cache: HashMap::new(),
+
+        enum_constants_name_cache: HashMap::new(),
+
+        command_alias_cache: HashMap::new(),
 
         phantom: ::std::marker::PhantomData,
     };
 
-    //println!("{:#?}", registry2);
+    for alias_tuple in cmd_alias_iter {
+        // insert a mapping for     alias -> cmd
+        // and for                  cmd -> alias
+        assert!(parse_state.command_alias_cache.insert(alias_tuple.0, alias_tuple.1).is_none(), true);
+        assert!(parse_state.command_alias_cache.insert(alias_tuple.1, alias_tuple.0).is_none(), true);
+    }
 
     let tokens = registry.elements.iter().map(|relem| vkxml_registry_token_stream(relem, &mut parse_state));
 

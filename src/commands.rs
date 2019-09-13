@@ -55,7 +55,7 @@ pub fn command_category(cmd: &Command) -> CommandCategory {
     }
 }
 
-pub fn handle_commands(commands: &Commands) -> TokenStream {
+pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::ParseState<'a>) -> TokenStream {
 
     macro_rules! filter_varients {
         ( $( $varient:tt )* ) => {
@@ -67,6 +67,11 @@ pub fn handle_commands(commands: &Commands) -> TokenStream {
             }
         }
     };
+
+    for cmd in commands.elements.iter() {
+        parse_state.command_type_cache.insert(cmd.name.as_str(), command_category(&cmd));
+    }
+
     let instance_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Instance));
     let device_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Device));
     let instance_and_device_commands = commands.elements.iter().filter(
