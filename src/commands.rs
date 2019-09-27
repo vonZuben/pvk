@@ -7,6 +7,8 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 
+use std::collections::HashMap;
+
 pub fn make_pfn_name(cmd_name: &str) -> TokenStream {
     format!("PFN_{}", cmd_name).as_code()
 }
@@ -53,6 +55,11 @@ pub fn command_category(cmd: &Command) -> CommandCategory {
                 _ => CommandCategory::Static,
             }
     }
+}
+
+fn field_name(field: &Field) -> &str {
+    field.name.as_ref()
+        .expect("error: field with no name").as_str()
 }
 
 pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::ParseState<'a>) -> TokenStream {
@@ -107,6 +114,239 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let params1 = cmd.param.iter().map(handle_field);
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
+        // create manager methods
+        let manager_name = crate::definitions
+            ::make_manager_name(cmd.param[0].basetype.as_str());
+
+        let manager_method = {
+
+
+            //for p in cmd.param.iter() {
+                //eprintln!("const: {}; size: {:?}, ref_type: {:?}; array_type: {:?}",
+                //          p.is_const,
+                //          p.size.as_ref().map(|_|""),
+                //          p.reference,
+                //          p.array);
+                //eprintln!("name: {}; type: {}; const: {}; size: {:?}, ref_type: {:?}; array_type: {:?}",
+                //          p.name.as_ref().unwrap(),
+                //          p.basetype,
+                //          p.is_const,
+                //          p.size.as_ref().map(|_|""),
+                //          p.reference,
+                //          p.array);
+            //}
+
+
+            // keep track of params that are counts for array params
+            let mut count_cache = HashMap::new();
+            for p in cmd.param.iter() {
+                // also assert that these size members are not used
+                assert!(p.c_size.is_none());
+                assert!(p.size_enumref.is_none());
+                if p.size.is_some() {
+                    count_cache.insert(p.size.as_ref().unwrap().as_str(),
+                                       field_name(&p));
+                }
+            }
+
+            // -----------------------------------
+            // generate user facing parameters for methods
+
+                dbg!(cmd.name.as_str());
+
+            let outer_params = cmd.param[1..].iter()
+                .filter(|field| count_cache.get(field_name(&field)).is_none())
+                .map(|field| {
+
+                let field_name_raw = field_name(&field);
+                let field_name = field_name_raw.as_code();
+
+                let ref_type;
+                let basetype;
+
+                if field.optional.is_some() {
+                    eprintln!("field: {}; opsional: {}", field.name.as_ref().unwrap().as_str(), field.optional.as_ref().unwrap());
+                }
+
+                match field.reference {
+                    Some(ReferenceType::Pointer) => {
+                        if field.is_const {
+                            ref_type = quote!( & );
+                        }
+                        else {
+                            ref_type = quote!( &mut );
+                        }
+                        // NOTE assumption: if reference is pointer, then array is dynamic or
+                        // none
+                        match field.array {
+                            Some(ArrayType::Dynamic) => {
+                                basetype = match field.basetype.as_str() {
+                                        "char" => quote!( ::std::ffi::CStr ),
+                                        "void" => quote!( [u8] ),
+                                        _ => {
+                                            let bt = field.basetype.as_code();
+                                            quote!( [#bt] )
+                                        }
+                                };
+                            }
+                            None => {
+                                basetype = match field.basetype.as_str() {
+                                        "char" => quote!( ::std::ffi:CStr ),
+                                        "void" => {
+                                            eprintln!("{}", format!("error: unexpected pointer to void: {} -> {}",
+                                                                 cmd.name.as_str(), field_name_raw));
+                                            quote!( c_void )
+                                        }
+                                        _ => {
+                                            let bt = field.basetype.as_code();
+                                            quote!( #bt )
+                                        }
+                                };
+                            }
+                            _ => panic!(format!("error: only expecting dynamic array or not array: {} -> {}",
+                                                cmd.name.as_str(), field_name_raw)),
+                        }
+                    }
+                    Some(ReferenceType::PointerToPointer) => {
+                        // ref_type can only be mut in this case
+                        ref_type = quote!( &mut &mut );
+                        basetype = match field.basetype.as_str() {
+                            "char" => panic!(format!("error: unexpected pointer pointer to char: {} -> {}",
+                                                     cmd.name.as_str(), field_name_raw)),
+                            "void" => {
+                                eprintln!("{}", format!("error: unexpected pointer pointer to void: {} -> {}",
+                                                     cmd.name.as_str(), field_name_raw));
+                                quote!( c_void )
+                            }
+                            _ => {
+                                let bt = field.basetype.as_code();
+                                quote!( #bt )
+                            }
+                        };
+                    }
+                    Some(ReferenceType::PointerToConstPointer) => {
+                        match field.array {
+                            Some(ArrayType::Dynamic) => {
+                                if field.is_const {
+                                    ref_type = quote!( && );
+                                } else {
+                                    ref_type = quote!( &mut& );
+                                }
+                                let bt = field.basetype.as_code();
+                                basetype = quote!( #bt );
+                            }
+                            _ => panic!(format!("error: only expecting dynamic array type: {} -> {}",
+                                                cmd.name.as_str(), field_name_raw)),
+                        }
+                    }
+                    None => { // not a pointer
+                        // could still be a static array
+                        match field.array {
+                            Some(ArrayType::Static) => {
+                                ref_type = quote!();
+                                let bt = field.basetype.as_code();
+                                let size = field.size.as_ref().expect("error: static array without size").as_code();
+                                basetype = quote!( [#bt;#size] );
+                            }
+                            None => {
+                                ref_type = quote!();
+                                let bt = field.basetype.as_code();
+                                basetype = quote!( #bt );
+                            }
+                            _ => panic!(format!("error: unexpected array type for non-pointer field: {} -> {}",
+                                                cmd.name.as_str(), field_name_raw)),
+                        }
+                    }
+                }
+
+                quote!( #field_name : #ref_type #basetype )
+            });
+
+            // -----------------------------------
+            // determine how to pass rust method params to raw vulkan function
+
+            // All non-static commands will have a first param which match a manager name which has
+            // a handle of the corresponding type.
+            // Put the handle as the first parameter.
+            let first_inner_param = Some( quote!( self.handle ) );
+
+            let other_inner_params = cmd.param[1..].iter().map(|field| {
+                let field_name_raw = field_name(&field);
+
+                let field_name = field_name_raw.as_code();
+
+                let ptr_mut = match field.is_const {
+                    true => quote!( as_ptr() ),
+                    false => quote!( as_mut_ptr() ),
+                };
+
+                if let Some(array_param_raw) = count_cache.get(&field_name_raw) {
+                    let array_param = array_param_raw.as_code();
+                    quote!( #array_param.len() as _ )
+                }
+                else {
+
+                    match field.reference {
+                        Some(ReferenceType::Pointer) => {
+                            // NOTE assumption: if reference is pointer, then array is dynamic or
+                            // none
+                            match field.array {
+                                Some(ArrayType::Dynamic) => {
+                                    quote!( #field_name.#ptr_mut as _ )
+                                }
+                                None => {
+                                    quote!( #field_name )
+                                }
+                                _ => panic!(format!("error: only expecting dynamic array or not array: {} -> {}",
+                                                    cmd.name.as_str(), field_name_raw)),
+                            }
+                        }
+                        Some(ReferenceType::PointerToPointer) => {
+                            quote!( #field_name as *mut &mut _ as *mut *mut _ )
+                        }
+                        Some(ReferenceType::PointerToConstPointer) => {
+                            match field.array {
+                                Some(ArrayType::Dynamic) => quote!( #field_name as *const & _ as *const *const _ ),
+                                _ => panic!(format!("error: only expecting dynamic array type: {} -> {}",
+                                                    cmd.name.as_str(), field_name_raw)),
+                            }
+                        }
+                        None => { // not a pointer
+                            // could still be a static array
+                            match field.array {
+                                Some(ArrayType::Static) => {
+                                    quote!( #field_name )
+                                }
+                                None => {
+                                    quote!( #field_name )
+                                }
+                                _ => panic!(format!("error: unexpected array type for non-pointer field: {} -> {}",
+                                                    cmd.name.as_str(), field_name_raw)),
+                            }
+                        }
+                    }
+                }
+            });
+
+            let method_name = case::camel_to_snake(cmd.name.as_str()).as_code();
+
+            let method_caller = match cmd.param[0].basetype.as_str() {
+                "VkInstance" | "VkDevice" => quote!( self.commands.#name.0 ),
+                _ => {
+                    quote!( self.parent.commands.#name.0 )
+                }
+            };
+
+            quote!{
+                impl<'a> #manager_name<'a> {
+                    fn #method_name(&self, #( #outer_params ),* ) {
+                        #method_caller( #first_inner_param, #( #other_inner_params ),* );
+                    }
+                }
+            }
+
+        };
+
         // this is for generating the code to load funtion pointers based on the feature
         // these generate the code for only the respective device/instance commands
         //
@@ -159,6 +399,11 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                     }
                 }
             }
+            // add manager method
+            //impl manager_name {
+            //    //fn #method_name( #( #method_params ),* ) #
+            //}
+            #manager_method
 
             // define macro that can be used by the feature loader
             //

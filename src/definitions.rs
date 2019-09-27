@@ -13,7 +13,7 @@ pub fn make_manager_name(name: &str) -> TokenStream {
     format!("{}Manager", name).as_code()
 }
 
-pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseState) -> TokenStream {
+pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut ParseState<'a>) -> TokenStream {
 
     let q = definitions.elements.iter().map(|def| {
 
@@ -235,7 +235,7 @@ pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseSta
                         }
                     });
                 }
-                else {
+                else { // return only type
                     builder_code = None;
                 }
 
@@ -269,80 +269,81 @@ pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseSta
 
                 let handle_name = handle.name.as_code();
 
+                parse_state.handle_cache.push(&handle);
+
                 match handle.ty {
                     // based on the spec, i understand that dispatchable
                     // handles will be pointers, thus, they will be different
                     // sizes on 32bit and 64 bit computers
                     // but nondispatchable handles will always be 64 bits
                     HandleType::Dispatch => {
-                        // get list of functions where the first parameter is the the handle type
-                        //let commands: Vec<_> = parse_state.command_list.iter()
-                        //    .filter_map(|command_node| {
-                        //        if command_node.data().param[0].basetype == handle.name {
-                        //            Some(command_node.take())
-                        //        }
-                        //        else {
-                        //            None
-                        //        }
-                        //    }).collect();
-
-                        //let pfn_params = commands.iter()
-                        //    .map(|command| {
-                        //        let name = command.name.as_code();
-                        //        let pfn_name = commands::make_pfn_loader_name(&command);
-
-                        //        quote!( #name: #pfn_name )
-                        //    });
-
-                        //let pfn_names = commands.iter()
-                        //    .map(|command| {
-                        //        let name = command.name.as_code();
-
-                        //        quote!( #name )
-                        //    });
-
-                        // handle managers will provide convinience usage of dipatchable handles
-                        // define the members that each type should have
-                        // the instance and device managers should hold function pointers
-                        // the other managers should have references to their parent
-                        let manager_members = match handle.name.as_str() {
-                            "VkInstance" => quote!( commands: InstanceCommands, ),
-                            "VkDevice" => quote!( commands: DeviceCommands, ),
-                            _ => {
-                                let parent = handle.parent.as_ref().expect("error: expected parent for handle").as_code();
-                                quote!( parent: #parent, )
-                            }
-                        };
-
                         // each dispatchable handle will have a manager type that will handle
                         // creation and destruciton automatically, and will provide convinience
                         // methods for their respective vulkan commands (i.e. where the respective
                         // handle is the first parameter)
                         //
                         // check commands.rs for method definitions
-                        let custum_type_name = make_manager_name(handle.name.as_str());
+                        //let manager_name = make_manager_name(handle.name.as_str());
+
+                        //// handle managers will provide convinience usage of dipatchable handles
+                        //// define the members that each type should have
+                        //// the instance and device managers should hold function pointers
+                        //// the other managers should have references to their parent
+                        //let manager_members = match handle.name.as_str() {
+                        //    "VkInstance" => quote!{
+                        //        commands: InstanceCommands,
+                        //        phantom: ::std::marker::PhantomData<&'a ()>,
+                        //    },
+                        //    "VkDevice" => quote!{
+                        //        commands: DeviceCommands,
+                        //        phantom: ::std::marker::PhantomData<&'a ()>,
+                        //    },
+                        //    _ => {
+                        //        let parent = handle.parent.as_ref().expect("error: expected parent for handle").as_str();
+                        //        let parent_manager = make_manager_name(parent);
+                        //        quote!{
+                        //            parent: &'a #parent_manager<'a>,
+                        //        }
+                        //    }
+                        //};
 
                         // make the handle type
                         quote!{
-
                             pub type #handle_name = *const c_void; // object pointer???
 
-                            pub struct #custum_type_name {
-                                handle: #handle_name,
-                                #manager_members
-                                //#( #pfn_params ),*
-                            }
-
-                            //impl #name {
-
-                            //    fn load_function_pointers(&mut self) {
-                            //        #( self.#pfn_names.load(); )*
-                            //    }
+                            //pub struct #manager_name<'a> {
+                            //    handle: #handle_name,
+                            //    #manager_members
+                            //    //#( #pfn_params ),*
                             //}
                         }
                     },
                     HandleType::NoDispatch => {
-                        quote!(pub type #handle_name = u64;) // uint64_t
+                        //let manager_name = make_manager_name(handle.name.as_str());
+
+                        //let parent_manager = if let Some(parent_name) = handle.parent.as_ref() {
+                        //    // NOTE some non-dispatchable handle type can have multiple parents
+                        //    // for now, we just take the first parent
+                        //    let parent_name = parent_name.as_str().split(',')
+                        //        .next()
+                        //        .expect("there must be at least one elemet in the parent names");
+
+                        //    let parent_manager = make_manager_name(parent_name);
+                        //    quote!{
+                        //        parent: &'a #parent_manager<'a>,
+                        //    }
+                        //}
+                        //else {
+                        //    quote!( phantom: ::std::marker::PhantomData<&'a ()>, )
+                        //};
+
+                        quote!{
+                            pub type #handle_name = u64; // uint64_t
+                            //pub struct #manager_name<'a> {
+                            //    handle: #handle_name,
+                            //    #parent_manager
+                            //}
+                        }
                     },
                 }
 
@@ -374,6 +375,106 @@ pub fn handle_definitions(definitions: &Definitions, _parse_state: &mut ParseSta
 
     quote!( #(#q)* )
 
+}
+
+fn find_in_slice<T, F>(slice: &[T], f: F) -> Option<&T> where F: Fn(&T) -> bool {
+    for val in slice.iter() {
+        if f(val) {
+            return Some(val);
+        }
+    }
+    None
+}
+
+fn get_dispatchable_parent_manager(handle: &Handle, handle_cache: &[&Handle]) -> Option<TokenStream> {
+    handle.parent.as_ref()
+        .and_then(|parent_name| {
+            find_in_slice(handle_cache, |handle| handle.name.as_str() == parent_name.as_str())
+                .and_then(|handle| match handle.ty {
+                    HandleType::Dispatch => Some( make_manager_name(handle.name.as_str()) ),
+                    HandleType::NoDispatch => get_dispatchable_parent_manager(handle, handle_cache),
+                })
+        })
+}
+
+pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
+
+    let managers = parse_state.handle_cache.iter().map(|handle| {
+
+        let handle_name = handle.name.as_code();
+
+        match handle.ty {
+            HandleType::Dispatch => {
+                // each dispatchable handle will have a manager type that will handle
+                // creation and destruciton automatically, and will provide convinience
+                // methods for their respective vulkan commands (i.e. where the respective
+                // handle is the first parameter)
+                //
+                // check commands.rs for method definitions
+                let manager_name = make_manager_name(handle.name.as_str());
+
+                // handle managers will provide convinience usage of dipatchable handles
+                // define the members that each type should have
+                // the instance and device managers should hold function pointers
+                // the other managers should have references to their parent
+                let manager_members = match handle.name.as_str() {
+                    "VkInstance" => quote!{
+                        commands: InstanceCommands,
+                        phantom: ::std::marker::PhantomData<&'a ()>,
+                    },
+                    "VkDevice" => quote!{
+                        commands: DeviceCommands,
+                        phantom: ::std::marker::PhantomData<&'a ()>,
+                    },
+                    _ => {
+                        let parent_manager = get_dispatchable_parent_manager(&handle, parse_state.handle_cache.as_slice());
+                        quote!{
+                            parent: &'a #parent_manager<'a>,
+                        }
+                    }
+                };
+
+                // make the handle manager
+                quote!{
+                    pub struct #manager_name<'a> {
+                        handle: #handle_name,
+                        #manager_members
+                        //#( #pfn_params ),*
+                    }
+                }
+            }
+            HandleType::NoDispatch => {
+                let manager_name = make_manager_name(handle.name.as_str());
+
+                let parent_manager = if let Some(parent_name) = handle.parent.as_ref() {
+                    // NOTE some non-dispatchable handle type can have multiple parents
+                    // for now, we just take the first parent
+                    let parent_name = parent_name.as_str().split(',')
+                        .next()
+                        .expect("there must be at least one elemet in the parent names");
+
+                    let parent_manager = make_manager_name(parent_name);
+                    quote!{
+                        parent: &'a #parent_manager<'a>,
+                    }
+                }
+                else {
+                    quote!( phantom: ::std::marker::PhantomData<&'a ()>, )
+                };
+
+                quote!{
+                    pub struct #manager_name<'a> {
+                        handle: #handle_name,
+                        #parent_manager
+                    }
+                }
+            }
+        }
+    });
+
+    quote!{
+        #( #managers )*
+    }
 }
 
 pub fn generate_aliases_of_types<'a>(types: &'a vk_parse::Types) -> TokenStream {

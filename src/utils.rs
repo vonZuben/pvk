@@ -130,6 +130,7 @@ pub fn ctype_to_rtype(type_name: &str) -> String {
         "long" => "c_ulong",
         "type" => "ty",
         x if x.starts_with("Vk") => &type_name[2..],
+        x if x.starts_with("vk_") => &type_name[3..],
         x if x.starts_with("vk") => &type_name[2..],
         x if x.starts_with("VK_") => &type_name[3..],
         _ => type_name,
@@ -199,6 +200,9 @@ pub fn platform_specific_types() -> TokenStream {
 }
 
 pub mod case {
+
+    //fn peek_check<I: Iterator<Item=char>, P: std::iter::Peekable<I>>(p: &mut P) -> bool {
+    //}
 
     pub fn camel_to_snake(s: &str) -> String {
 

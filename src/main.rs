@@ -44,6 +44,8 @@ pub struct ParseState<'a> {
 
     command_alias_cache: HashMap<&'a str, &'a str>,
 
+    handle_cache: Vec<&'a vkxml::Handle>,
+
     phantom: ::std::marker::PhantomData<&'a ()>,
 }
 
@@ -125,6 +127,8 @@ fn main() {
         enum_constants_name_cache: HashMap::new(),
 
         command_alias_cache: HashMap::new(),
+
+        handle_cache: Vec::new(),
 
         phantom: ::std::marker::PhantomData,
     };
@@ -379,7 +383,7 @@ fn main() {
         }
     };
 
-    let q = quote!{
+    let mut q = quote!{
         #allow_vulkan_name_formats
         #initial_test_code
         #util_code
@@ -387,6 +391,10 @@ fn main() {
         #(#tokens)*
         #(#aliases)*
     };
+
+    let post_process_handles = post_process_handles(&parse_state);
+
+    q.extend(post_process_handles);
 
     //for node in parse_state.command_list.iter() {
     //    dbg!(&node.data().name);
