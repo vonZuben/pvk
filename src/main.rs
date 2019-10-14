@@ -198,10 +198,13 @@ fn main() {
             let ver = VERSION_1_1;
             ver.load_instance_commands(&inst, &mut instance_commands);
 
-            let mut phd: PhysicalDevice = std::ptr::null();
-            let mut phd_count: u32 = 0;
-            instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
-            println!("num physical devices: {}", phd_count);
+            let instance = InstanceManager{ handle: inst, commands: instance_commands, phantom: std::marker::PhantomData };
+
+            //let mut phd: PhysicalDevice = std::ptr::null();
+            //let mut phd_count: u32 = 0;
+            //instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
+            let pd = instance.enumerate_physical_devices();
+            println!("num physical devices: {}", pd.len());
 
             // test Flags printing
             let flags: QueueFlags = QueueFlags::GRAPHICS | QueueFlags::COMPUTE;
@@ -379,6 +382,41 @@ fn main() {
                 //        self ^ $name::all()
                 //    }
                 //}
+            }
+        }
+
+        // it is safe to transmute Option<&t> to raw pointer
+        // because the null pointer optimization guarantees that
+        // Option<&T> is ABI compatible with raw C pointers for FFI
+        // (see the rust nomicon)
+        pub trait AsRawPtr<T> {
+            fn as_ptr(&self) -> *const T;
+        }
+        impl<'a, T> AsRawPtr<T> for Option<&'a T> {
+            fn as_ptr(&self) -> *const T {
+                //unsafe { ::std::mem::transmute::<Option<&T>, *const T>(*self) }
+                unsafe { *(self as *const Option<&T> as *const *const T) }
+            }
+        }
+        // NOTE note sure if this should be included
+        //impl<'a, T> AsRawPtr<T> for Option<&'a mut T> {
+        //    fn as_ptr(&self) -> *const T {
+        //        // this is safe because it is safe to take shared reference from a mutable
+        //        // reference
+        //        //
+        //        // however, the mutable reference shouldn't be used while the raw pointer still
+        //        // exists
+        //        unsafe { ::std::mem::transmute::<Option<&mut T>, *const T>(*self) }
+        //    }
+        //}
+
+        pub trait AsRawMutPtr<T> {
+            fn as_mut_ptr(&self) -> *mut T;
+        }
+        impl<'a, T> AsRawMutPtr<T> for Option<&'a mut T> {
+            fn as_mut_ptr(&self) -> *mut T {
+                //unsafe { ::std::mem::transmute::<Option<&mut T>, *mut T>(*self) }
+                unsafe { *(self as *const Option<&mut T> as *const *mut T) }
             }
         }
     };
