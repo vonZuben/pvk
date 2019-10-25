@@ -155,6 +155,15 @@ macro_rules! one_option {
 
 }
 
+pub fn find_in_slice<T, F>(slice: &[T], f: F) -> Option<&T> where F: Fn(&T) -> bool {
+    for val in slice.iter() {
+        if f(val) {
+            return Some(val);
+        }
+    }
+    None
+}
+
 pub fn platform_specific_types() -> TokenStream {
     quote! {
         pub type RROutput = c_ulong;

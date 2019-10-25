@@ -138,7 +138,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let manager_name = crate::definitions
             ::make_manager_name(cmd.param[0].basetype.as_str());
 
-        let manager_method = make_manager_method(&cmd);
+        let manager_method = make_manager_method(&cmd, parse_state);
 
         let manager_method_old = {
 
@@ -536,7 +536,7 @@ fn not_return_param(field: &&Field) -> bool {
 
 // this is for automatically generating methods which provide a more ideal rust interface for calling
 // vulkan commands
-fn make_manager_method(cmd: &Command) -> TokenStream {
+fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStream {
 
     let category_map = catagorize_fields(&cmd);
     if category_map.is_err() {
@@ -586,14 +586,29 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
     let first_inner_param = Some( quote!( self.handle ) );
 
     match method_verb {
-        "create" => {
-            //eprint!("{} (", cmd.name.as_str());
-            //for param in cmd.param.iter() {
-            //    eprint!("{}, ", param.name.as_ref().unwrap().as_str());
-            //}
-            //eprintln!(") -> {:?}", cmd.return_type.basetype);
-            quote!()
-        }
+        //"create" => {
+        //    //eprint!("{} (", cmd.name.as_str());
+        //    //for param in cmd.param.iter() {
+        //    //    eprint!("{}, ", param.name.as_ref().unwrap().as_str());
+        //    //}
+        //    //eprintln!(") -> {:?}", cmd.return_type.basetype);
+
+        //    quote!()
+
+
+        //    //quote!{
+        //    //    impl<'a> #manager_name<'a> {
+        //    //        pub fn #method_name(&self, #( #fields_outer )* ) -> #return_type {
+        //    //            #( #locals )*
+        //    //            #method_caller( #first_inner_param, #( #fields_inner1 ),* );
+        //    //            #( #update_locals1 )*
+        //    //            #method_caller( #first_inner_param, #( #fields_inner2 ),* );
+        //    //            #( #update_locals2 )*
+        //    //            #return_code
+        //    //        }
+        //    //    }
+        //    //}
+        //}
         //"get" => {
         //    //dbg!(&cmd);
         //    //let category_map = catagorize_fields(&cmd);
@@ -602,7 +617,7 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
         //    //}
         //    quote!()
         //}
-        "enumerate" | "get" => {
+        "enumerate" | "get" | "create" => {
             //for category in category_map.iter() {
             //    dbg!(category);
             //}
@@ -628,6 +643,10 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
                                 quote!( let mut #field_name = Vec::new(); )
                             }
                             FieldCatagory::Return => {
+                                // NOTE: this code is incorrect, but there seems to be no case of
+                                // using this anyway
+                                //
+                                // leaving for now and fix when necessary
                                 quote!( let mut #field_name = unsafe { ::std::mem::MaybeUninit::uninit() }; )
                             }
                             FieldCatagory::SizeMut => {
@@ -689,17 +708,36 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
                             }
                         })
                         .unwrap();
-                    //let (field_name, _category) = category_map.iter()
-                    //    .find(|(_field_name, category)| match category { FieldCatagory::Return => true, _ => false })
-                    //    .unwrap(); // already know that there is one
 
-                        // NOTE this only handles Vec returns,
                     let field_name = field_name(ret_field).as_code();
-                    return_code = quote!( #field_name );
 
-                    return_type = make_return_type(&ret_field);
+                    // check if type has a handle manager
+                    if let Some(handle) = find_in_slice(parse_state.handle_cache.as_slice(),
+                                                             |handle| { handle.name.as_str() == ret_field.basetype.as_str() })
+                    {
+                        let manager_name = crate::definitions
+                            ::make_manager_name(handle.name.as_str());
+
+                        if ret_field.array.is_some() {
+                            return_code = quote!{
+                                #field_name.iter().copied().map(|elem| #manager_name::new(elem, self)).collect()
+                            };
+                            return_type = quote!( Vec<#manager_name<'manager>> )
+                        }
+                        else {
+                            return_code = quote!{
+                                #manager_name::new(#field_name, self)
+                            };
+                            return_type = quote!( #manager_name<'manager> )
+                        }
+                    }
+                    else {
+                        return_code = quote!( #field_name );
+                        return_type = make_return_type(&ret_field);
+                    }
                 }
                 else {
+                    panic!("not implemented more than one return type");
                     assert!(ret_count > 1);
                     return_code = quote!();
                     return_type = quote!();
@@ -733,7 +771,7 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
 
                 quote!{
                     impl<'a> #manager_name<'a> {
-                        pub fn #method_name(&self, #( #fields_outer )* ) -> #return_type {
+                        pub fn #method_name<'manager>(&'manager self, #( #fields_outer )* ) -> #return_type {
                             #( #locals )*
                             #method_caller( #first_inner_param, #( #fields_inner1 ),* );
                             #( #update_locals1 )*
@@ -758,9 +796,7 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
                                     ReferenceType::Pointer => {
                                         let size = field.size.as_ref().expect("error: ReturnSized with no size");
                                         let size = size.replace("::", ".").as_code();
-                                        // NOTE HERE -- fix this!!!!! is this ok now??
                                         quote!( let mut #field_name = Vec::with_capacity(#size as usize); )
-                                        //quote!( let #size = #field_name.len(); )
                                     }
                                     _ => {
                                         dbg!(cmd.name.as_str());
@@ -772,7 +808,6 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
                             FieldCatagory::Return => {
                                 match field.reference.as_ref().expect("error: return type not pointer 2") {
                                     ReferenceType::Pointer => {
-                                        //quote!( let mut #field_name = Vec::with_capacity(#size as usize); )
                                         let basetype = field.basetype.as_code();
                                         quote!( let mut #field_name = ::std::mem::MaybeUninit::<#basetype>::uninit(); )
                                     }
@@ -802,13 +837,11 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
                         let field_name = field_name_raw.as_code();
                         match category_map.get(field_name_raw).unwrap() {
                             FieldCatagory::ReturnSized => {
-                                //let size = field.size.as_ref().expect("error: ReturnSized with no size 2").as_code();
                                 let size = field.size.as_ref().expect("error: ReturnSized with no size");
                                 let size = size.replace("::", ".").as_code();
                                 Some ( quote!( unsafe { #field_name.set_len(#size as usize) }; ) )
                             }
                             FieldCatagory::Return => {
-                                //let basetype = field.basetype.as_code();
                                 Some( quote!( let #field_name = unsafe { #field_name.assume_init() }; ) )
                             }
                             _ => None,
@@ -841,16 +874,42 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
                         .expect("error: can't find ret field");
 
                     let field_name = field_name(ret_field).as_code();
-                    return_code = quote!( #field_name );
 
-                    //match ret_field.reference {
-                    //    Some(ReferenceType::PointerToPointer) => {
-                    //        dbg!(ret_field.name.as_ref().unwrap().as_str());
-                    //        dbg!(cmd.name.as_str());
-                    //    }
-                    //    _ => {}
-                    //}
-                    return_type = make_return_type(&ret_field);
+                    // check if type has a handle manager
+                    if let Some(handle) = find_in_slice(parse_state.handle_cache.as_slice(),
+                                                             |handle| { handle.name.as_str() == ret_field.basetype.as_str() })
+                    {
+                        let manager_name = crate::definitions
+                            ::make_manager_name(handle.name.as_str());
+
+                        // NOTE vkDevice is a special case
+                        if handle.name.as_str() == "VkDevice" {
+                            return_code = quote!{
+                                let mut device_commands = DeviceCommands::new();
+                                // physical device parent is instance which has the feature_version
+                                self.parent.feature_version.load_device_commands(&#field_name, &mut device_commands);
+                                // TODO load device extensions
+                                #manager_name::new(#field_name, device_commands, self)
+                            };
+                            return_type = quote!( #manager_name<'manager> )
+                        }
+                        else if ret_field.array.is_some() {
+                            return_code = quote!{
+                                #field_name.iter().copied().map(|elem| #manager_name::new(elem, self)).collect()
+                            };
+                            return_type = quote!( Vec<#manager_name<'manager>> )
+                        }
+                        else {
+                            return_code = quote!{
+                                #manager_name::new(#field_name, self)
+                            };
+                            return_type = quote!( #manager_name<'manager> )
+                        }
+                    }
+                    else {
+                        return_code = quote!( #field_name );
+                        return_type = make_return_type(&ret_field);
+                    }
 
                     custom_return_type = None;
                 }
@@ -919,7 +978,7 @@ fn make_manager_method(cmd: &Command) -> TokenStream {
                 quote!{
                     #custom_return_type
                     impl<'a> #manager_name<'a> {
-                        pub fn #method_name(&self, #( #fields_outer )* ) -> #return_type {
+                        pub fn #method_name<'manager>(&'manager self, #( #fields_outer )* ) -> #return_type {
                             #( #locals )*
                             #method_caller( #first_inner_param, #( #fields_inner ),* );
                             #( #update_locals )*

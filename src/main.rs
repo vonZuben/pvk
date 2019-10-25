@@ -198,7 +198,7 @@ fn main() {
             let ver = VERSION_1_1;
             ver.load_instance_commands(&inst, &mut instance_commands);
 
-            let instance = InstanceManager{ handle: inst, commands: instance_commands, phantom: std::marker::PhantomData };
+            let instance = InstanceManager::new(inst, instance_commands, Box::new(ver));
 
             //let mut phd: PhysicalDevice = std::ptr::null();
             //let mut phd_count: u32 = 0;
@@ -246,6 +246,10 @@ fn main() {
         //        }
         //    }
         //}
+        trait Feature {
+            fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands);
+            fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands);
+        }
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
             *input = *input ^ lowest_bit;

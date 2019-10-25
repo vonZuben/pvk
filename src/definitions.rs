@@ -377,15 +377,6 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
 }
 
-fn find_in_slice<T, F>(slice: &[T], f: F) -> Option<&T> where F: Fn(&T) -> bool {
-    for val in slice.iter() {
-        if f(val) {
-            return Some(val);
-        }
-    }
-    None
-}
-
 fn get_dispatchable_parent_manager(handle: &Handle, handle_cache: &[&Handle]) -> Option<TokenStream> {
     handle.parent.as_ref()
         .and_then(|parent_name| {
@@ -420,16 +411,51 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 let manager_members = match handle.name.as_str() {
                     "VkInstance" => quote!{
                         commands: InstanceCommands,
+                        feature_version: Box<dyn Feature>,
                         phantom: ::std::marker::PhantomData<&'a ()>,
                     },
                     "VkDevice" => quote!{
                         commands: DeviceCommands,
-                        phantom: ::std::marker::PhantomData<&'a ()>,
+                        parent: &'a PhysicalDeviceManager<'a>,
                     },
                     _ => {
                         let parent_manager = get_dispatchable_parent_manager(&handle, parse_state.handle_cache.as_slice());
                         quote!{
                             parent: &'a #parent_manager<'a>,
+                        }
+                    }
+                };
+
+                let new_method = match handle.name.as_str() {
+                    "VkInstance" => quote!{
+                        fn new(handle: Instance, commands: InstanceCommands, feature_version: Box<dyn Feature>) -> #manager_name<'a> {
+                            #manager_name {
+                                handle,
+                                commands,
+                                feature_version,
+                                phantom: ::std::marker::PhantomData,
+                            }
+                        }
+                    },
+                    "VkDevice" => quote!{
+                        fn new(handle: Device, commands: DeviceCommands, parent: &'a PhysicalDeviceManager) -> #manager_name<'a> {
+                            #manager_name {
+                                handle,
+                                commands,
+                                parent,
+                            }
+                        }
+                    },
+                    _ => {
+                        let parent_manager = get_dispatchable_parent_manager(&handle, parse_state.handle_cache.as_slice());
+                        quote!{
+                            fn new<'parent>(handle: #handle_name, parent: &'parent #parent_manager) -> #manager_name<'a>
+                                where 'parent: 'a {
+                                #manager_name {
+                                    handle,
+                                    parent,
+                                }
+                            }
                         }
                     }
                 };
@@ -441,11 +467,15 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         #manager_members
                         //#( #pfn_params ),*
                     }
+                    impl<'a> #manager_name<'a> {
+                        #new_method
+                    }
                 }
             }
             HandleType::NoDispatch => {
                 let manager_name = make_manager_name(handle.name.as_str());
 
+                let new_method;
                 let parent_manager = if let Some(parent_name) = handle.parent.as_ref() {
                     // NOTE some non-dispatchable handle type can have multiple parents
                     // for now, we just take the first parent
@@ -453,12 +483,42 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         .next()
                         .expect("there must be at least one elemet in the parent names");
 
-                    let parent_manager = make_manager_name(parent_name);
+                    // NOTE in order to make code generation easier (especially regarding method
+                    // creation), we make the device a parent to the swapchain types (rather the
+                    // actual parent which is the surface). This is because the surface manager is
+                    // not easily available in the swapchain create methods
+                    let parent_manager;
+                    if handle.name.as_str() == "VkSwapchainKHR" {
+                        parent_manager = quote!(DeviceManager);
+                    }
+                    else {
+                        parent_manager = make_manager_name(parent_name);
+                    }
+
+                    new_method = quote!{
+                        fn new<'parent>(handle: #handle_name, parent: &'parent #parent_manager) -> #manager_name<'a>
+                            where 'parent: 'a {
+                                #manager_name {
+                                    handle,
+                                    parent,
+                                }
+                            }
+                    };
+
                     quote!{
                         parent: &'a #parent_manager<'a>,
                     }
                 }
                 else {
+                    new_method = quote!{
+                        fn new<'parent, T>(handle: #handle_name, _parent: &'parent T) -> #manager_name<'a>
+                            where 'parent: 'a {
+                                #manager_name {
+                                    handle,
+                                    phantom: ::std::marker::PhantomData,
+                                }
+                            }
+                    };
                     quote!( phantom: ::std::marker::PhantomData<&'a ()>, )
                 };
 
@@ -466,6 +526,9 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     pub struct #manager_name<'a> {
                         handle: #handle_name,
                         #parent_manager
+                    }
+                    impl<'a> #manager_name<'a> {
+                        #new_method
                     }
                 }
             }

@@ -53,7 +53,7 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
 
             pub struct #name;
 
-            impl #name {
+            impl Feature for #name {
                 fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands) {
                     #( #instance_macro_names!(instance, inst_cmds); )*
                     #( #previous_feature_instance )*
