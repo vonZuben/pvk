@@ -586,30 +586,52 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
     let first_inner_param = Some( quote!( self.handle ) );
 
     match method_verb {
-        //"create" => {
-        //    //eprint!("{} (", cmd.name.as_str());
-        //    //for param in cmd.param.iter() {
-        //    //    eprint!("{}, ", param.name.as_ref().unwrap().as_str());
-        //    //}
-        //    //eprintln!(") -> {:?}", cmd.return_type.basetype);
+        "destroy" => {
+            // NOTE we are making the allocator always None for now
+            // thus, there is no support for using custom allocators for now
 
-        //    quote!()
+            // destroy methods are a special case where we implement the drop method for the
+            // appropriate handle manager
+            let manager_name;
+            let method_params;
+            let method_caller;
+            match cmd.name.as_str() {
+                "vkDestroyInstance" => {
+                    manager_name = quote!( InstanceManager );
+                    method_params = quote!( self.handle, None.as_ptr() );
+                    method_caller = quote!( self.commands.#name.0 );
+                }
+                "vkDestroyDevice" => {
+                    manager_name = quote!( DeviceManager );
+                    method_params = quote!( self.handle, None.as_ptr() );
+                    method_caller = quote!( self.commands.#name.0 );
+                }
+                _ => {
+                    let type_to_destroy = crate::definitions
+                        ::make_manager_name(cmd.param[1].basetype.as_str());
+                    manager_name = quote!( #type_to_destroy );
+                    method_params = quote!( self.parent.handle, self.handle, None.as_ptr() );
+                    method_caller = quote!( self.parent.commands.#name.0 );
+                }
+            }
 
-
-        //    //quote!{
-        //    //    impl<'a> #manager_name<'a> {
-        //    //        pub fn #method_name(&self, #( #fields_outer )* ) -> #return_type {
-        //    //            #( #locals )*
-        //    //            #method_caller( #first_inner_param, #( #fields_inner1 ),* );
-        //    //            #( #update_locals1 )*
-        //    //            #method_caller( #first_inner_param, #( #fields_inner2 ),* );
-        //    //            #( #update_locals2 )*
-        //    //            #return_code
-        //    //        }
-        //    //    }
-        //    //}
-        //}
+            quote!{
+                impl<'a> Drop for #manager_name<'a> {
+                    fn drop(&mut self) {
+                        #method_caller(#method_params);
+                    }
+                }
+            }
+        }
         //"get" => {
+        //
+            //eprint!("{} (", cmd.name.as_str());
+            //for param in cmd.param.iter() {
+            //    eprint!("{}, ", param.name.as_ref().unwrap().as_str());
+            //}
+            //eprintln!(") -> {:?}", cmd.return_type.basetype);
+
+            //quote!()
         //    //dbg!(&cmd);
         //    //let category_map = catagorize_fields(&cmd);
         //    //for category in category_map.iter() {
