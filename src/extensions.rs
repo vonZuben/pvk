@@ -37,6 +37,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         let enum_constants_name_cache = &mut parse_state.enum_constants_name_cache;
         let command_type_cache = &parse_state.command_type_cache;
         let command_alias_cache = &parse_state.command_alias_cache;
+        let enum_cache = &mut parse_state.enum_cache;
 
         let enum_extensions = extension.elements.iter()
             .filter_map(filter_varients!(ExtensionElement::Require))
@@ -52,6 +53,10 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     Some(_) => return quote!() ,
                     None => {}
                 }
+
+                enum_cache.get_mut(enum_extension.extends.as_str())
+                    .expect("error: extension enum not in cahce")
+                    .push(enum_extension.name.as_str());
 
                 let name = enum_extension.extends.as_code();
                 let const_name = crate::enumerations

@@ -42,6 +42,9 @@ pub struct ParseState<'a> {
 
     enum_constants_name_cache: HashMap<&'a str, ()>,
 
+    // <enum_name, Vec<varients>>
+    enum_cache: HashMap<&'a str, Vec<&'a str>>,
+
     command_alias_cache: HashMap<&'a str, &'a str>,
 
     handle_cache: Vec<&'a vkxml::Handle>,
@@ -58,7 +61,7 @@ pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, par
             handle_constants(cnts)
         },
         RegistryElement::Enums(enums) => {
-            handle_enumerations(enums)
+            handle_enumerations(enums, parse_state)
         }
         RegistryElement::Commands(cmds) => {
             handle_commands(cmds, parse_state)
@@ -125,6 +128,8 @@ fn main() {
         command_type_cache: HashMap::new(),
 
         enum_constants_name_cache: HashMap::new(),
+
+        enum_cache: HashMap::new(),
 
         command_alias_cache: HashMap::new(),
 
@@ -435,8 +440,10 @@ fn main() {
     };
 
     let post_process_handles = post_process_handles(&parse_state);
+    let post_process_enum_display_code = make_enumeration_display_code(&parse_state);
 
     q.extend(post_process_handles);
+    q.extend(post_process_enum_display_code);
 
     //for node in parse_state.command_list.iter() {
     //    dbg!(&node.data().name);
