@@ -388,6 +388,18 @@ fn get_dispatchable_parent_manager(handle: &Handle, handle_cache: &[&Handle]) ->
         })
 }
 
+// TODO maybe remove this
+//fn is_parent_dispatchable(handle: &Handle, handle_cache: &[&Handle]) -> bool {
+//    handle.parent.as_ref()
+//        .and_then(|parent_name| {
+//            find_in_slice(handle_cache, |handle| handle.name.as_str() == parent_name.as_str())
+//                .and_then(|handle| match handle.ty {
+//                    HandleType::Dispatch => Some( make_manager_name(handle.name.as_str()) ),
+//                    HandleType::NoDispatch => get_dispatchable_parent_manager(handle, handle_cache),
+//                })
+//        })
+//}
+
 pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
     let managers = parse_state.handle_cache.iter().map(|handle| {
@@ -416,19 +428,20 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     },
                     "VkDevice" => quote!{
                         commands: DeviceCommands,
-                        parent: &'a PhysicalDeviceManager<'a>,
+                        dispatch_parent: &'a PhysicalDeviceManager<'a>,
                     },
                     _ => {
                         let parent_manager = get_dispatchable_parent_manager(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            parent: &'a #parent_manager<'a>,
+                            dispatch_parent: &'a #parent_manager<'a>,
                         }
                     }
                 };
 
                 let new_method = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        fn new(handle: Instance, commands: InstanceCommands, feature_version: Box<dyn Feature>) -> #manager_name<'a> {
+                        fn new(handle: Instance, commands: InstanceCommands,
+                               feature_version: Box<dyn Feature>) -> #manager_name<'a> {
                             #manager_name {
                                 handle,
                                 commands,
@@ -438,22 +451,24 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                     },
                     "VkDevice" => quote!{
-                        fn new(handle: Device, commands: DeviceCommands, parent: &'a PhysicalDeviceManager) -> #manager_name<'a> {
+                        fn new(handle: Device, commands: DeviceCommands,
+                               dispatch_parent: &'a PhysicalDeviceManager) -> #manager_name<'a> {
                             #manager_name {
                                 handle,
                                 commands,
-                                parent,
+                                dispatch_parent,
                             }
                         }
                     },
                     _ => {
                         let parent_manager = get_dispatchable_parent_manager(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            fn new<'parent>(handle: #handle_name, parent: &'parent #parent_manager) -> #manager_name<'a>
+                            fn new<'parent>(handle: #handle_name,
+                                            dispatch_parent: &'parent #parent_manager) -> #manager_name<'a>
                                 where 'parent: 'a {
                                 #manager_name {
                                     handle,
-                                    parent,
+                                    dispatch_parent,
                                 }
                             }
                         }
@@ -496,17 +511,17 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
 
                     new_method = quote!{
-                        fn new<'parent>(handle: #handle_name, parent: &'parent #parent_manager) -> #manager_name<'a>
+                        fn new<'parent>(handle: #handle_name, dispatch_parent: &'parent #parent_manager) -> #manager_name<'a>
                             where 'parent: 'a {
                                 #manager_name {
                                     handle,
-                                    parent,
+                                    dispatch_parent,
                                 }
                             }
                     };
 
                     quote!{
-                        parent: &'a #parent_manager<'a>,
+                        dispatch_parent: &'a #parent_manager<'a>,
                     }
                 }
                 else {

@@ -368,7 +368,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             let method_caller = match cmd.param[0].basetype.as_str() {
                 "VkInstance" | "VkDevice" => quote!( self.commands.#name.0 ),
                 _ => {
-                    quote!( self.parent.commands.#name.0 )
+                    quote!( self.dispatch_parent.commands.#name.0 )
                 }
             };
 
@@ -571,7 +571,7 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
     let method_caller = match cmd.param[0].basetype.as_str() {
         "VkInstance" | "VkDevice" => quote!( self.commands.#name.0 ),
         _ => {
-            quote!( self.parent.commands.#name.0 )
+            quote!( self.dispatch_parent.commands.#name.0 )
         }
     };
 
@@ -610,8 +610,8 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
                     let type_to_destroy = crate::definitions
                         ::make_manager_name(cmd.param[1].basetype.as_str());
                     manager_name = quote!( #type_to_destroy );
-                    method_params = quote!( self.parent.handle, self.handle, None.as_ptr() );
-                    method_caller = quote!( self.parent.commands.#name.0 );
+                    method_params = quote!( self.dispatch_parent.handle, self.handle, None.as_ptr() );
+                    method_caller = quote!( self.dispatch_parent.commands.#name.0 );
                 }
             }
 
@@ -623,22 +623,22 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
                 }
             }
         }
-        //"get" => {
-        //
-            //eprint!("{} (", cmd.name.as_str());
-            //for param in cmd.param.iter() {
-            //    eprint!("{}, ", param.name.as_ref().unwrap().as_str());
-            //}
-            //eprintln!(") -> {:?}", cmd.return_type.basetype);
+        "free" => {
 
-            //quote!()
-        //    //dbg!(&cmd);
-        //    //let category_map = catagorize_fields(&cmd);
-        //    //for category in category_map.iter() {
-        //    //    dbg!(category);
-        //    //}
-        //    quote!()
-        //}
+          eprint!("{} (", cmd.name.as_str());
+          for param in cmd.param.iter() {
+              eprint!("{}, ", param.name.as_ref().unwrap().as_str());
+          }
+          eprintln!(") -> {:?}", cmd.return_type.basetype);
+
+          //quote!()
+            //dbg!(&cmd);
+            //let category_map = catagorize_fields(&cmd);
+            //for category in category_map.iter() {
+            //    dbg!(category);
+            //}
+            quote!()
+        }
         "enumerate" | "get" | "create" => {
             //for category in category_map.iter() {
             //    dbg!(category);
@@ -909,7 +909,7 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
                             return_code = quote!{
                                 let mut device_commands = DeviceCommands::new();
                                 // physical device parent is instance which has the feature_version
-                                self.parent.feature_version.load_device_commands(&#field_name, &mut device_commands);
+                                self.dispatch_parent.feature_version.load_device_commands(&#field_name, &mut device_commands);
                                 // TODO load device extensions
                                 #manager_name::new(#field_name, device_commands, self)
                             };
