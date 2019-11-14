@@ -134,15 +134,15 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let params1 = cmd.param.iter().map(handle_field);
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
-        // create manager methods
-        let manager_name = crate::definitions
-            ::make_manager_name(cmd.param[0].basetype.as_str());
+        // create owner methods
+        let owner_name = crate::definitions
+            ::make_handle_owner_name(cmd.param[0].basetype.as_str());
 
-        let manager_method = make_manager_method(&cmd, parse_state);
+        let owner_method = make_owner_method(&cmd, parse_state);
 
-        let manager_method_old = {
+        let owner_method_old = {
 
-            //let _ = make_manager_method(&cmd);
+            //let _ = make_owner_method(&cmd);
 
             //for p in cmd.param.iter() {
                 //eprintln!("const: {}; size: {:?}, ref_type: {:?}; array_type: {:?}",
@@ -295,7 +295,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             // -----------------------------------
             // determine how to pass rust method params to raw vulkan function
 
-            // All non-static commands will have a first param which match a manager name which has
+            // All non-static commands will have a first param which match a owner name which has
             // a handle of the corresponding type.
             // Put the handle as the first parameter.
             let first_inner_param = Some( quote!( self.handle ) );
@@ -373,7 +373,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             };
 
             quote!{
-                impl<'a> #manager_name<'a> {
+                impl<'a> #owner_name<'a> {
                     pub fn #method_name(&self, #( #outer_params ),* ) {
                         #method_caller( #first_inner_param, #( #other_inner_params ),* );
                     }
@@ -434,11 +434,11 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                     }
                 }
             }
-            // add manager method
-            //impl manager_name {
+            // add owner method
+            //impl owner_name {
             //    //fn #method_name( #( #method_params ),* ) #
             //}
-            #manager_method
+            #owner_method
 
             // define macro that can be used by the feature loader
             //
@@ -536,7 +536,7 @@ fn not_return_param(field: &&Field) -> bool {
 
 // this is for automatically generating methods which provide a more ideal rust interface for calling
 // vulkan commands
-fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStream {
+fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStream {
 
     let category_map = catagorize_fields(&cmd);
     if category_map.is_err() {
@@ -562,8 +562,8 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
     }
 
     let name = cmd.name.as_code();
-    let manager_name = crate::definitions
-        ::make_manager_name(cmd.param[0].basetype.as_str());
+    let owner_name = crate::definitions
+        ::make_handle_owner_name(cmd.param[0].basetype.as_str());
 
     let method_name_raw = case::camel_to_snake(cmd.name.as_str());
     let method_name = method_name_raw.as_code();
@@ -591,32 +591,32 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
             // thus, there is no support for using custom allocators for now
 
             // destroy methods are a special case where we implement the drop method for the
-            // appropriate handle manager
-            let manager_name;
+            // appropriate handle owner
+            let owner_name;
             let method_params;
             let method_caller;
             match cmd.name.as_str() {
-                "vkDestroyInstance" => {
-                    manager_name = quote!( InstanceManager );
-                    method_params = quote!( self.handle, None.as_ptr() );
-                    method_caller = quote!( self.commands.#name.0 );
-                }
-                "vkDestroyDevice" => {
-                    manager_name = quote!( DeviceManager );
+                "vkDestroyInstance" | "vkDestroyDevice" => {
+                    // for instancce and device, we are destroying the dispatchalbe type
+                    let type_to_destroy = crate::definitions
+                        ::make_handle_owner_name(cmd.param[0].basetype.as_str());
+                    owner_name = quote!( #type_to_destroy );
                     method_params = quote!( self.handle, None.as_ptr() );
                     method_caller = quote!( self.commands.#name.0 );
                 }
                 _ => {
+                    // for everything else, the second parameter should be the type we are
+                    // destroying
                     let type_to_destroy = crate::definitions
-                        ::make_manager_name(cmd.param[1].basetype.as_str());
-                    manager_name = quote!( #type_to_destroy );
+                        ::make_handle_owner_name(cmd.param[1].basetype.as_str());
+                    owner_name = quote!( #type_to_destroy );
                     method_params = quote!( self.dispatch_parent.handle, self.handle, None.as_ptr() );
                     method_caller = quote!( self.dispatch_parent.commands.#name.0 );
                 }
             }
 
             quote!{
-                impl<'a> Drop for #manager_name<'a> {
+                impl<'a> Drop for #owner_name<'a> {
                     fn drop(&mut self) {
                         #method_caller(#method_params);
                     }
@@ -733,24 +733,24 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
 
                     let field_name = field_name(ret_field).as_code();
 
-                    // check if type has a handle manager
+                    // check if type has a handle owner
                     if let Some(handle) = find_in_slice(parse_state.handle_cache.as_slice(),
                                                              |handle| { handle.name.as_str() == ret_field.basetype.as_str() })
                     {
-                        let manager_name = crate::definitions
-                            ::make_manager_name(handle.name.as_str());
+                        let owner_name = crate::definitions
+                            ::make_handle_owner_name(handle.name.as_str());
 
                         if ret_field.array.is_some() {
                             return_code = quote!{
-                                #field_name.iter().copied().map(|elem| #manager_name::new(elem, self)).collect()
+                                #field_name.iter().copied().map(|elem| #owner_name::new(elem, self)).collect()
                             };
-                            return_type = quote!( Vec<#manager_name<'manager>> )
+                            return_type = quote!( Vec<#owner_name<'owner>> )
                         }
                         else {
                             return_code = quote!{
-                                #manager_name::new(#field_name, self)
+                                #owner_name::new(#field_name, self)
                             };
-                            return_type = quote!( #manager_name<'manager> )
+                            return_type = quote!( #owner_name<'owner> )
                         }
                     }
                     else {
@@ -792,8 +792,8 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
                     });
 
                 quote!{
-                    impl<'a> #manager_name<'a> {
-                        pub fn #method_name<'manager>(&'manager self, #( #fields_outer )* ) -> #return_type {
+                    impl<'a> #owner_name<'a> {
+                        pub fn #method_name<'owner>(&'owner self, #( #fields_outer )* ) -> #return_type {
                             #( #locals )*
                             #method_caller( #first_inner_param, #( #fields_inner1 ),* );
                             #( #update_locals1 )*
@@ -897,12 +897,12 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
 
                     let field_name = field_name(ret_field).as_code();
 
-                    // check if type has a handle manager
+                    // check if type has a handle owner
                     if let Some(handle) = find_in_slice(parse_state.handle_cache.as_slice(),
                                                              |handle| { handle.name.as_str() == ret_field.basetype.as_str() })
                     {
-                        let manager_name = crate::definitions
-                            ::make_manager_name(handle.name.as_str());
+                        let owner_name = crate::definitions
+                            ::make_handle_owner_name(handle.name.as_str());
 
                         // NOTE vkDevice is a special case
                         if handle.name.as_str() == "VkDevice" {
@@ -911,21 +911,21 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
                                 // physical device parent is instance which has the feature_version
                                 self.dispatch_parent.feature_version.load_device_commands(&#field_name, &mut device_commands);
                                 // TODO load device extensions
-                                #manager_name::new(#field_name, device_commands, self)
+                                #owner_name::new(#field_name, device_commands, self)
                             };
-                            return_type = quote!( #manager_name<'manager> )
+                            return_type = quote!( #owner_name<'owner> )
                         }
                         else if ret_field.array.is_some() {
                             return_code = quote!{
-                                #field_name.iter().copied().map(|elem| #manager_name::new(elem, self)).collect()
+                                #field_name.iter().copied().map(|elem| #owner_name::new(elem, self)).collect()
                             };
-                            return_type = quote!( Vec<#manager_name<'manager>> )
+                            return_type = quote!( Vec<#owner_name<'owner>> )
                         }
                         else {
                             return_code = quote!{
-                                #manager_name::new(#field_name, self)
+                                #owner_name::new(#field_name, self)
                             };
-                            return_type = quote!( #manager_name<'manager> )
+                            return_type = quote!( #owner_name<'owner> )
                         }
                     }
                     else {
@@ -999,8 +999,8 @@ fn make_manager_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenS
 
                 quote!{
                     #custom_return_type
-                    impl<'a> #manager_name<'a> {
-                        pub fn #method_name<'manager>(&'manager self, #( #fields_outer )* ) -> #return_type {
+                    impl<'a> #owner_name<'a> {
+                        pub fn #method_name<'owner>(&'owner self, #( #fields_outer )* ) -> #return_type {
                             #( #locals )*
                             #method_caller( #first_inner_param, #( #fields_inner ),* );
                             #( #update_locals )*

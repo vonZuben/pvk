@@ -9,8 +9,8 @@ use crate::utils::*;
 use crate::ParseState;
 //use crate::commands;
 
-pub fn make_manager_name(name: &str) -> TokenStream {
-    format!("{}Manager", name).as_code()
+pub fn make_handle_owner_name(name: &str) -> TokenStream {
+    format!("{}Owner", name).as_code()
 }
 
 pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut ParseState<'a>) -> TokenStream {
@@ -277,19 +277,19 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     // sizes on 32bit and 64 bit computers
                     // but nondispatchable handles will always be 64 bits
                     HandleType::Dispatch => {
-                        // each dispatchable handle will have a manager type that will handle
+                        // each dispatchable handle will have a owner type that will handle
                         // creation and destruciton automatically, and will provide convinience
                         // methods for their respective vulkan commands (i.e. where the respective
                         // handle is the first parameter)
                         //
                         // check commands.rs for method definitions
-                        //let manager_name = make_manager_name(handle.name.as_str());
+                        //let owner_name = make_handle_owner_name(handle.name.as_str());
 
-                        //// handle managers will provide convinience usage of dipatchable handles
+                        //// handle owners will provide convinience usage of dipatchable handles
                         //// define the members that each type should have
-                        //// the instance and device managers should hold function pointers
-                        //// the other managers should have references to their parent
-                        //let manager_members = match handle.name.as_str() {
+                        //// the instance and device owners should hold function pointers
+                        //// the other owners should have references to their parent
+                        //let owner_members = match handle.name.as_str() {
                         //    "VkInstance" => quote!{
                         //        commands: InstanceCommands,
                         //        phantom: ::std::marker::PhantomData<&'a ()>,
@@ -300,9 +300,9 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         //    },
                         //    _ => {
                         //        let parent = handle.parent.as_ref().expect("error: expected parent for handle").as_str();
-                        //        let parent_manager = make_manager_name(parent);
+                        //        let parent_owner = make_handle_owner_name(parent);
                         //        quote!{
-                        //            parent: &'a #parent_manager<'a>,
+                        //            parent: &'a #parent_owner<'a>,
                         //        }
                         //    }
                         //};
@@ -311,26 +311,26 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         quote!{
                             pub type #handle_name = *const c_void; // object pointer???
 
-                            //pub struct #manager_name<'a> {
+                            //pub struct #owner_name<'a> {
                             //    handle: #handle_name,
-                            //    #manager_members
+                            //    #owner_members
                             //    //#( #pfn_params ),*
                             //}
                         }
                     },
                     HandleType::NoDispatch => {
-                        //let manager_name = make_manager_name(handle.name.as_str());
+                        //let owner_name = make_handle_owner_name(handle.name.as_str());
 
-                        //let parent_manager = if let Some(parent_name) = handle.parent.as_ref() {
+                        //let parent_owner = if let Some(parent_name) = handle.parent.as_ref() {
                         //    // NOTE some non-dispatchable handle type can have multiple parents
                         //    // for now, we just take the first parent
                         //    let parent_name = parent_name.as_str().split(',')
                         //        .next()
                         //        .expect("there must be at least one elemet in the parent names");
 
-                        //    let parent_manager = make_manager_name(parent_name);
+                        //    let parent_owner = make_handle_owner_name(parent_name);
                         //    quote!{
-                        //        parent: &'a #parent_manager<'a>,
+                        //        parent: &'a #parent_owner<'a>,
                         //    }
                         //}
                         //else {
@@ -339,9 +339,9 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                         quote!{
                             pub type #handle_name = u64; // uint64_t
-                            //pub struct #manager_name<'a> {
+                            //pub struct #owner_name<'a> {
                             //    handle: #handle_name,
-                            //    #parent_manager
+                            //    #parent_owner
                             //}
                         }
                     },
@@ -377,13 +377,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
 }
 
-fn get_dispatchable_parent_manager(handle: &Handle, handle_cache: &[&Handle]) -> Option<TokenStream> {
+fn get_dispatchable_parent_owner(handle: &Handle, handle_cache: &[&Handle]) -> Option<TokenStream> {
     handle.parent.as_ref()
         .and_then(|parent_name| {
             find_in_slice(handle_cache, |handle| handle.name.as_str() == parent_name.as_str())
                 .and_then(|handle| match handle.ty {
-                    HandleType::Dispatch => Some( make_manager_name(handle.name.as_str()) ),
-                    HandleType::NoDispatch => get_dispatchable_parent_manager(handle, handle_cache),
+                    HandleType::Dispatch => Some( make_handle_owner_name(handle.name.as_str()) ),
+                    HandleType::NoDispatch => get_dispatchable_parent_owner(handle, handle_cache),
                 })
         })
 }
@@ -394,33 +394,33 @@ fn get_dispatchable_parent_manager(handle: &Handle, handle_cache: &[&Handle]) ->
 //        .and_then(|parent_name| {
 //            find_in_slice(handle_cache, |handle| handle.name.as_str() == parent_name.as_str())
 //                .and_then(|handle| match handle.ty {
-//                    HandleType::Dispatch => Some( make_manager_name(handle.name.as_str()) ),
-//                    HandleType::NoDispatch => get_dispatchable_parent_manager(handle, handle_cache),
+//                    HandleType::Dispatch => Some( make_handle_owner_name(handle.name.as_str()) ),
+//                    HandleType::NoDispatch => get_dispatchable_parent_owner(handle, handle_cache),
 //                })
 //        })
 //}
 
 pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
-    let managers = parse_state.handle_cache.iter().map(|handle| {
+    let owners = parse_state.handle_cache.iter().map(|handle| {
 
         let handle_name = handle.name.as_code();
 
         match handle.ty {
             HandleType::Dispatch => {
-                // each dispatchable handle will have a manager type that will handle
+                // each dispatchable handle will have a owner type that will handle
                 // creation and destruciton automatically, and will provide convinience
                 // methods for their respective vulkan commands (i.e. where the respective
                 // handle is the first parameter)
                 //
                 // check commands.rs for method definitions
-                let manager_name = make_manager_name(handle.name.as_str());
+                let owner_name = make_handle_owner_name(handle.name.as_str());
 
-                // handle managers will provide convinience usage of dipatchable handles
+                // handle owners will provide convinience usage of dipatchable handles
                 // define the members that each type should have
-                // the instance and device managers should hold function pointers
-                // the other managers should have references to their parent
-                let manager_members = match handle.name.as_str() {
+                // the instance and device owners should hold function pointers
+                // the other owners should have references to their parent
+                let owner_members = match handle.name.as_str() {
                     "VkInstance" => quote!{
                         commands: InstanceCommands,
                         feature_version: Box<dyn Feature>,
@@ -428,12 +428,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     },
                     "VkDevice" => quote!{
                         commands: DeviceCommands,
-                        dispatch_parent: &'a PhysicalDeviceManager<'a>,
+                        dispatch_parent: &'a PhysicalDeviceOwner<'a>,
                     },
                     _ => {
-                        let parent_manager = get_dispatchable_parent_manager(&handle, parse_state.handle_cache.as_slice());
+                        let parent_owner = get_dispatchable_parent_owner(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            dispatch_parent: &'a #parent_manager<'a>,
+                            dispatch_parent: &'a #parent_owner<'a>,
                         }
                     }
                 };
@@ -441,8 +441,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 let new_method = match handle.name.as_str() {
                     "VkInstance" => quote!{
                         fn new(handle: Instance, commands: InstanceCommands,
-                               feature_version: Box<dyn Feature>) -> #manager_name<'a> {
-                            #manager_name {
+                               feature_version: Box<dyn Feature>) -> #owner_name<'a> {
+                            #owner_name {
                                 handle,
                                 commands,
                                 feature_version,
@@ -452,8 +452,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     },
                     "VkDevice" => quote!{
                         fn new(handle: Device, commands: DeviceCommands,
-                               dispatch_parent: &'a PhysicalDeviceManager) -> #manager_name<'a> {
-                            #manager_name {
+                               dispatch_parent: &'a PhysicalDeviceOwner) -> #owner_name<'a> {
+                            #owner_name {
                                 handle,
                                 commands,
                                 dispatch_parent,
@@ -461,12 +461,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                     },
                     _ => {
-                        let parent_manager = get_dispatchable_parent_manager(&handle, parse_state.handle_cache.as_slice());
+                        let parent_owner = get_dispatchable_parent_owner(&handle, parse_state.handle_cache.as_slice());
                         quote!{
                             fn new<'parent>(handle: #handle_name,
-                                            dispatch_parent: &'parent #parent_manager) -> #manager_name<'a>
+                                            dispatch_parent: &'parent #parent_owner) -> #owner_name<'a>
                                 where 'parent: 'a {
-                                #manager_name {
+                                #owner_name {
                                     handle,
                                     dispatch_parent,
                                 }
@@ -475,23 +475,23 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
                 };
 
-                // make the handle manager
+                // make the handle owner
                 quote!{
-                    pub struct #manager_name<'a> {
+                    pub struct #owner_name<'a> {
                         handle: #handle_name,
-                        #manager_members
+                        #owner_members
                         //#( #pfn_params ),*
                     }
-                    impl<'a> #manager_name<'a> {
+                    impl<'a> #owner_name<'a> {
                         #new_method
                     }
                 }
             }
             HandleType::NoDispatch => {
-                let manager_name = make_manager_name(handle.name.as_str());
+                let owner_name = make_handle_owner_name(handle.name.as_str());
 
                 let new_method;
-                let parent_manager = if let Some(parent_name) = handle.parent.as_ref() {
+                let parent_owner = if let Some(parent_name) = handle.parent.as_ref() {
                     // NOTE some non-dispatchable handle type can have multiple parents
                     // for now, we just take the first parent
                     let parent_name = parent_name.as_str().split(',')
@@ -500,20 +500,20 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
                     // NOTE in order to make code generation easier (especially regarding method
                     // creation), we make the device a parent to the swapchain types (rather the
-                    // actual parent which is the surface). This is because the surface manager is
+                    // actual parent which is the surface). This is because the surface owner is
                     // not easily available in the swapchain create methods
-                    let parent_manager;
+                    let parent_owner;
                     if handle.name.as_str() == "VkSwapchainKHR" {
-                        parent_manager = quote!(DeviceManager);
+                        parent_owner = quote!(DeviceOwner);
                     }
                     else {
-                        parent_manager = make_manager_name(parent_name);
+                        parent_owner = make_handle_owner_name(parent_name);
                     }
 
                     new_method = quote!{
-                        fn new<'parent>(handle: #handle_name, dispatch_parent: &'parent #parent_manager) -> #manager_name<'a>
+                        fn new<'parent>(handle: #handle_name, dispatch_parent: &'parent #parent_owner) -> #owner_name<'a>
                             where 'parent: 'a {
-                                #manager_name {
+                                #owner_name {
                                     handle,
                                     dispatch_parent,
                                 }
@@ -521,14 +521,14 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     };
 
                     quote!{
-                        dispatch_parent: &'a #parent_manager<'a>,
+                        dispatch_parent: &'a #parent_owner<'a>,
                     }
                 }
                 else {
                     new_method = quote!{
-                        fn new<'parent, T>(handle: #handle_name, _parent: &'parent T) -> #manager_name<'a>
+                        fn new<'parent, T>(handle: #handle_name, _parent: &'parent T) -> #owner_name<'a>
                             where 'parent: 'a {
-                                #manager_name {
+                                #owner_name {
                                     handle,
                                     phantom: ::std::marker::PhantomData,
                                 }
@@ -538,11 +538,11 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 };
 
                 quote!{
-                    pub struct #manager_name<'a> {
+                    pub struct #owner_name<'a> {
                         handle: #handle_name,
-                        #parent_manager
+                        #parent_owner
                     }
-                    impl<'a> #manager_name<'a> {
+                    impl<'a> #owner_name<'a> {
                         #new_method
                     }
                 }
@@ -551,7 +551,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
     });
 
     quote!{
-        #( #managers )*
+        #( #owners )*
     }
 }
 

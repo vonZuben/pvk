@@ -203,7 +203,7 @@ fn main() {
             let ver = VERSION_1_1;
             ver.load_instance_commands(&inst, &mut instance_commands);
 
-            let instance = InstanceManager::new(inst, instance_commands, Box::new(ver));
+            let instance = InstanceOwner::new(inst, instance_commands, Box::new(ver));
 
             //let mut phd: PhysicalDevice = std::ptr::null();
             //let mut phd_count: u32 = 0;
