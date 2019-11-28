@@ -49,6 +49,8 @@ pub struct ParseState<'a> {
 
     handle_cache: Vec<&'a vkxml::Handle>,
 
+    is_handle: HashMap<&'a str, ()>,
+
     phantom: ::std::marker::PhantomData<&'a ()>,
 }
 
@@ -99,6 +101,38 @@ fn debug(registry: &Registry) {
     }
 }
 
+#[allow(unused)]
+fn print_command_verbs(registry: &Registry) {
+    let command_list: Vec<_> = registry.elements.iter()
+        .filter_map(|elem| match elem {
+                RegistryElement::Commands(cmds) => Some(cmds.elements.iter()),
+                _ => None,
+            })
+        .flatten()
+        .collect();
+
+    for cn in command_list.iter() {
+        println!();
+
+        if cn.param.iter().find(|param| param.sync.is_some()).is_some() {
+            print!("SOME SYNC ");
+        }
+        else {
+            print!("NO SYNC ");
+        }
+
+        print!("{} : ", &cn.name);
+        for param in &cn.param {
+            print!("{}", param.name.as_ref().unwrap().as_str());
+            if param.sync.is_some() {
+                print!(" (sync: {})", param.sync.as_ref().unwrap());
+            }
+            print!(", ");
+        }
+        print!(" -> {}", &cn.return_type.name.as_ref().map(|name| name.as_str() ).unwrap_or(&"NO RETURN"));
+    }
+}
+
 fn main() {
     // this it the easier to parse registry
     let registry = vk_parse::parse_file_as_vkxml(Path::new("vk.xml"));
@@ -118,6 +152,8 @@ fn main() {
             { vk_parse::Command::Alias { name, alias } => Some((name.as_str(), alias.as_str())), _ => None } );
 
     //debug(&registry);
+    //print_command_verbs(&registry);
+    //return;
 
     // TODO remove this later if it dosnt get used
     let mut parse_state = ParseState {
@@ -134,6 +170,8 @@ fn main() {
         command_alias_cache: HashMap::new(),
 
         handle_cache: Vec::new(),
+
+        is_handle: HashMap::new(),
 
         phantom: ::std::marker::PhantomData,
     };

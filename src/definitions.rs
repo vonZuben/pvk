@@ -267,6 +267,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             //}
             DefinitionsElement::Handle(handle) => {
 
+                parse_state.is_handle.insert(handle.name.as_str(), ());
+
                 let handle_name = handle.name.as_code();
 
                 parse_state.handle_cache.push(&handle);
@@ -309,7 +311,14 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                         // make the handle type
                         quote!{
-                            pub type #handle_name = *const c_void; // object pointer???
+                            // pub type #handle_name = *const c_void; // object pointer???
+
+                            #[derive(Debug, Clone, Copy)]
+                            #[repr(transparent)]
+                            struct #handle_name<'a> {
+                                handle: *const c_void,
+                                phantom: ::std::marker::PhantomData<&'a ()>,
+                            }
 
                             //pub struct #owner_name<'a> {
                             //    handle: #handle_name,
@@ -338,7 +347,15 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         //};
 
                         quote!{
-                            pub type #handle_name = u64; // uint64_t
+                            //pub type #handle_name = u64; // uint64_t
+
+                            #[derive(Debug, Clone, Copy)]
+                            #[repr(transparent)]
+                            struct #handle_name<'a> {
+                                handle: u64,
+                                phantom: ::std::marker::PhantomData<&'a ()>,
+                            }
+
                             //pub struct #owner_name<'a> {
                             //    handle: #handle_name,
                             //    #parent_owner
@@ -377,13 +394,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
 }
 
-fn get_dispatchable_parent_owner(handle: &Handle, handle_cache: &[&Handle]) -> Option<TokenStream> {
+fn get_dispatchable_parent(handle: &Handle, handle_cache: &[&Handle]) -> Option<TokenStream> {
     handle.parent.as_ref()
         .and_then(|parent_name| {
             find_in_slice(handle_cache, |handle| handle.name.as_str() == parent_name.as_str())
                 .and_then(|handle| match handle.ty {
-                    HandleType::Dispatch => Some( make_handle_owner_name(handle.name.as_str()) ),
-                    HandleType::NoDispatch => get_dispatchable_parent_owner(handle, handle_cache),
+                    HandleType::Dispatch => Some( handle.name.as_str().as_code() ),
+                    HandleType::NoDispatch => get_dispatchable_parent(handle, handle_cache),
                 })
         })
 }
@@ -424,35 +441,32 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     "VkInstance" => quote!{
                         commands: InstanceCommands,
                         feature_version: Box<dyn Feature>,
-                        phantom: ::std::marker::PhantomData<&'a ()>,
                     },
                     "VkDevice" => quote!{
                         commands: DeviceCommands,
-                        dispatch_parent: &'a PhysicalDeviceOwner<'a>,
                     },
                     _ => {
-                        let parent_owner = get_dispatchable_parent_owner(&handle, parse_state.handle_cache.as_slice());
+                        let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            dispatch_parent: &'a #parent_owner<'a>,
+                            dispatch_parent: #dispatch_parent<'a>,
                         }
                     }
                 };
 
                 let new_method = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        fn new(handle: Instance, commands: InstanceCommands,
+                        fn new(handle: Instance<'a>, commands: InstanceCommands,
                                feature_version: Box<dyn Feature>) -> #owner_name<'a> {
                             #owner_name {
                                 handle,
                                 commands,
                                 feature_version,
-                                phantom: ::std::marker::PhantomData,
                             }
                         }
                     },
                     "VkDevice" => quote!{
-                        fn new(handle: Device, commands: DeviceCommands,
-                               dispatch_parent: &'a PhysicalDeviceOwner) -> #owner_name<'a> {
+                        fn new(handle: Device<'a>, commands: DeviceCommands,
+                               dispatch_parent: PhysicalDevice<'a>) -> #owner_name<'a> {
                             #owner_name {
                                 handle,
                                 commands,
@@ -461,11 +475,10 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                     },
                     _ => {
-                        let parent_owner = get_dispatchable_parent_owner(&handle, parse_state.handle_cache.as_slice());
+                        let dispatch_parent= get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            fn new<'parent>(handle: #handle_name,
-                                            dispatch_parent: &'parent #parent_owner) -> #owner_name<'a>
-                                where 'parent: 'a {
+                            fn new(handle: #handle_name<'a>,
+                                            dispatch_parent: #dispatch_parent<'a>) -> #owner_name<'a> {
                                 #owner_name {
                                     handle,
                                     dispatch_parent,
@@ -478,7 +491,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 // make the handle owner
                 quote!{
                     pub struct #owner_name<'a> {
-                        handle: #handle_name,
+                        handle: #handle_name<'a>,
                         #owner_members
                         //#( #pfn_params ),*
                     }
@@ -491,7 +504,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 let owner_name = make_handle_owner_name(handle.name.as_str());
 
                 let new_method;
-                let parent_owner = if let Some(parent_name) = handle.parent.as_ref() {
+                let dispatch_parent = if let Some(parent_name) = handle.parent.as_ref() {
                     // NOTE some non-dispatchable handle type can have multiple parents
                     // for now, we just take the first parent
                     let parent_name = parent_name.as_str().split(',')
@@ -502,17 +515,16 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     // creation), we make the device a parent to the swapchain types (rather the
                     // actual parent which is the surface). This is because the surface owner is
                     // not easily available in the swapchain create methods
-                    let parent_owner;
+                    let dispatch_parent;
                     if handle.name.as_str() == "VkSwapchainKHR" {
-                        parent_owner = quote!(DeviceOwner);
+                        dispatch_parent = quote!(Device);
                     }
                     else {
-                        parent_owner = make_handle_owner_name(parent_name);
+                        dispatch_parent = parent_name.as_code();
                     }
 
                     new_method = quote!{
-                        fn new<'parent>(handle: #handle_name, dispatch_parent: &'parent #parent_owner) -> #owner_name<'a>
-                            where 'parent: 'a {
+                        fn new(handle: #handle_name<'a>, dispatch_parent: #dispatch_parent<'a>) -> #owner_name<'a> {
                                 #owner_name {
                                     handle,
                                     dispatch_parent,
@@ -521,13 +533,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     };
 
                     quote!{
-                        dispatch_parent: &'a #parent_owner<'a>,
+                        dispatch_parent: #dispatch_parent<'a>,
                     }
                 }
                 else {
                     new_method = quote!{
-                        fn new<'parent, T>(handle: #handle_name, _parent: &'parent T) -> #owner_name<'a>
-                            where 'parent: 'a {
+                        fn new<T>(handle: #handle_name<'a>, _parent: T) -> #owner_name<'a> {
                                 #owner_name {
                                     handle,
                                     phantom: ::std::marker::PhantomData,
@@ -539,8 +550,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
                 quote!{
                     pub struct #owner_name<'a> {
-                        handle: #handle_name,
-                        #parent_owner
+                        handle: #handle_name<'a>,
+                        #dispatch_parent
                     }
                     impl<'a> #owner_name<'a> {
                         #new_method
