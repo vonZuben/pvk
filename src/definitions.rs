@@ -273,95 +273,16 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                 parse_state.handle_cache.push(&handle);
 
-                match handle.ty {
-                    // based on the spec, i understand that dispatchable
-                    // handles will be pointers, thus, they will be different
-                    // sizes on 32bit and 64 bit computers
-                    // but nondispatchable handles will always be 64 bits
-                    HandleType::Dispatch => {
-                        // each dispatchable handle will have a owner type that will handle
-                        // creation and destruciton automatically, and will provide convinience
-                        // methods for their respective vulkan commands (i.e. where the respective
-                        // handle is the first parameter)
-                        //
-                        // check commands.rs for method definitions
-                        //let owner_name = make_handle_owner_name(handle.name.as_str());
+                let owner_name = make_handle_owner_name(handle.name.as_str());
 
-                        //// handle owners will provide convinience usage of dipatchable handles
-                        //// define the members that each type should have
-                        //// the instance and device owners should hold function pointers
-                        //// the other owners should have references to their parent
-                        //let owner_members = match handle.name.as_str() {
-                        //    "VkInstance" => quote!{
-                        //        commands: InstanceCommands,
-                        //        phantom: ::std::marker::PhantomData<&'a ()>,
-                        //    },
-                        //    "VkDevice" => quote!{
-                        //        commands: DeviceCommands,
-                        //        phantom: ::std::marker::PhantomData<&'a ()>,
-                        //    },
-                        //    _ => {
-                        //        let parent = handle.parent.as_ref().expect("error: expected parent for handle").as_str();
-                        //        let parent_owner = make_handle_owner_name(parent);
-                        //        quote!{
-                        //            parent: &'a #parent_owner<'a>,
-                        //        }
-                        //    }
-                        //};
-
-                        // make the handle type
-                        quote!{
-                            // pub type #handle_name = *const c_void; // object pointer???
-
-                            #[derive(Debug, Clone, Copy)]
-                            #[repr(transparent)]
-                            struct #handle_name<'a> {
-                                handle: *const c_void,
-                                phantom: ::std::marker::PhantomData<&'a ()>,
-                            }
-
-                            //pub struct #owner_name<'a> {
-                            //    handle: #handle_name,
-                            //    #owner_members
-                            //    //#( #pfn_params ),*
-                            //}
-                        }
-                    },
-                    HandleType::NoDispatch => {
-                        //let owner_name = make_handle_owner_name(handle.name.as_str());
-
-                        //let parent_owner = if let Some(parent_name) = handle.parent.as_ref() {
-                        //    // NOTE some non-dispatchable handle type can have multiple parents
-                        //    // for now, we just take the first parent
-                        //    let parent_name = parent_name.as_str().split(',')
-                        //        .next()
-                        //        .expect("there must be at least one elemet in the parent names");
-
-                        //    let parent_owner = make_handle_owner_name(parent_name);
-                        //    quote!{
-                        //        parent: &'a #parent_owner<'a>,
-                        //    }
-                        //}
-                        //else {
-                        //    quote!( phantom: ::std::marker::PhantomData<&'a ()>, )
-                        //};
-
-                        quote!{
-                            //pub type #handle_name = u64; // uint64_t
-
-                            #[derive(Debug, Clone, Copy)]
-                            #[repr(transparent)]
-                            struct #handle_name<'a> {
-                                handle: u64,
-                                phantom: ::std::marker::PhantomData<&'a ()>,
-                            }
-
-                            //pub struct #owner_name<'a> {
-                            //    handle: #handle_name,
-                            //    #parent_owner
-                            //}
-                        }
-                    },
+                quote!{
+                    #[derive(Debug)]
+                    #[repr(transparent)]
+                    struct #handle_name<'a, T: SyncType> {
+                        handle: raw::#handle_name,
+                        _parent_ref: ::std::marker::PhantomData<&'a #owner_name<'a>>,
+                        _sync_type: SyncWrapper<T>,
+                    }
                 }
 
             },
@@ -441,9 +362,11 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     "VkInstance" => quote!{
                         commands: InstanceCommands,
                         feature_version: Box<dyn Feature>,
+                        phantom: ::std::marker::PhantomData<&'a ()>,
                     },
                     "VkDevice" => quote!{
                         commands: DeviceCommands,
+                        dispatch_parent: PhysicalDevice<'a>,
                     },
                     _ => {
                         let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
@@ -455,17 +378,18 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
                 let new_method = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        fn new(handle: Instance<'a>, commands: InstanceCommands,
+                        fn new(handle: raw::Instance, commands: InstanceCommands,
                                feature_version: Box<dyn Feature>) -> #owner_name<'a> {
                             #owner_name {
                                 handle,
                                 commands,
                                 feature_version,
+                                phantom: ::std::marker::PhantomData,
                             }
                         }
                     },
                     "VkDevice" => quote!{
-                        fn new(handle: Device<'a>, commands: DeviceCommands,
+                        fn new(handle: raw::Device, commands: DeviceCommands,
                                dispatch_parent: PhysicalDevice<'a>) -> #owner_name<'a> {
                             #owner_name {
                                 handle,
@@ -475,7 +399,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                     },
                     _ => {
-                        let dispatch_parent= get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
+                        let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
                         quote!{
                             fn new(handle: #handle_name<'a>,
                                             dispatch_parent: #dispatch_parent<'a>) -> #owner_name<'a> {
@@ -491,7 +415,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 // make the handle owner
                 quote!{
                     pub struct #owner_name<'a> {
-                        handle: #handle_name<'a>,
+                        handle: raw::#handle_name,
                         #owner_members
                         //#( #pfn_params ),*
                     }
@@ -536,6 +460,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         dispatch_parent: #dispatch_parent<'a>,
                     }
                 }
+                // for handles with no parent, it is easier to make a method that
+                // takes a parent parameter for consistency and just ignoring the param
                 else {
                     new_method = quote!{
                         fn new<T>(handle: #handle_name<'a>, _parent: T) -> #owner_name<'a> {
@@ -550,7 +476,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
                 quote!{
                     pub struct #owner_name<'a> {
-                        handle: #handle_name<'a>,
+                        handle: raw::#handle_name,
                         #dispatch_parent
                     }
                     impl<'a> #owner_name<'a> {
@@ -561,8 +487,27 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
         }
     });
 
+    let raw_handles = parse_state.handle_cache.iter()
+        .map(|handle|
+             {
+                 let handle_name = handle.name.as_code();
+                 let handle_type = match handle.ty {
+                     HandleType::Dispatch => quote!( *const c_void ),
+                     HandleType::NoDispatch => quote!( u64 ),
+                 };
+                 quote!( pub type #handle_name = #handle_type; )
+             });
+
+    let raw_module = quote!{
+        mod raw {
+            use std::os::raw::*;
+            #( #raw_handles )*
+        }
+    };
+
     quote!{
         #( #owners )*
+        #raw_module
     }
 }
 
