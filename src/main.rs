@@ -51,6 +51,8 @@ pub struct ParseState<'a> {
 
     is_handle: HashMap<&'a str, ()>,
 
+    struct_with_sync_member: HashMap<&'a str, &'a str>,
+
     phantom: ::std::marker::PhantomData<&'a ()>,
 }
 
@@ -75,6 +77,47 @@ pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, par
             handle_extensions(extensions, parse_state)
         }
         _ => quote!(),
+    }
+}
+
+pub fn registry_first_pass<'a>(registry: &'a vkxml::Registry, parse_state: &mut ParseState<'a>) {
+    let mut structs = HashMap::new();
+    for reg_elem in registry.elements.iter() {
+        match reg_elem {
+            RegistryElement::Definitions(definitions) => {
+                for def in definitions.elements.iter() {
+                    match def {
+                        DefinitionsElement::Struct(stct) => {
+                            // this is for keeping track of which types are structs
+                            structs.insert(stct.name.as_str(), ());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            RegistryElement::Constants(cnts) => {
+            }
+            RegistryElement::Enums(enums) => {
+            }
+            RegistryElement::Commands(cmds) => {
+                for cmd in cmds.elements.iter() {
+                    for param in cmd.param.iter() {
+                        if structs.get(param.basetype.as_str()).is_some() && param.sync.is_some() {
+                            // now, if a command takes a struct, and the struct has a parameter
+                            // that should be externally synced, then we keep track of it for use
+                            // later
+                            parse_state.struct_with_sync_member
+                                .insert(param.basetype.as_str(), param.sync.as_ref().unwrap());
+                        }
+                    }
+                }
+            }
+            RegistryElement::Features(features) => {
+            }
+            RegistryElement::Extensions(extensions) => {
+            }
+            _ => {}
+        }
     }
 }
 
@@ -173,8 +216,12 @@ fn main() {
 
         is_handle: HashMap::new(),
 
+        struct_with_sync_member: HashMap::new(),
+
         phantom: ::std::marker::PhantomData,
     };
+
+    registry_first_pass(&registry, &mut parse_state);
 
     for alias_tuple in cmd_alias_iter {
         // insert a mapping for     alias -> cmd
@@ -303,6 +350,28 @@ fn main() {
                 Some(lowest_bit)
             }
         }
+
+        mod sealed {
+            pub trait Sealed {}
+        }
+
+        pub trait SyncType : sealed::Sealed {}
+
+        // NOTE want to change this later to print more useful info
+        #[derive(Debug)]
+        struct SyncWrapper<T> ( ::std::marker::PhantomData<T> );
+
+        #[derive(Debug)]
+        pub struct NoSync;
+        #[derive(Debug)]
+        pub struct ExternSync ( ::std::marker::PhantomData<*const ()> );
+
+        impl sealed::Sealed for NoSync {}
+        impl sealed::Sealed for ExternSync {}
+
+        impl SyncType for NoSync {}
+        impl SyncType for ExternSync {}
+
         macro_rules! vk_bitflags_wrapped {
             ($name: ident) => {
 
