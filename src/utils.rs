@@ -24,9 +24,8 @@ pub trait StrAsCode {
 impl<T> StrAsCode for T where T: AsRef<str> {
     fn as_code(&self) -> TokenStream {
         let rstr = ctype_to_rtype(self.as_ref());
-        syn::parse_str::<Expr>(&rstr)
-            .expect(format!("error: can't parse {{{}}} as an expresion", &rstr).as_ref())
-            .into_token_stream()
+        rstr.parse()
+            .expect(format!("error: can't parse {{{}}} as TokenStream", &rstr).as_ref())
     }
 }
 
