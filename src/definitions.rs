@@ -67,7 +67,6 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     let member_setters = stct.elements.iter().filter_map( |elem| match elem {
                         StructElement::Member(field) => {
 
-                            // NOTE: change the variable names after confirming it works
                             let raw_name = field.name.as_ref().expect("error, field with no name");
 
                             let field_name = raw_name.as_code();
@@ -195,7 +194,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             DefinitionsElement::FuncPtr(fptr) => {
                 let name = fptr.name.as_code();
                 let return_type = make_c_type(&fptr.return_type, FieldContext::Member);
-                let params = fptr.param.iter().map(|field|make_c_field(field, FieldContext::Member));
+                let params = fptr.param.iter().map(|field|make_c_field(field, FieldContext::FunctionParam));
 
                 quote!{
                     #[allow(non_camel_case_types)]
