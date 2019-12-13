@@ -1,4 +1,4 @@
-#![recursion_limit = "250"]
+#![recursion_limit = "500"]
 
 use quote::quote;
 
@@ -371,6 +371,87 @@ fn main() {
 
         impl SyncType for NoSync {}
         impl SyncType for ExternSync {}
+
+
+        // ============= Array<T> ===============
+        // this is only intended to be used with *const and *mut
+        // to indicate that the pointer is for an array of T
+
+        #[derive(Debug, Clone, Copy)]
+        #[repr(transparent)]
+        pub struct Array<T>(T);
+        impl<T> ::std::ops::Deref for Array<T> {
+            type Target = T;
+            fn deref(&self) -> &T {
+                &self.0
+            }
+        }
+
+        impl<T> From<&[T]> for Array<*const T> {
+            fn from(t: &[T]) -> Self {
+                Array(t.as_ptr())
+            }
+        }
+
+        impl<T> From<&mut [T]> for Array<*mut T> {
+            fn from(t: &mut [T]) -> Self {
+                Array(t.as_mut_ptr())
+            }
+        }
+
+        // ============= Ref<T> ===============
+        // this is only intended to be used with *const and *mut
+        // to indicate that the pointer is for a single T
+
+        #[derive(Debug, Clone, Copy)]
+        #[repr(transparent)]
+        pub struct Ref<T>(T);
+
+        impl<T> ::std::ops::Deref for Ref<T> {
+            type Target = T;
+            fn deref(&self) -> &T {
+                &self.0
+            }
+        }
+
+        impl<T> From<&T> for Ref<*const T> {
+            fn from(t: &T) -> Self {
+                Ref(t)
+            }
+        }
+
+        impl<T> From<&mut T> for Ref<*mut T> {
+            fn from(t: &mut T) -> Self {
+                Ref(t)
+            }
+        }
+
+        // ================ types for complex c arrays =============
+        // this is intended to be a type that can be targeted for easily generating
+        // arrays to arrays that are compatible with multidimensional c arrays
+
+        //#[derive(Debug, Clone, Copy)]
+        //#[repr(transparent)]
+        pub struct ArrayArray<T>(Vec<T>);
+
+        impl<T> ::std::ops::Deref for ArrayArray<T> {
+            type Target = Vec<T>;
+            fn deref(&self) -> &Vec<T> {
+                &self.0
+            }
+        }
+
+        //impl<T> Into<Array<*const *const T>> for &ArrayArray<*const T> {
+        //    fn into(&self) -> Array<*const *const T> {
+        //        Array(self.0.as_ptr())
+        //    }
+        //}
+
+        impl<T> From<&ArrayArray<*const T>> for Array<*const *const T> {
+            fn from(a: &ArrayArray<*const T>) -> Self {
+                Array(a.0.as_ptr())
+            }
+        }
 
         macro_rules! vk_bitflags_wrapped {
             ($name: ident) => {

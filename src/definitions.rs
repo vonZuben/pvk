@@ -50,11 +50,9 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 let name = stct.name.as_code();
 
                 let params = stct.elements.iter().filter_map( |elem| match elem {
-                    StructElement::Member(field) => Some(handle_field(field)),
+                    StructElement::Member(field) => Some(make_c_field(field, FieldContext::Member)),
                     StructElement::Notation(_) => None,
                 });
-
-                let builder_code;
 
                 // gererate bulders and initializers for only non return types
                 fn not_return(stct: &Struct) -> bool {
@@ -65,138 +63,38 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         !stct.is_return
                     }
                 }
-                if not_return(&stct) {
-                    //dbg!(&stct);
+                let builder_code = if not_return(&stct) {
                     let member_setters = stct.elements.iter().filter_map( |elem| match elem {
                         StructElement::Member(field) => {
 
-                            let field_name = field.name.as_ref().expect("error, field with no name");
+                            // NOTE: change the variable names after confirming it works
+                            let raw_name = field.name.as_ref().expect("error, field with no name");
 
-                            let raw_name = field_name.as_code();
-                            let setter_name = case::camel_to_snake(field_name).as_code();
+                            let field_name = raw_name.as_code();
+                            let setter_name = case::camel_to_snake(raw_name).as_code();
 
-                            let basetype = field.basetype.as_code();
-
-                            let mut arg_type;
-                            let mut val_setter;
-                            let mut count_setter = quote!();
-
-                            let arg_mut = match field.is_const {
-                                true => quote!(),
-                                false => quote!(mut),
-                            };
-
-                            let ptr_mut = match field.is_const {
-                                true => quote!(as_ptr()),
-                                false => quote!(as_mut_ptr()),
-                            };
-
-                            match &field.array {
-                                Some(ArrayType::Dynamic) => {
-                                    if field.basetype.as_str() == "char" {
-
-                                        val_setter = quote!(self.inner.#raw_name = val.#ptr_mut;);
-
-                                        match &field.reference {
-                                            Some(ReferenceType::Pointer) => {
-
-                                                arg_type = quote!(&'a #arg_mut ::std::ffi::CStr);
-
-                                            }
-                                            Some(ReferenceType::PointerToConstPointer) => {
-
-                                                arg_type = quote!(&'a #arg_mut [*const c_char]);
-
-                                                let count_name = field.size.as_ref()
-                                                    .expect("char PointerToConstPointer with no size error")
-                                                    .as_code();
-                                                count_setter = quote!(self.inner.#count_name = val.len() as _;);
-
-                                            }
-                                            _ => panic!("unexpected refernce case for char field"),
-                                        }
-
+                            let setter_field = make_rust_field(field);
+                            let val_setter = quote!(self.inner.#field_name = #field_name.into(););
+                            let count_setter = field.size.as_ref()
+                                .map(|size| {
+                                    if raw_name == "pCode" {
+                                        Some( quote!(self.inner.codeSize = #field_name.len() as usize * 4;) )
                                     }
-                                    else if field.basetype.as_str() == "void" {
-                                        match &field.reference {
-                                            Some(ReferenceType::Pointer) => {
-
-                                                arg_type = quote!(&'a #arg_mut [u8]);
-                                                val_setter = quote!(self.inner.#raw_name = val.#ptr_mut as *const c_void;);
-
-                                                let count_name = field.size.as_ref()
-                                                    .expect("void Pointer with no size error")
-                                                    .as_code();
-                                                count_setter = quote!(self.inner.#count_name = val.len() as _;);
-
-                                            }
-                                            _ => panic!("unexpected refernce case for void field"),
-                                        }
+                                    else if raw_name == "pSampleMask" {
+                                        None
                                     }
-                                    else { // any other possible type
-
-                                        arg_type = quote!(&'a #arg_mut [#basetype]);
-                                        val_setter = quote!(self.inner.#raw_name = val.#ptr_mut;);
-
-                                        match &field.reference {
-                                            Some(ReferenceType::Pointer) => {
-                                                // the size of pCode and pSampleMask are provided
-                                                // as c code or latext math. maybe provide some
-                                                // more complex code later to parse properly?
-                                                if field.name.as_ref().unwrap() == "pCode" {
-
-                                                    // special case for setting count
-                                                    count_setter = quote!(self.inner.codeSize = val.len() as usize * 4;);
-
-                                                }
-                                                else if field.name.as_ref().unwrap() == "pSampleMask" {
-                                                    // do nothing for this case (i.e. no set count)
-                                                }
-                                                else if field.size.is_some() {
-
-                                                    let count_name = field.size.as_ref()
-                                                        .unwrap()
-                                                        .as_code();
-                                                    count_setter = quote!(self.inner.#count_name = val.len() as _;);
-
-                                                }
-                                                else {
-                                                    panic!("error: no size for array type")
-                                                }
-                                            }
-                                            _ => panic!("unhandled refernce case for 'any' field"),
+                                    else {
+                                        match field.array.as_ref().expect("error: field with size but not an array") {
+                                            ArrayType::Static => return None,
+                                            _ => {}
                                         }
+                                        let count_name = size.as_code();
+                                        Some( quote!(self.inner.#count_name = #field_name.len() as _;) )
                                     }
-                                }
-                                Some(ArrayType::Static) => {
-                                    let size = field.size.as_ref()
-                                        .expect("error: static array with no size")
-                                        .as_code();
-                                    arg_type = quote!( [#basetype; #size] );
-                                    val_setter = quote!(self.inner.#raw_name = val;);
-                                }
-                                None => {
-
-                                    val_setter = quote!(self.inner.#raw_name = val;);
-
-                                    match field.reference {
-                                        Some(ReferenceType::Pointer) => {
-
-                                            arg_type = quote!(&'a #arg_mut #basetype);
-
-                                        }
-                                        None => {
-
-                                            arg_type = quote!(#basetype);
-
-                                        }
-                                        _ => panic!("error: unexpected case for none array type"),
-                                    }
-                                }
-                            }
+                                });
 
                             Some(quote!{
-                                pub fn #setter_name(&mut self, val : #arg_type) -> &mut Self {
+                                pub fn #setter_name(&mut self, #setter_field) -> &mut Self {
                                     #val_setter
                                     #count_setter
                                     self
@@ -208,7 +106,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let builder_name = format!("{}Builder", stct.name).as_code();
 
-                    builder_code = Some(quote!{
+                    Some(quote!{
                         impl #name {
                             fn zeroed() -> Self {
                                 unsafe { ::std::mem::zeroed() }
@@ -233,11 +131,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         impl<'a> #builder_name<'a> {
                             #( #member_setters )*
                         }
-                    });
+                    })
                 }
                 else { // return only type
-                    builder_code = None;
-                }
+                    None
+                };
 
                 quote!{
                     #[repr(C)]
@@ -250,7 +148,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             },
             DefinitionsElement::Union(uni) => {
                 let name = uni.name.as_code();
-                let params = uni.elements.iter().map(handle_field);
+                let params = uni.elements.iter().map(|field|make_c_field(field, FieldContext::Member));
 
                 quote!{
                     #[repr(C)]
@@ -296,8 +194,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             // TODO funtion pointers
             DefinitionsElement::FuncPtr(fptr) => {
                 let name = fptr.name.as_code();
-                let return_type = make_field_type(&fptr.return_type);
-                let params = fptr.param.iter().map(handle_field);
+                let return_type = make_c_type(&fptr.return_type, FieldContext::Member);
+                let params = fptr.param.iter().map(|field|make_c_field(field, FieldContext::Member));
 
                 quote!{
                     #[allow(non_camel_case_types)]

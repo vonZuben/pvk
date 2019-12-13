@@ -29,7 +29,7 @@ impl<T> StrAsCode for T where T: AsRef<str> {
     }
 }
 
-pub fn get_reference_type(field: &vkxml::Field) -> TokenStream {
+pub fn make_c_reference_type(field: &vkxml::Field) -> TokenStream {
      match &field.reference {
         Some(r) => match r {
             vkxml::ReferenceType::Pointer => {
@@ -52,13 +52,18 @@ pub fn get_reference_type(field: &vkxml::Field) -> TokenStream {
     }
 }
 
-pub fn handle_field(field: &vkxml::Field) -> TokenStream {
+pub enum FieldContext {
+    Member,
+    FunctionParam,
+}
+
+pub fn make_c_field(field: &vkxml::Field, context: FieldContext) -> TokenStream {
 
     // if there is no name, then "field" is set as a default name
     // maybe change this later
     let name = field.name.as_ref().map_or(quote!(un_named_field), |v| v.as_code());
 
-    let field_type = make_field_type(field);
+    let field_type = make_c_type(field, context);
 
     quote!{
         #name : #field_type
@@ -66,12 +71,14 @@ pub fn handle_field(field: &vkxml::Field) -> TokenStream {
 
 }
 
-pub fn make_field_type(field: &vkxml::Field) -> TokenStream {
+pub fn make_c_type(field: &vkxml::Field, context: FieldContext) -> TokenStream {
     let basetype = field.basetype.as_code();
-    let ref_type = get_reference_type(&field);
+    let ref_type = make_c_reference_type(&field);
 
     field.array.as_ref().and_then(|a| match a {
-        vkxml::ArrayType::Dynamic => None, // if dynamic, then there will be a reference type
+        vkxml::ArrayType::Dynamic => {
+            Some( quote!(Array<#ref_type #basetype>) )
+        }
         vkxml::ArrayType::Static => {
             let size = field
                 .size
@@ -79,37 +86,111 @@ pub fn make_field_type(field: &vkxml::Field) -> TokenStream {
                 .or_else(|| field.size_enumref.as_ref())
                 .expect("error: field should have size");
             let size = size.as_code();
-            Some( quote!( [ #basetype ; #size ] ) )
+            match context {
+                FieldContext::Member => Some( quote!([#basetype;#size]) ),
+                // NOTE: I am assuming that there are never any mut static size arrays
+                FieldContext::FunctionParam => Some( quote!(Ref<*const [#basetype;#size]>) ),
+            }
         },
     })
-    .unwrap_or( quote!( #ref_type #basetype ) )
+    .unwrap_or_else(|| {
+        if field.reference.is_some() {
+            quote!( Ref<#ref_type #basetype> )
+        }
+        else {
+            quote!( #ref_type #basetype )
+        }
+    })
+}
+
+// make rust reference type, but will simply pass the basetype without reference if there is none
+pub fn make_rust_reference_type(field: &vkxml::Field) -> TokenStream {
+    let basetype = field.basetype.as_code();
+    match &field.reference {
+        Some(r) => match r {
+            vkxml::ReferenceType::Pointer => {
+                if field.is_const {
+                    quote!(&#basetype)
+                } else {
+                    quote!(&mut#basetype)
+                }
+            }
+            vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust ref PointerToPointer"),
+            vkxml::ReferenceType::PointerToConstPointer => {
+                if field.is_const {
+                    //quote!(*const *const)
+                    unimplemented!("unimplemented rust ref const PointerToConstPointer")
+                } else {
+                    //quote!(*mut *const)
+                    unimplemented!("unimplemented rust ref mut PointerToConstPointer")
+                }
+            }
+        },
+        None => quote!(#basetype),
+    }
+}
+
+// make rust array type, should only be called for type that have equivelent c pointer types
+pub fn make_rust_array_type(field: &vkxml::Field) -> TokenStream {
+    let basetype = field.basetype.as_code();
+    match &field.reference {
+        Some(r) => match r {
+            vkxml::ReferenceType::Pointer => {
+                if field.is_const {
+                    quote!(&[#basetype])
+                } else {
+                    quote!(&mut[#basetype])
+                }
+            }
+            vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust array PointerToPointer"),
+            vkxml::ReferenceType::PointerToConstPointer => {
+                if field.is_const {
+                    quote!(&ArrayArray<*const #basetype>)
+                } else {
+                    //quote!(*mut *const)
+                    unimplemented!("unimplemented rust array mut PointerToConstPointer")
+                }
+            }
+        },
+        None => unreachable!("shouldn't reach this point for makeing rust array type"),
+    }
+}
+
+pub fn make_rust_field(field: &vkxml::Field) -> TokenStream {
+    // if there is no name, then "field" is set as a default name
+    // maybe change this later
+    let name = field.name.as_ref().map_or(quote!(un_named_field), |v| v.as_code());
+
+    let field_type = make_rust_type(field);
+
+    quote!{
+        #name : #field_type
+    }
 
 }
 
-//pub fn rust_type_from_c_type(field: &vkxml::Field) -> TokenStream {
-//    let basetype = field.basetype.as_code(); // NOTE should convert to rust equivelent
-//    let ref_type = match &field.reference {
-//        Some(r) => match r {
-//            vkxml::ReferenceType::Pointer => {
-//                if field.is_const {
-//                    quote!(&'a)
-//                } else {
-//                    quote!(&'a mut)
-//                }
-//            }
-//            vkxml::ReferenceType::PointerToPointer => quote!(*mut *mut),
-//            vkxml::ReferenceType::PointerToConstPointer => {
-//                if field.is_const {
-//                    quote!(*const *const)
-//                } else {
-//                    quote!(*mut *const)
-//                }
-//            }
-//        },
-//        None => quote!(),
-//    }
-//    quote!( #ref_type #basetype )
-//}
+pub fn make_rust_type(field: &vkxml::Field) -> TokenStream {
+    field.array.as_ref().and_then(|a| match a {
+        vkxml::ArrayType::Dynamic => {
+            let ty = make_rust_array_type(field);
+            Some( quote!(#ty) )
+        }
+        vkxml::ArrayType::Static => {
+            let size = field
+                .size
+                .as_ref()
+                .or_else(|| field.size_enumref.as_ref())
+                .expect("error: field should have size");
+            let size = size.as_code();
+            let basetype = field.basetype.as_code();
+            Some( quote!([#basetype;#size]) )
+        },
+    })
+    .unwrap_or_else(|| {
+        let ty = make_rust_reference_type(field);
+        quote!( #ty )
+    })
+}
 
 pub fn ctype_to_rtype(type_name: &str) -> String {
     match type_name {
