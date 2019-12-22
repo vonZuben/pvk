@@ -130,8 +130,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
         let raw_name = &cmd.name;
 
-        let return_type = make_field_type(&cmd.return_type);
-        let params1 = cmd.param.iter().map(handle_field);
+        let return_type = make_c_type(&cmd.return_type, FieldContext::Member);
+        let params1 = cmd.param.iter().map(|field|make_c_field(field, FieldContext::FunctionParam));
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
         // create owner methods
@@ -139,248 +139,6 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             ::make_handle_owner_name(cmd.param[0].basetype.as_str());
 
         let owner_method = make_owner_method(&cmd, parse_state);
-
-        let owner_method_old = {
-
-            //let _ = make_owner_method(&cmd);
-
-            //for p in cmd.param.iter() {
-                //eprintln!("const: {}; size: {:?}, ref_type: {:?}; array_type: {:?}",
-                //          p.is_const,
-                //          p.size.as_ref().map(|_|""),
-                //          p.reference,
-                //          p.array);
-                //eprintln!("name: {}; type: {}; const: {}; size: {:?}, ref_type: {:?}; array_type: {:?}",
-                //          p.name.as_ref().unwrap(),
-                //          p.basetype,
-                //          p.is_const,
-                //          p.size.as_ref().map(|_|""),
-                //          p.reference,
-                //          p.array);
-            //}
-
-
-            // keep track of params that are counts for array params
-            let mut count_cache: HashMap<&str, &str> = HashMap::new();
-            // NOTE commenting out this so that all parameters a generated normally
-            //for p in cmd.param.iter() {
-            //    // also assert that these size members are not used
-            //    assert!(p.c_size.is_none());
-            //    assert!(p.size_enumref.is_none());
-            //    if p.size.is_some() {
-            //        count_cache.insert(p.size.as_ref().unwrap().as_str(),
-            //                           field_name(&p));
-            //    }
-            //}
-
-            // -----------------------------------
-            // generate user facing parameters for methods
-
-                //dbg!(cmd.name.as_str());
-
-            let outer_params = cmd.param[1..].iter()
-                .filter(|field| count_cache.get(field_name(&field)).is_none())
-                .map(|field| {
-
-                let field_name_raw = field_name(&field);
-                let field_name = field_name_raw.as_code();
-
-                let ref_type;
-                let basetype;
-
-                //if field.optional.is_some() && field.reference.is_none() {
-                //    eprintln!("field: {}; opsional: {}", field.name.as_ref().unwrap().as_str(), field.optional.as_ref().unwrap());
-                //}
-
-                match field.reference {
-                    Some(ReferenceType::Pointer) => {
-                        if field.is_const {
-                            ref_type = quote!( & );
-                        }
-                        else {
-                            ref_type = quote!( &mut );
-                        }
-                        // NOTE assumption: if reference is pointer, then array is dynamic or
-                        // none
-                        match field.array {
-                            Some(ArrayType::Dynamic) => {
-                                basetype = match field.basetype.as_str() {
-                                        "char" => quote!( ::std::ffi::CStr ),
-                                        "void" => quote!( [u8] ),
-                                        _ => {
-                                            let bt = field.basetype.as_code();
-                                            quote!( [#bt] )
-                                        }
-                                };
-                            }
-                            None => {
-                                basetype = match field.basetype.as_str() {
-                                        "char" => quote!( ::std::ffi:CStr ),
-                                        "void" => {
-                                            //eprintln!("{}", format!("error: unexpected pointer to void: {} -> {}",
-                                            //                     cmd.name.as_str(), field_name_raw));
-                                            quote!( c_void )
-                                        }
-                                        _ => {
-                                            let bt = field.basetype.as_code();
-                                            quote!( #bt )
-                                        }
-                                };
-                            }
-                            _ => panic!(format!("error: only expecting dynamic array or not array: {} -> {}",
-                                                cmd.name.as_str(), field_name_raw)),
-                        }
-                    }
-                    Some(ReferenceType::PointerToPointer) => {
-                        // ref_type can only be mut in this case
-                        ref_type = quote!( &mut &mut );
-                        basetype = match field.basetype.as_str() {
-                            "char" => panic!(format!("error: unexpected pointer pointer to char: {} -> {}",
-                                                     cmd.name.as_str(), field_name_raw)),
-                            "void" => {
-                                //eprintln!("{}", format!("error: unexpected pointer pointer to void: {} -> {}",
-                                //                     cmd.name.as_str(), field_name_raw));
-                                quote!( c_void )
-                            }
-                            _ => {
-                                let bt = field.basetype.as_code();
-                                quote!( #bt )
-                            }
-                        };
-                    }
-                    Some(ReferenceType::PointerToConstPointer) => {
-                        match field.array {
-                            Some(ArrayType::Dynamic) => {
-                                if field.is_const {
-                                    ref_type = quote!( && );
-                                } else {
-                                    ref_type = quote!( &mut& );
-                                }
-                                let bt = field.basetype.as_code();
-                                basetype = quote!( #bt );
-                            }
-                            _ => panic!(format!("error: only expecting dynamic array type: {} -> {}",
-                                                cmd.name.as_str(), field_name_raw)),
-                        }
-                    }
-                    None => { // not a pointer
-                        // could still be a static array
-                        match field.array {
-                            Some(ArrayType::Static) => {
-                                ref_type = quote!();
-                                let bt = field.basetype.as_code();
-                                let size = field.size.as_ref().expect("error: static array without size").as_code();
-                                basetype = quote!( [#bt;#size] );
-                            }
-                            None => {
-                                ref_type = quote!();
-                                let bt = field.basetype.as_code();
-                                basetype = quote!( #bt );
-                            }
-                            _ => panic!(format!("error: unexpected array type for non-pointer field: {} -> {}",
-                                                cmd.name.as_str(), field_name_raw)),
-                        }
-                    }
-                }
-
-                let optional_maybe = match field_first_indirection_optional(&field) && field.reference.is_some()
-                    && field.array.is_none() {
-                        true => quote!( Option<#ref_type #basetype> ),
-                        false => quote!( #ref_type #basetype ),
-                };
-
-                quote!( #field_name : #optional_maybe )
-            });
-
-            // -----------------------------------
-            // determine how to pass rust method params to raw vulkan function
-
-            // All non-static commands will have a first param which match a owner name which has
-            // a handle of the corresponding type.
-            // Put the handle as the first parameter.
-            let first_inner_param = Some( quote!( self.handle ) );
-
-            let other_inner_params = cmd.param[1..].iter().map(|field| {
-                let field_name_raw = field_name(&field);
-
-                let field_name = field_name_raw.as_code();
-
-                let ptr_mut = match field.is_const {
-                    true => quote!( as_ptr() ),
-                    false => quote!( as_mut_ptr() ),
-                };
-
-                if let Some(array_param_raw) = count_cache.get(&field_name_raw) {
-                    let array_param = array_param_raw.as_code();
-                    quote!( #array_param.len() as _ )
-                }
-                else {
-
-                    match field.reference {
-                        Some(ReferenceType::Pointer) => {
-                            // NOTE assumption: if reference is pointer, then array is dynamic or
-                            // none
-                            match field.array {
-                                Some(ArrayType::Dynamic) => {
-                                    quote!( #field_name.#ptr_mut as _ )
-                                }
-                                None => {
-                                    if field_first_indirection_optional(&field) {
-                                        quote!( #field_name.#ptr_mut as _ )
-                                    }
-                                    else {
-                                        quote!( #field_name as _ )
-                                    }
-                                }
-                                _ => panic!(format!("error: only expecting dynamic array or not array: {} -> {}",
-                                                    cmd.name.as_str(), field_name_raw)),
-                            }
-                        }
-                        Some(ReferenceType::PointerToPointer) => {
-                            quote!( #field_name as *mut &mut _ as *mut *mut _ )
-                        }
-                        Some(ReferenceType::PointerToConstPointer) => {
-                            match field.array {
-                                Some(ArrayType::Dynamic) => quote!( #field_name as *const & _ as *const *const _ ),
-                                _ => panic!(format!("error: only expecting dynamic array type: {} -> {}",
-                                                    cmd.name.as_str(), field_name_raw)),
-                            }
-                        }
-                        None => { // not a pointer
-                            // could still be a static array
-                            match field.array {
-                                Some(ArrayType::Static) => {
-                                    quote!( #field_name )
-                                }
-                                None => {
-                                    quote!( #field_name )
-                                }
-                                _ => panic!(format!("error: unexpected array type for non-pointer field: {} -> {}",
-                                                    cmd.name.as_str(), field_name_raw)),
-                            }
-                        }
-                    }
-                }
-            });
-
-            let method_name = case::camel_to_snake(cmd.name.as_str()).as_code();
-
-            let method_caller = match cmd.param[0].basetype.as_str() {
-                "VkInstance" | "VkDevice" => quote!( self.commands.#name.0 ),
-                _ => {
-                    quote!( self.dispatch_parent.commands.#name.0 )
-                }
-            };
-
-            quote!{
-                impl<'a> #owner_name<'a> {
-                    pub fn #method_name(&self, #( #outer_params ),* ) {
-                        #method_caller( #first_inner_param, #( #other_inner_params ),* );
-                    }
-                }
-            }
-
-        };
 
         // this is for generating the code to load funtion pointers based on the feature
         // these generate the code for only the respective device/instance commands
@@ -458,8 +216,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
     let static_command_definitions = static_commands.map(|cmd| {
         let name = cmd.name.as_code();
-        let return_type = make_field_type(&cmd.return_type);
-        let params1 = cmd.param.iter().map(handle_field);
+        let return_type = make_c_type(&cmd.return_type, FieldContext::Member);
+        let params1 = cmd.param.iter().map(|field|make_c_field(field,FieldContext::FunctionParam));
         let params2 = params1.clone();
 
         let pfn_name = make_pfn_name(cmd.name.as_str());
@@ -651,361 +409,148 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 .find(|category| match category { FieldCatagory::SizeMut => true, _ => false } )
                 .is_some();
 
-            // -------------Can query size------------------
-            if can_query_size {
+            let fields_outer = cmd.param.iter().skip(1)
+                .filter(|field| match category_map.get(field_name(field)).unwrap() {
+                    FieldCatagory::Normal | FieldCatagory::NormalSized => true,
+                    _ => false,
+                })
+            .map(make_rust_field);
 
-                // fn locals for return fields
-                let locals = cmd.param.iter()
-                    .filter(is_return_param)
-                    .map(|field| {
-                        let field_name_raw = field_name(field);
-                        let field_name = field_name_raw.as_code();
-                        match category_map.get(field_name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => {
-                                quote!( let mut #field_name = Vec::new(); )
-                            }
-                            FieldCatagory::Return => {
-                                // NOTE: this code is incorrect, but there seems to be no case of
-                                // using this anyway
-                                //
-                                // leaving for now and fix when necessary
-                                quote!( let mut #field_name = unsafe { ::std::mem::MaybeUninit::uninit() }; )
-                            }
-                            FieldCatagory::SizeMut => {
-                                let basetype = field.basetype.as_code();
-                                quote!( let #field_name: &mut #basetype = &mut 0; )
-                            }
-                            _ => unreachable!(),
+            let size_vars = cmd.param.iter()
+                .filter_map(|field| {
+                    let field_name_raw = field_name(field);
+                    let field_name = field_name_raw.as_code();
+                    match category_map.get(field_name_raw).unwrap() {
+                        FieldCatagory::SizeMut => {
+                            let basetype = field.basetype.as_code();
+                            Some(quote!( let #field_name: &mut #basetype = &mut 0; ))
                         }
-                    });
-
-                let update_locals1 = cmd.param.iter()
-                    .filter(is_return_param)
-                    .map(|field| {
-                        let field_name_raw = field_name(field);
-                        let field_name = field_name_raw.as_code();
-                        match category_map.get(field_name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => {
-                                let size = field.size.as_ref().unwrap().as_code();
-                                Some ( quote!( #field_name.reserve(*#size as usize); ) )
-                            }
-                            _ => None,
+                        FieldCatagory::NormalSized => {
+                            let size = field.size.as_ref().expect("error: ReturnSized with no size").as_code();
+                            Some(quote!( let #size = #field_name.len() as _; ))
                         }
-                    })
-                    .filter(Option::is_some);
-
-                let update_locals2 = cmd.param.iter()
-                    .filter(is_return_param)
-                    .map(|field| {
-                        let field_name_raw = field_name(field);
-                        let field_name = field_name_raw.as_code();
-                        match category_map.get(field_name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => {
-                                let size = field.size.as_ref().unwrap().as_code();
-                                Some ( quote!( unsafe { #field_name.set_len(*#size as usize) }; ) )
-                            }
-                            _ => None,
-                        }
-                    })
-                    .filter(Option::is_some);
-
-                let ret_count = category_map.iter()
-                    .filter(|(_field_name, category)|
-                            match category { FieldCatagory::Return | FieldCatagory::ReturnSized => true, _ => false })
-                    .count();
-
-                // if there is only one return field, then just return it directly
-                // else, we create a struct with named parameters that correspond to each return
-                // field
-                let return_code;
-                let return_type;
-                if ret_count == 1 {
-                    let ret_field = cmd.param.iter()
-                        .find(|field| {
-                            //let field_name_raw = field_name(&field);
-                            let category = category_map.get(field_name(&field)).unwrap();
-                            match category {
-                                FieldCatagory::Return | FieldCatagory::ReturnSized => true,
-                                _ => false,
-                            }
-                        })
-                        .unwrap();
-
-                    let field_name = field_name(ret_field).as_code();
-
-                    // check if type has a handle owner
-                    if let Some(handle) = find_in_slice(parse_state.handle_cache.as_slice(),
-                                                             |handle| { handle.name.as_str() == ret_field.basetype.as_str() })
-                    {
-                        let owner_name = crate::definitions
-                            ::make_handle_owner_name(handle.name.as_str());
-
-                        if ret_field.array.is_some() {
-                            return_code = quote!{
-                                #field_name.iter().copied().map(|elem| #owner_name::new(elem, self)).collect()
-                            };
-                            return_type = quote!( Vec<#owner_name<'owner>> )
-                        }
-                        else {
-                            return_code = quote!{
-                                #owner_name::new(#field_name, self)
-                            };
-                            return_type = quote!( #owner_name<'owner> )
-                        }
+                        _ => None,
                     }
-                    else {
-                        return_code = quote!( #field_name );
-                        return_type = make_return_type(&ret_field);
-                    }
-                }
-                else {
-                    panic!("not implemented more than one return type");
-                    assert!(ret_count > 1);
-                    return_code = quote!();
-                    return_type = quote!();
-                }
+                });
 
-                let fields_outer = cmd.param[1..].iter()
-                    .filter(|field| match category_map.get(field_name(field)).unwrap() {
-                        FieldCatagory::Normal | FieldCatagory::NormalSized => true,
-                        _ => false,
-                    })
-                    .map(make_outer_param);
-
-                let fields_inner1 = cmd.param[1..].iter()
-                    .map( |field| {
-                        let name_raw = field_name(&field);
-                        let _field_name = name_raw.as_code();
-                        match category_map.get(name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => quote!( ::std::ptr::null_mut() ),
-                            _ => make_inner_param(field),
-                        }
-                    });
-                let fields_inner2 = cmd.param[1..].iter()
+            let size_query = if can_query_size {
+                let fields_inner = cmd.param.iter().skip(1)
                     .map( |field| {
                         let name_raw = field_name(&field);
                         let field_name = name_raw.as_code();
                         match category_map.get(name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => quote!( #field_name.as_mut_ptr() ),
-                            _ => make_inner_param(field),
+                            FieldCatagory::ReturnSized => quote!( ::std::ptr::null_mut() ),
+                            _ => quote!( #field_name.into() ),
                         }
                     });
-
-                quote!{
-                    impl<'a> #owner_name<'a> {
-                        pub fn #method_name<'owner>(&'owner self, #( #fields_outer )* ) -> #return_type {
-                            #( #locals )*
-                            #method_caller( #first_inner_param, #( #fields_inner1 ),* );
-                            #( #update_locals1 )*
-                            #method_caller( #first_inner_param, #( #fields_inner2 ),* );
-                            #( #update_locals2 )*
-                            #return_code
-                        }
-                    }
-                }
+                Some( quote!{
+                    #method_caller( #first_inner_param, #( #fields_inner ),* );
+                })
             }
-            // -------------Cannot query size------------------
             else {
-                // fn locals for return fields
-                let locals = cmd.param.iter()
-                    //.filter(is_return_param)
-                    .map(|field| {
-                        let field_name_raw = field_name(field);
-                        let field_name = field_name_raw.as_code();
-                        match category_map.get(field_name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => {
-                                match field.reference.as_ref().expect("error: return type is not pointer 1") {
-                                    ReferenceType::Pointer => {
-                                        let size = field.size.as_ref().expect("error: ReturnSized with no size");
-                                        let size = size.replace("::", ".").as_code();
-                                        quote!( let mut #field_name = Vec::with_capacity(#size as usize); )
-                                    }
-                                    _ => {
-                                        dbg!(cmd.name.as_str());
-                                        dbg!(field_name_raw);
-                                        panic!("error: unhandled pointer type for ReturnSized");
-                                    }
-                                }
-                            }
-                            FieldCatagory::Return => {
-                                match field.reference.as_ref().expect("error: return type not pointer 2") {
-                                    ReferenceType::Pointer => {
-                                        let basetype = field.basetype.as_code();
-                                        quote!( let mut #field_name = ::std::mem::MaybeUninit::<#basetype>::uninit(); )
-                                    }
-                                    ReferenceType::PointerToPointer => {
-                                        let basetype = field.basetype.as_code();
-                                        quote!( let mut #field_name = ::std::mem::MaybeUninit::<*mut #basetype>::uninit(); )
-                                    }
-                                    _ => {
-                                        dbg!(cmd.name.as_str());
-                                        dbg!(field_name_raw);
-                                        panic!("error: unhandled pointer type for Return");
-                                    }
-                                }
-                            }
-                            FieldCatagory::NormalSized => {
-                                let size = field.size.as_ref().expect("error: ReturnSized with no size").as_code();
-                                quote!( let #size = #field_name.len() as _; )
-                            }
-                            _ => quote!(),
+                None
+            };
+
+            let return_vars = cmd.param.iter()
+                .filter_map(|field| {
+                    let field_name_raw = field_name(field);
+                    let field_name = field_name_raw.as_code();
+                    match category_map.get(field_name_raw).unwrap() {
+                        FieldCatagory::Return => {
+                            Some(quote!( let mut #field_name = MaybeUninit::uninit(); ))
+                        }
+                        FieldCatagory::ReturnSized => {
+                            let size = field.size.as_ref().unwrap().as_code();
+                            Some(quote!( let mut #field_name = Vec::with_capacity(#size as _); ))
+                        }
+                        _ => None,
+                    }
+                });
+
+            let main_call = {
+                let fields_inner = cmd.param
+                    .iter()
+                    .skip(1)
+                    .map( |field| {
+                        let name_raw = field_name(&field);
+                        let field_name = name_raw.as_code();
+                        match category_map.get(name_raw).unwrap() {
+                            FieldCatagory::ReturnSized | FieldCatagory::Return => quote!( (&mut #field_name).into() ),
+                            _ => quote!( #field_name.into() ),
                         }
                     });
+                quote!{
+                    #method_caller( #first_inner_param, #( #fields_inner ),* );
+                }
+            };
 
-                let update_locals = cmd.param.iter()
-                    .filter(is_return_param)
-                    .map(|field| {
+            let prep_return_vars = cmd.param.iter()
+                .filter_map(|field| {
+                    let field_name_raw = field_name(field);
+                    let field_name = field_name_raw.as_code();
+                    match category_map.get(field_name_raw).unwrap() {
+                        FieldCatagory::Return => {
+                            Some(quote!( let #field_name = unsafe { #field_name.assume_init() }; ))
+                        }
+                        FieldCatagory::ReturnSized => {
+                            let size = field.size.as_ref().unwrap().as_code();
+                            Some(quote!( unsafe { #field_name.set_len(#size as _) }; ))
+                        }
+                        _ => None,
+                    }
+                });
+
+            let return_count = category_map.iter()
+                .filter(|(_field_name, category)|
+                        match category { FieldCatagory::Return | FieldCatagory::ReturnSized => true, _ => false })
+                .count();
+
+            let return_code;
+            let return_type;
+            if return_count == 0 {
+                return_type = Some( quote!(()) );
+                return_code = None;
+            }
+            else {
+                let return_field_types = cmd.param.iter().filter_map(|field| {
+                    match category_map.get(field_name(field)).unwrap() {
+                        FieldCatagory::Return | FieldCatagory::ReturnSized => Some(make_return_type(field)),
+                        _ => None,
+                    }
+                });
+                return_type = Some(
+                        quote!{
+                            ( #( #return_field_types ),* )
+                        }
+                    );
+
+                let return_vars = cmd.param.iter()
+                    .filter_map(|field| {
                         let field_name_raw = field_name(field);
                         let field_name = field_name_raw.as_code();
                         match category_map.get(field_name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => {
-                                let size = field.size.as_ref().expect("error: ReturnSized with no size");
-                                let size = size.replace("::", ".").as_code();
-                                Some ( quote!( unsafe { #field_name.set_len(#size as usize) }; ) )
-                            }
-                            FieldCatagory::Return => {
-                                Some( quote!( let #field_name = unsafe { #field_name.assume_init() }; ) )
+                            FieldCatagory::Return | FieldCatagory::ReturnSized => {
+                                Some(quote!( #field_name ))
                             }
                             _ => None,
                         }
-                    })
-                    .filter(Option::is_some);
-
-                let ret_count = category_map.iter()
-                    .filter(|(_field_name, category)|
-                            match category { FieldCatagory::Return | FieldCatagory::ReturnSized => true, _ => false })
-                    .count();
-
-                // if there is only one return field, then just return it directly
-                // else, we create a struct with named parameters that correspond to each return
-                // field
-                let return_code;
-                let return_type;
-                let custom_return_type;
-                if ret_count == 1 {
-                    let ret_field = cmd.param.iter()
-                        .find(|field| {
-                            //dbg!(cmd.name.as_str());
-                            let field_name_raw = field_name(&field);
-                            let category = category_map.get(field_name_raw).expect("error: field not in category map");
-                            match category {
-                                FieldCatagory::Return | FieldCatagory::ReturnSized => true,
-                                _ => false,
-                            }
-                        })
-                        .expect("error: can't find ret field");
-
-                    let field_name = field_name(ret_field).as_code();
-
-                    // check if type has a handle owner
-                    if let Some(handle) = find_in_slice(parse_state.handle_cache.as_slice(),
-                                                             |handle| { handle.name.as_str() == ret_field.basetype.as_str() })
-                    {
-                        let owner_name = crate::definitions
-                            ::make_handle_owner_name(handle.name.as_str());
-
-                        // NOTE vkDevice is a special case
-                        if handle.name.as_str() == "VkDevice" {
-                            return_code = quote!{
-                                let mut device_commands = DeviceCommands::new();
-                                // physical device parent is instance which has the feature_version
-                                self.dispatch_parent.feature_version.load_device_commands(&#field_name, &mut device_commands);
-                                // TODO load device extensions
-                                #owner_name::new(#field_name, device_commands, self)
-                            };
-                            return_type = quote!( #owner_name<'owner> )
-                        }
-                        else if ret_field.array.is_some() {
-                            return_code = quote!{
-                                #field_name.iter().copied().map(|elem| #owner_name::new(elem, self)).collect()
-                            };
-                            return_type = quote!( Vec<#owner_name<'owner>> )
-                        }
-                        else {
-                            return_code = quote!{
-                                #owner_name::new(#field_name, self)
-                            };
-                            return_type = quote!( #owner_name<'owner> )
-                        }
-                    }
-                    else {
-                        return_code = quote!( #field_name );
-                        return_type = make_return_type(&ret_field);
-                    }
-
-                    custom_return_type = None;
-                }
-                else if ret_count == 0 {
-                    eprintln!("0 returns???: {}", cmd.name);
-                    return_code = quote!();
-                    return_type = quote!(());
-                    custom_return_type = None;
-                }
-                else {
-                    assert!(ret_count > 1);
-                    let custom_return_type_name = format!("{}Ret", cmd.name.as_str()).as_code();
-
-                    let return_fields_iter = cmd.param.iter().filter(|field| {
-                        match category_map.get(field_name(field)).unwrap() {
-                            FieldCatagory::Return | FieldCatagory::ReturnSized => true,
-                            _ => false,
-                        }
                     });
+                return_code = Some( quote!{
+                    let ret = ( #( #return_vars ),* ); //(A, B, ...);
+                    (ret, self).ret()
+                } );
+            }
 
-                    return_type = quote!( #custom_return_type_name );
-
-                    let return_fields = return_fields_iter.clone()
-                        .map(|field| {
-                            let name = field_name(field).as_code();
-                            quote!( #name )
-                        });
-                    return_code = quote!{
-                        #custom_return_type_name {
-                            #( #return_fields, )*
-                        }
-                    };
-
-                    let custom_return_type_fields = return_fields_iter.clone()
-                        .map(|field| {
-                            let name = field_name(field).as_code();
-                            let basetype = make_return_type(field);
-                            quote!( #name: #basetype )
-                        });
-                    custom_return_type = Some(quote!{
-                        pub struct #custom_return_type_name {
-                            #( #custom_return_type_fields, )*
-                        }
-                    });
-                }
-
-                let fields_outer = cmd.param[1..].iter()
-                    .filter(|field|
-                            match category_map.get(field_name(field)).expect("error: field not categotrized") {
-                                FieldCatagory::Normal | FieldCatagory::NormalSized => true,
-                                _ => false,
-                    })
-                    .map(make_outer_param);
-
-                let fields_inner = cmd.param[1..].iter()
-                    .map(|field| {
-                        match category_map.get(field_name(field)).expect("error: field not categotrized") {
-                            FieldCatagory::Return => {
-                                let field_name = field_name(field).as_code();
-                                quote!( #field_name.as_mut_ptr() )
-                            }
-                            _ => make_inner_param(field),
-                        }
-                    });
-
-                quote!{
-                    #custom_return_type
-                    impl<'a> #owner_name<'a> {
-                        pub fn #method_name<'owner>(&'owner self, #( #fields_outer )* ) -> #return_type {
-                            #( #locals )*
-                            #method_caller( #first_inner_param, #( #fields_inner ),* );
-                            #( #update_locals )*
-                            #return_code
-                        }
+            quote!{
+                //#multi_return_type
+                impl<'a> #owner_name<'a> {
+                    pub fn #method_name<'owner>(&'owner self, #( #fields_outer ),* ) -> #return_type {
+                        #( #size_vars )*
+                        #size_query
+                        #( #return_vars )*
+                        #main_call
+                        #( #prep_return_vars )*
+                        #return_code
                     }
                 }
             }
@@ -1103,199 +648,3 @@ fn make_return_type(field: &Field) -> TokenStream {
     }
 }
 
-fn make_outer_param(field: &Field) -> TokenStream {
-
-    let field_name_raw = field_name(&field);
-    let field_name = field_name_raw.as_code();
-
-    let ref_type;
-    let basetype;
-
-    //if field.optional.is_some() && field.reference.is_none() {
-    //    eprintln!("field: {}; opsional: {}", field.name.as_ref().unwrap().as_str(), field.optional.as_ref().unwrap());
-    //}
-
-    //if let Some(replace) = replace.get(field.name.as_ref().expect("error: outer fields should have a name").as_str()) {
-    //    return quote!( #replace );
-    //}
-
-    match field.reference {
-        Some(ReferenceType::Pointer) => {
-            if field.is_const {
-                ref_type = quote!( & );
-            }
-            else {
-                ref_type = quote!( &mut );
-            }
-            // NOTE assumption: if reference is pointer, then array is dynamic or
-            // none
-            match field.array {
-                Some(ArrayType::Dynamic) => {
-                    basetype = match field.basetype.as_str() {
-                        "char" => quote!( ::std::ffi::CStr ),
-                        "void" => quote!( [u8] ),
-                        _ => {
-                            let bt = field.basetype.as_code();
-                            quote!( [#bt] )
-                        }
-                    };
-                }
-                None => {
-                    basetype = match field.basetype.as_str() {
-                        "char" => quote!( ::std::ffi:CStr ),
-                        "void" => {
-                            //eprintln!("{}", format!("error: unexpected pointer to void: {} -> {}",
-                            //                     cmd.name.as_str(), field_name_raw));
-                            quote!( c_void )
-                        }
-                        _ => {
-                            let bt = field.basetype.as_code();
-                            quote!( #bt )
-                        }
-                    };
-                }
-                _ => panic!(format!("error: only expecting dynamic array or not array: {}",
-                                    field_name_raw)),
-            }
-        }
-        Some(ReferenceType::PointerToPointer) => {
-            // ref_type can only be mut in this case
-            ref_type = quote!( &mut &mut );
-            basetype = match field.basetype.as_str() {
-                "char" => panic!(format!("error: unexpected pointer pointer to char: {}",
-                                         field_name_raw)),
-                "void" => {
-                    //eprintln!("{}", format!("error: unexpected pointer pointer to void: {} -> {}",
-                    //                     cmd.name.as_str(), field_name_raw));
-                    quote!( c_void )
-                }
-                _ => {
-                    let bt = field.basetype.as_code();
-                    quote!( #bt )
-                }
-            };
-        }
-        Some(ReferenceType::PointerToConstPointer) => {
-            match field.array {
-                Some(ArrayType::Dynamic) => {
-                    if field.is_const {
-                        ref_type = quote!( && );
-                    } else {
-                        ref_type = quote!( &mut& );
-                    }
-                    let bt = field.basetype.as_code();
-                    basetype = quote!( #bt );
-                }
-                _ => panic!(format!("error: only expecting dynamic array type: {}",
-                                    field_name_raw)),
-            }
-        }
-        None => { // not a pointer
-            // could still be a static array
-            match field.array {
-                Some(ArrayType::Static) => {
-                    ref_type = quote!();
-                    let bt = field.basetype.as_code();
-                    let size = field.size.as_ref().expect("error: static array without size").as_code();
-                    basetype = quote!( [#bt;#size] );
-                }
-                None => {
-                    ref_type = quote!();
-                    let bt = field.basetype.as_code();
-                    basetype = quote!( #bt );
-                }
-                _ => panic!(format!("error: unexpected array type for non-pointer field: {}",
-                                    field_name_raw)),
-            }
-        }
-    }
-
-    let optional_maybe = match field_first_indirection_optional(&field) && field.reference.is_some()
-        && field.array.is_none() {
-            true => quote!( Option<#ref_type #basetype> ),
-            false => quote!( #ref_type #basetype ),
-        };
-
-    quote!( #field_name : #optional_maybe, )
-}
-
-fn make_inner_param(field: &Field) -> TokenStream {
-    let field_name_raw = field_name(&field);
-
-    let field_name = field_name_raw.as_code();
-
-    let ptr_mut = match field.is_const {
-        true => quote!( as_ptr() ),
-        false => quote!( as_mut_ptr() ),
-    };
-
-    //if let Some(replace) = replace.get(field.name.as_ref().expect("error: outer fields should have a name").as_str()) {
-    //    return quote!( #replace );
-    //}
-
-    //if let Some(array_param_raw) = count_cache.get(&field_name_raw) {
-    //    let array_param = array_param_raw.as_code();
-    //    quote!( #array_param.len() as _ )
-    //}
-    //else {
-
-        match field.reference {
-            Some(ReferenceType::Pointer) => {
-                // NOTE assumption: if reference is pointer, then array is dynamic or
-                // none
-                match field.array {
-                    Some(ArrayType::Dynamic) => {
-                        quote!( #field_name.#ptr_mut as _ )
-                    }
-                    None => {
-                        if field_first_indirection_optional(&field) {
-                            quote!( #field_name.#ptr_mut as _ )
-                        }
-                        else {
-                            quote!( #field_name )
-                        }
-                    }
-                    _ => panic!(format!("error: only expecting dynamic array or not array: {}",
-                                        field_name_raw)),
-                }
-            }
-            Some(ReferenceType::PointerToPointer) => {
-                quote!( #field_name as *mut &mut _ as *mut *mut _ )
-            }
-            Some(ReferenceType::PointerToConstPointer) => {
-                match field.array {
-                    Some(ArrayType::Dynamic) => quote!( #field_name as *const & _ as *const *const _ ),
-                    _ => panic!(format!("error: only expecting dynamic array type: {}",
-                                        field_name_raw)),
-                }
-            }
-            None => { // not a pointer
-                // could still be a static array
-                match field.array {
-                    Some(ArrayType::Static) => {
-                        quote!( #field_name )
-                    }
-                    None => {
-                        quote!( #field_name )
-                    }
-                    _ => panic!(format!("error: unexpected array type for non-pointer field: {}",
-                                        field_name_raw)),
-                }
-            }
-        }
-    //}
-}
-
-//fn make_method_outer_params() {
-//}
-
-//fn get_command_parts(cmd: &Command) -> VkCommandParts {
-//
-//    let name = &cmd.name;
-//
-//    let prefix = match name {
-//       x if x.starts_with("VkQueue") =>
-//
-//    (Some("efe"), Some("efef"), Some("fef"))
-//
-//}

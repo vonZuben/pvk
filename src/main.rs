@@ -340,6 +340,9 @@ fn main() {
             fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands);
             fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands);
         }
+        use std::mem::MaybeUninit;
+        use std::marker::PhantomData;
+        use std::os::raw::*;
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
             *input = *input ^ lowest_bit;
@@ -450,6 +453,16 @@ fn main() {
         impl<T> From<&ArrayArray<*const T>> for Array<*const *const T> {
             fn from(a: &ArrayArray<*const T>) -> Self {
                 Array(a.0.as_ptr())
+            }
+        }
+
+        trait Return<R> {
+            fn ret(self) -> R;
+        }
+
+        impl<A, B> Return<A> for ((A), B) {
+            fn ret(self) -> A {
+                self.0
             }
         }
 
