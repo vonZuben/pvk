@@ -5,8 +5,11 @@ use quote::quote;
 // just for coverting the xml file into a vkxml registry
 extern crate vk_parse;
 
+use once_cell::sync::OnceCell;
+
 #[macro_use]
 mod utils;
+mod global_data;
 mod constants;
 mod definitions;
 mod enumerations;
@@ -49,8 +52,6 @@ pub struct ParseState<'a> {
 
     handle_cache: Vec<&'a vkxml::Handle>,
 
-    is_handle: HashMap<&'a str, ()>,
-
     struct_with_sync_member: HashMap<&'a str, &'a str>,
 
     phantom: ::std::marker::PhantomData<&'a ()>,
@@ -70,54 +71,13 @@ pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, par
         RegistryElement::Commands(cmds) => {
             handle_commands(cmds, parse_state)
         }
-        RegistryElement::Features(features) => {
-            handle_features(features, parse_state)
-        }
-        RegistryElement::Extensions(extensions) => {
-            handle_extensions(extensions, parse_state)
-        }
+        //RegistryElement::Features(features) => {
+        //    handle_features(features, parse_state)
+        //}
+        //RegistryElement::Extensions(extensions) => {
+        //    handle_extensions(extensions, parse_state)
+        //}
         _ => quote!(),
-    }
-}
-
-pub fn registry_first_pass<'a>(registry: &'a vkxml::Registry, parse_state: &mut ParseState<'a>) {
-    let mut structs = HashMap::new();
-    for reg_elem in registry.elements.iter() {
-        match reg_elem {
-            RegistryElement::Definitions(definitions) => {
-                for def in definitions.elements.iter() {
-                    match def {
-                        DefinitionsElement::Struct(stct) => {
-                            // this is for keeping track of which types are structs
-                            structs.insert(stct.name.as_str(), ());
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            RegistryElement::Constants(cnts) => {
-            }
-            RegistryElement::Enums(enums) => {
-            }
-            RegistryElement::Commands(cmds) => {
-                for cmd in cmds.elements.iter() {
-                    for param in cmd.param.iter() {
-                        if structs.get(param.basetype.as_str()).is_some() && param.sync.is_some() {
-                            // now, if a command takes a struct, and the struct has a parameter
-                            // that should be externally synced, then we keep track of it for use
-                            // later
-                            parse_state.struct_with_sync_member
-                                .insert(param.basetype.as_str(), param.sync.as_ref().unwrap());
-                        }
-                    }
-                }
-            }
-            RegistryElement::Features(features) => {
-            }
-            RegistryElement::Extensions(extensions) => {
-            }
-            _ => {}
-        }
     }
 }
 
@@ -180,6 +140,10 @@ fn main() {
     // this it the easier to parse registry
     let registry = vk_parse::parse_file_as_vkxml(Path::new("vk.xml"));
 
+    global_data::REGISTRY.set(registry);
+
+    let registry = global_data::REGISTRY.get().unwrap();
+
     // this registry is closer to the xml format, but it sucks to parse
     // but it does include the aliases
     let registry2 = vk_parse::parse_file(Path::new("vk.xml"));
@@ -214,14 +178,12 @@ fn main() {
 
         handle_cache: Vec::new(),
 
-        is_handle: HashMap::new(),
-
         struct_with_sync_member: HashMap::new(),
 
         phantom: ::std::marker::PhantomData,
     };
 
-    registry_first_pass(&registry, &mut parse_state);
+    global_data::generate(&registry);
 
     for alias_tuple in cmd_alias_iter {
         // insert a mapping for     alias -> cmd
@@ -250,7 +212,6 @@ fn main() {
     };
 
     let initial_test_code = quote!{
-        use std::os::raw::*;
         macro_rules! vk_make_version {
             ($major:expr, $minor:expr, $patch:expr) => {
                 (($major as u32) << 22) | (($minor as u32) << 12) | $patch as u32
@@ -354,28 +315,6 @@ fn main() {
             }
         }
 
-        mod sealed {
-            pub trait Sealed {}
-        }
-
-        pub trait SyncType : sealed::Sealed {}
-
-        // NOTE want to change this later to print more useful info
-        #[derive(Debug)]
-        struct SyncWrapper<T> ( ::std::marker::PhantomData<T> );
-
-        #[derive(Debug)]
-        pub struct NoSync;
-        #[derive(Debug)]
-        pub struct ExternSync ( ::std::marker::PhantomData<*const ()> );
-
-        impl sealed::Sealed for NoSync {}
-        impl sealed::Sealed for ExternSync {}
-
-        impl SyncType for NoSync {}
-        impl SyncType for ExternSync {}
-
-
         // ============= Array<T> ===============
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for an array of T
@@ -396,8 +335,26 @@ fn main() {
             }
         }
 
+        impl<T> From<Option<&[T]>> for Array<*const T> {
+            fn from(t: Option<&[T]>) -> Self {
+                Array(t.as_ptr())
+            }
+        }
+
         impl<T> From<&mut [T]> for Array<*mut T> {
             fn from(t: &mut [T]) -> Self {
+                Array(t.as_mut_ptr())
+            }
+        }
+
+        impl<T> From<Option<&mut [T]>> for Array<*mut T> {
+            fn from(mut t: Option<&mut [T]>) -> Self {
+                Array(t.as_mut_ptr())
+            }
+        }
+
+        impl<T> From<&mut Vec<T>> for Array<*mut T> {
+            fn from(t: &mut Vec<T>) -> Self {
                 Array(t.as_mut_ptr())
             }
         }
@@ -423,9 +380,27 @@ fn main() {
             }
         }
 
+        impl<T> From<Option<&T>> for Ref<*const T> {
+            fn from(t: Option<&T>) -> Self {
+                Ref(t.as_ptr())
+            }
+        }
+
         impl<T> From<&mut T> for Ref<*mut T> {
             fn from(t: &mut T) -> Self {
                 Ref(t)
+            }
+        }
+
+        impl<T> From<Option<&mut T>> for Ref<*mut T> {
+            fn from(mut t: Option<&mut T>) -> Self {
+                Ref(t.as_mut_ptr())
+            }
+        }
+
+        impl<T> From<&mut MaybeUninit<T>> for Ref<*mut T> {
+            fn from(t: &mut MaybeUninit<T>) -> Self {
+                Ref(t.as_mut_ptr())
             }
         }
 
@@ -456,6 +431,10 @@ fn main() {
             }
         }
 
+        // ================ Return conversion type =============
+        // this is for creating return variabls that can automatically convert into the types we
+        // want
+
         trait Return<R> {
             fn ret(self) -> R;
         }
@@ -465,6 +444,18 @@ fn main() {
                 self.0
             }
         }
+
+        // ================ Value trait =============
+        // this trait lets us get the value from a plain value and from a reference in a consistent
+        // way without explicit dereferencing
+
+        trait Val : Copy {
+            fn val(&self) -> Self {
+                *self
+            }
+        }
+
+        impl<T> Val for T where T: Copy {}
 
         macro_rules! vk_bitflags_wrapped {
             ($name: ident) => {
@@ -608,6 +599,12 @@ fn main() {
                 unsafe { *(self as *const Option<&T> as *const *const T) }
             }
         }
+        impl<'a, T> AsRawPtr<T> for Option<&'a [T]> {
+            fn as_ptr(&self) -> *const T {
+                //unsafe { ::std::mem::transmute::<Option<&T>, *const T>(*self) }
+                self.map(|slice|slice.as_ptr()).unwrap_or(std::ptr::null())
+            }
+        }
         // NOTE note sure if this should be included
         //impl<'a, T> AsRawPtr<T> for Option<&'a mut T> {
         //    fn as_ptr(&self) -> *const T {
@@ -621,12 +618,18 @@ fn main() {
         //}
 
         pub trait AsRawMutPtr<T> {
-            fn as_mut_ptr(&self) -> *mut T;
+            fn as_mut_ptr(&mut self) -> *mut T;
         }
         impl<'a, T> AsRawMutPtr<T> for Option<&'a mut T> {
-            fn as_mut_ptr(&self) -> *mut T {
+            fn as_mut_ptr(&mut self) -> *mut T {
                 //unsafe { ::std::mem::transmute::<Option<&mut T>, *mut T>(*self) }
                 unsafe { *(self as *const Option<&mut T> as *const *mut T) }
+            }
+        }
+        impl<'a, T> AsRawMutPtr<T> for Option<&'a mut [T]> {
+            fn as_mut_ptr(&mut self) -> *mut T {
+                //unsafe { ::std::mem::transmute::<Option<&T>, *const T>(*self) }
+                self.as_mut().map(|slice|slice.as_mut_ptr()).unwrap_or(std::ptr::null_mut())
             }
         }
     };

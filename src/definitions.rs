@@ -7,7 +7,8 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 use crate::ParseState;
-//use crate::commands;
+
+use crate::global_data;
 
 pub fn make_handle_owner_name(name: &str) -> TokenStream {
     format!("{}Owner", name).as_code()
@@ -54,6 +55,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     StructElement::Notation(_) => None,
                 });
 
+                let lifetime = global_data::lifetime(stct.name.as_str());
+
                 // gererate bulders and initializers for only non return types
                 fn not_return(stct: &Struct) -> bool {
                     if stct.name.contains("BaseOutStructure") || stct.name.contains("BaseInStructure") {
@@ -73,11 +76,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             let setter_name = case::camel_to_snake(raw_name).as_code();
 
                             let setter_field = make_rust_field(field);
-                            let val_setter = quote!(self.inner.#field_name = #field_name.into(););
+                            let val_setter = quote!(self.#field_name = #field_name.into(););
                             let count_setter = field.size.as_ref()
                                 .map(|size| {
                                     if raw_name == "pCode" {
-                                        Some( quote!(self.inner.codeSize = #field_name.len() as usize * 4;) )
+                                        Some( quote!(self.codeSize = #field_name.len() as usize * 4;) )
                                     }
                                     else if raw_name == "pSampleMask" {
                                         None
@@ -88,7 +91,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                             _ => {}
                                         }
                                         let count_name = size.as_code();
-                                        Some( quote!(self.inner.#count_name = #field_name.len() as _;) )
+                                        Some( quote!(self.#count_name = #field_name.len() as _;) )
                                     }
                                 });
 
@@ -106,28 +109,28 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     let builder_name = format!("{}Builder", stct.name).as_code();
 
                     Some(quote!{
-                        impl #name {
+                        impl #lifetime #name #lifetime {
                             fn zeroed() -> Self {
                                 unsafe { ::std::mem::zeroed() }
                             }
-                            pub fn builder<'a>() -> #builder_name<'a> {
-                                #builder_name {
-                                    inner: Self::zeroed(),
-                                    phantom: ::std::marker::PhantomData,
-                                }
-                            }
+                            //pub fn builder<'a>() -> #builder_name<'a> {
+                            //    #builder_name {
+                            //        inner: Self::zeroed(),
+                            //        phantom: ::std::marker::PhantomData,
+                            //    }
+                            //}
                         }
-                        pub struct #builder_name<'a> {
-                            inner: #name,
-                            phantom: ::std::marker::PhantomData<&'a ()>,
-                        }
-                        impl<'a> ::std::ops::Deref for #builder_name<'a> {
-                            type Target = #name;
-                            fn deref(&self) -> &Self::Target {
-                                &self.inner
-                            }
-                        }
-                        impl<'a> #builder_name<'a> {
+                        //pub struct #builder_name<'handle> {
+                        //    inner: #name #lifetime,
+                        //    phantom: ::std::marker::PhantomData<&'handle ()>,
+                        //}
+                        //impl<'handle> ::std::ops::Deref for #builder_name<'handle> {
+                        //    type Target = #name #lifetime;
+                        //    fn deref(&self) -> &Self::Target {
+                        //        &self.inner
+                        //    }
+                        //}
+                        impl<'handle> #name<'handle> {
                             #( #member_setters )*
                         }
                     })
@@ -139,8 +142,9 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 quote!{
                     #[repr(C)]
                     #[derive(Copy, Clone)]
-                    pub struct #name {
-                        #( #params ),*
+                    pub struct #name<'handle> {
+                        #( #params, )*
+                        _p: PhantomData<&'handle ()>
                     }
                     #( #builder_code )*
                 }
@@ -149,10 +153,12 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 let name = uni.name.as_code();
                 let params = uni.elements.iter().map(|field|make_c_field(field, FieldContext::Member));
 
+                let lifetime = global_data::lifetime(uni.name.as_str());
+
                 quote!{
                     #[repr(C)]
                     #[derive(Copy, Clone)]
-                    pub union #name {
+                    pub union #name #lifetime {
                         #( #params ),*
                     }
                 }
@@ -164,8 +170,6 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             //}
             DefinitionsElement::Handle(handle) => {
 
-                parse_state.is_handle.insert(handle.name.as_str(), ());
-
                 let handle_name = handle.name.as_code();
 
                 parse_state.handle_cache.push(&handle);
@@ -173,12 +177,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 let owner_name = make_handle_owner_name(handle.name.as_str());
 
                 quote!{
-                    #[derive(Debug)]
+                    #[derive(Debug, Clone, Copy)]
                     #[repr(transparent)]
-                    struct #handle_name<'a, T: SyncType> {
+                    pub struct #handle_name<'a> {
                         handle: raw::#handle_name,
-                        _parent_ref: ::std::marker::PhantomData<&'a #owner_name<'a>>,
-                        _sync_type: SyncWrapper<T>,
+                        _parent_ref: PhantomData<&'a #owner_name<'a>>,
                     }
                 }
 
@@ -196,9 +199,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 let return_type = make_c_type(&fptr.return_type, FieldContext::Member);
                 let params = fptr.param.iter().map(|field|make_c_field(field, FieldContext::FunctionParam));
 
+                let lifetime = global_data::lifetime(fptr.name.as_str());
+
                 quote!{
                     #[allow(non_camel_case_types)]
-                    pub type #name = extern "system" fn(
+                    pub type #name #lifetime = extern "system" fn(
                         #( #params ),*
                         ) -> #return_type;
                 }
@@ -217,7 +222,7 @@ fn get_dispatchable_parent(handle: &Handle, handle_cache: &[&Handle]) -> Option<
         .and_then(|parent_name| {
             find_in_slice(handle_cache, |handle| handle.name.as_str() == parent_name.as_str())
                 .and_then(|handle| match handle.ty {
-                    HandleType::Dispatch => Some( handle.name.as_str().as_code() ),
+                    HandleType::Dispatch => Some( make_handle_owner_name(handle.name.as_str()) ),
                     HandleType::NoDispatch => get_dispatchable_parent(handle, handle_cache),
                 })
         })
@@ -257,37 +262,35 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 // the other owners should have references to their parent
                 let owner_members = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        commands: InstanceCommands,
+                        commands: InstanceCommands<'handle>,
                         feature_version: Box<dyn Feature>,
-                        phantom: ::std::marker::PhantomData<&'a ()>,
                     },
                     "VkDevice" => quote!{
-                        commands: DeviceCommands,
-                        dispatch_parent: PhysicalDevice<'a>,
+                        commands: DeviceCommands<'handle>,
+                        dispatch_parent: PhysicalDevice<'handle>,
                     },
                     _ => {
                         let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            dispatch_parent: #dispatch_parent<'a>,
+                            dispatch_parent: #dispatch_parent<'handle>,
                         }
                     }
                 };
 
                 let new_method = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        fn new(handle: raw::Instance, commands: InstanceCommands,
-                               feature_version: Box<dyn Feature>) -> #owner_name<'a> {
+                        fn new(handle: Instance<'handle>, commands: InstanceCommands<'handle>,
+                               feature_version: Box<dyn Feature>) -> #owner_name<'handle> {
                             #owner_name {
                                 handle,
                                 commands,
                                 feature_version,
-                                phantom: ::std::marker::PhantomData,
                             }
                         }
                     },
                     "VkDevice" => quote!{
-                        fn new(handle: raw::Device, commands: DeviceCommands,
-                               dispatch_parent: PhysicalDevice<'a>) -> #owner_name<'a> {
+                        fn new(handle: Device<'handle>, commands: DeviceCommands<'handle>,
+                               dispatch_parent: PhysicalDevice<'handle>) -> #owner_name<'handle> {
                             #owner_name {
                                 handle,
                                 commands,
@@ -298,8 +301,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     _ => {
                         let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            fn new(handle: #handle_name<'a>,
-                                            dispatch_parent: #dispatch_parent<'a>) -> #owner_name<'a> {
+                            fn new(handle: #handle_name<'handle>,
+                                            dispatch_parent: #dispatch_parent<'handle>) -> #owner_name<'handle> {
                                 #owner_name {
                                     handle,
                                     dispatch_parent,
@@ -311,12 +314,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
                 // make the handle owner
                 quote!{
-                    pub struct #owner_name<'a> {
-                        handle: raw::#handle_name,
+                    pub struct #owner_name<'handle> {
+                        handle: #handle_name<'handle>,
                         #owner_members
                         //#( #pfn_params ),*
                     }
-                    impl<'a> #owner_name<'a> {
+                    impl<'handle> #owner_name<'handle> {
                         #new_method
                     }
                 }
@@ -338,14 +341,15 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     // not easily available in the swapchain create methods
                     let dispatch_parent;
                     if handle.name.as_str() == "VkSwapchainKHR" {
-                        dispatch_parent = quote!(Device);
+                        dispatch_parent = quote!(DeviceOwner);
                     }
                     else {
-                        dispatch_parent = parent_name.as_code();
+                        //dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice()).unwrap();
+                        dispatch_parent = make_handle_owner_name(&parent_name);
                     }
 
                     new_method = quote!{
-                        fn new(handle: #handle_name<'a>, dispatch_parent: #dispatch_parent<'a>) -> #owner_name<'a> {
+                        fn new(handle: #handle_name<'handle>, dispatch_parent: #dispatch_parent<'handle>) -> #owner_name<'handle> {
                                 #owner_name {
                                     handle,
                                     dispatch_parent,
@@ -354,29 +358,29 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     };
 
                     quote!{
-                        dispatch_parent: #dispatch_parent<'a>,
+                        dispatch_parent: #dispatch_parent<'handle>,
                     }
                 }
                 // for handles with no parent, it is easier to make a method that
                 // takes a parent parameter for consistency and just ignoring the param
                 else {
                     new_method = quote!{
-                        fn new<T>(handle: #handle_name<'a>, _parent: T) -> #owner_name<'a> {
+                        fn new<T>(handle: #handle_name<'handle>, _parent: T) -> #owner_name<'handle> {
                                 #owner_name {
                                     handle,
-                                    phantom: ::std::marker::PhantomData,
+                                    phantom: PhantomData,
                                 }
                             }
                     };
-                    quote!( phantom: ::std::marker::PhantomData<&'a ()>, )
+                    quote!( phantom: ::std::marker::PhantomData<&'handle ()>, )
                 };
 
                 quote!{
-                    pub struct #owner_name<'a> {
-                        handle: raw::#handle_name,
+                    pub struct #owner_name<'handle> {
+                        handle: #handle_name<'handle>,
                         #dispatch_parent
                     }
-                    impl<'a> #owner_name<'a> {
+                    impl<'handle> #owner_name<'handle> {
                         #new_method
                     }
                 }
@@ -422,8 +426,17 @@ pub fn generate_aliases_of_types<'a>(types: &'a vk_parse::Types) -> TokenStream 
             }
             let name_ident = name.as_code();
             let alias_ident = alias.as_code();
+
+            let alias_ident = if global_data::GLOBAL_DATA.get().expect("error: global_data not set")
+                .needs_lifetime.get(alias.as_str()).is_some() {
+                    quote!( #alias_ident<'a> )
+                }
+            else {
+                quote!( #alias_ident )
+            };
+
             let tokens = quote! {
-                pub type #name_ident = #alias_ident;
+                pub type #name_ident<'a> = #alias_ident;
             };
             Some(tokens)
         });

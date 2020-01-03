@@ -6,6 +6,8 @@ use quote::ToTokens;
 
 use proc_macro2::{TokenStream};
 
+use crate::global_data;
+
 //pub fn create_entry_code() -> TokenStream {
 //
 //    quote!{
@@ -27,6 +29,14 @@ impl<T> StrAsCode for T where T: AsRef<str> {
         rstr.parse()
             .expect(format!("error: can't parse {{{}}} as TokenStream", &rstr).as_ref())
     }
+}
+
+fn make_basetype(field: &vkxml::Field) -> TokenStream {
+    let basetype = field.basetype.as_code();
+
+    let lifetime = global_data::lifetime(field.basetype.as_str());
+
+    quote!( #basetype #lifetime )
 }
 
 pub fn make_c_reference_type(field: &vkxml::Field) -> TokenStream {
@@ -72,7 +82,7 @@ pub fn make_c_field(field: &vkxml::Field, context: FieldContext) -> TokenStream 
 }
 
 pub fn make_c_type(field: &vkxml::Field, context: FieldContext) -> TokenStream {
-    let basetype = field.basetype.as_code();
+    let basetype = make_basetype(field);
     let ref_type = make_c_reference_type(&field);
 
     field.array.as_ref().and_then(|a| match a {
@@ -105,7 +115,7 @@ pub fn make_c_type(field: &vkxml::Field, context: FieldContext) -> TokenStream {
 
 // make rust reference type, but will simply pass the basetype without reference if there is none
 pub fn make_rust_reference_type(field: &vkxml::Field) -> TokenStream {
-    let basetype = field.basetype.as_code();
+    let basetype = make_basetype(field);
     match &field.reference {
         Some(r) => match r {
             vkxml::ReferenceType::Pointer => {
@@ -132,7 +142,7 @@ pub fn make_rust_reference_type(field: &vkxml::Field) -> TokenStream {
 
 // make rust array type, should only be called for type that have equivelent c pointer types
 pub fn make_rust_array_type(field: &vkxml::Field) -> TokenStream {
-    let basetype = field.basetype.as_code();
+    let basetype = make_basetype(field);
     match &field.reference {
         Some(r) => match r {
             vkxml::ReferenceType::Pointer => {
@@ -182,7 +192,7 @@ pub fn make_rust_type(field: &vkxml::Field) -> TokenStream {
                 .or_else(|| field.size_enumref.as_ref())
                 .expect("error: field should have size");
             let size = size.as_code();
-            let basetype = field.basetype.as_code();
+            let basetype = make_basetype(field);
             Some( quote!([#basetype;#size]) )
         },
     })

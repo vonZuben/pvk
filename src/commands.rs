@@ -110,7 +110,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
     fn make_param(cmd: &Command) -> TokenStream {
         let name = cmd.name.as_code();
         let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
-        quote!( #name : #pfn_loader_name )
+        quote!( #name : #pfn_loader_name<'handle> )
     }
     let instance_command_params = instance_commands.clone().map(make_param);
     let device_command_params = device_commands.clone().map(make_param);
@@ -169,14 +169,14 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
         quote!{
             #[allow(non_camel_case_types)]
-            pub type #pfn_name = extern "system" fn(
+            pub type #pfn_name<'handle> = extern "system" fn(
                 #( #params1 ),*
             ) -> #return_type;
 
-            struct #pfn_loader_name (#pfn_name);
-            impl #pfn_loader_name {
+            struct #pfn_loader_name<'handle> (#pfn_name<'handle>);
+            impl<'handle> #pfn_loader_name<'handle> {
                 fn new() -> Self {
-                    extern "system" fn default_function ( #( #params2 ),* ) -> #return_type {
+                    extern "system" fn default_function<'handle> ( #( #params2 ),* ) -> #return_type {
                         panic!(concat!(#raw_name, " is not loaded. Make sure the correct feature/extension is enabled"))
                     }
                     Self(default_function)
@@ -228,7 +228,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let device_macro_name = make_macro_name_device(&cmd.name);
 
         quote!{
-            pub type #pfn_name = extern "system" fn(
+            pub type #pfn_name<'handle> = extern "system" fn(
                 #( #params1 ),*
             ) -> #return_type;
 
@@ -242,7 +242,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             #[link(name = "vulkan")]
             extern "system" {
                 #[link_name = #raw_name]
-                fn #name ( #( #params2 ),* ) -> #return_type;
+                fn #name<'handle> ( #( #params2 ),* ) -> #return_type;
             }
         }
     });
@@ -255,10 +255,10 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             Static,
         }
 
-        struct InstanceCommands {
+        struct InstanceCommands<'handle> {
             #( #instance_command_params ),*
         }
-        impl InstanceCommands {
+        impl<'handle> InstanceCommands<'handle> {
             fn new() -> Self {
                 Self {
                     #( #instance_cmd_inits, )*
@@ -266,10 +266,10 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             }
         }
 
-        struct DeviceCommands {
+        struct DeviceCommands<'handle> {
             #( #device_command_params ),*
         }
-        impl DeviceCommands {
+        impl<'handle> DeviceCommands<'handle> {
             fn new() -> Self {
                 Self {
                     #( #device_cmd_inits, )*
@@ -359,7 +359,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     let type_to_destroy = crate::definitions
                         ::make_handle_owner_name(cmd.param[0].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
-                    method_params = quote!( self.handle, None.as_ptr() );
+                    method_params = quote!( self.handle, None.into() );
                     method_caller = quote!( self.commands.#name.0 );
                 }
                 _ => {
@@ -368,13 +368,13 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     let type_to_destroy = crate::definitions
                         ::make_handle_owner_name(cmd.param[1].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
-                    method_params = quote!( self.dispatch_parent.handle, self.handle, None.as_ptr() );
+                    method_params = quote!( self.dispatch_parent.handle, self.handle, None.into() );
                     method_caller = quote!( self.dispatch_parent.commands.#name.0 );
                 }
             }
 
             quote!{
-                impl<'a> Drop for #owner_name<'a> {
+                impl<'handle> Drop for #owner_name<'handle> {
                     fn drop(&mut self) {
                         #method_caller(#method_params);
                     }
@@ -425,9 +425,13 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             let basetype = field.basetype.as_code();
                             Some(quote!( let #field_name: &mut #basetype = &mut 0; ))
                         }
+                        FieldCatagory::Size => {
+                            let basetype = field.basetype.as_code();
+                            Some(quote!( let #field_name : #basetype; ))
+                        }
                         FieldCatagory::NormalSized => {
                             let size = field.size.as_ref().expect("error: ReturnSized with no size").as_code();
-                            Some(quote!( let #size = #field_name.len() as _; ))
+                            Some(quote!( #size = #field_name.len() as _; ))
                         }
                         _ => None,
                     }
@@ -439,7 +443,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         let name_raw = field_name(&field);
                         let field_name = name_raw.as_code();
                         match category_map.get(name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => quote!( ::std::ptr::null_mut() ),
+                            FieldCatagory::ReturnSized => quote!( None.into() ),
                             _ => quote!( #field_name.into() ),
                         }
                     });
@@ -461,7 +465,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         }
                         FieldCatagory::ReturnSized => {
                             let size = field.size.as_ref().unwrap().as_code();
-                            Some(quote!( let mut #field_name = Vec::with_capacity(#size as _); ))
+                            Some(quote!( let mut #field_name = Vec::with_capacity(#size.val() as _); ))
                         }
                         _ => None,
                     }
@@ -494,7 +498,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         }
                         FieldCatagory::ReturnSized => {
                             let size = field.size.as_ref().unwrap().as_code();
-                            Some(quote!( unsafe { #field_name.set_len(#size as _) }; ))
+                            Some(quote!( unsafe { #field_name.set_len(#size.val() as _) }; ))
                         }
                         _ => None,
                     }
@@ -543,8 +547,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
 
             quote!{
                 //#multi_return_type
-                impl<'a> #owner_name<'a> {
-                    pub fn #method_name<'owner>(&'owner self, #( #fields_outer ),* ) -> #return_type {
+                impl<'handle> #owner_name<'handle> {
+                    pub fn #method_name(&'handle self, #( #fields_outer ),* ) -> #return_type {
                         #( #size_vars )*
                         #size_query
                         #( #return_vars )*
