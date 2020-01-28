@@ -1,4 +1,4 @@
-#![recursion_limit = "500"]
+#![recursion_limit = "1000"]
 
 use quote::quote;
 
@@ -71,12 +71,12 @@ pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, par
         RegistryElement::Commands(cmds) => {
             handle_commands(cmds, parse_state)
         }
-        //RegistryElement::Features(features) => {
-        //    handle_features(features, parse_state)
-        //}
-        //RegistryElement::Extensions(extensions) => {
-        //    handle_extensions(extensions, parse_state)
-        //}
+        RegistryElement::Features(features) => {
+            handle_features(features, parse_state)
+        }
+        RegistryElement::Extensions(extensions) => {
+            handle_extensions(extensions, parse_state)
+        }
         _ => quote!(),
     }
 }
@@ -218,32 +218,33 @@ fn main() {
             };
         }
         fn main(){
-            let mut inst: Instance = ::std::ptr::null();
+            let mut inst: MaybeUninit<Instance> = MaybeUninit::uninit();
 
             let app_name = ::std::ffi::CString::new("Hello World!").unwrap();
             let engine_name = ::std::ffi::CString::new("Hello Engine!").unwrap();
 
-            let mut app_info = ApplicationInfo::builder();
+            let mut app_info = ApplicationInfo::zeroed();
             app_info
                 .s_type(StructureType::APPLICATION_INFO)
-                .p_application_name(app_name.as_c_str())
+                .p_application_name(&app_name.as_c_str())
                 .application_version(vk_make_version!(1, 0, 0))
-                .p_engine_name(engine_name.as_c_str())
+                .p_engine_name(&engine_name.as_c_str())
                 .engine_version(vk_make_version!(1, 0, 0))
                 .api_version(vk_make_version!(1, 1, 1));
 
-            let mut create_info = InstanceCreateInfo::builder();
+            let mut create_info = InstanceCreateInfo::zeroed();
             create_info
                 .s_type(StructureType::INSTANCE_CREATE_INFO)
                 .p_application_info(&app_info);
 
             let res = unsafe {
                 CreateInstance(
-                    &*create_info as *const InstanceCreateInfo,
-                    ::std::ptr::null(),
-                    &mut inst as *mut Instance,
+                    (&create_info).into(),
+                    None.into(),
+                    (&mut inst).into(),
                     )
             };
+            let inst = unsafe { inst.assume_init() };
             println!("instance creation: {}", res);
             let mut instance_commands = InstanceCommands::new();
             let ver = VERSION_1_1;
@@ -268,10 +269,10 @@ fn main() {
             let flags: ShaderStageFlags = ShaderStageFlags::ALL_GRAPHICS;
             println!("{}", flags);
 
-            // test 1_1 feature command ?
-            //let mut phd: PhysicalDevice = std::ptr::null();
+            //test 1_1 feature command ?
+            //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();
             //let mut phd_count: u32 = 0;
-            //instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
+            //instance_commands.EnumeratePhysicalDevices.0(inst, (&mut phd_count).into(), None.into());
             //println!("{}", phd_count);
         }
     };
@@ -304,6 +305,7 @@ fn main() {
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
         use std::os::raw::*;
+        use std::ffi::CStr;
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
             *input = *input ^ lowest_bit;
@@ -356,6 +358,12 @@ fn main() {
         impl<T> From<&mut Vec<T>> for Array<*mut T> {
             fn from(t: &mut Vec<T>) -> Self {
                 Array(t.as_mut_ptr())
+            }
+        }
+
+        impl From<&CStr> for Array<*const c_char> {
+            fn from(s: &CStr) -> Self {
+                Array(s.as_ptr())
             }
         }
 
@@ -449,13 +457,13 @@ fn main() {
         // this trait lets us get the value from a plain value and from a reference in a consistent
         // way without explicit dereferencing
 
-        trait Val : Copy {
-            fn val(&self) -> Self {
+        trait Value : Copy {
+            fn value(&self) -> Self {
                 *self
             }
         }
 
-        impl<T> Val for T where T: Copy {}
+        impl<T> Value for T where T: Copy {}
 
         macro_rules! vk_bitflags_wrapped {
             ($name: ident) => {

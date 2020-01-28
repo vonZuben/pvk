@@ -127,11 +127,11 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 match command_type_cache.get(name) {
                     Some(CommandCategory::Instance) => {
                         quote!( inst_cmds.#name_code.load( |raw_cmd_name|
-                                                 unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.as_ptr()) } ) )
+                                                 unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.into()) } ) )
                     }
                     Some(CommandCategory::Device) => {
                         quote!( dev_cmds.#name_code.load( |raw_cmd_name|
-                                                 unsafe { GetDeviceProcAddr(*device, raw_cmd_name.as_ptr()) } ) )
+                                                 unsafe { GetDeviceProcAddr(*device, raw_cmd_name.into()) } ) )
                     }
                     _ => panic!(
                         format!("error: extension command is either static or wasn't defined previously: {}",

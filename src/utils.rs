@@ -31,10 +31,14 @@ impl<T> StrAsCode for T where T: AsRef<str> {
     }
 }
 
-fn make_basetype(field: &vkxml::Field) -> TokenStream {
+fn make_basetype(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
     let basetype = field.basetype.as_code();
 
-    let lifetime = global_data::lifetime(field.basetype.as_str());
+    use WithLifetime::*;
+    let lifetime = match with_lifetime {
+        Yes => Some( global_data::lifetime(field.basetype.as_str()) ),
+        No => None,
+    };
 
     quote!( #basetype #lifetime )
 }
@@ -67,13 +71,19 @@ pub enum FieldContext {
     FunctionParam,
 }
 
-pub fn make_c_field(field: &vkxml::Field, context: FieldContext) -> TokenStream {
+#[derive(Clone, Copy)]
+pub enum WithLifetime {
+    Yes,
+    No,
+}
+
+pub fn make_c_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> TokenStream {
 
     // if there is no name, then "field" is set as a default name
     // maybe change this later
     let name = field.name.as_ref().map_or(quote!(un_named_field), |v| v.as_code());
 
-    let field_type = make_c_type(field, context);
+    let field_type = make_c_type(field, with_lifetime, context);
 
     quote!{
         #name : #field_type
@@ -81,8 +91,8 @@ pub fn make_c_field(field: &vkxml::Field, context: FieldContext) -> TokenStream 
 
 }
 
-pub fn make_c_type(field: &vkxml::Field, context: FieldContext) -> TokenStream {
-    let basetype = make_basetype(field);
+pub fn make_c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> TokenStream {
+    let basetype = make_basetype(field, with_lifetime);
     let ref_type = make_c_reference_type(&field);
 
     field.array.as_ref().and_then(|a| match a {
@@ -114,8 +124,8 @@ pub fn make_c_type(field: &vkxml::Field, context: FieldContext) -> TokenStream {
 }
 
 // make rust reference type, but will simply pass the basetype without reference if there is none
-pub fn make_rust_reference_type(field: &vkxml::Field) -> TokenStream {
-    let basetype = make_basetype(field);
+pub fn make_rust_reference_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
+    let basetype = make_basetype(field, with_lifetime);
     match &field.reference {
         Some(r) => match r {
             vkxml::ReferenceType::Pointer => {
@@ -141,13 +151,18 @@ pub fn make_rust_reference_type(field: &vkxml::Field) -> TokenStream {
 }
 
 // make rust array type, should only be called for type that have equivelent c pointer types
-pub fn make_rust_array_type(field: &vkxml::Field) -> TokenStream {
-    let basetype = make_basetype(field);
+pub fn make_rust_array_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
+    let basetype = make_basetype(field, with_lifetime);
     match &field.reference {
         Some(r) => match r {
             vkxml::ReferenceType::Pointer => {
                 if field.is_const {
-                    quote!(&[#basetype])
+                    if field.basetype.as_str() == "char" {
+                        quote!(&CStr)
+                    }
+                    else {
+                        quote!(&[#basetype])
+                    }
                 } else {
                     quote!(&mut[#basetype])
                 }
@@ -166,12 +181,12 @@ pub fn make_rust_array_type(field: &vkxml::Field) -> TokenStream {
     }
 }
 
-pub fn make_rust_field(field: &vkxml::Field) -> TokenStream {
+pub fn make_rust_field(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
     // if there is no name, then "field" is set as a default name
     // maybe change this later
     let name = field.name.as_ref().map_or(quote!(un_named_field), |v| v.as_code());
 
-    let field_type = make_rust_type(field);
+    let field_type = make_rust_type(field, with_lifetime);
 
     quote!{
         #name : #field_type
@@ -179,10 +194,10 @@ pub fn make_rust_field(field: &vkxml::Field) -> TokenStream {
 
 }
 
-pub fn make_rust_type(field: &vkxml::Field) -> TokenStream {
+pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
     field.array.as_ref().and_then(|a| match a {
         vkxml::ArrayType::Dynamic => {
-            let ty = make_rust_array_type(field);
+            let ty = make_rust_array_type(field, with_lifetime);
             Some( quote!(#ty) )
         }
         vkxml::ArrayType::Static => {
@@ -192,12 +207,12 @@ pub fn make_rust_type(field: &vkxml::Field) -> TokenStream {
                 .or_else(|| field.size_enumref.as_ref())
                 .expect("error: field should have size");
             let size = size.as_code();
-            let basetype = make_basetype(field);
+            let basetype = make_basetype(field, with_lifetime);
             Some( quote!([#basetype;#size]) )
         },
     })
     .unwrap_or_else(|| {
-        let ty = make_rust_reference_type(field);
+        let ty = make_rust_reference_type(field, with_lifetime);
         quote!( #ty )
     })
 }

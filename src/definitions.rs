@@ -51,7 +51,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 let name = stct.name.as_code();
 
                 let params = stct.elements.iter().filter_map( |elem| match elem {
-                    StructElement::Member(field) => Some(make_c_field(field, FieldContext::Member)),
+                    StructElement::Member(field) => Some(make_c_field(field, WithLifetime::Yes, FieldContext::Member)),
                     StructElement::Notation(_) => None,
                 });
 
@@ -75,7 +75,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             let field_name = raw_name.as_code();
                             let setter_name = case::camel_to_snake(raw_name).as_code();
 
-                            let setter_field = make_rust_field(field);
+                            let setter_field = make_rust_field(field, WithLifetime::Yes);
                             let val_setter = quote!(self.#field_name = #field_name.into(););
                             let count_setter = field.size.as_ref()
                                 .map(|size| {
@@ -151,7 +151,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             },
             DefinitionsElement::Union(uni) => {
                 let name = uni.name.as_code();
-                let params = uni.elements.iter().map(|field|make_c_field(field, FieldContext::Member));
+                let params = uni.elements.iter().map(|field|make_c_field(field, WithLifetime::Yes, FieldContext::Member));
 
                 let lifetime = global_data::lifetime(uni.name.as_str());
 
@@ -196,14 +196,15 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             // TODO funtion pointers
             DefinitionsElement::FuncPtr(fptr) => {
                 let name = fptr.name.as_code();
-                let return_type = make_c_type(&fptr.return_type, FieldContext::Member);
-                let params = fptr.param.iter().map(|field|make_c_field(field, FieldContext::FunctionParam));
+                let return_type = make_c_type(&fptr.return_type, WithLifetime::No, FieldContext::Member);
+                let params = fptr.param.iter().map(|field|make_c_field(field, WithLifetime::No, FieldContext::FunctionParam));
 
-                let lifetime = global_data::lifetime(fptr.name.as_str());
+                //let lifetime = global_data::lifetime(fptr.name.as_str());
 
                 quote!{
                     #[allow(non_camel_case_types)]
-                    pub type #name #lifetime = extern "system" fn(
+                    //pub type #name #lifetime = extern "system" fn(
+                    pub type #name = extern "system" fn(
                         #( #params ),*
                         ) -> #return_type;
                 }
@@ -256,30 +257,31 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 // check commands.rs for method definitions
                 let owner_name = make_handle_owner_name(handle.name.as_str());
 
+                let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
+
                 // handle owners will provide convinience usage of dipatchable handles
                 // define the members that each type should have
                 // the instance and device owners should hold function pointers
                 // the other owners should have references to their parent
                 let owner_members = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        commands: InstanceCommands<'handle>,
+                        commands: InstanceCommands,
                         feature_version: Box<dyn Feature>,
                     },
                     "VkDevice" => quote!{
-                        commands: DeviceCommands<'handle>,
-                        dispatch_parent: PhysicalDevice<'handle>,
+                        commands: DeviceCommands,
+                        dispatch_parent: &'handle PhysicalDeviceOwner<'handle>,
                     },
                     _ => {
-                        let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
                         quote!{
-                            dispatch_parent: #dispatch_parent<'handle>,
+                            dispatch_parent: &'handle #dispatch_parent<'handle>,
                         }
                     }
                 };
 
                 let new_method = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        fn new(handle: Instance<'handle>, commands: InstanceCommands<'handle>,
+                        fn new(handle: Instance<'handle>, commands: InstanceCommands,
                                feature_version: Box<dyn Feature>) -> #owner_name<'handle> {
                             #owner_name {
                                 handle,
@@ -289,8 +291,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                     },
                     "VkDevice" => quote!{
-                        fn new(handle: Device<'handle>, commands: DeviceCommands<'handle>,
-                               dispatch_parent: PhysicalDevice<'handle>) -> #owner_name<'handle> {
+                        fn new(handle: Device<'handle>, commands: DeviceCommands,
+                               dispatch_parent: &'handle PhysicalDeviceOwner<'handle>) -> #owner_name<'handle> {
                             #owner_name {
                                 handle,
                                 commands,
@@ -299,10 +301,9 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                     },
                     _ => {
-                        let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice());
                         quote!{
                             fn new(handle: #handle_name<'handle>,
-                                            dispatch_parent: #dispatch_parent<'handle>) -> #owner_name<'handle> {
+                                            dispatch_parent: &'handle #dispatch_parent<'handle>) -> #owner_name<'handle> {
                                 #owner_name {
                                     handle,
                                     dispatch_parent,
@@ -310,6 +311,31 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                             }
                         }
                     }
+                };
+
+                let return_impl = match handle.name.as_str() {
+                    "VkInstance" => None,
+                    "VkDevice" => Some(quote!{
+                        impl<'handle> Return<#owner_name<'handle>> for ((#handle_name<'handle>), &'handle #dispatch_parent<'handle>) {
+                            fn ret(self) -> #owner_name<'handle> {
+                                unimplemented!()
+                                    //#owner_name::new(self.0, self.1);
+                            }
+                        }
+                    }),
+                    _ => Some(quote!{
+                        impl<'handle> Return<#owner_name<'handle>> for ((#handle_name<'handle>), &'handle #dispatch_parent<'handle>) {
+                            fn ret(self) -> #owner_name<'handle> {
+                                #owner_name::new(self.0, self.1)
+                            }
+                        }
+                        impl<'handle> Return<Vec<#owner_name<'handle>>> for
+                                ((Vec<#handle_name<'handle>>), &'handle #dispatch_parent<'handle>) {
+                            fn ret(self) -> Vec<#owner_name<'handle>> {
+                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
+                            }
+                        }
+                    })
                 };
 
                 // make the handle owner
@@ -322,13 +348,15 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     impl<'handle> #owner_name<'handle> {
                         #new_method
                     }
+                    #return_impl
                 }
             }
             HandleType::NoDispatch => {
                 let owner_name = make_handle_owner_name(handle.name.as_str());
 
                 let new_method;
-                let dispatch_parent = if let Some(parent_name) = handle.parent.as_ref() {
+                let return_impl;
+                let dispatch_member = if let Some(parent_name) = handle.parent.as_ref() {
                     // NOTE some non-dispatchable handle type can have multiple parents
                     // for now, we just take the first parent
                     let parent_name = parent_name.as_str().split(',')
@@ -349,16 +377,31 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
 
                     new_method = quote!{
-                        fn new(handle: #handle_name<'handle>, dispatch_parent: #dispatch_parent<'handle>) -> #owner_name<'handle> {
-                                #owner_name {
-                                    handle,
-                                    dispatch_parent,
-                                }
+                        fn new(handle: #handle_name<'handle>,
+                               dispatch_parent: &'handle #dispatch_parent<'handle>) -> #owner_name<'handle> {
+                            #owner_name {
+                                handle,
+                                dispatch_parent,
                             }
+                        }
+                    };
+
+                    return_impl = quote!{
+                        impl<'handle> Return<#owner_name<'handle>> for ((#handle_name<'handle>), &'handle #dispatch_parent<'handle>) {
+                            fn ret(self) -> #owner_name<'handle> {
+                                #owner_name::new(self.0, self.1)
+                            }
+                        }
+                        impl<'handle> Return<Vec<#owner_name<'handle>>> for
+                                ((Vec<#handle_name<'handle>>), &'handle #dispatch_parent<'handle>) {
+                            fn ret(self) -> Vec<#owner_name<'handle>> {
+                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
+                            }
+                        }
                     };
 
                     quote!{
-                        dispatch_parent: #dispatch_parent<'handle>,
+                        dispatch_parent: &'handle #dispatch_parent<'handle>,
                     }
                 }
                 // for handles with no parent, it is easier to make a method that
@@ -372,17 +415,36 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                 }
                             }
                     };
+                    return_impl = quote!{
+                        impl<'handle, T> Return<#owner_name<'handle>> for ((#handle_name<'handle>), T) where T: Copy {
+                            fn ret(self) -> #owner_name<'handle> {
+                                #owner_name::new(self.0, self.1)
+                            }
+                        }
+                        impl<'handle, A: Copy, B: Copy> Return<(A, #owner_name<'handle>)> for ((A, #handle_name<'handle>), B) {
+                            fn ret(self) -> (A, #owner_name<'handle>) {
+                                ((self.0).0, #owner_name::new((self.0).1, self.1))
+                            }
+                        }
+                        impl<'handle, T> Return<Vec<#owner_name<'handle>>> for
+                                ((Vec<#handle_name<'handle>>), T) where T: Copy {
+                            fn ret(self) -> Vec<#owner_name<'handle>> {
+                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
+                            }
+                        }
+                    };
                     quote!( phantom: ::std::marker::PhantomData<&'handle ()>, )
                 };
 
                 quote!{
                     pub struct #owner_name<'handle> {
                         handle: #handle_name<'handle>,
-                        #dispatch_parent
+                        #dispatch_member
                     }
                     impl<'handle> #owner_name<'handle> {
                         #new_method
                     }
+                    #return_impl
                 }
             }
         }
@@ -411,6 +473,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
         #raw_module
     }
 }
+
+//fn gnerate_handle_return_code(handle: &Handle)
 
 pub fn generate_aliases_of_types<'a>(types: &'a vk_parse::Types) -> TokenStream {
     let aliases = types

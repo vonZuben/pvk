@@ -9,6 +9,7 @@ use proc_macro2::{TokenStream};
 pub struct GlobalData<'a> {
     pub struct_with_sync_member: HashMap<&'a str, &'a str>,
     pub needs_lifetime: HashMap<&'a str, ()>,
+    pub handles: HashMap<&'a str, ()>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -53,11 +54,11 @@ pub fn generate(registry: &'static vkxml::Registry) {
     let mut global_data = GlobalData {
         struct_with_sync_member: HashMap::new(),
         needs_lifetime: HashMap::new(),
+        handles: HashMap::new(),
     };
 
     let mut structs = HashMap::new();
-    let mut handles = HashMap::new();
-    let mut func_ptrs = HashMap::new();
+    //let mut func_ptrs = HashMap::new();
     let mut unions = HashMap::new();
 
     // ================ FIRST PASS ==========================
@@ -69,7 +70,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
                     match def {
                         // NOTE: we are assuming that Handles are parsed before other definitions
                         DefinitionsElement::Handle(handle) => {
-                            handles.insert(handle.name.as_str(), ());
+                            global_data.handles.insert(handle.name.as_str(), ());
                             global_data.needs_lifetime.insert(handle.name.as_str(), ());
                         }
                         DefinitionsElement::Struct(stct) => {
@@ -83,13 +84,13 @@ pub fn generate(registry: &'static vkxml::Registry) {
                             //}
                         }
                         DefinitionsElement::FuncPtr(fptr) => {
-                            func_ptrs.insert(fptr.name.as_str(), ());
-                            for field in fptr.param.iter() {
-                                if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
-                                    global_data.needs_lifetime.insert(fptr.name.as_str(), ());
-                                    break;
-                                }
-                            }
+                            //func_ptrs.insert(fptr.name.as_str(), ());
+                            //for field in fptr.param.iter() {
+                            //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
+                            //        global_data.needs_lifetime.insert(fptr.name.as_str(), ());
+                            //        break;
+                            //    }
+                            //}
                         }
                         DefinitionsElement::Union(uni) => {
                             unions.insert(uni.name.as_str(), ());
@@ -136,14 +137,14 @@ pub fn generate(registry: &'static vkxml::Registry) {
                             }
                         }
                         DefinitionsElement::FuncPtr(fptr) => {
-                            if global_data.needs_lifetime.get(fptr.name.as_str()).is_none() {
-                                for field in fptr.param.iter() {
-                                    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
-                                        global_data.needs_lifetime.insert(fptr.name.as_str(), ());
-                                        break;
-                                    }
-                                }
-                            }
+                            //if global_data.needs_lifetime.get(fptr.name.as_str()).is_none() {
+                            //    for field in fptr.param.iter() {
+                            //        if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
+                            //            global_data.needs_lifetime.insert(fptr.name.as_str(), ());
+                            //            break;
+                            //        }
+                            //    }
+                            //}
                         }
                         DefinitionsElement::Union(uni) => {
                             if global_data.needs_lifetime.get(uni.name.as_str()).is_none() {

@@ -6,6 +6,8 @@ use vkxml::*;
 use proc_macro2::{TokenStream};
 
 use crate::utils::*;
+use crate::global_data;
+use crate::definitions;
 
 use std::collections::HashMap;
 
@@ -110,7 +112,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
     fn make_param(cmd: &Command) -> TokenStream {
         let name = cmd.name.as_code();
         let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
-        quote!( #name : #pfn_loader_name<'handle> )
+        quote!( #name : #pfn_loader_name )
     }
     let instance_command_params = instance_commands.clone().map(make_param);
     let device_command_params = device_commands.clone().map(make_param);
@@ -130,8 +132,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
         let raw_name = &cmd.name;
 
-        let return_type = make_c_type(&cmd.return_type, FieldContext::Member);
-        let params1 = cmd.param.iter().map(|field|make_c_field(field, FieldContext::FunctionParam));
+        let return_type = make_c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
+        let params1 = cmd.param.iter().map(|field|make_c_field(field, WithLifetime::No, FieldContext::FunctionParam));
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
         // create owner methods
@@ -152,7 +154,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let is_instance_cmd = match command_category(&cmd) {
             CommandCategory::Instance => quote!( $cmd_container.#name.load(
                     |raw_cmd_name| {
-                        unsafe { GetInstanceProcAddr(*$instance, raw_cmd_name.as_ptr()) }
+                        unsafe { GetInstanceProcAddr(*$instance, raw_cmd_name.into()) }
                     })
                 ),
             _ => quote!(),
@@ -161,7 +163,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let is_device_cmd = match command_category(&cmd) {
             CommandCategory::Device => quote!( $cmd_container.#name.load(
                     |raw_cmd_name| {
-                        unsafe { GetDeviceProcAddr(*$device, raw_cmd_name.as_ptr()) }
+                        unsafe { GetDeviceProcAddr(*$device, raw_cmd_name.into()) }
                     })
                 ),
             _ => quote!(),
@@ -169,14 +171,14 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
         quote!{
             #[allow(non_camel_case_types)]
-            pub type #pfn_name<'handle> = extern "system" fn(
+            pub type #pfn_name = extern "system" fn(
                 #( #params1 ),*
             ) -> #return_type;
 
-            struct #pfn_loader_name<'handle> (#pfn_name<'handle>);
-            impl<'handle> #pfn_loader_name<'handle> {
+            struct #pfn_loader_name(#pfn_name);
+            impl #pfn_loader_name {
                 fn new() -> Self {
-                    extern "system" fn default_function<'handle> ( #( #params2 ),* ) -> #return_type {
+                    extern "system" fn default_function( #( #params2 ),* ) -> #return_type {
                         panic!(concat!(#raw_name, " is not loaded. Make sure the correct feature/extension is enabled"))
                     }
                     Self(default_function)
@@ -216,8 +218,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
     let static_command_definitions = static_commands.map(|cmd| {
         let name = cmd.name.as_code();
-        let return_type = make_c_type(&cmd.return_type, FieldContext::Member);
-        let params1 = cmd.param.iter().map(|field|make_c_field(field,FieldContext::FunctionParam));
+        let return_type = make_c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
+        let params1 = cmd.param.iter().map(|field|make_c_field(field, WithLifetime::No, FieldContext::FunctionParam));
         let params2 = params1.clone();
 
         let pfn_name = make_pfn_name(cmd.name.as_str());
@@ -228,7 +230,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let device_macro_name = make_macro_name_device(&cmd.name);
 
         quote!{
-            pub type #pfn_name<'handle> = extern "system" fn(
+            pub type #pfn_name = extern "system" fn(
                 #( #params1 ),*
             ) -> #return_type;
 
@@ -242,7 +244,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             #[link(name = "vulkan")]
             extern "system" {
                 #[link_name = #raw_name]
-                fn #name<'handle> ( #( #params2 ),* ) -> #return_type;
+                fn #name( #( #params2 ),* ) -> #return_type;
             }
         }
     });
@@ -255,10 +257,10 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             Static,
         }
 
-        struct InstanceCommands<'handle> {
+        struct InstanceCommands {
             #( #instance_command_params ),*
         }
-        impl<'handle> InstanceCommands<'handle> {
+        impl InstanceCommands {
             fn new() -> Self {
                 Self {
                     #( #instance_cmd_inits, )*
@@ -266,10 +268,10 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             }
         }
 
-        struct DeviceCommands<'handle> {
+        struct DeviceCommands {
             #( #device_command_params ),*
         }
-        impl<'handle> DeviceCommands<'handle> {
+        impl DeviceCommands {
             fn new() -> Self {
                 Self {
                     #( #device_cmd_inits, )*
@@ -374,7 +376,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             }
 
             quote!{
-                impl<'handle> Drop for #owner_name<'handle> {
+                impl Drop for #owner_name<'_> {
                     fn drop(&mut self) {
                         #method_caller(#method_params);
                     }
@@ -414,7 +416,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     FieldCatagory::Normal | FieldCatagory::NormalSized => true,
                     _ => false,
                 })
-            .map(make_rust_field);
+            .map(|field|make_rust_field(field, WithLifetime::Yes));
 
             let size_vars = cmd.param.iter()
                 .filter_map(|field| {
@@ -465,7 +467,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         }
                         FieldCatagory::ReturnSized => {
                             let size = field.size.as_ref().unwrap().as_code();
-                            Some(quote!( let mut #field_name = Vec::with_capacity(#size.val() as _); ))
+                            Some(quote!( let mut #field_name = Vec::with_capacity(#size.value() as _); ))
                         }
                         _ => None,
                     }
@@ -498,7 +500,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         }
                         FieldCatagory::ReturnSized => {
                             let size = field.size.as_ref().unwrap().as_code();
-                            Some(quote!( unsafe { #field_name.set_len(#size.val() as _) }; ))
+                            Some(quote!( unsafe { #field_name.set_len(#size.value() as _) }; ))
                         }
                         _ => None,
                     }
@@ -547,8 +549,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
 
             quote!{
                 //#multi_return_type
-                impl<'handle> #owner_name<'handle> {
-                    pub fn #method_name(&'handle self, #( #fields_outer ),* ) -> #return_type {
+                impl #owner_name<'_> {
+                    pub fn #method_name<'handle>(&'handle self, #( #fields_outer ),* ) -> #return_type {
                         #( #size_vars )*
                         #size_query
                         #( #return_vars )*
@@ -628,26 +630,31 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
 }
 
 fn make_return_type(field: &Field) -> TokenStream {
+    let basetype = if global_data::GLOBAL_DATA.get().unwrap().handles.get(field.basetype.as_str()).is_some() {
+        definitions::make_handle_owner_name(field.basetype.as_str())
+    }
+    else {
+        field.basetype.as_code()
+    };
+    let lifetime = global_data::lifetime(field.basetype.as_str());
+    let ty = quote!( #basetype #lifetime );
     match field.reference {
         Some(ReferenceType::Pointer) => {
-            let basetype = field.basetype.as_code();
             if field.size.is_some() {
-                quote!( Vec<#basetype> )
+                quote!( Vec<#ty> )
             }
             else {
-                quote!( #basetype )
+                quote!( #ty )
             }
         }
         Some(ReferenceType::PointerToPointer) => {
-            let basetype = field.basetype.as_code();
-            quote!( *mut #basetype )
+            quote!( *mut #ty )
         }
         Some(ReferenceType::PointerToConstPointer) => {
             panic!("error: PointerToConstPointer in return type")
         }
         None => {
-            let basetype = field.basetype.as_code();
-            quote!( #basetype )
+            quote!( #ty )
         }
     }
 }
