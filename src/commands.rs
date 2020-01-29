@@ -40,7 +40,7 @@ pub fn make_macro_name_device(cmd_name: &str) -> TokenStream {
 //    }
 //}
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum CommandCategory {
     Device,
     Instance,
@@ -97,9 +97,9 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         }
     };
 
-    for cmd in commands.elements.iter() {
-        parse_state.command_type_cache.insert(cmd.name.as_str(), command_category(&cmd));
-    }
+    //for cmd in commands.elements.iter() {
+    //    parse_state.command_type_cache.insert(cmd.name.as_str(), command_category(&cmd));
+    //}
 
     let instance_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Instance));
     let device_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Device));

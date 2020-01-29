@@ -3,13 +3,17 @@ use std::collections::HashMap;
 
 use quote::quote;
 
+use crate::commands;
+
 use vkxml::*;
 use proc_macro2::{TokenStream};
 
+#[derive(Default)]
 pub struct GlobalData<'a> {
     pub struct_with_sync_member: HashMap<&'a str, &'a str>,
     pub needs_lifetime: HashMap<&'a str, ()>,
     pub handles: HashMap<&'a str, ()>,
+    pub command_types: HashMap<&'a str, commands::CommandCategory>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -27,6 +31,11 @@ pub fn lifetime(named_type: &str) -> Option<TokenStream> {
     else {
         None
     }
+}
+
+pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
+    *GLOBAL_DATA.get().expect("error: global_data not set)")
+        .command_types.get(cmd_name).expect("error: command, {}, has no command type")
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -51,11 +60,7 @@ macro_rules! filter_varient {
 
 pub fn generate(registry: &'static vkxml::Registry) {
 
-    let mut global_data = GlobalData {
-        struct_with_sync_member: HashMap::new(),
-        needs_lifetime: HashMap::new(),
-        handles: HashMap::new(),
-    };
+    let mut global_data = GlobalData::default();
 
     let mut structs = HashMap::new();
     //let mut func_ptrs = HashMap::new();
@@ -110,6 +115,9 @@ pub fn generate(registry: &'static vkxml::Registry) {
             RegistryElement::Enums(enums) => {
             }
             RegistryElement::Commands(cmds) => {
+                for cmd in cmds.elements.iter() {
+                    global_data.command_types.insert(cmd.name.as_str(), commands::command_category(&cmd));
+                }
             }
             RegistryElement::Features(features) => {
             }

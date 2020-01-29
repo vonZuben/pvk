@@ -7,6 +7,7 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 use crate::commands::*;
+use crate::global_data;
 
 pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate::ParseState<'a>) -> TokenStream {
 
@@ -35,7 +36,6 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         // Remove case for now
 
         let enum_constants_name_cache = &mut parse_state.enum_constants_name_cache;
-        let command_type_cache = &parse_state.command_type_cache;
         let command_alias_cache = &parse_state.command_alias_cache;
         let enum_cache = &mut parse_state.enum_cache;
 
@@ -124,17 +124,17 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 let name = command_alias_cache.get(command_ref.name.as_str())
                     .map_or(command_ref.name.as_str(), |alias| *alias);
                 let name_code = name.as_code();
-                match command_type_cache.get(name) {
-                    Some(CommandCategory::Instance) => {
+                match global_data::command_type(name) {
+                    CommandCategory::Instance => {
                         quote!( inst_cmds.#name_code.load( |raw_cmd_name|
                                                  unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.into()) } ) )
                     }
-                    Some(CommandCategory::Device) => {
+                    CommandCategory::Device => {
                         quote!( dev_cmds.#name_code.load( |raw_cmd_name|
                                                  unsafe { GetDeviceProcAddr(*device, raw_cmd_name.into()) } ) )
                     }
-                    _ => panic!(
-                        format!("error: extension command is either static or wasn't defined previously: {}",
+                    CommandCategory::Static => panic!(
+                        format!("error: extension command is for static command: {}",
                                 command_ref.name.as_str()) ),
                 }
             });
