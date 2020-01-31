@@ -19,14 +19,6 @@ pub fn make_pfn_loader_name(cmd_name: &str) -> TokenStream {
     format!("PFN_Loader_{}", cmd_name).as_code()
 }
 
-pub fn make_macro_name_instance(cmd_name: &str) -> TokenStream {
-    format!("get_instance_cmd_{}", cmd_name).as_code()
-}
-
-pub fn make_macro_name_device(cmd_name: &str) -> TokenStream {
-    format!("get_device_cmd_{}", cmd_name).as_code()
-}
-
 //#[derive(Debug)]
 //struct CommandParts<'a> {
 //    verb: &'a str,
@@ -97,10 +89,6 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         }
     };
 
-    //for cmd in commands.elements.iter() {
-    //    parse_state.command_type_cache.insert(cmd.name.as_str(), command_category(&cmd));
-    //}
-
     let instance_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Instance));
     let device_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Device));
     let instance_and_device_commands = commands.elements.iter().filter(
@@ -142,33 +130,6 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
         let owner_method = make_owner_method(&cmd, parse_state);
 
-        // this is for generating the code to load funtion pointers based on the feature
-        // these generate the code for only the respective device/instance commands
-        //
-        // they are called from the feature generated code to load a funtion pointer
-        // for a command container's member
-        //
-        // e.g. InstanceCommand ($cmd_container) will have a member (#name)
-        // when called from the feature loading code
-        let instance_macro_name = make_macro_name_instance(&cmd.name);
-        let is_instance_cmd = match command_category(&cmd) {
-            CommandCategory::Instance => quote!( $cmd_container.#name.load(
-                    |raw_cmd_name| {
-                        unsafe { GetInstanceProcAddr(*$instance, raw_cmd_name.into()) }
-                    })
-                ),
-            _ => quote!(),
-        };
-        let device_macro_name = make_macro_name_device(&cmd.name);
-        let is_device_cmd = match command_category(&cmd) {
-            CommandCategory::Device => quote!( $cmd_container.#name.load(
-                    |raw_cmd_name| {
-                        unsafe { GetDeviceProcAddr(*$device, raw_cmd_name.into()) }
-                    })
-                ),
-            _ => quote!(),
-        };
-
         quote!{
             #[allow(non_camel_case_types)]
             pub type #pfn_name = extern "system" fn(
@@ -194,25 +155,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                     }
                 }
             }
-            // add owner method
-            //impl owner_name {
-            //    //fn #method_name( #( #method_params ),* ) #
-            //}
             #owner_method
-
-            // define macro that can be used by the feature loader
-            //
-            // the feature loader only know what commands to load
-            // but not what commands a device and instance commands
-            //
-            // these macros can be called on every command, but will only
-            // actually produce code for the correct situation (instance/device)
-            macro_rules! #instance_macro_name{
-                ( $instance:ident, $cmd_container:ident ) => { #is_instance_cmd }
-            }
-            macro_rules! #device_macro_name {
-                ( $device:ident, $cmd_container:ident ) => { #is_device_cmd }
-            }
         }
     });
 
@@ -226,20 +169,10 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
         let raw_name = &cmd.name;
 
-        let instance_macro_name = make_macro_name_instance(&cmd.name);
-        let device_macro_name = make_macro_name_device(&cmd.name);
-
         quote!{
             pub type #pfn_name = extern "system" fn(
                 #( #params1 ),*
             ) -> #return_type;
-
-            macro_rules! #instance_macro_name {
-                ( $instance:ident, $cmd_container:ident ) => { }
-            }
-            macro_rules! #device_macro_name {
-                ( $device:ident, $cmd_container:ident ) => { }
-            }
 
             #[link(name = "vulkan")]
             extern "system" {

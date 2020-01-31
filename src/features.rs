@@ -7,6 +7,7 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 use crate::commands::*;
+use crate::global_data;
 
 pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState) -> TokenStream {
 
@@ -36,15 +37,18 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
             _ => None,
         });
 
-        let instance_macro_names = requiered_command_names.clone().map(|cmd_name| {
-            let instance_macro_name = make_macro_name_instance(&cmd_name);
-            quote!( #instance_macro_name )
-        });
-
-        let device_macro_names = requiered_command_names.clone().map(|cmd_name| {
-            let device_macro_name = make_macro_name_device(&cmd_name);
-            quote!( #device_macro_name )
-        });
+        macro_rules! filter_global_command_type{
+            ( $varient:path ) => {
+                |val| match global_data::command_type(val) {
+                    $varient => true,
+                    _ => false,
+                }
+            }
+        }
+        let instance_commands = requiered_command_names.clone()
+            .filter(filter_global_command_type!(CommandCategory::Instance)).map(StrAsCode::as_code);
+        let device_commands = requiered_command_names.clone()
+            .filter(filter_global_command_type!(CommandCategory::Device)).map(StrAsCode::as_code);
 
         let previous_feature_instance = &parse_state.previous_feature_instance;
         let previous_feature_device = &parse_state.previous_feature_device;
@@ -55,11 +59,13 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
 
             impl Feature for #name {
                 fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands) {
-                    #( #instance_macro_names!(instance, inst_cmds); )*
+                    let loader = |raw_cmd_name: &CStr| unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.into()) };
+                    #( inst_cmds.#instance_commands.load(loader); )*
                     #( #previous_feature_instance )*
                 }
                 fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands) {
-                    #( #device_macro_names!(device, dev_cmds); )*
+                    let loader = |raw_cmd_name: &CStr| unsafe { GetDeviceProcAddr(*device, raw_cmd_name.into()) };
+                    #( dev_cmds.#device_commands.load(loader); )*
                     #( #previous_feature_device )*
                 }
             }

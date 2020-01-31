@@ -38,11 +38,6 @@ pub struct ParseState<'a> {
     previous_feature_instance: Option<TokenStream>,
     previous_feature_device: Option<TokenStream>,
 
-    // register command types when processing commands
-    // then use in features and extension code
-    // NOTE assumes that commands are always parsed first
-    command_type_cache: HashMap<&'a str, commands::CommandCategory>,
-
     enum_constants_name_cache: HashMap<&'a str, ()>,
 
     // <enum_name, Vec<varients>>
@@ -167,8 +162,6 @@ fn main() {
         //command_list,
         previous_feature_instance: None,
         previous_feature_device: None,
-
-        command_type_cache: HashMap::new(),
 
         enum_constants_name_cache: HashMap::new(),
 
