@@ -332,7 +332,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             //}
             quote!()
         }
-        "enumerate" | "get" | "create" => {
+        //"enumerate" | "get" | "create" | "set" | "acquire" | "bind" => {
+        _ => {
             //for category in category_map.iter() {
             //    dbg!(category);
             //}
@@ -349,8 +350,13 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     FieldCatagory::Normal | FieldCatagory::NormalSized => true,
                     _ => false,
                 })
-            .map(|field|make_rust_field(field, WithLifetime::Yes));
+            .map(|field|make_rust_field(field, WithLifetime::Yes, FieldContext::FunctionParam));
 
+            // when a count/size variable affects multiple input arrays, set the size once
+            // based on the first input array, and debug_assert that the other input arrays are the
+            // same size
+            // The HashMap is just incase a function has multiple different count/size variables
+            let mut size_set = HashMap::new();
             let size_vars = cmd.param.iter()
                 .filter_map(|field| {
                     let field_name_raw = field_name(field);
@@ -360,13 +366,27 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             let basetype = field.basetype.as_code();
                             Some(quote!( let #field_name: &mut #basetype = &mut 0; ))
                         }
-                        FieldCatagory::Size => {
+                        FieldCatagory::Size => { // there should be a following NormalSized parameter that will set the size value
                             let basetype = field.basetype.as_code();
+                            size_set.insert(field_name_raw, false);
                             Some(quote!( let #field_name : #basetype; ))
                         }
                         FieldCatagory::NormalSized => {
-                            let size = field.size.as_ref().expect("error: ReturnSized with no size").as_code();
-                            Some(quote!( #size = #field_name.len() as _; ))
+                            let size_raw = field.size.as_ref().expect("error: NormalSized with no size").as_str();
+                            let size = size_raw.as_code();
+                            match field.array.as_ref().unwrap() {
+                                vkxml::ArrayType::Static => None,
+                                vkxml::ArrayType::Dynamic =>
+                                {
+                                    let is_size_set = size_set.get(size_raw).expect("error: NormalSized with no size");
+                                    if !is_size_set {
+                                        size_set.entry(size_raw).and_modify(|x| *x=true);
+                                        Some(quote!( #size = #field_name.len() as _; ))
+                                    } else {
+                                        Some(quote!( debug_assert!(#field_name.len() == #size as _); ))
+                                    }
+                                }
+                            }
                         }
                         _ => None,
                     }
@@ -399,7 +419,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             Some(quote!( let mut #field_name = MaybeUninit::uninit(); ))
                         }
                         FieldCatagory::ReturnSized => {
-                            let size = field.size.as_ref().unwrap().as_code();
+                            let size = field.size.as_ref().unwrap().replace("::", ".").as_code();
                             Some(quote!( let mut #field_name = Vec::with_capacity(#size.value() as _); ))
                         }
                         _ => None,
@@ -432,7 +452,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             Some(quote!( let #field_name = unsafe { #field_name.assume_init() }; ))
                         }
                         FieldCatagory::ReturnSized => {
-                            let size = field.size.as_ref().unwrap().as_code();
+                            let size = field.size.as_ref().unwrap().replace("::", ".").as_code();
                             Some(quote!( unsafe { #field_name.set_len(#size.value() as _) }; ))
                         }
                         _ => None,

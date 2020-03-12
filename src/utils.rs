@@ -181,12 +181,12 @@ pub fn make_rust_array_type(field: &vkxml::Field, with_lifetime: WithLifetime) -
     }
 }
 
-pub fn make_rust_field(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
+pub fn make_rust_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> TokenStream {
     // if there is no name, then "field" is set as a default name
     // maybe change this later
     let name = field.name.as_ref().map_or(quote!(un_named_field), |v| v.as_code());
 
-    let field_type = make_rust_type(field, with_lifetime);
+    let field_type = make_rust_type(field, with_lifetime, context);
 
     quote!{
         #name : #field_type
@@ -194,7 +194,7 @@ pub fn make_rust_field(field: &vkxml::Field, with_lifetime: WithLifetime) -> Tok
 
 }
 
-pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
+pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> TokenStream {
     field.array.as_ref().and_then(|a| match a {
         vkxml::ArrayType::Dynamic => {
             let ty = make_rust_array_type(field, with_lifetime);
@@ -208,7 +208,11 @@ pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Toke
                 .expect("error: field should have size");
             let size = size.as_code();
             let basetype = make_basetype(field, with_lifetime);
-            Some( quote!([#basetype;#size]) )
+            match context {
+                FieldContext::Member => Some( quote!([#basetype;#size]) ),
+                // NOTE: I am assuming that there are never any mut static size arrays
+                FieldContext::FunctionParam => Some( quote!(&[#basetype;#size]) ),
+            }
         },
     })
     .unwrap_or_else(|| {

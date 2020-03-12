@@ -75,7 +75,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             let field_name = raw_name.as_code();
                             let setter_name = case::camel_to_snake(raw_name).as_code();
 
-                            let setter_field = make_rust_field(field, WithLifetime::Yes);
+                            let setter_field = make_rust_field(field, WithLifetime::Yes, FieldContext::Member);
                             let val_setter = quote!(self.#field_name = #field_name.into(););
                             let count_setter = field.size.as_ref()
                                 .map(|size| {
@@ -219,6 +219,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 }
 
 fn get_dispatchable_parent(handle: &Handle, handle_cache: &[&Handle]) -> Option<TokenStream> {
+    match handle.name.as_str() { // exceptions for these handles
+        "VkSwapchainKHR" => return Some( quote!(DeviceOwner) ),
+        "VkDisplayModeKHR" => return Some( quote!(PhysicalDeviceOwner) ),
+        _ => {}
+    }
     handle.parent.as_ref()
         .and_then(|parent_name| {
             find_in_slice(handle_cache, |handle| handle.name.as_str() == parent_name.as_str())
@@ -363,18 +368,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         .next()
                         .expect("there must be at least one elemet in the parent names");
 
-                    // NOTE in order to make code generation easier (especially regarding method
-                    // creation), we make the device a parent to the swapchain types (rather the
-                    // actual parent which is the surface). This is because the surface owner is
-                    // not easily available in the swapchain create methods
-                    let dispatch_parent;
-                    if handle.name.as_str() == "VkSwapchainKHR" {
-                        dispatch_parent = quote!(DeviceOwner);
-                    }
-                    else {
-                        //dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice()).unwrap();
-                        dispatch_parent = make_handle_owner_name(&parent_name);
-                    }
+                    let dispatch_parent = get_dispatchable_parent(&handle, parse_state.handle_cache.as_slice())
+                            .unwrap_or(quote!(DeviceOwner));
 
                     new_method = quote!{
                         fn new(handle: #handle_name<'handle>,
