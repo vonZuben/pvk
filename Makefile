@@ -2,7 +2,11 @@
 default:
 	cargo check
 
-run:
+/tmp/test_build.sh:
+	cp test_build.sh /tmp
+	chmod +x /tmp/test_build.sh
+
+run: /tmp/test_build.sh
 	cargo run > /tmp/tmp.rs
 	rustfmt /tmp/tmp.rs
 	vim /tmp/tmp.rs
