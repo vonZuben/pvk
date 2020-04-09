@@ -156,8 +156,8 @@ impl ToTokens for TypeParams {
 }
 
 pub enum Array {
-    Static,
-    Dynamic(String), // holds actual size
+    Static(String), // holds actual size
+    Dynamic,
     None,
 }
 
@@ -168,8 +168,8 @@ impl Default for Array {
 }
 
 impl Array {
-    fn dynamic(s: impl ToString) -> Self {
-        Array::Dynamic(s.to_string())
+    fn stat(s: impl ToString) -> Self {
+        Array::Static(s.to_string())
     }
 }
 
@@ -197,8 +197,8 @@ impl ToTokens for Ty {
 
         use Array::*;
         match &self.array {
-            Static => quote!([ty]).to_tokens(tokens),
-            Dynamic(size) => {
+            Dynamic => quote!([ty]).to_tokens(tokens),
+            Static(size) => {
                 let size = size.as_code();
                 quote!([#ty;#size]).to_tokens(tokens);
             }
@@ -280,7 +280,7 @@ pub fn test() {
         .lifetime("'r")
         .pointer(Pointer::Const)
         .core("Ref")
-        .array(Array::dynamic("10"))
+        .array(Array::stat("10"))
         .param(Lifetime::from("'a"))
         .param(Ty::new().core("Hello").param(Lifetime::from("'a")));
 
