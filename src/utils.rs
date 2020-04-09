@@ -129,10 +129,12 @@ pub fn c_type(field: &vkxml::Field) -> ty::Ty {
     // raw c types should never need lifetimes
     // or & reference
 
-    let mut ty = Ty::new();
+    let mut ty = ty::Ty::new();
 
     if field.reference.is_some() {
     }
+
+    unimplemented!()
 }
 
 // make rust reference type, but will simply pass the basetype without reference if there is none
@@ -205,7 +207,7 @@ pub fn make_rust_field(field: &vkxml::Field, with_lifetime: WithLifetime, contex
 }
 
 pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> TokenStream {
-    let basetype = make_basetype(field, with_lifetime, external_sync);
+    let basetype = make_basetype(field, with_lifetime);
     field.array.as_ref().and_then(|a| match a {
         vkxml::ArrayType::Dynamic => {
             let ty = make_rust_array_type(field, &basetype);
@@ -226,7 +228,7 @@ pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime, context
         },
     })
     .unwrap_or_else(|| {
-        let ty = make_rust_reference_type(field, with_lifetime);
+        let ty = make_rust_reference_type(field, &basetype);
         quote!( #ty )
     })
 }
