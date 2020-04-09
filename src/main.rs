@@ -16,6 +16,7 @@ mod enumerations;
 mod commands;
 mod features;
 mod extensions;
+mod ty;
 
 //mod take_list;
 
@@ -457,6 +458,16 @@ fn main() {
         }
 
         impl<T> Value for T where T: Copy {}
+
+        // ================ CmdBufRecorder ==============
+        // special type pased into a function/closure argument for special implementation fo
+        // VkBeginCommandBuffer, which has the implmentation of all of the VkCmd commands for
+        // CommandBuffer recording
+
+        pub struct CmdBufRecorder<'a> {
+            handle: CommandBuffer<'a>,
+            dispatch_parent: &'a DeviceOwner<'a>,
+        }
 
         macro_rules! vk_bitflags_wrapped {
             ($name: ident) => {

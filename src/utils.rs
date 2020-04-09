@@ -6,6 +6,7 @@ use quote::ToTokens;
 
 use proc_macro2::{TokenStream};
 
+use crate::ty;
 use crate::global_data;
 
 //pub fn create_entry_code() -> TokenStream {
@@ -123,9 +124,19 @@ pub fn make_c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: F
     })
 }
 
+pub fn c_type(field: &vkxml::Field) -> ty::Ty {
+
+    // raw c types should never need lifetimes
+    // or & reference
+
+    let mut ty = Ty::new();
+
+    if field.reference.is_some() {
+    }
+}
+
 // make rust reference type, but will simply pass the basetype without reference if there is none
-pub fn make_rust_reference_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
-    let basetype = make_basetype(field, with_lifetime);
+pub fn make_rust_reference_type(field: &vkxml::Field, basetype: &TokenStream) -> TokenStream {
     match &field.reference {
         Some(r) => match r {
             vkxml::ReferenceType::Pointer => {
@@ -151,8 +162,7 @@ pub fn make_rust_reference_type(field: &vkxml::Field, with_lifetime: WithLifetim
 }
 
 // make rust array type, should only be called for type that have equivelent c pointer types
-pub fn make_rust_array_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
-    let basetype = make_basetype(field, with_lifetime);
+pub fn make_rust_array_type(field: &vkxml::Field, basetype: &TokenStream) -> TokenStream {
     match &field.reference {
         Some(r) => match r {
             vkxml::ReferenceType::Pointer => {
@@ -195,9 +205,10 @@ pub fn make_rust_field(field: &vkxml::Field, with_lifetime: WithLifetime, contex
 }
 
 pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> TokenStream {
+    let basetype = make_basetype(field, with_lifetime, external_sync);
     field.array.as_ref().and_then(|a| match a {
         vkxml::ArrayType::Dynamic => {
-            let ty = make_rust_array_type(field, with_lifetime);
+            let ty = make_rust_array_type(field, &basetype);
             Some( quote!(#ty) )
         }
         vkxml::ArrayType::Static => {
@@ -207,7 +218,6 @@ pub fn make_rust_type(field: &vkxml::Field, with_lifetime: WithLifetime, context
                 .or_else(|| field.size_enumref.as_ref())
                 .expect("error: field should have size");
             let size = size.as_code();
-            let basetype = make_basetype(field, with_lifetime);
             match context {
                 FieldContext::Member => Some( quote!([#basetype;#size]) ),
                 // NOTE: I am assuming that there are never any mut static size arrays

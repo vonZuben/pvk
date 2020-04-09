@@ -38,6 +38,13 @@ pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
         .command_types.get(cmd_name).expect("error: command, {}, has no command type")
 }
 
+pub fn is_member_externsync(st: &str, member: &str) -> bool {
+    GLOBAL_DATA.get().expect("error: global_data not set")
+        .struct_with_sync_member.get(st)
+        .map(|sync_members| sync_members.contains(member))
+        .unwrap_or(false)
+}
+
 // the first pass of the registry is for collecting information about the kinds of basetypes
 // and other things that can be collected and used to make other decisions in a second pass
 //
