@@ -9,21 +9,21 @@ use std::default::Default;
 use crate::utils::StrAsCode;
 
 pub enum Reference {
-    Yes,
-    No,
+    True,
+    False,
 }
 
 impl Default for Reference {
     fn default() -> Self {
-        Reference::No
+        Reference::False
     }
 }
 
 impl From<bool> for Reference {
     fn from(b: bool) -> Self {
         match b {
-            true => Reference::Yes,
-            false => Reference::No,
+            true => Reference::True,
+            false => Reference::False,
         }
     }
 }
@@ -32,8 +32,8 @@ impl ToTokens for Reference {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use Reference::*;
         match &self {
-            Yes => quote!(&).to_tokens(tokens),
-            No => {}
+            True => quote!(&).to_tokens(tokens),
+            False => {}
         }
     }
 }
@@ -56,21 +56,21 @@ impl ToTokens for Lifetime {
 }
 
 pub enum Mutable {
-    Yes,
-    No,
+    True,
+    False,
 }
 
 impl Default for Mutable {
     fn default() -> Self {
-        Mutable::No
+        Mutable::False
     }
 }
 
 impl From<bool> for Mutable {
     fn from(b: bool) -> Self {
         match b {
-            true => Mutable::Yes,
-            false => Mutable::No,
+            true => Mutable::True,
+            false => Mutable::False,
         }
     }
 }
@@ -79,8 +79,8 @@ impl ToTokens for Mutable {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use Mutable::*;
         match &self {
-            Yes => quote!(mut).to_tokens(tokens),
-            No => {}
+            True => quote!(mut).to_tokens(tokens),
+            False => {}
         }
     }
 }
@@ -238,38 +238,38 @@ impl From<Core> for Ty {
 }
 
 impl Ty {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Default::default()
     }
-    fn reference(mut self, r: impl Into<Reference>) -> Self {
+    pub fn reference(mut self, r: impl Into<Reference>) -> Self {
         self.reference = r.into();
         self
     }
-    fn lifetime(mut self, l: impl Into<Lifetime>) -> Self {
+    pub fn lifetime(mut self, l: impl Into<Lifetime>) -> Self {
         self.lifetime = l.into();
         self
     }
-    fn mutable(mut self, m: impl Into<Mutable>) -> Self {
+    pub fn mutable(mut self, m: impl Into<Mutable>) -> Self {
         self.mutable = m.into();
         self
     }
-    fn pointer(mut self, p: Pointer) -> Self {
+    pub fn pointer(mut self, p: Pointer) -> Self {
         self.pointer = p;
         self
     }
-    fn core(mut self, c: impl Into<Core>) -> Self {
+    pub fn core(mut self, c: impl Into<Core>) -> Self {
         self.core = c.into();
         self
     }
-    fn array(mut self, a: Array) -> Self {
+    pub fn array(mut self, a: Array) -> Self {
         self.array = a;
         self
     }
-    fn param(mut self, p: impl Into<Ty>) -> Self {
+    pub fn param(mut self, p: impl Into<Ty>) -> Self {
         self.type_params.params.push(p.into());
         self
     }
-    fn push_param(&mut self, p: impl Into<Ty>) {
+    pub fn push_param(&mut self, p: impl Into<Ty>) {
         self.type_params.params.push(p.into());
     }
 }
