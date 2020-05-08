@@ -6,8 +6,72 @@ use quote::ToTokens;
 
 use proc_macro2::{TokenStream};
 
-use crate::ty;
+use crate::ty::{self, Ty};
 use crate::global_data;
+
+macro_rules! pipe {
+
+    ( @EXPAND $val:ident => ) => {
+        $val
+    };
+
+    ( @EXPAND $val:ident => STAGE $f:block $($rest:tt)* ) => {
+        {
+            let $val = $f;
+            let $val = pipe!( @EXPAND $val => $($rest)* );
+            $val
+        }
+    };
+
+    ( @EXPAND $val:ident => STAGE $f:expr ; $($rest:tt)* ) => {
+        {
+            let $val = $f;
+            let $val = pipe!( @EXPAND $val => $($rest)* );
+            $val
+        }
+    };
+
+    ( @EXPAND $val:ident => WHEN $cond:expr => $f:block DONE $($rest:tt)* ) => {
+        {
+            if $cond {
+                $f
+            }
+            else {
+                let $val = pipe!( @EXPAND $val => $($rest)* );
+                $val
+            }
+        }
+    };
+
+    ( @EXPAND $val:ident => WHEN $cond:expr => $f:block $($rest:tt)* ) => {
+        {
+            let $val = if $cond {
+                $f
+            }
+            else {
+                $val
+            };
+            let $val = pipe!( @EXPAND $val => $($rest)* );
+            $val
+        }
+    };
+
+    ( $val:ident => $($stages:tt)+ ) => {
+        {
+            let $val = pipe!( @EXPAND $val => $($stages)+ );
+            $val
+        }
+    };
+
+    ( $val:ident = $init:expr => $($stages:tt)+ ) => {
+        {
+            let $val = $init;
+            let $val = pipe!( @EXPAND $val => $($stages)+ );
+            $val
+        }
+    };
+
+}
 
 //pub fn create_entry_code() -> TokenStream {
 //
@@ -124,17 +188,66 @@ pub fn make_c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: F
     })
 }
 
-pub fn c_type(field: &vkxml::Field) -> ty::Ty {
+macro_rules! is_variant {
+    ( $variant:pat, $other:expr ) => {
+        {
+            match $other {
+                $variant => true,
+                _ => false,
+            }
+        }
+    }
+}
+
+pub fn c_type(field: &vkxml::Field) -> Ty {
 
     // raw c types should never need lifetimes
     // or & reference
 
-    let mut ty = ty::Ty::new();
-
-    if field.reference.is_some() {
+    pipe!{ ty = Ty::new() =>
+        STAGE ty.core(field.basetype.as_str());
+        WHEN is_variant!(Some(vkxml::ArrayType::Static), field.array) =>
+        {
+            let size = field
+                .size
+                .as_ref()
+                .or_else(|| field.size_enumref.as_ref())
+                .expect("error: field should have size");
+            ty.array(ty::Array::stat(size))
+        } DONE
+        STAGE {
+            match &field.reference {
+                Some(r) => match r {
+                    vkxml::ReferenceType::Pointer => {
+                        if field.is_const {
+                            ty.pointer(ty::Pointer::Const)
+                        } else {
+                            ty.pointer(ty::Pointer::Mut)
+                        }
+                    }
+                    vkxml::ReferenceType::PointerToPointer => ty.pointer(ty::Pointer::Mut).pointer(ty::Pointer::Mut),
+                    vkxml::ReferenceType::PointerToConstPointer => {
+                        if field.is_const {
+                            ty.pointer(ty::Pointer::Const)
+                                .pointer(ty::Pointer::Const)
+                        } else {
+                            ty.pointer(ty::Pointer::Mut)
+                                .pointer(ty::Pointer::Const)
+                        }
+                    }
+                },
+                None => ty,
+            }
+        }
+        WHEN is_variant!(Some(vkxml::ArrayType::Dynamic), field.array) =>
+        {
+            Ty::new().core("Array").param(ty)
+        } DONE
+        WHEN field.reference.is_some() =>
+        {
+            Ty::new().core("Ref").param(ty)
+        } DONE
     }
-
-    unimplemented!()
 }
 
 // make rust reference type, but will simply pass the basetype without reference if there is none

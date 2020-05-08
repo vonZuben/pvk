@@ -168,7 +168,7 @@ impl Default for Array {
 }
 
 impl Array {
-    fn stat(s: impl ToString) -> Self {
+    pub fn stat(s: impl ToString) -> Self {
         Array::Static(s.to_string())
     }
 }
@@ -178,7 +178,7 @@ pub struct Ty {
     pub reference: Reference,
     pub lifetime: Lifetime,
     pub mutable: Mutable,
-    pub pointer: Pointer,
+    pub pointer: Vec<Pointer>,
     pub core: Core,
     pub type_params: TypeParams,
     pub array: Array,
@@ -193,7 +193,7 @@ impl ToTokens for Ty {
         let core = &self.core;
         let params = &self.type_params;
 
-        let ty = quote!( #reference #lifetime #mutable #pointer #core #params );
+        let ty = quote!( #reference #lifetime #mutable #(#pointer)* #core #params );
 
         use Array::*;
         match &self.array {
@@ -254,7 +254,7 @@ impl Ty {
         self
     }
     pub fn pointer(mut self, p: Pointer) -> Self {
-        self.pointer = p;
+        self.pointer.push(p);
         self
     }
     pub fn core(mut self, c: impl Into<Core>) -> Self {
