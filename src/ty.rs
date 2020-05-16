@@ -108,26 +108,82 @@ impl ToTokens for Pointer {
     }
 }
 
+pub struct Basetype {
+    pub name: String,
+    pub params: Option<TypeParams>,
+}
+
+impl Basetype {
+    fn push_param(&mut self, p: impl Into<Ty>) {
+        match self.params {
+            None => {
+                let mut tp = TypeParams::default();
+                tp.push(p);
+                self.params = Some(tp);
+            }
+            Some(ref mut tp) => tp.push(p),
+        }
+    }
+}
+
+impl Default for Basetype {
+    fn default() -> Self {
+        "".into()
+    }
+}
+
+impl<S: ToString> From<S> for Basetype {
+    fn from(s: S) -> Self {
+        Basetype {
+            name: s.to_string(),
+            params: None,
+        }
+    }
+}
+
+impl ToTokens for Basetype {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let name = self.name.as_code();
+        let params = &self.params;
+        quote!( #name #params ).to_tokens(tokens);
+    }
+}
+
 pub enum Core {
-    Ty(Box<Ty>),
-    Basetype(String),
+    Basetype(Basetype),
+    Array(Box<Array>),
 }
 
 impl Default for Core {
     fn default() -> Self {
-        Core::Basetype(String::new())
+        Core::Basetype(Basetype::default())
     }
 }
 
-impl<S: ToString> From<S> for Core {
-    fn from(s: S) -> Self {
-        Core::Basetype(s.to_string())
+impl Core {
+    pub fn push_param(&mut self, p: impl Into<Ty>) {
+        match self {
+            Core::Basetype(basetype) => basetype.push_param(p),
+            _ => panic!("can only push params when core is Basetype"),
+        }
+    }
+    pub fn basetype(b: impl Into<Basetype>) -> Self {
+        Core::Basetype(b.into())
+    }
+    pub fn array(a: impl Into<Array>) -> Self {
+        Core::Array(Box::new(a.into()))
     }
 }
 
-impl From<Ty> for Core {
-    fn from(ty: Ty) -> Self {
-        Core::Ty(Box::new(ty))
+impl From<Basetype> for Core {
+    fn from(basetype: Basetype) -> Self {
+        Core::Basetype(basetype)
+    }
+}
+
+impl From<Array> for Core {
+    fn from(array: Array) -> Self {
+        Core::Array( Box::new(array) )
     }
 }
 
@@ -135,53 +191,85 @@ impl ToTokens for Core {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use Core::*;
         match &self {
-            Ty(ty) => ty.to_tokens(tokens),
-            Basetype(name) => name.as_code().to_tokens(tokens),
+            Basetype(basetype) => basetype.to_tokens(tokens),
+            Array(array) => array.to_tokens(tokens),
         }
     }
 }
 
 #[derive(Default)]
-pub struct TypeParams {
-    params: Vec<Ty>,
+pub struct TypeParams(Vec<Ty>);
+
+impl TypeParams {
+    pub fn push(&mut self, p: impl Into<Ty>) {
+        self.0.push(p.into());
+    }
 }
 
 impl ToTokens for TypeParams {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let p = self.params.iter();
-        if !self.params.is_empty() {
+        let p = self.0.iter();
+        if !self.0.is_empty() {
             quote!( < #(#p),* > ).to_tokens(tokens)
         }
     }
 }
 
-pub enum Array {
-    Static(String), // holds actual size
-    Dynamic,
-    None,
+pub struct Array {
+    ty: Ty,
+    array_type: ArrayType,
 }
 
-impl Default for Array {
-    fn default() -> Self {
-        Array::None
+impl ToTokens for Array {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let ty = &self.ty;
+        match &self.array_type {
+            ArrayType::Slice => quote!( [#ty] ).to_tokens(tokens),
+            ArrayType::Array(size) => {
+                let size = size.as_code();
+                quote!( [#ty;#size] ).to_tokens(tokens)
+            }
+        }
     }
 }
 
 impl Array {
-    pub fn stat(s: impl ToString) -> Self {
-        Array::Static(s.to_string())
+    fn size(mut self, array_type: ArrayType) -> Self {
+        self.array_type = array_type;
+        self
+    }
+}
+
+impl From<Ty> for Array {
+    fn from(ty: Ty) -> Self {
+        Array {
+            ty,
+            array_type: ArrayType::Slice,
+        }
+    }
+}
+
+pub enum ArrayType {
+    Array(String), // storeing size as string for code gen reasons
+    Slice,
+}
+
+impl ArrayType {
+    pub fn array(size: impl ToString) -> Self {
+        ArrayType::Array(size.to_string())
+    }
+    pub fn slice() -> Self {
+        ArrayType::Slice
     }
 }
 
 #[derive(Default)]
 pub struct Ty {
-    pub reference: Reference,
-    pub lifetime: Lifetime,
-    pub mutable: Mutable,
-    pub pointer: Vec<Pointer>,
-    pub core: Core,
-    pub type_params: TypeParams,
-    pub array: Array,
+    reference: Reference,
+    lifetime: Lifetime,
+    mutable: Mutable,
+    pointer: Vec<Pointer>,
+    core: Core,
 }
 
 impl ToTokens for Ty {
@@ -191,19 +279,8 @@ impl ToTokens for Ty {
         let mutable = &self.mutable;
         let pointer = &self.pointer;
         let core = &self.core;
-        let params = &self.type_params;
 
-        let ty = quote!( #reference #lifetime #mutable #(#pointer)* #core #params );
-
-        use Array::*;
-        match &self.array {
-            Dynamic => quote!([ty]).to_tokens(tokens),
-            Static(size) => {
-                let size = size.as_code();
-                quote!([#ty;#size]).to_tokens(tokens);
-            }
-            None => ty.to_tokens(tokens),
-        }
+        quote!( #reference #lifetime #mutable #(#pointer)* #core ).to_tokens(tokens);
     }
 }
 
@@ -233,7 +310,9 @@ impl From<Pointer> for Ty {
 
 impl From<Core> for Ty {
     fn from(c: Core) -> Self {
-        Ty::new().core(c)
+        let mut ty = Ty::new();
+        ty.core = c;
+        ty
     }
 }
 
@@ -257,20 +336,47 @@ impl Ty {
         self.pointer.push(p);
         self
     }
-    pub fn core(mut self, c: impl Into<Core>) -> Self {
-        self.core = c.into();
-        self
+    pub fn basetype(mut self, c: impl Into<Basetype>) -> Self {
+        self.core(c.into())
     }
-    pub fn array(mut self, a: Array) -> Self {
-        self.array = a;
-        self
+    pub fn array(mut self, ty: Ty, array_type: ArrayType) -> Self {
+        self.core( Array{ ty, array_type } )
+    }
+    pub fn to_array(self, array_type: ArrayType) -> Self {
+        Ty::new().array(self, array_type)
     }
     pub fn param(mut self, p: impl Into<Ty>) -> Self {
-        self.type_params.params.push(p.into());
+        self.core.push_param(p);
         self
     }
     pub fn push_param(&mut self, p: impl Into<Ty>) {
-        self.type_params.params.push(p.into());
+        self.core.push_param(p);
+    }
+    pub fn core(mut self, core: impl Into<Core>) -> Self {
+        self.core = core.into();
+        self
+    }
+}
+
+pub struct Field {
+    pub name: String,
+    pub ty: Ty,
+}
+
+impl Field {
+    pub fn new(name: impl ToString, ty: impl Into<Ty>) -> Self {
+        Field {
+            name: name.to_string(),
+            ty: ty.into(),
+        }
+    }
+}
+
+impl ToTokens for Field {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let name = self.name.as_code();
+        let ty = &self.ty;
+        quote!( #name : #ty ).to_tokens(tokens);
     }
 }
 
@@ -279,14 +385,11 @@ pub fn test() {
         .reference(true)
         .lifetime("'r")
         .pointer(Pointer::Const)
-        .core("Ref")
-        .array(Array::stat("10"))
+        .basetype("Ref")
         .param(Lifetime::from("'a"))
-        .param(Ty::new().core("Hello").param(Lifetime::from("'a")));
+        .param(Ty::new().basetype("Hello").param(Lifetime::from("'a")))
+        .to_array(ArrayType::Slice)
+        .reference(true);
 
-    let ty3 = Ty::new()
-        .reference(true)
-        .core(ty2);
-
-    println!("{}", quote!(#ty3));
+    println!("{}", quote!(#ty2));
 }

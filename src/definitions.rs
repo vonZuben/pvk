@@ -51,7 +51,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 let name = stct.name.as_code();
 
                 let params = stct.elements.iter().filter_map( |elem| match elem {
-                    StructElement::Member(field) => Some(make_c_field(field, WithLifetime::Yes, FieldContext::Member)),
+                    StructElement::Member(field) => Some(c_field(field, WithLifetime::Yes, FieldContext::Member)),
                     StructElement::Notation(_) => None,
                 });
 
@@ -75,7 +75,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             let field_name = raw_name.as_code();
                             let setter_name = case::camel_to_snake(raw_name).as_code();
 
-                            let setter_field = make_rust_field(field, WithLifetime::Yes, FieldContext::Member);
+                            let setter_field = r_field(field, WithLifetime::Yes, FieldContext::Member);
                             let val_setter = quote!(self.#field_name = #field_name.into(););
                             let count_setter = field.size.as_ref()
                                 .map(|size| {
@@ -151,7 +151,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             },
             DefinitionsElement::Union(uni) => {
                 let name = uni.name.as_code();
-                let params = uni.elements.iter().map(|field|make_c_field(field, WithLifetime::Yes, FieldContext::Member));
+                let params = uni.elements.iter().map(|field|c_field(field, WithLifetime::Yes, FieldContext::Member));
 
                 let lifetime = global_data::lifetime(uni.name.as_str());
 
@@ -196,8 +196,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             // TODO funtion pointers
             DefinitionsElement::FuncPtr(fptr) => {
                 let name = fptr.name.as_code();
-                let return_type = make_c_type(&fptr.return_type, WithLifetime::No, FieldContext::Member);
-                let params = fptr.param.iter().map(|field|make_c_field(field, WithLifetime::No, FieldContext::FunctionParam));
+                let return_type = c_type(&fptr.return_type, WithLifetime::No, FieldContext::Member);
+                let params = fptr.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
 
                 //let lifetime = global_data::lifetime(fptr.name.as_str());
 

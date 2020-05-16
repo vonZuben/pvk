@@ -121,8 +121,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
         let raw_name = &cmd.name;
 
-        let return_type = make_c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
-        let params1 = cmd.param.iter().map(|field|make_c_field(field, WithLifetime::No, FieldContext::FunctionParam));
+        let return_type = c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
+        let params1 = cmd.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
         // create owner methods
@@ -162,8 +162,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
     let static_command_definitions = static_commands.map(|cmd| {
         let name = cmd.name.as_code();
-        let return_type = make_c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
-        let params1 = cmd.param.iter().map(|field|make_c_field(field, WithLifetime::No, FieldContext::FunctionParam));
+        let return_type = c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
+        let params1 = cmd.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
         let params2 = params1.clone();
 
         let pfn_name = make_pfn_name(cmd.name.as_str());
@@ -398,7 +398,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     FieldCatagory::Normal | FieldCatagory::NormalSized => true,
                     _ => false,
                 })
-            .map(|field|make_rust_field(field, WithLifetime::Yes, FieldContext::FunctionParam));
+            .map(|field|r_field(field, WithLifetime::Yes, FieldContext::FunctionParam));
 
             // when a count/size variable affects multiple input arrays, set the size once
             // based on the first input array, and debug_assert that the other input arrays are the

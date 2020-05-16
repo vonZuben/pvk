@@ -33,6 +33,16 @@ pub fn lifetime(named_type: &str) -> Option<TokenStream> {
     }
 }
 
+pub fn uses_lifetime(named_type: &str) -> bool {
+    if GLOBAL_DATA.get().expect("error: global_data not set")
+        .needs_lifetime.get(named_type).is_some() {
+            true
+    }
+    else {
+        false
+    }
+}
+
 pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
     *GLOBAL_DATA.get().expect("error: global_data not set)")
         .command_types.get(cmd_name).expect("error: command, {}, has no command type")
