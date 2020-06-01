@@ -20,12 +20,15 @@ pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
 
 pub static REGISTRY: OnceCell<Registry> = OnceCell::new();
 
+fn expect_gd() -> &'static GlobalData<'static> {
+    GLOBAL_DATA.get().expect("error: GLOBAL_DATA not set")
+}
+
 
 type Identifier<'a> = &'a str;
 
 pub fn lifetime(named_type: &str) -> Option<TokenStream> {
-    if GLOBAL_DATA.get().expect("error: global_data not set")
-        .needs_lifetime.get(named_type).is_some() {
+    if expect_gd().needs_lifetime.get(named_type).is_some() {
         Some( quote!(<'handle>) )
     }
     else {
@@ -34,8 +37,7 @@ pub fn lifetime(named_type: &str) -> Option<TokenStream> {
 }
 
 pub fn uses_lifetime(named_type: &str) -> bool {
-    if GLOBAL_DATA.get().expect("error: global_data not set")
-        .needs_lifetime.get(named_type).is_some() {
+    if expect_gd().needs_lifetime.get(named_type).is_some() {
             true
     }
     else {
@@ -44,12 +46,11 @@ pub fn uses_lifetime(named_type: &str) -> bool {
 }
 
 pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
-    *GLOBAL_DATA.get().expect("error: global_data not set)")
-        .command_types.get(cmd_name).expect("error: command, {}, has no command type")
+    *expect_gd().command_types.get(cmd_name).expect("error: command, {}, has no command type")
 }
 
 pub fn is_member_externsync(st: &str, member: &str) -> bool {
-    GLOBAL_DATA.get().expect("error: global_data not set")
+    expect_gd()
         .struct_with_sync_member.get(st)
         .map(|sync_members| sync_members.contains(member))
         .unwrap_or(false)
