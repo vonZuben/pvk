@@ -92,6 +92,14 @@ pub fn field_name_expected(field: &vkxml::Field) -> &str {
     field.name.as_ref().expect("error: field does not have name when expected").as_str()
 }
 
+pub fn make_handle_owner_name(name: &str) -> TokenStream {
+    format!("{}Owner", name).as_code()
+}
+
+pub fn make_handle_owner_name_string(name: &str) -> String {
+    format!("{}Owner", name)
+}
+
 fn make_basetype(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
     let basetype = field.basetype.as_code();
 
@@ -215,7 +223,7 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
             let ty = ty.to_array(ArrayType::array(size));
             match context {
                 FieldContext::Member => ty,
-                FieldContext::FunctionParam => ty.reference(true),
+                FieldContext::FunctionParam => ty.reference(true), // assuming never mut for static size arrays
             }
         }
         DONE WHEN is_variant!(Some(vkxml::ArrayType::Dynamic), field.array) =>
@@ -246,6 +254,7 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                                 .reference(true)
                                 .param(ty.pointer(Pointer::Const))
                             //quote!(&ArrayArray<*const #basetype>)
+                            // TODO find a better type for this
                         } else {
                             unimplemented!("unimplemented rust array mut PointerToConstPointer")
                         }

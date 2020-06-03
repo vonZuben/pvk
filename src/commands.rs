@@ -126,8 +126,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
         // create owner methods
-        let owner_name = crate::definitions
-            ::make_handle_owner_name(cmd.param[0].basetype.as_str());
+        let owner_name = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
 
         let owner_method = make_owner_method(&cmd, parse_state);
 
@@ -260,8 +259,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
         quote!( CmdBufRecorder ) // this should be for all vkCmd... commands
     }
     else {
-        crate::definitions
-            ::make_handle_owner_name(cmd.param[0].basetype.as_str())
+        utils::make_handle_owner_name(cmd.param[0].basetype.as_str())
     };
 
     let method_name_raw = case::camel_to_snake(cmd.name.as_str());
@@ -297,8 +295,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             match cmd.name.as_str() {
                 "vkDestroyInstance" | "vkDestroyDevice" => {
                     // for instancce and device, we are destroying the dispatchalbe type
-                    let type_to_destroy = crate::definitions
-                        ::make_handle_owner_name(cmd.param[0].basetype.as_str());
+                    let type_to_destroy = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
                     method_params = quote!( self.handle, None.into() );
                     method_caller = quote!( self.commands.#name.0 );
@@ -306,8 +303,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 _ => {
                     // for everything else, the second parameter should be the type we are
                     // destroying
-                    let type_to_destroy = crate::definitions
-                        ::make_handle_owner_name(cmd.param[1].basetype.as_str());
+                    let type_to_destroy = utils::make_handle_owner_name(cmd.param[1].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
                     method_params = quote!( self.dispatch_parent.handle, self.handle, None.into() );
                     method_caller = quote!( self.dispatch_parent.commands.#name.0 );
@@ -632,7 +628,7 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
 
 fn make_return_type(field: &Field) -> TokenStream {
     let basetype = if global_data::GLOBAL_DATA.get().unwrap().handles.get(field.basetype.as_str()).is_some() {
-        definitions::make_handle_owner_name(field.basetype.as_str())
+        utils::make_handle_owner_name(field.basetype.as_str())
     }
     else {
         field.basetype.as_code()

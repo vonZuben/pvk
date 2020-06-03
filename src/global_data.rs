@@ -56,6 +56,10 @@ pub fn is_member_externsync(st: &str, member: &str) -> bool {
         .unwrap_or(false)
 }
 
+pub fn is_handle(field_type: &str) -> bool {
+    expect_gd().handles.get(field_type).is_some()
+}
+
 // the first pass of the registry is for collecting information about the kinds of basetypes
 // and other things that can be collected and used to make other decisions in a second pass
 //

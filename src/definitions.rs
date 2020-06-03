@@ -10,10 +10,6 @@ use crate::ParseState;
 
 use crate::global_data;
 
-pub fn make_handle_owner_name(name: &str) -> TokenStream {
-    format!("{}Owner", name).as_code()
-}
-
 pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut ParseState<'a>) -> TokenStream {
 
     let q = definitions.elements.iter().map(|def| {
