@@ -183,8 +183,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         handle: raw::#handle_name,
                         _parent_ref: PhantomData<&'a #owner_name<'a>>,
                     }
-                    impl<'a, D: std::ops::Deref<Target=#owner_name<'a>>> From<D> for #handle_name<'a> {
-                        fn from(owner: D) -> Self {
+                    impl<'a> From<&#owner_name<'a>> for #handle_name<'a> {
+                        fn from(owner: &#owner_name<'a>) -> Self {
                             owner.handle
                         }
                     }
