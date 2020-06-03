@@ -100,18 +100,6 @@ pub fn make_handle_owner_name_string(name: &str) -> String {
     format!("{}Owner", name)
 }
 
-fn make_basetype(field: &vkxml::Field, with_lifetime: WithLifetime) -> TokenStream {
-    let basetype = field.basetype.as_code();
-
-    use WithLifetime::*;
-    let lifetime = match with_lifetime {
-        Yes => Some( global_data::lifetime(field.basetype.as_str()) ),
-        No => None,
-    };
-
-    quote!( #basetype #lifetime )
-}
-
 pub enum FieldContext {
     Member,
     FunctionParam,
