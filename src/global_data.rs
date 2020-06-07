@@ -4,13 +4,16 @@ use std::collections::HashMap;
 use quote::quote;
 
 use crate::commands;
+use crate::utils;
 
 use vkxml::*;
 use proc_macro2::{TokenStream};
 
 #[derive(Default)]
 pub struct GlobalData<'a> {
-    pub struct_with_sync_member: HashMap<&'a str, &'a str>,
+    // extern_sync_params holds a command/struct_name and a list of params in a string that are
+    // externally synced
+    pub extern_sync_params: HashMap<&'a str, String>,
     pub needs_lifetime: HashMap<&'a str, ()>,
     pub handles: HashMap<&'a str, ()>,
     pub command_types: HashMap<&'a str, commands::CommandCategory>,
@@ -49,10 +52,12 @@ pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
     *expect_gd().command_types.get(cmd_name).expect("error: command, {}, has no command type")
 }
 
-pub fn is_member_externsync(st: &str, member: &str) -> bool {
+// context: struct or command name
+// member: struct or command param
+pub fn is_externsync(context: &str, param: &str) -> bool {
     expect_gd()
-        .struct_with_sync_member.get(st)
-        .map(|sync_members| sync_members.contains(member))
+        .extern_sync_params.get(context)
+        .map(|sync_params| sync_params.contains(param))
         .unwrap_or(false)
 }
 
@@ -165,6 +170,18 @@ pub fn generate(registry: &'static vkxml::Registry) {
                                     }
                                 }
                             }
+
+                            // check if struct identifies param as extern sync
+                            for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member)) {
+                                if let Some(synced_thing) = field.sync.as_ref() {
+                                    assert_eq!(synced_thing, "true");
+                                    let synced_thing = utils::field_name_expected(&field);
+                                    global_data.extern_sync_params
+                                        .entry(stct.name.as_str())
+                                        .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
+                                        .or_insert(synced_thing.to_string());
+                                }
+                            }
                         }
                         DefinitionsElement::FuncPtr(fptr) => {
                             //if global_data.needs_lifetime.get(fptr.name.as_str()).is_none() {
@@ -201,8 +218,23 @@ pub fn generate(registry: &'static vkxml::Registry) {
                             // now, if a command takes a struct, and the struct has a parameter
                             // that should be externally synced, then we keep track of it for use
                             // later
-                            global_data.struct_with_sync_member
-                                .insert(param.basetype.as_str(), param.sync.as_ref().unwrap());
+
+                            let synced_thing = param.sync.as_ref().expect("already confimed sync is_some");
+
+                            global_data.extern_sync_params
+                                .entry(param.basetype.as_str())
+                                .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
+                                .or_insert(synced_thing.to_string());
+                        }
+                        else if param.sync.as_ref().map(|sync_kind|sync_kind=="true").unwrap_or(false) {
+                            // otherwise, we check for normal extern sync param
+
+                            let synced_thing = utils::field_name_expected(&param);
+
+                            global_data.extern_sync_params
+                                .entry(cmd.name.as_str())
+                                .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
+                                .or_insert(synced_thing.to_string());
                         }
                     }
                 }
