@@ -189,17 +189,17 @@ pub fn c_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: Field
     Field::new(field_name_expected(field), c_type(field, with_lifetime, context))
 }
 
-pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Ty {
+pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Ty {
     pipe!{ ty = Ty::new() =>
         STAGE ty.basetype(field.basetype.as_str());
-        WHEN is_variant!(WithLifetime::Yes, with_lifetime) =>
+        WHEN is_variant!(WithLifetime::Yes, with_lifetime) && global_data::uses_lifetime(field.basetype.as_str()) =>
         {
-            if global_data::uses_lifetime(field.basetype.as_str()) {
-                ty.param(Lifetime::from("'handle"))
-            }
-            else {
-                ty
-            }
+            ty.param(Lifetime::from("'handle"))
+        }
+        WHEN global_data::is_externsync(container, field_name_expected(field)) =>
+        {
+            Ty::new().basetype("MutBorrow")
+                .param(ty)
         }
         DONE WHEN is_variant!(Some(vkxml::ArrayType::Static), field.array) =>
         {
@@ -279,8 +279,8 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
     }
 }
 
-pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Field {
-    Field::new(field_name_expected(field), r_type(field, with_lifetime, context))
+pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Field {
+    Field::new(field_name_expected(field), r_type(field, with_lifetime, context, container))
 }
 
 pub fn ctype_to_rtype(type_name: &str) -> String {

@@ -71,7 +71,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             let field_name = raw_name.as_code();
                             let setter_name = case::camel_to_snake(raw_name).as_code();
 
-                            let setter_field = r_field(field, WithLifetime::Yes, FieldContext::Member);
+                            let setter_field = r_field(field, WithLifetime::Yes, FieldContext::Member, stct.name.as_str());
                             let val_setter = quote!(self.#field_name = #field_name.into(););
                             let count_setter = field.size.as_ref()
                                 .map(|size| {
@@ -364,6 +364,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
                     impl #owner_name<'_> {
                         #new_method
+                        fn handle<'owner>(&'owner self) -> #handle_name<'owner> {
+                            self.handle
+                        }
+                        fn mut_handle<'owner>(&'owner mut self) -> MutBorrow<#handle_name<'owner>> {
+                            MutBorrow(self.handle)
+                        }
                     }
                     #return_impl
                 }
@@ -450,6 +456,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
                     impl #owner_name<'_> {
                         #new_method
+                        fn handle<'owner>(&'owner self) -> #handle_name<'owner> {
+                            self.handle
+                        }
+                        fn mut_handle<'owner>(&'owner mut self) -> MutBorrow<#handle_name<'owner>> {
+                            MutBorrow(self.handle)
+                        }
                     }
                     #return_impl
                 }

@@ -394,7 +394,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     FieldCatagory::Normal | FieldCatagory::NormalSized => true,
                     _ => false,
                 })
-            .map(|field|r_field(field, WithLifetime::Yes, FieldContext::FunctionParam));
+            .map(|field|r_field(field, WithLifetime::Yes, FieldContext::FunctionParam, cmd.name.as_str()));
 
             // when a count/size variable affects multiple input arrays, set the size once
             // based on the first input array, and debug_assert that the other input arrays are the

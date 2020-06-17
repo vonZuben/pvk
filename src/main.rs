@@ -311,6 +311,20 @@ fn main() {
             }
         }
 
+        // ============= MutBorrow<T> ================
+        // This type will be used with handles to represent whent he handle mutably borrows the
+        // owner. We need to make sure is is only ever created with a mutable borrow. It will only
+        // be used internally.
+        #[derive(Debug, Clone, Copy)]
+        #[repr(transparent)]
+        pub struct MutBorrow<T>(T);
+
+        impl<T> MutBorrow<T> {
+            fn into(self) -> T {
+                self.0
+            }
+        }
+
         // ============= Array<T> ===============
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for an array of T
@@ -358,6 +372,15 @@ fn main() {
         impl From<&CStr> for Array<*const c_char> {
             fn from(s: &CStr) -> Self {
                 Array(s.as_ptr())
+            }
+        }
+
+        impl<T> From<&[MutBorrow<T>]> for Array<*const T> {
+            fn from(a: &[MutBorrow<T>]) -> Self {
+                // this is maybe a bit too unsafe.
+                // but the types we are dealing are transparent
+                // so it should be reliable
+                unsafe { std::mem::transmute(a.as_ptr()) }
             }
         }
 
