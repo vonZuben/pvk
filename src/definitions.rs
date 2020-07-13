@@ -172,6 +172,23 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                 let owner_name = make_handle_owner_name(handle.name.as_str());
 
+                let send_or_sync_impl = {
+                    if global_data::is_handle_not_sync_and_send(handle.name.as_str()) {
+                        None
+                    }
+                    else if global_data::is_handle_not_sync(handle.name.as_str()) {
+                        Some( quote!{
+                            unsafe impl Send for #handle_name<'_> {}
+                        })
+                    }
+                    else { // handle should be send and sync by default
+                        Some( quote!{
+                            unsafe impl Send for #handle_name<'_> {}
+                            unsafe impl Sync for #handle_name<'_> {}
+                        })
+                    }
+                };
+
                 quote!{
                     #[derive(Debug, Clone, Copy)]
                     #[repr(transparent)]
@@ -182,7 +199,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         // which is helpful especiially when creating new handleOwners so that
                         // Memory does not outlive Device for example
                         _parent_ref: PhantomData<&'owner #owner_name<'owner>>,
+                        // we will manually implemet Send and Sync for all handles which can be
+                        // send or sync
+                        _manual_send_sync: PhantomData<*const ()>,
                     }
+                    #send_or_sync_impl
                     impl<'a> From<&#owner_name<'a>> for #handle_name<'a> {
                         fn from(owner: &#owner_name<'a>) -> Self {
                             owner.handle

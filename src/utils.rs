@@ -196,7 +196,7 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
         {
             ty.param(Lifetime::from("'handle"))
         }
-        WHEN global_data::is_externsync(container, field_name_expected(field)) =>
+        WHEN global_data::is_externsync(container, field) =>
         {
             Ty::new().basetype("MutBorrow")
                 .param(ty)

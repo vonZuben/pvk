@@ -9,6 +9,9 @@ use crate::utils;
 use vkxml::*;
 use proc_macro2::{TokenStream};
 
+// TODO: GlobalData data members don't need to be public
+// want to encourage use of the helper methods
+
 #[derive(Default)]
 pub struct GlobalData<'a> {
     // extern_sync_params holds a command/struct_name and a list of params in a string that are
@@ -17,6 +20,8 @@ pub struct GlobalData<'a> {
     pub needs_lifetime: HashMap<&'a str, ()>,
     pub handles: HashMap<&'a str, ()>,
     pub command_types: HashMap<&'a str, commands::CommandCategory>,
+    pub not_sync_handles: HashMap<&'a str, ()>,
+    pub not_sync_and_send_handles: HashMap<&'a str, ()>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -53,16 +58,29 @@ pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
 }
 
 // context: struct or command name
-// member: struct or command param
-pub fn is_externsync(context: &str, param: &str) -> bool {
-    expect_gd()
-        .extern_sync_params.get(context)
-        .map(|sync_params| sync_params.contains(param))
-        .unwrap_or(false)
+// field: struct or command member field
+pub fn is_externsync(context: &str, field: &Field) -> bool {
+    if is_handle_not_sync(field.basetype.as_str()) {
+        false
+    }
+    else {
+        expect_gd()
+            .extern_sync_params.get(context)
+            .map(|sync_params| sync_params.contains(utils::field_name_expected(field)))
+            .unwrap_or(false)
+    }
 }
 
 pub fn is_handle(field_type: &str) -> bool {
     expect_gd().handles.get(field_type).is_some()
+}
+
+pub fn is_handle_not_sync(handle_name: &str) -> bool {
+    expect_gd().not_sync_handles.get(handle_name).is_some()
+}
+
+pub fn is_handle_not_sync_and_send(handle_name: &str) -> bool {
+    expect_gd().not_sync_and_send_handles.get(handle_name).is_some()
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -92,6 +110,40 @@ pub fn generate(registry: &'static vkxml::Registry) {
     let mut structs = HashMap::new();
     //let mut func_ptrs = HashMap::new();
     let mut unions = HashMap::new();
+
+    // ================ STATICS ==========================
+
+    // ================ Special cases for SEND and SYNC ==========================
+    // all handles are send and sync by defauly, but some shouldn't be
+    // handles which should only be send but not sync
+    // these are not sync because we will allow shared references for externsync methods, they are
+    // still send
+    let not_sync_handles = [
+        "VkCommandPool",
+        "VkDescriptorPool",
+        "VkDescriptorSet",
+        "VkDisplayKHR",
+        "VkDisplayModeKHR",
+        "VkSwapchainKHR",
+        "VkSurfaceKHR",
+
+        // ---------- From here is handles that are also not sync and are included in the below map
+        "VkCommandBuffer",
+    ];
+
+    // these handles should not be send or sync
+    // this makes it so these handles cannot be sent between threads
+    let not_sync_and_send_handles = [
+        "VkCommandBuffer",
+    ];
+
+    for handle_name in not_sync_handles.iter() {
+        global_data.not_sync_handles.insert(handle_name, ());
+    }
+
+    for handle_name in not_sync_and_send_handles.iter() {
+        global_data.not_sync_and_send_handles.insert(handle_name, ());
+    }
 
     // ================ FIRST PASS ==========================
 
