@@ -36,7 +36,7 @@ fn expect_gd() -> &'static GlobalData<'static> {
 type Identifier<'a> = &'a str;
 
 pub fn lifetime(named_type: &str) -> Option<TokenStream> {
-    if expect_gd().needs_lifetime.get(named_type).is_some() {
+    if expect_gd().needs_lifetime.contains_key(named_type) {
         Some( quote!(<'handle>) )
     }
     else {
@@ -45,7 +45,7 @@ pub fn lifetime(named_type: &str) -> Option<TokenStream> {
 }
 
 pub fn uses_lifetime(named_type: &str) -> bool {
-    if expect_gd().needs_lifetime.get(named_type).is_some() {
+    if expect_gd().needs_lifetime.contains_key(named_type) {
             true
     }
     else {
@@ -67,15 +67,15 @@ pub fn is_externsync(context: &str, field: &Field) -> bool {
 }
 
 pub fn is_handle(field_type: &str) -> bool {
-    expect_gd().handles.get(field_type).is_some()
+    expect_gd().handles.contains_key(field_type)
 }
 
 pub fn is_handle_not_sync(handle_name: &str) -> bool {
-    expect_gd().not_sync_handles.get(handle_name).is_some()
+    expect_gd().not_sync_handles.contains_key(handle_name)
 }
 
 pub fn is_handle_not_sync_and_send(handle_name: &str) -> bool {
-    expect_gd().not_sync_and_send_handles.get(handle_name).is_some()
+    expect_gd().not_sync_and_send_handles.contains_key(handle_name)
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -195,7 +195,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
                         DefinitionsElement::Union(uni) => {
                             unions.insert(uni.name.as_str(), ());
                             for field in uni.elements.iter() {
-                                if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
+                                if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
                                     global_data.needs_lifetime.insert(uni.name.as_str(), ());
                                     break;
                                 }
@@ -232,7 +232,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
                         DefinitionsElement::Struct(stct) => {
                             if global_data.needs_lifetime.get(stct.name.as_str()).is_none() {
                                 for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member)) {
-                                    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
+                                    if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
                                         global_data.needs_lifetime.insert(stct.name.as_str(), ());
                                         break;
                                     }
@@ -266,7 +266,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
                         DefinitionsElement::Union(uni) => {
                             if global_data.needs_lifetime.get(uni.name.as_str()).is_none() {
                                 for field in uni.elements.iter() {
-                                    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
+                                    if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
                                         global_data.needs_lifetime.insert(uni.name.as_str(), ());
                                         break;
                                     }
