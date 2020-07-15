@@ -60,15 +60,10 @@ pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
 // context: struct or command name
 // field: struct or command member field
 pub fn is_externsync(context: &str, field: &Field) -> bool {
-    if is_handle_not_sync(field.basetype.as_str()) {
-        false
-    }
-    else {
-        expect_gd()
-            .extern_sync_params.get(context)
-            .map(|sync_params| sync_params.contains(utils::field_name_expected(field)))
-            .unwrap_or(false)
-    }
+    expect_gd()
+        .extern_sync_params.get(context)
+        .map(|sync_params| sync_params.contains(utils::field_name_expected(field)))
+        .unwrap_or(false)
 }
 
 pub fn is_handle(field_type: &str) -> bool {
@@ -145,6 +140,27 @@ pub fn generate(registry: &'static vkxml::Registry) {
         global_data.not_sync_and_send_handles.insert(handle_name, ());
     }
 
+    // these are exceptions, where we should still take &mut even if the type is not sync
+    // (Command name, param name)
+    let still_take_mut = [
+        ("vkResetDescriptorPool", "descriptorPool"),
+        ("vkResetCommandPool", "commandPool"),
+    ];
+
+    let should_be_extern_sync = |context, member| -> bool {
+        if still_take_mut.contains( &(context, utils::field_name_expected(member)) ) {
+            // some handle types which normally arn't sync will still need MutBorrow in some
+            // contexts
+            true
+        }
+        else if not_sync_handles.contains(&member.basetype.as_str()) {
+            false
+        }
+        else {
+            true
+        }
+    };
+
     // ================ FIRST PASS ==========================
 
     for reg_elem in registry.elements.iter() {
@@ -157,8 +173,8 @@ pub fn generate(registry: &'static vkxml::Registry) {
                             global_data.handles.insert(handle.name.as_str(), ());
                             global_data.needs_lifetime.insert(handle.name.as_str(), ());
                         }
-                        DefinitionsElement::Struct(stct) => {
-                            structs.insert(stct.name.as_str(), ());
+                        DefinitionsElement::Struct(ref stct) => {
+                            structs.insert(stct.name.as_str(), stct);
                             global_data.needs_lifetime.insert(stct.name.as_str(), ());
                             //for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member)) {
                             //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
@@ -228,10 +244,12 @@ pub fn generate(registry: &'static vkxml::Registry) {
                                 if let Some(synced_thing) = field.sync.as_ref() {
                                     assert_eq!(synced_thing, "true");
                                     let synced_thing = utils::field_name_expected(&field);
-                                    global_data.extern_sync_params
-                                        .entry(stct.name.as_str())
-                                        .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
-                                        .or_insert(synced_thing.to_string());
+                                    if should_be_extern_sync(stct.name.as_str(), field) {
+                                        global_data.extern_sync_params
+                                            .entry(stct.name.as_str())
+                                            .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
+                                            .or_insert(synced_thing.to_string());
+                                    }
                                 }
                             }
                         }
@@ -266,27 +284,42 @@ pub fn generate(registry: &'static vkxml::Registry) {
             RegistryElement::Commands(cmds) => {
                 for cmd in cmds.elements.iter() {
                     for param in cmd.param.iter() {
-                        if structs.get(param.basetype.as_str()).is_some() && param.sync.is_some() {
-                            // now, if a command takes a struct, and the struct has a parameter
-                            // that should be externally synced, then we keep track of it for use
-                            // later
+                        if param.sync.is_some() {
+                            if let Some(stct) = structs.get(param.basetype.as_str()) {
+                                // now, if a command takes a struct, and the struct has a parameter
+                                // that should be externally synced, then we keep track of it for use
+                                // later
 
-                            let synced_thing = param.sync.as_ref().expect("already confimed sync is_some");
+                                let synced_thing = param.sync.as_ref().expect("already confimed sync is_some");
 
-                            global_data.extern_sync_params
-                                .entry(param.basetype.as_str())
-                                .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
-                                .or_insert(synced_thing.to_string());
-                        }
-                        else if param.sync.as_ref().map(|sync_kind|sync_kind=="true").unwrap_or(false) {
-                            // otherwise, we check for normal extern sync param
+                                for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member))
+                                    .filter(|field| synced_thing.contains(utils::field_name_expected(field)) )
+                                    {
+                                        // TODO consider if context for should_be_extern_sync
+                                        // should be the struct name or the command name
+                                        if should_be_extern_sync(stct.name.as_str(), field) {
+                                            global_data.extern_sync_params
+                                                .entry(param.basetype.as_str())
+                                                .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
+                                                .or_insert(synced_thing.to_string());
+                                        }
+                                    }
+                            }
+                            else {
+                                // otherwise, we check for normal extern sync param
+                                assert_eq!(param.sync.as_ref().expect("already confimed is_some"), "true");
 
-                            let synced_thing = utils::field_name_expected(&param);
+                                let synced_thing = utils::field_name_expected(&param);
 
-                            global_data.extern_sync_params
-                                .entry(cmd.name.as_str())
-                                .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
-                                .or_insert(synced_thing.to_string());
+                                let cmd_name = cmd.name.as_str();
+
+                                if should_be_extern_sync(cmd_name, &param) {
+                                    global_data.extern_sync_params
+                                        .entry(cmd_name)
+                                        .and_modify(|list| list.push_str(format!(",{}", synced_thing).as_str()))
+                                        .or_insert(synced_thing.to_string());
+                                }
+                            }
                         }
                     }
                 }
