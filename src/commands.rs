@@ -255,12 +255,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
     }
 
     let name = cmd.name.as_code();
-    let owner_name = if cmd.param[0].basetype.as_str() == "VkCommandBuffer" {
-        quote!( CmdBufRecorder ) // this should be for all vkCmd... commands
-    }
-    else {
-        utils::make_handle_owner_name(cmd.param[0].basetype.as_str())
-    };
+    let owner_name = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
 
     let method_name_raw = case::camel_to_snake(cmd.name.as_str());
     let method_name = method_name_raw.as_code();
@@ -338,40 +333,6 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
         //    dbg!(cmd.name.as_str());
         //    quote!()
         //}
-        //"cmd" => {
-        //    dbg!(cmd.name.as_str());
-        //    quote!()
-        //}
-        "begin" => { // assuming that there will only be one begin command, and it is for beginning command buffer recording
-            assert_eq!(cmd.name.as_str(), "vkBeginCommandBuffer");
-            quote!{
-                impl CommandBufferOwner<'_> {
-                    pub fn record<'handle>(
-                        &'handle mut self,
-                        begin_info: &CommandBufferBeginInfo<'handle>,
-                        f: impl FnOnce(CmdBufRecorder))
-                    {
-                        #method_caller(self.handle, begin_info.into());
-                        let recorder = CmdBufRecorder {
-                            handle: self.handle,
-                            dispatch_parent: self.dispatch_parent,
-                        };
-                        f(recorder);
-                        self.end_record();
-                    }
-                }
-            }
-        }
-        "end" => { // assuming that there will only be one end command, and it is for ending command buffer recording
-            assert_eq!(cmd.name.as_str(), "vkEndCommandBuffer");
-            quote!{
-                impl CommandBufferOwner<'_> {
-                    fn end_record(&mut self) {
-                        #method_caller(self.handle);
-                    }
-                }
-            }
-        }
         //"reset" => {
         //    dbg!(cmd.name.as_str());
         //    quote!()
