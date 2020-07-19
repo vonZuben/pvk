@@ -106,8 +106,8 @@ pub enum FieldContext {
 }
 
 #[derive(Clone, Copy)]
-pub enum WithLifetime {
-    Yes,
+pub enum WithLifetime<'a> {
+    Yes(&'a str),
     No,
 }
 
@@ -125,13 +125,11 @@ macro_rules! is_variant {
 pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Ty {
     pipe!{ ty = Ty::new() =>
         STAGE ty.basetype(field.basetype.as_str());
-        WHEN is_variant!(WithLifetime::Yes, with_lifetime) =>
+        WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
         {
-            if global_data::uses_lifetime(field.basetype.as_str()) {
-                ty.param(Lifetime::from("'handle"))
-            }
-            else {
-                ty
+            match with_lifetime {
+                WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                WithLifetime::No => ty,
             }
         }
         DONE WHEN is_variant!(Some(vkxml::ArrayType::Static), field.array) =>
@@ -192,9 +190,12 @@ pub fn c_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: Field
 pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Ty {
     pipe!{ ty = Ty::new() =>
         STAGE ty.basetype(field.basetype.as_str());
-        WHEN is_variant!(WithLifetime::Yes, with_lifetime) && global_data::uses_lifetime(field.basetype.as_str()) =>
+        WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
         {
-            ty.param(Lifetime::from("'handle"))
+            match with_lifetime {
+                WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                WithLifetime::No => ty,
+            }
         }
         WHEN global_data::is_externsync(container, field) =>
         {
@@ -281,6 +282,51 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
 
 pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Field {
     Field::new(field_name_expected(field), r_type(field, with_lifetime, context, container))
+}
+
+pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
+    let basetype_str = field.basetype.as_str();
+    pipe!{ ty = Ty::new() =>
+        STAGE {
+            if global_data::is_handle(basetype_str) {
+                ty.basetype(make_handle_owner_name(basetype_str))
+            }
+            else {
+                ty.basetype(basetype_str)
+            }
+
+        }
+        WHEN global_data::uses_lifetime(basetype_str) => {
+            match with_lifetime {
+                WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                WithLifetime::No => ty,
+            }
+        }
+        STAGE {
+            match field.reference {
+                Some(vkxml::ReferenceType::Pointer) => {
+                    if field.size.is_some() {
+                        Ty::new()
+                            .basetype("Vec")
+                            .param(ty)
+                    }
+                    else {
+                        ty
+                    }
+                }
+                Some(vkxml::ReferenceType::PointerToPointer) => {
+                    ty.pointer(Pointer::Mut)
+
+                }
+                Some(vkxml::ReferenceType::PointerToConstPointer) => {
+                    panic!("error: PointerToConstPointer in return type")
+                }
+                None => {
+                    ty
+                }
+            }
+        }
+    }
 }
 
 pub fn ctype_to_rtype(type_name: &str) -> String {

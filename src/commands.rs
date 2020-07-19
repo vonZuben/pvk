@@ -52,7 +52,7 @@ pub fn command_category(cmd: &Command) -> CommandCategory {
     }
 }
 
-fn field_first_indirection_optional(field: &Field) -> bool {
+fn field_first_indirection_optional(field: &vkxml::Field) -> bool {
     if field.basetype.as_str() == "char" {
         return false;
     }
@@ -72,7 +72,7 @@ fn field_first_indirection_optional(field: &Field) -> bool {
     }).unwrap_or(false)
 }
 
-fn field_name(field: &Field) -> &str {
+fn field_name(field: &vkxml::Field) -> &str {
     field.name.as_ref()
         .expect("error: field with no name").as_str()
 }
@@ -220,10 +220,10 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
 }
 
-fn is_return_param(field: &&Field) -> bool {
+fn is_return_param(field: &&vkxml::Field) -> bool {
     field.reference.is_some() && field.is_const == false
 }
-fn not_return_param(field: &&Field) -> bool {
+fn not_return_param(field: &&vkxml::Field) -> bool {
     !is_return_param(field)
 }
 
@@ -343,6 +343,26 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             //    dbg!(category);
             //}
 
+            let impl_lifetime;
+            let call_lifetime;
+            let self_lifetime;
+            let with_lifetime;
+
+            match method_verb {
+                "create" => {
+                    impl_lifetime = quote!('_);
+                    call_lifetime = quote!('parent);
+                    self_lifetime = quote!('parent);
+                    with_lifetime = WithLifetime::Yes("'parent");
+                }
+                _ => {
+                    impl_lifetime = quote!('_);
+                    call_lifetime = quote!();
+                    self_lifetime = quote!();
+                    with_lifetime = WithLifetime::No
+                }
+            }
+
             // determine if method should call the vulkan command twice in order to query a size
             // field category
             let can_query_size = category_map
@@ -355,7 +375,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     FieldCatagory::Normal | FieldCatagory::NormalSized => true,
                     _ => false,
                 })
-            .map(|field|r_field(field, WithLifetime::Yes, FieldContext::FunctionParam, cmd.name.as_str()));
+            .map(|field|r_field(field, with_lifetime, FieldContext::FunctionParam, cmd.name.as_str()));
 
             // when a count/size variable affects multiple input arrays, set the size once
             // based on the first input array, and debug_assert that the other input arrays are the
@@ -478,7 +498,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             else {
                 let return_field_types = cmd.param.iter().filter_map(|field| {
                     match category_map.get(field_name(field)).unwrap() {
-                        FieldCatagory::Return | FieldCatagory::ReturnSized => Some(make_return_type(field)),
+                        FieldCatagory::Return | FieldCatagory::ReturnSized => Some(utils::r_return_type(field, with_lifetime)),
                         _ => None,
                     }
                 });
@@ -507,8 +527,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
 
             quote!{
                 //#multi_return_type
-                impl #owner_name<'_> {
-                    pub fn #method_name<'handle>(&'handle self, #( #fields_outer ),* ) -> #return_type {
+                impl #owner_name<#impl_lifetime> {
+                    pub fn #method_name<#call_lifetime>(& #self_lifetime self, #( #fields_outer ),* ) -> #return_type {
                         #( #size_vars )*
                         #size_query
                         #( #return_vars )*
@@ -586,34 +606,3 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
     }
     Ok(catagories)
 }
-
-fn make_return_type(field: &Field) -> TokenStream {
-    let basetype = if global_data::GLOBAL_DATA.get().unwrap().handles.get(field.basetype.as_str()).is_some() {
-        utils::make_handle_owner_name(field.basetype.as_str())
-    }
-    else {
-        field.basetype.as_code()
-    };
-    let lifetime = global_data::lifetime(field.basetype.as_str());
-    let ty = quote!( #basetype #lifetime );
-    match field.reference {
-        Some(ReferenceType::Pointer) => {
-            if field.size.is_some() {
-                quote!( Vec<#ty> )
-            }
-            else {
-                quote!( #ty )
-            }
-        }
-        Some(ReferenceType::PointerToPointer) => {
-            quote!( *mut #ty )
-        }
-        Some(ReferenceType::PointerToConstPointer) => {
-            panic!("error: PointerToConstPointer in return type")
-        }
-        None => {
-            quote!( #ty )
-        }
-    }
-}
-
