@@ -343,22 +343,32 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             //    dbg!(category);
             //}
 
+            let lifetime_defs;
             let impl_lifetime;
             let call_lifetime;
-            let self_lifetime;
+            let self_modifier;
             let with_lifetime;
 
             match method_verb {
-                "create" => {
+                "create" | "allocate" => {
+                    lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
                     call_lifetime = quote!('parent);
-                    self_lifetime = quote!('parent);
+                    self_modifier = quote!('parent);
                     with_lifetime = WithLifetime::Yes("'parent");
                 }
+                "cmd" => {
+                    lifetime_defs = quote!('resource);
+                    impl_lifetime = quote!('resource);
+                    call_lifetime = quote!();
+                    self_modifier = quote!(mut);
+                    with_lifetime = WithLifetime::Yes("'resource");
+                }
                 _ => {
+                    lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
                     call_lifetime = quote!();
-                    self_lifetime = quote!();
+                    self_modifier = quote!();
                     with_lifetime = WithLifetime::No
                 }
             }
@@ -527,8 +537,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
 
             quote!{
                 //#multi_return_type
-                impl #owner_name<#impl_lifetime> {
-                    pub fn #method_name<#call_lifetime>(& #self_lifetime self, #( #fields_outer ),* ) -> #return_type {
+                impl<#lifetime_defs> #owner_name<#impl_lifetime> {
+                    pub fn #method_name<#call_lifetime>(& #self_modifier self, #( #fields_outer ),* ) -> #return_type {
                         #( #size_vars )*
                         #size_query
                         #( #return_vars )*
