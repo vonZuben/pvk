@@ -73,7 +73,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                             let setter_field = r_field(field, WithLifetime::Yes("'handle"),
                                                        FieldContext::Member, stct.name.as_str());
-                            let val_setter = quote!(self.#field_name = #field_name.into(););
+                            let val_setter = quote!(self.#field_name = #field_name.to_c(););
                             let count_setter = field.size.as_ref()
                                 .map(|size| {
                                     if raw_name == "pCode" {

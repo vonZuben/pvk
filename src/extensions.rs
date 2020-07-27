@@ -127,11 +127,11 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 match global_data::command_type(name) {
                     CommandCategory::Instance => {
                         quote!( inst_cmds.#name_code.load( |raw_cmd_name|
-                                                 unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.into()) } ) )
+                                                 unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.to_c()) } ) )
                     }
                     CommandCategory::Device => {
                         quote!( dev_cmds.#name_code.load( |raw_cmd_name|
-                                                 unsafe { GetDeviceProcAddr(*device, raw_cmd_name.into()) } ) )
+                                                 unsafe { GetDeviceProcAddr(*device, raw_cmd_name.to_c()) } ) )
                     }
                     CommandCategory::Static => panic!(
                         format!("error: extension command is for static command: {}",

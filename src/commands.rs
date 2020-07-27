@@ -292,7 +292,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     // for instancce and device, we are destroying the dispatchalbe type
                     let type_to_destroy = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
-                    method_params = quote!( self.handle, None.into() );
+                    method_params = quote!( self.handle, None.to_c() );
                     method_caller = quote!( self.commands.#name.0 );
                 }
                 _ => {
@@ -300,7 +300,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     // destroying
                     let type_to_destroy = utils::make_handle_owner_name(cmd.param[1].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
-                    method_params = quote!( self.dispatch_parent.handle, self.handle, None.into() );
+                    method_params = quote!( self.dispatch_parent.handle, self.handle, None.to_c() );
                     method_caller = quote!( self.dispatch_parent.commands.#name.0 );
                 }
             }
@@ -433,8 +433,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         let name_raw = field_name(&field);
                         let field_name = name_raw.as_code();
                         match category_map.get(name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => quote!( None.into() ),
-                            _ => quote!( #field_name.into() ),
+                            FieldCatagory::ReturnSized => quote!( None.to_c() ),
+                            _ => quote!( #field_name.to_c() ),
                         }
                     });
                 Some( quote!{
@@ -469,8 +469,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         let name_raw = field_name(&field);
                         let field_name = name_raw.as_code();
                         match category_map.get(name_raw).unwrap() {
-                            FieldCatagory::ReturnSized | FieldCatagory::Return => quote!( (&mut #field_name).into() ),
-                            _ => quote!( #field_name.into() ),
+                            FieldCatagory::ReturnSized | FieldCatagory::Return => quote!( (&mut #field_name).to_c() ),
+                            _ => quote!( #field_name.to_c() ),
                         }
                     });
                 quote!{

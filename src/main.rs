@@ -233,9 +233,9 @@ fn main() {
 
             let res = unsafe {
                 CreateInstance(
-                    (&create_info).into(),
-                    None.into(),
-                    (&mut inst).into(),
+                    (&create_info).to_c(),
+                    None.to_c(),
+                    (&mut inst).to_c(),
                     )
             };
             let inst = unsafe { inst.assume_init() };
@@ -311,6 +311,13 @@ fn main() {
             }
         }
 
+        // convert rust types to c types
+        // used for building c structs witha rust interface, and
+        // for building rust wrappers around commands
+        trait ConvertToC<C> {
+            fn to_c(self) -> C;
+        }
+
         // ============= MutBorrow<T> ================
         // This type will be used with handles to represent whent he handle mutably borrows the
         // owner. We need to make sure is is only ever created with a mutable borrow. It will only
@@ -319,8 +326,8 @@ fn main() {
         #[repr(transparent)]
         pub struct MutBorrow<T>(T);
 
-        impl<T> MutBorrow<T> {
-            fn into(self) -> T {
+        impl<T> ConvertToC<T> for MutBorrow<T> {
+            fn to_c(self) -> T {
                 self.0
             }
         }
@@ -339,48 +346,48 @@ fn main() {
             }
         }
 
-        impl<T> From<&[T]> for Array<*const T> {
-            fn from(t: &[T]) -> Self {
-                Array(t.as_ptr())
+        impl<T> ConvertToC<Array<*const T>> for &[T] {
+            fn to_c(self) -> Array<*const T> {
+                Array(self.as_ptr())
             }
         }
 
-        impl<T> From<Option<&[T]>> for Array<*const T> {
-            fn from(t: Option<&[T]>) -> Self {
-                Array(t.as_ptr())
+        impl<T> ConvertToC<Array<*const T>> for Option<&[T]> {
+            fn to_c(self) -> Array<*const T> {
+                Array(self.as_ptr())
             }
         }
 
-        impl<T> From<&mut [T]> for Array<*mut T> {
-            fn from(t: &mut [T]) -> Self {
-                Array(t.as_mut_ptr())
+        impl<T> ConvertToC<Array<*mut T>> for &mut [T] {
+            fn to_c(self) -> Array<*mut T> {
+                Array(self.as_mut_ptr())
             }
         }
 
-        impl<T> From<Option<&mut [T]>> for Array<*mut T> {
-            fn from(mut t: Option<&mut [T]>) -> Self {
-                Array(t.as_mut_ptr())
+        impl<T> ConvertToC<Array<*mut T>> for Option<&mut [T]> {
+            fn to_c(mut self) -> Array<*mut T> {
+                Array(self.as_mut_ptr())
             }
         }
 
-        impl<T> From<&mut Vec<T>> for Array<*mut T> {
-            fn from(t: &mut Vec<T>) -> Self {
-                Array(t.as_mut_ptr())
+        impl<T> ConvertToC<Array<*mut T>> for &mut Vec<T> {
+            fn to_c(self) -> Array<*mut T> {
+                Array(self.as_mut_ptr())
             }
         }
 
-        impl From<&CStr> for Array<*const c_char> {
-            fn from(s: &CStr) -> Self {
-                Array(s.as_ptr())
+        impl ConvertToC<Array<*const c_char>> for &CStr {
+            fn to_c(self) -> Array<*const c_char> {
+                Array(self.as_ptr())
             }
         }
 
-        impl<T> From<&[MutBorrow<T>]> for Array<*const T> {
-            fn from(a: &[MutBorrow<T>]) -> Self {
+        impl<T> ConvertToC<Array<*const T>> for &[MutBorrow<T>] {
+            fn to_c(self) -> Array<*const T> {
                 // this is maybe a bit too unsafe.
                 // but the types we are dealing are transparent
                 // so it should be reliable
-                unsafe { std::mem::transmute(a.as_ptr()) }
+                unsafe { std::mem::transmute(self.as_ptr()) }
             }
         }
 
@@ -399,33 +406,39 @@ fn main() {
             }
         }
 
-        impl<T> From<&T> for Ref<*const T> {
-            fn from(t: &T) -> Self {
-                Ref(t)
+        impl<T> ConvertToC<T> for T {
+            fn to_c(self) -> T {
+                self
             }
         }
 
-        impl<T> From<Option<&T>> for Ref<*const T> {
-            fn from(t: Option<&T>) -> Self {
-                Ref(t.as_ptr())
+        impl<T> ConvertToC<Ref<*const T>> for &T {
+            fn to_c(self) -> Ref<*const T> {
+                Ref(self)
             }
         }
 
-        impl<T> From<&mut T> for Ref<*mut T> {
-            fn from(t: &mut T) -> Self {
-                Ref(t)
+        impl<T> ConvertToC<Ref<*const T>> for Option<&T> {
+            fn to_c(self) -> Ref<*const T> {
+                Ref(self.as_ptr())
             }
         }
 
-        impl<T> From<Option<&mut T>> for Ref<*mut T> {
-            fn from(mut t: Option<&mut T>) -> Self {
-                Ref(t.as_mut_ptr())
+        impl<T> ConvertToC<Ref<*mut T>> for &mut T {
+            fn to_c(self) -> Ref<*mut T> {
+                Ref(self)
             }
         }
 
-        impl<T> From<&mut MaybeUninit<T>> for Ref<*mut T> {
-            fn from(t: &mut MaybeUninit<T>) -> Self {
-                Ref(t.as_mut_ptr())
+        impl<T> ConvertToC<Ref<*mut T>> for Option<&mut T> {
+            fn to_c(mut self) -> Ref<*mut T> {
+                Ref(self.as_mut_ptr())
+            }
+        }
+
+        impl<T> ConvertToC<Ref<*mut T>> for &mut MaybeUninit<T> {
+            fn to_c(self) -> Ref<*mut T> {
+                Ref(self.as_mut_ptr())
             }
         }
 
@@ -450,9 +463,9 @@ fn main() {
         //    }
         //}
 
-        impl<T> From<&ArrayArray<*const T>> for Array<*const *const T> {
-            fn from(a: &ArrayArray<*const T>) -> Self {
-                Array(a.0.as_ptr())
+        impl<T> ConvertToC<Array<*const *const T>> for &ArrayArray<*const T> {
+            fn to_c(self) -> Array<*const *const T> {
+                Array(self.0.as_ptr())
             }
         }
 
