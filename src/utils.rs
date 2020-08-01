@@ -133,41 +133,59 @@ pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                 FieldContext::Member => ty,
                 FieldContext::FunctionParam =>
                     Ty::new().basetype("Ref")
-                    .param(ty.pointer(Pointer::Const)),
+                    .param(ty),
             }
         }
-        STAGE {
+        DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
+        {
             match &field.reference {
                 Some(r) => match r {
                     vkxml::ReferenceType::Pointer => {
                         if field.is_const {
-                            ty.pointer(ty::Pointer::Const)
+                            Ty::new().basetype("Array").param(ty)
                         } else {
-                            ty.pointer(ty::Pointer::Mut)
+                            Ty::new().basetype("ArrayMut").param(ty)
                         }
                     }
-                    vkxml::ReferenceType::PointerToPointer => ty.pointer(ty::Pointer::Mut)
-                                                                .pointer(ty::Pointer::Mut),
+                    vkxml::ReferenceType::PointerToPointer => {
+                        unimplemented!("unimplemented c_type Array PointerToPointer");
+                        //eprintln!("PointerToPointer: {}: {}", field_name_expected(field), field.basetype.as_str());
+                    }
                     vkxml::ReferenceType::PointerToConstPointer => {
                         if field.is_const {
-                            ty.pointer(ty::Pointer::Const)
-                              .pointer(ty::Pointer::Const)
+                            // TODO a special case fro string arrays would probably be good
+                            Ty::new().basetype("Array")
+                                .param(ty.pointer(Pointer::Const))
                         } else {
-                            ty.pointer(ty::Pointer::Mut)
-                              .pointer(ty::Pointer::Const)
+                            unimplemented!("unimplemented c_type Array PointerToConstPointer (Mut)");
                         }
                     }
                 },
                 None => ty,
             }
         }
-        DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
+        DONE WHEN matches!(field.array, None) =>
         {
-            Ty::new().basetype("Array").param(ty)
-        }
-        DONE WHEN field.reference.is_some() =>
-        {
-            Ty::new().basetype("Ref").param(ty)
+            match &field.reference {
+                Some(r) => match r {
+                    vkxml::ReferenceType::Pointer => {
+                        if field.is_const {
+                            Ty::new().basetype("Ref").param(ty)
+                        } else {
+                            Ty::new().basetype("RefMut").param(ty)
+                        }
+                    }
+                    vkxml::ReferenceType::PointerToPointer => {
+                        assert!(field.is_const == false);
+                        Ty::new().basetype("RefMut")
+                            .param(ty.pointer(Pointer::Mut))
+                    }
+                    vkxml::ReferenceType::PointerToConstPointer => {
+                        unimplemented!("unimplemented c_type Ref PointerToConstPointer (Const/Mut)");
+                    }
+                },
+                None => ty,
+            }
         }
     }
 }

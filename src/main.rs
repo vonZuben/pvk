@@ -336,57 +336,96 @@ fn main() {
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for an array of T
 
-        #[derive(Debug, Clone, Copy)]
+        #[derive(Debug)]
         #[repr(transparent)]
-        pub struct Array<T>(T);
-        impl<T> ::std::ops::Deref for Array<T> {
-            type Target = T;
-            fn deref(&self) -> &T {
-                &self.0
+        pub struct Array<T>(*const T);
+
+        impl<T> Copy for Array<T> {}
+
+        impl<T> Clone for Array<T> {
+            fn clone(&self) -> Self {
+                *self
             }
         }
 
-        impl<T> ConvertToC<Array<*const T>> for &[T] {
-            fn to_c(self) -> Array<*const T> {
+        #[derive(Debug)]
+        #[repr(transparent)]
+        pub struct ArrayMut<T>(*mut T);
+
+        impl<T> Copy for ArrayMut<T> {}
+
+        impl<T> Clone for ArrayMut<T> {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
+        // Deref implementations
+        // TODO consider if tese are even needed
+
+        //impl<T> ::std::ops::Deref for Array<T> {
+        //    type Target = T;
+        //    fn deref(&self) -> &T {
+        //        &self.0
+        //    }
+        //}
+
+        //impl<T> ::std::ops::Deref for ArrayMut<T> {
+        //    type Target = T;
+        //    fn deref(&self) -> &T {
+        //        &self.0
+        //    }
+        //}
+
+        //impl<T> ::std::ops::DerefMut for ArrayMut<T> {
+        //    fn deref_mut(&mut self) -> &mut T {
+        //        &mut self.0
+        //    }
+        //}
+
+        impl<T> ConvertToC<Array<T>> for &[T] {
+            fn to_c(self) -> Array<T> {
                 Array(self.as_ptr())
             }
         }
 
-        impl<T> ConvertToC<Array<*const T>> for Option<&[T]> {
-            fn to_c(self) -> Array<*const T> {
+        impl<T> ConvertToC<Array<T>> for Option<&[T]> {
+            fn to_c(self) -> Array<T> {
                 Array(self.as_ptr())
             }
         }
 
-        impl<T> ConvertToC<Array<*mut T>> for &mut [T] {
-            fn to_c(self) -> Array<*mut T> {
-                Array(self.as_mut_ptr())
+        impl<T> ConvertToC<ArrayMut<T>> for &mut [T] {
+            fn to_c(self) -> ArrayMut<T> {
+                ArrayMut(self.as_mut_ptr())
             }
         }
 
-        impl<T> ConvertToC<Array<*mut T>> for Option<&mut [T]> {
-            fn to_c(mut self) -> Array<*mut T> {
-                Array(self.as_mut_ptr())
+        impl<T> ConvertToC<ArrayMut<T>> for Option<&mut [T]> {
+            fn to_c(mut self) -> ArrayMut<T> {
+                ArrayMut(self.as_mut_ptr())
             }
         }
 
-        impl<T> ConvertToC<Array<*mut T>> for &mut Vec<T> {
-            fn to_c(self) -> Array<*mut T> {
-                Array(self.as_mut_ptr())
+        impl<T> ConvertToC<ArrayMut<T>> for &mut Vec<T> {
+            fn to_c(self) -> ArrayMut<T> {
+                ArrayMut(self.as_mut_ptr())
             }
         }
 
-        impl ConvertToC<Array<*const c_char>> for &CStr {
-            fn to_c(self) -> Array<*const c_char> {
+        impl ConvertToC<Array<c_char>> for &CStr {
+            fn to_c(self) -> Array<c_char> {
                 Array(self.as_ptr())
             }
         }
 
-        impl<T> ConvertToC<Array<*const T>> for &[MutBorrow<T>] {
-            fn to_c(self) -> Array<*const T> {
+        impl<T> ConvertToC<Array<T>> for &[MutBorrow<T>] {
+            fn to_c(self) -> Array<T> {
                 // this is maybe a bit too unsafe.
                 // but the types we are dealing are transparent
                 // so it should be reliable
+                //
+                // TODO can this just be Array(...)?
                 unsafe { std::mem::transmute(self.as_ptr()) }
             }
         }
@@ -395,16 +434,52 @@ fn main() {
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for a single T
 
-        #[derive(Debug, Clone, Copy)]
+        #[derive(Debug)]
         #[repr(transparent)]
-        pub struct Ref<T>(T);
+        pub struct Ref<T>(*const T);
 
-        impl<T> ::std::ops::Deref for Ref<T> {
-            type Target = T;
-            fn deref(&self) -> &T {
-                &self.0
+        impl<T> Copy for Ref<T> {}
+
+        impl<T> Clone for Ref<T> {
+            fn clone(&self) -> Self {
+                *self
             }
         }
+
+        #[derive(Debug)]
+        #[repr(transparent)]
+        pub struct RefMut<T>(*mut T);
+
+        impl<T> Copy for RefMut<T> {}
+
+        impl<T> Clone for RefMut<T> {
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+
+        // Deref implementations
+        // TODO consider if tese are even needed
+
+        //impl<T> ::std::ops::Deref for Ref<T> {
+        //    type Target = T;
+        //    fn deref(&self) -> &T {
+        //        &self.0
+        //    }
+        //}
+
+        //impl<T> ::std::ops::Deref for RefMut<T> {
+        //    type Target = T;
+        //    fn deref(&self) -> &T {
+        //        &self.0
+        //    }
+        //}
+
+        //impl<T> ::std::ops::DerefMut for RefMut<T> {
+        //    fn deref_mut(&mut self) -> &mut T {
+        //        &mut self.0
+        //    }
+        //}
 
         impl<T> ConvertToC<T> for T {
             fn to_c(self) -> T {
@@ -412,33 +487,33 @@ fn main() {
             }
         }
 
-        impl<T> ConvertToC<Ref<*const T>> for &T {
-            fn to_c(self) -> Ref<*const T> {
+        impl<T> ConvertToC<Ref<T>> for &T {
+            fn to_c(self) -> Ref<T> {
                 Ref(self)
             }
         }
 
-        impl<T> ConvertToC<Ref<*const T>> for Option<&T> {
-            fn to_c(self) -> Ref<*const T> {
+        impl<T> ConvertToC<Ref<T>> for Option<&T> {
+            fn to_c(self) -> Ref<T> {
                 Ref(self.as_ptr())
             }
         }
 
-        impl<T> ConvertToC<Ref<*mut T>> for &mut T {
-            fn to_c(self) -> Ref<*mut T> {
-                Ref(self)
+        impl<T> ConvertToC<RefMut<T>> for &mut T {
+            fn to_c(self) -> RefMut<T> {
+                RefMut(self)
             }
         }
 
-        impl<T> ConvertToC<Ref<*mut T>> for Option<&mut T> {
-            fn to_c(mut self) -> Ref<*mut T> {
-                Ref(self.as_mut_ptr())
+        impl<T> ConvertToC<RefMut<T>> for Option<&mut T> {
+            fn to_c(mut self) -> RefMut<T> {
+                RefMut(self.as_mut_ptr())
             }
         }
 
-        impl<T> ConvertToC<Ref<*mut T>> for &mut MaybeUninit<T> {
-            fn to_c(self) -> Ref<*mut T> {
-                Ref(self.as_mut_ptr())
+        impl<T> ConvertToC<RefMut<T>> for &mut MaybeUninit<T> {
+            fn to_c(self) -> RefMut<T> {
+                RefMut(self.as_mut_ptr())
             }
         }
 
@@ -463,8 +538,8 @@ fn main() {
         //    }
         //}
 
-        impl<T> ConvertToC<Array<*const *const T>> for &ArrayArray<*const T> {
-            fn to_c(self) -> Array<*const *const T> {
+        impl<T> ConvertToC<Array<*const T>> for &ArrayArray<*const T> {
+            fn to_c(self) -> Array<*const T> {
                 Array(self.0.as_ptr())
             }
         }
