@@ -111,17 +111,6 @@ pub enum WithLifetime<'a> {
     No,
 }
 
-macro_rules! is_variant {
-    ( $variant:pat, $other:expr ) => {
-        {
-            match $other {
-                $variant => true,
-                _ => false,
-            }
-        }
-    }
-}
-
 pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Ty {
     pipe!{ ty = Ty::new() =>
         STAGE ty.basetype(field.basetype.as_str());
@@ -132,7 +121,7 @@ pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                 WithLifetime::No => ty,
             }
         }
-        DONE WHEN is_variant!(Some(vkxml::ArrayType::Static), field.array) =>
+        DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
         {
             let size = field
                 .size
@@ -172,7 +161,7 @@ pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                 None => ty,
             }
         }
-        DONE WHEN is_variant!(Some(vkxml::ArrayType::Dynamic), field.array) =>
+        DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
         {
             Ty::new().basetype("Array").param(ty)
         }
@@ -202,7 +191,7 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
             Ty::new().basetype("MutBorrow")
                 .param(ty)
         }
-        WHEN is_variant!(Some(vkxml::ArrayType::Static), field.array) =>
+        WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
         {
             let size = field
                 .size
@@ -215,7 +204,7 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                 FieldContext::FunctionParam => ty.reference(true), // assuming never mut for static size arrays
             }
         }
-        WHEN is_variant!(Some(vkxml::ArrayType::Dynamic), field.array) =>
+        WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
         {
             match &field.reference {
                 Some(r) => match r {
@@ -252,7 +241,7 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                 None => unreachable!("shouldn't reach this point for makeing rust array type"),
             }
         }
-        WHEN is_variant!(None, field.array) =>
+        WHEN matches!(field.array, None) =>
         {
             match &field.reference {
                 Some(r) => match r {
