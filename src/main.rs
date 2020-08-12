@@ -134,7 +134,7 @@ fn print_command_verbs(registry: &Registry) {
 
 fn main() {
     // this it the easier to parse registry
-    let registry = vk_parse::parse_file_as_vkxml(Path::new("vk.xml"));
+    let registry = vk_parse::parse_file_as_vkxml(Path::new("vk.xml")).expect("failed to parse and convert vk.xml");
 
     global_data::REGISTRY.set(registry);
 
@@ -142,7 +142,7 @@ fn main() {
 
     // this registry is closer to the xml format, but it sucks to parse
     // but it does include the aliases
-    let registry2 = vk_parse::parse_file(Path::new("vk.xml"));
+    let (registry2, _) = vk_parse::parse_file(Path::new("vk.xml")).expect("failed to parse vk.xml");
 
     let cmd_alias_iter = registry2.0.iter()
         .filter_map(

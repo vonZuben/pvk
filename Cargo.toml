@@ -17,4 +17,7 @@ version = "0.15.34"
 features = ["full"]
 
 [dependencies.vk-parse]
-path = "../vk-parse"
+path = "../vk-parse/vk-parse"
+version = "0.5.0"
+features = ["vkxml-convert"]
+#version = "0.2.0"
