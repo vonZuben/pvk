@@ -395,7 +395,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             let size_vars = cmd.param.iter()
                 .filter_map(|field| {
                     let field_name_raw = field_name(field);
-                    let field_name = field_name_raw.as_code();
+                    let field_name = case::camel_to_snake(field_name_raw).as_code();
                     match category_map.get(field_name_raw).unwrap() {
                         FieldCatagory::SizeMut => {
                             let basetype = field.basetype.as_code();
@@ -408,7 +408,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         }
                         FieldCatagory::NormalSized => {
                             let size_raw = field.size.as_ref().expect("error: NormalSized with no size").as_str();
-                            let size = size_raw.as_code();
+                            let size = case::camel_to_snake(size_raw).as_code();
                             match field.array.as_ref().unwrap() {
                                 vkxml::ArrayType::Static => None,
                                 vkxml::ArrayType::Dynamic =>
@@ -431,7 +431,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 let fields_inner = cmd.param.iter().skip(1)
                     .map( |field| {
                         let name_raw = field_name(&field);
-                        let field_name = name_raw.as_code();
+                        let field_name = case::camel_to_snake(name_raw).as_code();
                         match category_map.get(name_raw).unwrap() {
                             FieldCatagory::ReturnSized => quote!( None.to_c() ),
                             _ => quote!( #field_name.to_c() ),
@@ -448,13 +448,14 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             let return_vars = cmd.param.iter()
                 .filter_map(|field| {
                     let field_name_raw = field_name(field);
-                    let field_name = field_name_raw.as_code();
+                    let field_name = case::camel_to_snake(field_name_raw).as_code();
                     match category_map.get(field_name_raw).unwrap() {
                         FieldCatagory::Return => {
                             Some(quote!( let mut #field_name = MaybeUninit::uninit(); ))
                         }
                         FieldCatagory::ReturnSized => {
-                            let size = field.size.as_ref().unwrap().replace("::", ".").as_code();
+                            let size = field.size.as_ref().unwrap().replace("::", ".");
+                            let size = case::camel_to_snake(size.as_str()).as_code();
                             Some(quote!( let mut #field_name = Vec::with_capacity(#size.value() as _); ))
                         }
                         _ => None,
@@ -467,7 +468,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     .skip(1)
                     .map( |field| {
                         let name_raw = field_name(&field);
-                        let field_name = name_raw.as_code();
+                        let field_name = case::camel_to_snake(name_raw).as_code();
                         match category_map.get(name_raw).unwrap() {
                             FieldCatagory::ReturnSized | FieldCatagory::Return => quote!( (&mut #field_name).to_c() ),
                             _ => quote!( #field_name.to_c() ),
@@ -481,13 +482,14 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             let prep_return_vars = cmd.param.iter()
                 .filter_map(|field| {
                     let field_name_raw = field_name(field);
-                    let field_name = field_name_raw.as_code();
+                    let field_name = case::camel_to_snake(field_name_raw).as_code();
                     match category_map.get(field_name_raw).unwrap() {
                         FieldCatagory::Return => {
                             Some(quote!( let #field_name = unsafe { #field_name.assume_init() }; ))
                         }
                         FieldCatagory::ReturnSized => {
-                            let size = field.size.as_ref().unwrap().replace("::", ".").as_code();
+                            let size = field.size.as_ref().unwrap().replace("::", ".");
+                            let size = case::camel_to_snake(size.as_str()).as_code();
                             Some(quote!( unsafe { #field_name.set_len(#size.value() as _) }; ))
                         }
                         _ => None,
@@ -521,7 +523,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 let return_vars = cmd.param.iter()
                     .filter_map(|field| {
                         let field_name_raw = field_name(field);
-                        let field_name = field_name_raw.as_code();
+                        let field_name = case::camel_to_snake(field_name_raw).as_code();
                         match category_map.get(field_name_raw).unwrap() {
                             FieldCatagory::Return | FieldCatagory::ReturnSized => {
                                 Some(quote!( #field_name ))

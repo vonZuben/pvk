@@ -191,7 +191,7 @@ pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
 }
 
 pub fn c_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Field {
-    Field::new(field_name_expected(field), c_type(field, with_lifetime, context))
+    Field::new(case::camel_to_snake(field_name_expected(field)), c_type(field, with_lifetime, context))
 }
 
 pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Ty {
@@ -302,7 +302,7 @@ pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
 }
 
 pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Field {
-    Field::new(field_name_expected(field), r_type(field, with_lifetime, context, container))
+    Field::new(case::camel_to_snake(field_name_expected(field)), r_type(field, with_lifetime, context, container))
 }
 
 pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
