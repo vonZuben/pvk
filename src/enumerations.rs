@@ -101,21 +101,11 @@ pub fn handle_enumerations<'a>(enumerations: &'a Enums, parse_state: &mut crate:
             //else {
             //};
 
-            let tool_code = if enm.name.contains("FlagBits") {
-                quote!{
-                    vk_bitflags_wrapped!(#name);
-                }
-            }
-            else {
-                quote!()
-            };
-
             let q = quote!{
                 #type_decleration
                 impl #name {
                     #( #vals )*
                 }
-                #tool_code
             };
 
             Some(q)

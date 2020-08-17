@@ -41,6 +41,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     #[repr(transparent)]
                     #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
                     pub struct #name(pub(crate) #actual_type);
+                    vk_bitflags_wrapped!(#name);
                 }
             },
             DefinitionsElement::Struct(stct) => {
