@@ -184,12 +184,6 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
     quote!{
 
-        enum CommandCategory {
-            Device,
-            Instance,
-            Static,
-        }
-
         struct InstanceCommands {
             #( #instance_command_params ),*
         }
