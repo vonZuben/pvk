@@ -73,6 +73,16 @@ macro_rules! pipe {
 
 }
 
+#[macro_export]
+macro_rules! varient {
+    ( $pattern:path ) => {
+        |elem| match elem {
+            $pattern(thing) => Some(thing),
+            _ => None,
+        }
+    }
+}
+
 pub trait StrAsCode {
     fn as_code(&self) -> TokenStream;
 }
@@ -100,6 +110,7 @@ pub fn make_handle_owner_name_string(name: &str) -> String {
     format!("{}Owner", name)
 }
 
+#[derive(Clone, Copy)]
 pub enum FieldContext {
     Member,
     FunctionParam,
@@ -109,6 +120,12 @@ pub enum FieldContext {
 pub enum WithLifetime<'a> {
     Yes(&'a str),
     No,
+}
+
+impl<'a> From<&'a str> for WithLifetime<'a> {
+    fn from(s: &'a str) -> Self {
+        WithLifetime::Yes(s)
+    }
 }
 
 pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Ty {
@@ -194,115 +211,187 @@ pub fn c_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: Field
     Field::new(case::camel_to_snake(field_name_expected(field)), c_type(field, with_lifetime, context))
 }
 
-pub fn r_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Ty {
-    pipe!{ ty = Ty::new() =>
-        STAGE ty.basetype(field.basetype.as_str());
-        WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
-        {
-            match with_lifetime {
-                WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
-                WithLifetime::No => ty,
+pub struct Rtype<'a> {
+    field: &'a vkxml::Field,
+    param_lifetime: WithLifetime<'a>,
+    ref_lifetime: WithLifetime<'a>,
+    context: FieldContext,
+    container: &'a str,
+    allow_optional: bool,
+}
+
+impl<'a> Rtype<'a> {
+    pub fn new(field: &'a vkxml::Field, container: &'a str) -> Self {
+        Self {
+            field,
+            container,
+            param_lifetime: WithLifetime::No,
+            ref_lifetime: WithLifetime::No,
+            context: FieldContext::FunctionParam, // FieldContext Member is the odd one out in c
+            allow_optional: true,
+        }
+    }
+    pub fn param_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.param_lifetime = lifetime.into();
+        self
+    }
+    pub fn ref_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.ref_lifetime = lifetime.into();
+        self
+    }
+    pub fn context(mut self, context: FieldContext) -> Self {
+        self.context = context;
+        self
+    }
+    pub fn allow_optional(mut self, allow: bool) -> Self {
+        self.allow_optional = allow;
+        self
+    }
+    pub fn as_ty(&self) -> Ty {
+        let field = self.field;
+        let container = self.container;
+        let param_lifetime = self.param_lifetime;
+        let context = self.context;
+        let allow_optional = self.allow_optional;
+
+        let lifetime = || match self.ref_lifetime {
+            WithLifetime::Yes(lifetime) => Lifetime::from(lifetime),
+            WithLifetime::No => Lifetime::from("'_"),
+        };
+
+        pipe!{ ty = Ty::new() =>
+            STAGE ty.basetype(field.basetype.as_str());
+            WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
+            {
+                match param_lifetime {
+                    WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                    WithLifetime::No => ty,
+                }
             }
-        }
-        WHEN global_data::is_externsync(container, field) =>
-        {
-            Ty::new().basetype("MutBorrow")
-                .param(ty)
-        }
-        WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
-        {
-            let size = field
-                .size
-                .as_ref()
-                .or_else(|| field.size_enumref.as_ref())
-                .expect("error: field should have size");
-            let ty = ty.to_array(ArrayType::array(size));
-            match context {
-                FieldContext::Member => ty,
-                FieldContext::FunctionParam => ty.reference(true), // assuming never mut for static size arrays
+            WHEN global_data::is_externsync(container, field) =>
+            {
+                Ty::new().basetype("MutBorrow")
+                    .param(ty)
             }
-        }
-        WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
-        {
-            match &field.reference {
-                Some(r) => match r {
-                    vkxml::ReferenceType::Pointer => {
-                        if field.is_const {
-                            if field.basetype.as_str() == "char" {
-                                ty.basetype("CStr")
-                                    .reference(true)
-                            }
-                            else {
+            WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
+            {
+                let size = field
+                    .size
+                    .as_ref()
+                    .or_else(|| field.size_enumref.as_ref())
+                    .expect("error: field should have size");
+                let ty = ty.to_array(ArrayType::array(size));
+                match context {
+                    FieldContext::Member => ty,
+
+                    // assuming never mut for static size arrays
+                    FieldContext::FunctionParam => ty.lifetime(lifetime()).reference(true),
+                }
+            }
+            WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
+            {
+                match &field.reference {
+                    Some(r) => match r {
+                        vkxml::ReferenceType::Pointer => {
+                            if field.is_const {
+                                if field.basetype.as_str() == "char" {
+                                    ty.basetype("MyStr")
+                                        .param(lifetime())
+                                }
+                                else {
+                                    ty.to_array(ArrayType::Slice)
+                                        .lifetime(lifetime())
+                                        .reference(true)
+                                }
+                            } else {
                                 ty.to_array(ArrayType::Slice)
+                                    .lifetime(lifetime())
                                     .reference(true)
+                                    .mutable(true)
                             }
-                        } else {
-                            ty.to_array(ArrayType::Slice)
-                                .reference(true)
-                                .mutable(true)
                         }
-                    }
-                    vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust array PointerToPointer"),
-                    vkxml::ReferenceType::PointerToConstPointer => {
-                        if field.is_const {
-                            Ty::new()
-                                .basetype("ArrayArray")
-                                .reference(true)
-                                .param(ty.pointer(Pointer::Const))
-                            //quote!(&ArrayArray<*const #basetype>)
-                            // TODO find a better type for this
-                        } else {
-                            unimplemented!("unimplemented rust array mut PointerToConstPointer")
+                        vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust array PointerToPointer"),
+                        vkxml::ReferenceType::PointerToConstPointer => {
+                            if field.is_const {
+                                Ty::new()
+                                    .basetype("ArrayArray")
+                                    .lifetime(lifetime())
+                                    .reference(true)
+                                    .param(ty.pointer(Pointer::Const))
+                                    //quote!(&ArrayArray<*const #basetype>)
+                                    // TODO find a better type for this
+                            } else {
+                                unimplemented!("unimplemented rust array mut PointerToConstPointer")
+                            }
                         }
-                    }
-                },
-                None => unreachable!("shouldn't reach this point for makeing rust array type"),
+                    },
+                    None => unreachable!("shouldn't reach this point for makeing rust array type"),
+                }
             }
-        }
-        WHEN matches!(field.array, None) =>
-        {
-            match &field.reference {
-                Some(r) => match r {
-                    vkxml::ReferenceType::Pointer => {
-                        if field.is_const {
-                            ty.reference(true)
-                        } else {
-                            ty.reference(true)
-                                .mutable(true)
+            WHEN matches!(field.array, None) =>
+            {
+                match &field.reference {
+                    Some(r) => match r {
+                        vkxml::ReferenceType::Pointer => {
+                            if field.is_const {
+                                ty.reference(true)
+                                    .lifetime(lifetime())
+                            } else {
+                                ty.reference(true)
+                                    .mutable(true)
+                                    .lifetime(lifetime())
+                            }
                         }
-                    }
-                    vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust ref PointerToPointer"),
-                    vkxml::ReferenceType::PointerToConstPointer => {
-                        if field.is_const {
-                            unimplemented!("unimplemented rust ref const PointerToConstPointer")
-                        } else {
-                            unimplemented!("unimplemented rust ref mut PointerToConstPointer")
+                        vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust ref PointerToPointer"),
+                        vkxml::ReferenceType::PointerToConstPointer => {
+                            if field.is_const {
+                                unimplemented!("unimplemented rust ref const PointerToConstPointer")
+                            } else {
+                                unimplemented!("unimplemented rust ref mut PointerToConstPointer")
+                            }
                         }
-                    }
-                },
-                None => ty,
+                    },
+                    None => ty,
+                }
             }
+            WHEN is_optional(field)
+                && (matches!(context, FieldContext::FunctionParam) || matches!(field.reference, Some(_)))
+                && allow_optional
+            => {
+                Ty::new()
+                    .basetype("Option")
+                    .param(ty)
+            }
+            //WHEN field.optional.as_ref().map(|opt|opt.split(',').next() == Some("true")).unwrap_or(false) =>
+            //{
+            //    match &field.reference {
+            //        Some(_) => {
+            //            eprintln!("POINTER in : {}", container);
+            //            eprintln!("field: {}", field_name_expected(field));
+            //        }
+            //        None => {
+            //            eprintln!("NON POINTER in: {}", container);
+            //            eprintln!("field: {}", field_name_expected(field));
+            //        }
+            //    }
+            //    eprintln!();
+            //    ty
+            //}
         }
-        //WHEN field.optional.as_ref().map(|opt|opt.split(',').next() == Some("true")).unwrap_or(false) =>
-        //{
-        //    match &field.reference {
-        //        Some(_) => {
-        //            eprintln!("POINTER in : {}", container);
-        //            eprintln!("field: {}", field_name_expected(field));
-        //        }
-        //        None => {
-        //            eprintln!("NON POINTER in: {}", container);
-        //            eprintln!("field: {}", field_name_expected(field));
-        //        }
-        //    }
-        //    eprintln!();
-        //    ty
-        //}
+    }
+}
+
+impl ToTokens for Rtype<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.as_ty().to_tokens(tokens);
     }
 }
 
 pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Field {
-    Field::new(case::camel_to_snake(field_name_expected(field)), r_type(field, with_lifetime, context, container))
+    let mut ty = Rtype::new(field, container)
+        .context(context)
+        .param_lifetime(with_lifetime);
+    Field::new(case::camel_to_snake(field_name_expected(field)), ty.as_ty())
 }
 
 pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
@@ -315,7 +404,6 @@ pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
             else {
                 ty.basetype(basetype_str)
             }
-
         }
         WHEN global_data::uses_lifetime(basetype_str) => {
             match with_lifetime {
@@ -337,7 +425,6 @@ pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
                 }
                 Some(vkxml::ReferenceType::PointerToPointer) => {
                     ty.pointer(Pointer::Mut)
-
                 }
                 Some(vkxml::ReferenceType::PointerToConstPointer) => {
                     panic!("error: PointerToConstPointer in return type")
@@ -348,6 +435,27 @@ pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
             }
         }
     }
+}
+
+pub fn is_optional(field: &vkxml::Field) -> bool {
+    // optional is a comma seperated list of booleans
+    // if the first boolean is true, then is_optional returns true
+    if field.optional.as_ref()
+        .map(|opt|opt.split(',').next() == Some("true")).unwrap_or(false) {
+            true
+        }
+    // if a type is a pointer and has noautovalidity, then we assume the pointer can be NULL
+    // and is_optional is true
+    else if field.auto_validity == false && matches!(field.reference, Some(vkxml::ReferenceType::Pointer)) {
+        true
+    }
+    else {
+        false
+    }
+}
+
+pub fn must_init(field: &vkxml::Field) -> bool {
+    ! is_optional(field)
 }
 
 pub fn ctype_to_rtype(type_name: &str) -> String {

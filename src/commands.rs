@@ -418,7 +418,13 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                                         size_set.entry(size_raw).and_modify(|x| *x=true);
                                         Some(quote!( #size = #field_name.len() as _; ))
                                     } else {
-                                        Some(quote!( debug_assert!(#field_name.len() == #size as _); ))
+                                        let a_type = Rtype::new(field, cmd.name.as_str())
+                                            .param_lifetime(with_lifetime)
+                                            .allow_optional(false);
+                                        Some(quote!{
+                                            let o: Option<#a_type> = (#field_name).into();
+                                            o.map(|field|debug_assert!(field.len() == #size as _));
+                                        })
                                     }
                                 }
                             }

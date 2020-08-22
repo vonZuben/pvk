@@ -6,9 +6,13 @@ use vkxml::*;
 use proc_macro2::{TokenStream};
 
 use crate::utils::*;
+#[macro_use]
+use crate::utils;
 use crate::ParseState;
 
 use crate::global_data;
+
+use crate::ty::{Field, Ty};
 
 pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut ParseState<'a>) -> TokenStream {
 
@@ -64,21 +68,43 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     }
                 }
                 let builder_code = if not_return(&stct) {
-                    let member_setters = stct.elements.iter().filter_map( |elem| match elem {
-                        StructElement::Member(field) => {
 
-                            let raw_name = field.name.as_ref().expect("error, field with no name");
+                    let must_init_members = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                        .filter(|field| utils::must_init(field))
+                        .map(|field| {
+                            let ty = utils::Rtype::new(field, stct.name.as_str())
+                                .param_lifetime("'handle")
+                                .ref_lifetime("'handle")
+                                .context(FieldContext::Member)
+                                .as_ty();
+                            Field::new(case::camel_to_snake(utils::field_name_expected(field)), ty)
+                        });
 
-                            let field_name = raw_name.as_code();
-                            let setter_name = case::camel_to_snake(raw_name).as_code();
+                    let must_init_members2 = must_init_members.clone();
 
-                            let setter_field = r_field(field, WithLifetime::Yes("'handle"),
-                                                       FieldContext::Member, stct.name.as_str());
-                            let val_setter = quote!(self.#field_name = #field_name.to_c(););
+                    let optional_members = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                        .filter(|field| utils::is_optional(field))
+                        .map(|field| {
+                            let ty = utils::Rtype::new(field, stct.name.as_str())
+                                .param_lifetime("'handle")
+                                .ref_lifetime("'handle")
+                                .context(FieldContext::Member)
+                                .as_ty();
+                            Field::new(case::camel_to_snake(utils::field_name_expected(field)), ty)
+                        });
+
+                    let optional_members2 = optional_members.clone();
+
+                    let param_rules = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                        .map(|field| {
+                            let param = case::camel_to_snake(utils::field_name_expected(field)).as_code();
+
+                            let raw_name = utils::field_name_expected(field);
+
                             let count_setter = field.size.as_ref()
                                 .map(|size| {
                                     if raw_name == "pCode" {
-                                        Some( quote!(self.codeSize = #field_name.len() as usize * 4;) )
+                                        Some( quote!( { code_size , #param ; as usize * 4 } ) )
                                     }
                                     else if raw_name == "pSampleMask" {
                                         None
@@ -88,48 +114,139 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                             ArrayType::Static => return None,
                                             _ => {}
                                         }
-                                        let count_name = size.as_code();
-                                        Some( quote!(self.#count_name = #field_name.len() as _;) )
+                                        let count_name = case::camel_to_snake(size).as_code();
+                                        Some( quote!( { #count_name , #param ; as _ } ) )
                                     }
                                 });
 
-                            Some(quote!{
-                                pub fn #setter_name(&mut self, #setter_field) -> &mut Self {
-                                    #val_setter
-                                    #count_setter
-                                    self
-                                }
-                            })
-                        }
-                        StructElement::Notation(_) => None,
-                    });
+                            if is_optional(field) {
+                                quote!{
+                                    ( @munch { #param: $val:expr $( , $( $rest:tt )* )? }
+                                        -> { $( $optional:tt )* } ; { $( $nonoptional:tt )* } ; { $($count_setters:tt)* } ) => {
 
-                    let builder_name = format!("{}Builder", stct.name).as_code();
+                                        #name!( @munch { $($($rest)*)* }
+                                                     -> { $($optional)* #param:$val , } ; { $($nonoptional)* } ;
+                                                         { $($count_setters)* #count_setter } )
+                                    };
+                                }
+                            }
+                            else { // must_init
+                                quote!{
+                                    ( @munch { #param: $val:expr $( , $( $rest:tt )* )? }
+                                        -> { $( $optional:tt )* } ; { $( $nonoptional:tt )* } ; { $($count_setters:tt)* } ) => {
+
+                                        #name!( @munch { $($($rest)*)* }
+                                                     -> { $($optional)* } ; { $($nonoptional)* #param:$val , } ;
+                                                         { $($count_setters)* #count_setter } )
+                                    };
+                                }
+                            }
+                        });
+
+                    let must_init_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                        .filter(|field| utils::must_init(field))
+                        .map(|field| {
+                            let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
+                            quote!{
+                                #field: init.#field,
+                            }
+                        });
+
+                    let optional_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                        .filter(|field| utils::is_optional(field))
+                        .map(|field| {
+                            let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
+                            quote!{
+                                #field: opt.#field,
+                            }
+                        });
+
+                    let to_c_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                        .map(|field| {
+                            let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
+                            quote!{
+                                #field: combined.#field.to_c(),
+                            }
+                        });
 
                     Some(quote!{
-                        impl #lifetime #name #lifetime {
-                            fn zeroed() -> Self {
-                                unsafe { ::std::mem::zeroed() }
-                            }
-                            //pub fn builder<'a>() -> #builder_name<'a> {
-                            //    #builder_name {
-                            //        inner: Self::zeroed(),
-                            //        phantom: ::std::marker::PhantomData,
-                            //    }
-                            //}
-                        }
-                        //pub struct #builder_name<'handle> {
-                        //    inner: #name #lifetime,
-                        //    phantom: ::std::marker::PhantomData<&'handle ()>,
-                        //}
-                        //impl<'handle> ::std::ops::Deref for #builder_name<'handle> {
-                        //    type Target = #name #lifetime;
-                        //    fn deref(&self) -> &Self::Target {
-                        //        &self.inner
-                        //    }
-                        //}
-                        impl<'handle> #name<'handle> {
-                            #( #member_setters )*
+                        macro_rules! #name {
+
+                            ( @munch {} -> { $( $o_name:ident : $o_val:expr ),* $(,)? } ; { $( $nonoptional:tt )* } ;
+                                    { $( $count_setters:tt )* }) => {
+                                {
+                                    mod initializer {
+                                        use $crate::*;
+                                        pub struct #name<'handle> {
+                                            #( pub #must_init_members , )*
+                                            pub _p: PhantomData<&'handle ()>,
+                                        }
+                                    }
+                                    #[derive(Default)]
+                                    struct Opt<'handle> {
+                                        #( #optional_members , )*
+                                        _p: PhantomData<&'handle ()>,
+                                    }
+
+                                    struct Combined<'handle> {
+                                        #( #must_init_members2 , )*
+                                        #( #optional_members2 , )*
+                                        _p: PhantomData<&'handle ()>,
+                                    }
+
+                                    let init = initializer::#name {
+                                        $( $nonoptional )*
+                                        _p: PhantomData,
+                                    };
+
+                                    #[allow(unused_mut)]
+                                    let mut opt = Opt::default();
+                                    $( opt.$o_name = $o_val; )*
+
+                                    #[allow(unused_mut)]
+                                    let mut combined = Combined {
+                                        #( #must_init_copy )*
+                                        #( #optional_copy )*
+                                        _p: PhantomData,
+                                    };
+
+                                    #name!( @count_setter combined -> $($count_setters)* );
+
+                                    #name {
+                                        #( #to_c_copy )*
+                                        _p: PhantomData,
+                                    }
+                                }
+                            };
+
+                            // expand all count_setters
+                            ( @count_setter $combined:ident -> { $size:ident, $array:ident ; $($mod:tt)* } $($rest:tt)* ) => {{
+                                $combined.$size = $combined.$array.len() $($mod)*;
+                                #name!( @count_setter $combined -> $($rest)* )
+                            }};
+
+                            // last count_setter empty
+                            ( @count_setter $combined:ident -> ) => {{}};
+
+                            // match each param as optional or nonoptional
+                            #( #param_rules )*
+
+                            // add unrecognized parans to 'non-optional' params
+                            // so that they will be detected as non existent members
+                            ( @munch { $unrecognized:ident : $val:expr $( , $( $rest:tt )* )? } ->
+                                { $( $optional:tt )* } ; { $( $nonoptional:tt )* } ; { $($count_setters:tt)* } ) => {
+                                    #name!( @munch { $($($rest)*)* } ->
+                                            { $($optional)* } ; { $($nonoptional)* $unrecognized:$val , } ;
+                                            { $($count_setters)* } )
+                            };
+
+                            // entry point
+                            // transform input into -> { input } -> { optional } ; { nonoptional }
+                            //      ; { count_setters }
+                            ( $( $( $name:ident : $val:expr ),+ $(,)? )? ) => {
+                                #name!( @munch { $($( $name : $val , )+)? } -> {} ; {} ; {} )
+                            };
+
                         }
                     })
                 }
@@ -209,6 +326,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     impl<'a> From<&#owner_name<'a>> for #handle_name<'a> {
                         fn from(owner: &#owner_name<'a>) -> Self {
                             owner.handle
+                        }
+                    }
+                    impl Default for #handle_name<'_> {
+                        fn default() -> Self {
+                            // should be fine as long as VK_NULL_HANDLE == 0
+                            // TODO maybe just use VK_NULL_HANDLE
+                            unsafe { std::mem::zeroed() }
                         }
                     }
                 }

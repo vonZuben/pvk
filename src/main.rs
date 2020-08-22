@@ -203,6 +203,8 @@ fn main() {
         #![allow(non_snake_case)]
         #![allow(non_upper_case_globals)]
         #![allow(unused)]
+
+        //trace_macros!(true);
     };
 
     let initial_test_code = quote!{
@@ -217,19 +219,21 @@ fn main() {
             let app_name = ::std::ffi::CString::new("Hello World!").unwrap();
             let engine_name = ::std::ffi::CString::new("Hello Engine!").unwrap();
 
-            let mut app_info = ApplicationInfo::zeroed();
-            app_info
-                .s_type(StructureType::APPLICATION_INFO)
-                .p_application_name(&app_name.as_c_str())
-                .application_version(vk_make_version!(1, 0, 0))
-                .p_engine_name(&engine_name.as_c_str())
-                .engine_version(vk_make_version!(1, 0, 0))
-                .api_version(vk_make_version!(1, 1, 1));
+            let app_info = ApplicationInfo! {
+                s_type: StructureType::APPLICATION_INFO,
+                p_next: unsafe { std::mem::transmute(&0) },
+                application_version: vk_make_version!(1, 0, 0),
+                engine_version: vk_make_version!(1, 0, 0),
+                api_version: vk_make_version!(1, 0, 0),
+            };
 
-            let mut create_info = InstanceCreateInfo::zeroed();
-            create_info
-                .s_type(StructureType::INSTANCE_CREATE_INFO)
-                .p_application_info(&app_info);
+            let a = &ArrayArray(Vec::new());
+            let create_info = InstanceCreateInfo!{
+                s_type: StructureType::INSTANCE_CREATE_INFO,
+                p_next: unsafe { std::mem::transmute::<usize, &c_void>(0) },
+                pp_enabled_layer_names: a,
+                pp_enabled_extension_names: a,
+            };
 
             let res = unsafe {
                 CreateInstance(
@@ -308,6 +312,29 @@ fn main() {
             }
             else {
                 Some(lowest_bit)
+            }
+        }
+
+        trait Len {
+            fn len(&self) -> usize;
+        }
+
+        impl<T> Len for Option<&[T]> {
+            fn len(&self) -> usize {
+                match self {
+                    Some(a) => a.len(),
+                    None => 0,
+                }
+            }
+        }
+
+        #[derive(Clone, Copy)]
+        #[repr(transparent)]
+        pub struct MyStr<'a>(*const c_char, PhantomData<&'a CStr>);
+
+        impl<'a, C: AsRef<CStr>> From<&'a C> for MyStr<'a> {
+            fn from(c: &'a C) -> Self {
+                Self(c.as_ref().as_ptr(), PhantomData)
             }
         }
 
@@ -395,6 +422,12 @@ fn main() {
             }
         }
 
+        impl ConvertToC<Array<c_char>> for Option<MyStr<'_>> {
+            fn to_c(self) -> Array<c_char> {
+                Array(self.as_ptr())
+            }
+        }
+
         impl<T> ConvertToC<ArrayMut<T>> for &mut [T] {
             fn to_c(self) -> ArrayMut<T> {
                 ArrayMut(self.as_mut_ptr())
@@ -416,6 +449,12 @@ fn main() {
         impl ConvertToC<Array<c_char>> for &CStr {
             fn to_c(self) -> Array<c_char> {
                 Array(self.as_ptr())
+            }
+        }
+
+        impl ConvertToC<Array<c_char>> for MyStr<'_> {
+            fn to_c(self) -> Array<c_char> {
+                Array(self.0)
             }
         }
 
@@ -484,6 +523,24 @@ fn main() {
         impl<T> ConvertToC<T> for T {
             fn to_c(self) -> T {
                 self
+            }
+        }
+
+        impl<T> ConvertToC<T> for Option<T> where T: Default {
+            fn to_c(self) -> T {
+                match self {
+                    Some(t) => t,
+                    None => T::default(),
+                }
+            }
+        }
+
+        impl<T> ConvertToC<T> for Option<MutBorrow<T>> where T: Default {
+            fn to_c(self) -> T {
+                match self {
+                    Some(t) => t.to_c(),
+                    None => T::default(),
+                }
             }
         }
 
@@ -702,6 +759,8 @@ fn main() {
         // it is safe to transmute Option<&t> to raw pointer
         // because the null pointer optimization guarantees that
         // Option<&T> is ABI compatible with raw C pointers for FFI
+        // Some(&T) == *const T (non-null)
+        // None == null ptr
         // (see the rust nomicon)
         pub trait AsRawPtr<T> {
             fn as_ptr(&self) -> *const T;
@@ -710,6 +769,12 @@ fn main() {
             fn as_ptr(&self) -> *const T {
                 //unsafe { ::std::mem::transmute::<Option<&T>, *const T>(*self) }
                 unsafe { *(self as *const Option<&T> as *const *const T) }
+            }
+        }
+        impl AsRawPtr<c_char> for Option<MyStr<'_>> {
+            fn as_ptr(&self) -> *const c_char {
+                //unsafe { ::std::mem::transmute::<Option<&T>, *const T>(*self) }
+                unsafe { *(self as *const Option<MyStr> as *const Option<*const c_char> as *const *const c_char) }
             }
         }
         impl<'a, T> AsRawPtr<T> for Option<&'a [T]> {
@@ -749,7 +814,7 @@ fn main() {
 
     let mut q = quote!{
         #allow_vulkan_name_formats
-        #initial_test_code
+        //#initial_test_code
         #util_code
         #platform_specific_types
         #(#tokens)*
@@ -761,6 +826,8 @@ fn main() {
 
     q.extend(post_process_handles);
     q.extend(post_process_enum_display_code);
+
+    q.extend(initial_test_code);
 
     //for node in parse_state.command_list.iter() {
     //    dbg!(&node.data().name);

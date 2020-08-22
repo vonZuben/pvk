@@ -328,6 +328,9 @@ impl Ty {
         self.lifetime = l.into();
         self
     }
+    pub fn set_lifetime(&mut self, l: impl Into<Lifetime>) {
+        self.lifetime = l.into();
+    }
     pub fn mutable(mut self, m: impl Into<Mutable>) -> Self {
         self.mutable = m.into();
         self
