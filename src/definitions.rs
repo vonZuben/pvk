@@ -175,7 +175,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             ( @munch {} -> { $( $o_name:ident : $o_val:expr ),* $(,)? } ; { $( $nonoptional:tt )* } ;
                                     { $( $count_setters:tt )* }) => {
                                 {
-                                    mod initializer {
+                                    mod vk {
                                         use $crate::*;
                                         pub struct #name<'handle> {
                                             #( pub #must_init_members , )*
@@ -194,7 +194,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                         _p: PhantomData<&'handle ()>,
                                     }
 
-                                    let init = initializer::#name {
+                                    let init = vk::#name {
                                         $( $nonoptional )*
                                         _p: PhantomData,
                                     };
