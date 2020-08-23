@@ -220,8 +220,6 @@ fn main() {
             let engine_name = ::std::ffi::CString::new("Hello Engine!").unwrap();
 
             let app_info = ApplicationInfo! {
-                s_type: StructureType::APPLICATION_INFO,
-                p_next: unsafe { std::mem::transmute(&0) },
                 application_version: vk_make_version!(1, 0, 0),
                 engine_version: vk_make_version!(1, 0, 0),
                 api_version: vk_make_version!(1, 0, 0),
@@ -229,8 +227,6 @@ fn main() {
 
             let a = &ArrayArray(Vec::new());
             let create_info = InstanceCreateInfo!{
-                s_type: StructureType::INSTANCE_CREATE_INFO,
-                p_next: unsafe { std::mem::transmute::<usize, &c_void>(0) },
                 pp_enabled_layer_names: a,
                 pp_enabled_extension_names: a,
             };

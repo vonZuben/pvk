@@ -98,6 +98,11 @@ impl<T> StrAsCode for T where T: AsRef<str> {
     }
 }
 
+pub fn structure_type_name<'a>(field: &'a vkxml::Field) -> &'a str {
+    let raw_stype = field.type_enums.as_ref().expect("error: sType with no provided value, or not sType field");
+    &raw_stype[18..] // cut off the "VK_STRUCTURE_TYPE_" from the begining
+}
+
 pub fn field_name_expected(field: &vkxml::Field) -> &str {
     field.name.as_ref().expect("error: field does not have name when expected").as_str()
 }
@@ -586,5 +591,4 @@ pub mod case {
 
         out
     }
-
 }

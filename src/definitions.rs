@@ -69,8 +69,14 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 }
                 let builder_code = if not_return(&stct) {
 
+                    let ignore_stype_pnext = |field: &&vkxml::Field| {
+                        let fname = utils::field_name_expected(field);
+                        fname != "sType" && fname != "pNext"
+                    };
+
                     let must_init_members = stct.elements.iter().filter_map(varient!(StructElement::Member))
                         .filter(|field| utils::must_init(field))
+                        .filter(ignore_stype_pnext)
                         .map(|field| {
                             let ty = utils::Rtype::new(field, stct.name.as_str())
                                 .param_lifetime("'handle")
@@ -84,6 +90,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let optional_members = stct.elements.iter().filter_map(varient!(StructElement::Member))
                         .filter(|field| utils::is_optional(field))
+                        .filter(ignore_stype_pnext)
                         .map(|field| {
                             let ty = utils::Rtype::new(field, stct.name.as_str())
                                 .param_lifetime("'handle")
@@ -96,6 +103,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     let optional_members2 = optional_members.clone();
 
                     let param_rules = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                        .filter(ignore_stype_pnext)
                         .map(|field| {
                             let param = case::camel_to_snake(utils::field_name_expected(field)).as_code();
 
@@ -145,6 +153,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let must_init_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
                         .filter(|field| utils::must_init(field))
+                        .filter(ignore_stype_pnext)
                         .map(|field| {
                             let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
                             quote!{
@@ -154,6 +163,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let optional_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
                         .filter(|field| utils::is_optional(field))
+                        .filter(ignore_stype_pnext)
                         .map(|field| {
                             let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
                             quote!{
@@ -163,9 +173,27 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let to_c_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
                         .map(|field| {
-                            let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
-                            quote!{
-                                #field: combined.#field.to_c(),
+                            let fname = utils::field_name_expected(field);
+                            let field_code = case::camel_to_snake(fname).as_code();
+
+                            // generate proper s_type field and generate default p_next as empty
+                            if fname == "sType" {
+                                let stype = utils::structure_type_name(field).as_code();
+                                quote!{
+                                    #field_code: StructureType::#stype,
+                                }
+                            }
+                            else if fname == "pNext" {
+                                quote!{
+                                    #field_code: None.to_c(),
+                                }
+                            }
+                            // otherwise, covnert the user provided/default data to the final c
+                            // struct
+                            else {
+                                quote!{
+                                    #field_code: combined.#field_code.to_c(),
+                                }
                             }
                         });
 
