@@ -252,6 +252,9 @@ impl<'a> Rtype<'a> {
         self.allow_optional = allow;
         self
     }
+    pub fn as_field(&self) -> Field {
+        Field::new(case::camel_to_snake(field_name_expected(self.field)), self.as_ty())
+    }
     pub fn as_ty(&self) -> Ty {
         let field = self.field;
         let container = self.container;

@@ -12,7 +12,7 @@ use crate::ParseState;
 
 use crate::global_data;
 
-use crate::ty::{Field, Ty};
+use crate::ty::{Ty};
 
 pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut ParseState<'a>) -> TokenStream {
 
@@ -78,12 +78,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         .filter(|field| utils::must_init(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
-                            let ty = utils::Rtype::new(field, stct.name.as_str())
+                            utils::Rtype::new(field, stct.name.as_str())
                                 .param_lifetime("'handle")
                                 .ref_lifetime("'handle")
                                 .context(FieldContext::Member)
-                                .as_ty();
-                            Field::new(case::camel_to_snake(utils::field_name_expected(field)), ty)
+                                .as_field()
                         });
 
                     let must_init_members2 = must_init_members.clone();
@@ -92,12 +91,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         .filter(|field| utils::is_optional(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
-                            let ty = utils::Rtype::new(field, stct.name.as_str())
+                            utils::Rtype::new(field, stct.name.as_str())
                                 .param_lifetime("'handle")
                                 .ref_lifetime("'handle")
                                 .context(FieldContext::Member)
-                                .as_ty();
-                            Field::new(case::camel_to_snake(utils::field_name_expected(field)), ty)
+                                .as_field()
                         });
 
                     let optional_members2 = optional_members.clone();
