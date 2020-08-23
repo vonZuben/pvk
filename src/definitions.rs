@@ -256,6 +256,14 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             // last count_setter empty
                             ( @count_setter $combined:ident -> ) => {{}};
 
+                            ( @munch { s_type $($restin:tt)* } $($rest:tt)* ) => {
+                                compile_error!("s_type param is automatically set. Do not set manually");
+                            };
+
+                            ( @munch { p_next $($restin:tt)* } $($rest:tt)* ) => {
+                                compile_error!("p_next param is automatically set. Do not set manually. Use extend() to add extension structs instead");
+                            };
+
                             // match each param as optional or nonoptional
                             #( #param_rules )*
 
