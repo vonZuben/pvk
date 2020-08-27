@@ -130,7 +130,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     ( @munch { #param: $val:expr $( , $( $rest:tt )* )? }
                                         -> { $( $optional:tt )* } ; { $( $nonoptional:tt )* } ; { $($count_setters:tt)* } ) => {
 
-                                        #name!( @munch { $($($rest)*)* }
+                                        $crate::#name!( @munch { $($($rest)*)* }
                                                      -> { $($optional)* #param:$val , } ; { $($nonoptional)* } ;
                                                          { $($count_setters)* #count_setter } )
                                     };
@@ -141,7 +141,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     ( @munch { #param: $val:expr $( , $( $rest:tt )* )? }
                                         -> { $( $optional:tt )* } ; { $( $nonoptional:tt )* } ; { $($count_setters:tt)* } ) => {
 
-                                        #name!( @munch { $($($rest)*)* }
+                                        $crate::#name!( @munch { $($($rest)*)* }
                                                      -> { $($optional)* } ; { $($nonoptional)* #param:$val , } ;
                                                          { $($count_setters)* #count_setter } )
                                     };
@@ -196,11 +196,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         });
 
                     Some(quote!{
+                        #[macro_export]
                         macro_rules! #name {
 
                             ( @munch {} -> { $( $o_name:ident : $o_val:expr ),* $(,)? } ; { $( $nonoptional:tt )* } ;
                                     { $( $count_setters:tt )* }) => {
                                 {
+                                    use $crate::*;
                                     mod vk {
                                         use $crate::*;
                                         pub struct #name<'handle> {
@@ -248,7 +250,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             // expand all count_setters
                             ( @count_setter $combined:ident -> { $size:ident, $array:ident ; $($mod:tt)* } $($rest:tt)* ) => {{
                                 $combined.$size = $combined.$array.len() $($mod)*;
-                                #name!( @count_setter $combined -> $($rest)* )
+                                $crate::#name!( @count_setter $combined -> $($rest)* )
                             }};
 
                             // last count_setter empty
@@ -269,7 +271,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             // so that they will be detected as non existent members
                             ( @munch { $unrecognized:ident : $val:expr $( , $( $rest:tt )* )? } ->
                                 { $( $optional:tt )* } ; { $( $nonoptional:tt )* } ; { $($count_setters:tt)* } ) => {
-                                    #name!( @munch { $($($rest)*)* } ->
+                                    $crate::#name!( @munch { $($($rest)*)* } ->
                                             { $($optional)* } ; { $($nonoptional)* $unrecognized:$val , } ;
                                             { $($count_setters)* } )
                             };
@@ -278,7 +280,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             // transform input into -> { input } -> { optional } ; { nonoptional }
                             //      ; { count_setters }
                             ( $( $( $name:ident : $val:expr ),+ $(,)? )? ) => {
-                                #name!( @munch { $($( $name : $val , )+)? } -> {} ; {} ; {} )
+                                $crate::#name!( @munch { $($( $name : $val , )+)? } -> {} ; {} ; {} )
                             };
 
                         }
