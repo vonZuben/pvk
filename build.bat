@@ -1,0 +1,1 @@
+rustc.exe -Clink-args="/LIBPATH:C:\VulkanSDK\1.2.148.1\Lib" T:\tmp.rs -o T:\tmp.exe

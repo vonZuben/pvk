@@ -174,7 +174,9 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                 #( #params1 ),*
             ) -> #return_type;
 
-            #[link(name = "vulkan")]
+            // #[link(name = "vulkan")]
+            #[cfg_attr(target_os = "linux", link(name = "vulkan"))]
+            #[cfg_attr(target_os = "windows", link(name = "vulkan-1"))]
             extern "system" {
                 #[link_name = #raw_name]
                 fn #name( #( #params2 ),* ) -> #return_type;
