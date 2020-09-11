@@ -211,8 +211,7 @@ impl ConstExtExt for vkxml::ExtensionConstant {
 
             &self.text , |_| quote!(&'static str) ;
 
-            &self.enumref , |_| panic!(
-                format!("error: trying to get enumref type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.enumref , |_| quote!(usize) ; // TODO: is this correct?
 
             &self.number , |_| quote!(usize) ;
 
@@ -222,7 +221,7 @@ impl ConstExtExt for vkxml::ExtensionConstant {
             &self.bitpos , |_| panic!(
                 format!("error: trying to get bitpos type not implemented for ConstExtExt -> {}", self.name)) ;
 
-            &self.c_expression , |expr: &str| panic!(
+            &self.c_expression , |_expr: &str| panic!(
                 format!("error: trying to get c_expression type not implemented for ConstExtExt -> {}", self.name)) ;
 
         }
@@ -233,8 +232,7 @@ impl ConstExtExt for vkxml::ExtensionConstant {
 
             &self.text , |sval| quote!(#sval) ;
 
-            &self.enumref , |_| panic!(
-                format!("error: trying to get enumref type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.enumref , |r: &str| r.as_code() ;
 
             &self.number , |num: &i32| { num.to_string().as_code() } ;
 
@@ -244,7 +242,7 @@ impl ConstExtExt for vkxml::ExtensionConstant {
             &self.bitpos , |_| panic!(
                 format!("error: trying to get bitpos type not implemented for ConstExtExt -> {}", self.name)) ;
 
-            &self.c_expression , |expr: &str| panic!(
+            &self.c_expression , |_expr: &str| panic!(
                 format!("error: trying to get c_expression type not implemented for ConstExtExt -> {}", self.name)) ;
 
         }
