@@ -297,7 +297,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         #( #params, )*
                         _p: PhantomData<&'handle ()>
                     }
-                    #( #builder_code )*
+                    #builder_code
                 }
             },
             DefinitionsElement::Union(uni) => {

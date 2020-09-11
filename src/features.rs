@@ -61,12 +61,12 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
                 fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands) {
                     let loader = |raw_cmd_name: &CStr| unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.to_c()) };
                     #( inst_cmds.#instance_commands.load(loader); )*
-                    #( #previous_feature_instance )*
+                    #previous_feature_instance
                 }
                 fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands) {
                     let loader = |raw_cmd_name: &CStr| unsafe { GetDeviceProcAddr(*device, raw_cmd_name.to_c()) };
                     #( dev_cmds.#device_commands.load(loader); )*
-                    #( #previous_feature_device )*
+                    #previous_feature_device
                 }
             }
         };
