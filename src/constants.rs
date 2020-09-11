@@ -68,9 +68,9 @@ impl ConstExt for vkxml::Constant {
                     .replace("ULL", "")
                     .replace("U", "")
                     .replace("~", "!")
-                    .replace("f", "");
-                let synexpr = syn::parse_str::<Expr>(&v).expect(format!("error: can't parse {} as expresion", &v).as_ref());
-                quote!(#synexpr)
+                    .replace("f", "")
+                    .as_code();
+                quote!(#v)
 
             } ;
         )
