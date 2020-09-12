@@ -24,6 +24,7 @@ pub struct GlobalData<'a> {
     pub command_types: HashMap<&'a str, commands::CommandCategory>,
     pub not_sync_handles: Dictionary<'a>,
     pub not_sync_and_send_handles: Dictionary<'a>,
+    pub extension_tags: Dictionary<'a>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -78,6 +79,10 @@ pub fn is_handle_not_sync(handle_name: &str) -> bool {
 
 pub fn is_handle_not_sync_and_send(handle_name: &str) -> bool {
     expect_gd().not_sync_and_send_handles.contains_key(handle_name)
+}
+
+pub fn extension_tags() -> &'static Dictionary<'static> {
+    &expect_gd().extension_tags
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -219,6 +224,11 @@ pub fn generate(registry: &'static vkxml::Registry) {
             RegistryElement::Features(features) => {
             }
             RegistryElement::Extensions(extensions) => {
+            }
+            RegistryElement::Tags(tags) => {
+                for tag in tags.elements.iter() {
+                    global_data.extension_tags.insert(tag.name.as_str(), ());
+                }
             }
             _ => {}
         }

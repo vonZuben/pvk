@@ -4,8 +4,29 @@ use vkxml::*;
 use proc_macro2::{TokenStream};
 
 use crate::utils::*;
+use crate::global_data;
 
 pub fn make_varient_name(enumeration_name: &str, varient_name: &str) -> TokenStream {
+    let extension_tags = global_data::extension_tags();
+
+    // all tags are upper case
+    // find the "last" lower case letter and then assume that anything following might be a tag
+    let maybe_tag = enumeration_name.my_rfind(char::is_lowercase)
+        .and_then(|i| {
+            if enumeration_name.len() == i + 1 {
+                None
+            }
+            else {
+                Some(&enumeration_name[i+1..])
+            }
+        });
+
+    // ensure that the maybe_tag is in fact a tag
+    // and then remove it from the enumeration_name
+    let enumeration_name = maybe_tag.filter(|tag| extension_tags.contains_key(tag))
+        .map(|tag| &enumeration_name[..enumeration_name.len()-tag.len()])
+        .unwrap_or(enumeration_name);
+
     let ename = enumeration_name.find("FlagBits").map(|i| &enumeration_name[..i])
         .unwrap_or(enumeration_name);
 
