@@ -1,0 +1,7 @@
+- fix Display implementations for extension emums (that have extension suffix)
+
+- consider how handles are passed in to functions and structs (somewhat inconvenient to need to manually get handle from handle owner)
+
+- consider how to incorporate VkResult into return type for commands
+
+- consider how to deal with "sudo" optional types, such as in VkWriteDescriptorSet
