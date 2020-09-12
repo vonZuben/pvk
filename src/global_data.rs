@@ -12,16 +12,18 @@ use proc_macro2::{TokenStream};
 // TODO: GlobalData data members don't need to be public
 // want to encourage use of the helper methods
 
+type Dictionary<'a> = HashMap<&'a str, ()>;
+
 #[derive(Default)]
 pub struct GlobalData<'a> {
     // extern_sync_params holds a command/struct_name and a list of params in a string that are
     // externally synced
     pub extern_sync_params: HashMap<&'a str, String>,
-    pub needs_lifetime: HashMap<&'a str, ()>,
-    pub handles: HashMap<&'a str, ()>,
+    pub needs_lifetime: Dictionary<'a>,
+    pub handles: Dictionary<'a>,
     pub command_types: HashMap<&'a str, commands::CommandCategory>,
-    pub not_sync_handles: HashMap<&'a str, ()>,
-    pub not_sync_and_send_handles: HashMap<&'a str, ()>,
+    pub not_sync_handles: Dictionary<'a>,
+    pub not_sync_and_send_handles: Dictionary<'a>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
