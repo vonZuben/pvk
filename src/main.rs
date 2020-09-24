@@ -240,6 +240,7 @@ fn main() {
             };
             let inst = unsafe { inst.assume_init() };
             println!("instance creation: {}", res);
+            println!("instance creation: {:?}", res);
             let mut instance_commands = InstanceCommands::new();
             let ver = VERSION_1_1;
             ver.load_instance_commands(&inst, &mut instance_commands);
@@ -250,18 +251,24 @@ fn main() {
             //let mut phd_count: u32 = 0;
             //instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
             let pd = instance.enumerate_physical_devices();
+            println!("{:?}", inst);
+            println!("{:?}", instance);
             println!("num physical devices: {}", pd.len());
 
             // test Flags printing
             let flags: QueueFlags = QueueFlags::GRAPHICS | QueueFlags::COMPUTE;
             println!("{}", flags);
+            println!("{:?}", flags);
             let flags: ShaderStageFlags = ShaderStageFlags::ALL;
             println!("{}", flags);
+            println!("{:?}", flags);
             let flags: ShaderStageFlags = ShaderStageFlags::VERTEX
                 | ShaderStageFlags::FRAGMENT | ShaderStageFlags::TESSELLATION_CONTROL;
             println!("{}", flags);
+            println!("{:?}", flags);
             let flags: ShaderStageFlags = ShaderStageFlags::ALL_GRAPHICS;
             println!("{}", flags);
+            println!("{:?}", flags);
 
             //test 1_1 feature command ?
             //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();

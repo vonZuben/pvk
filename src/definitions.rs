@@ -345,7 +345,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 };
 
                 quote!{
-                    #[derive(Debug, Clone, Copy)]
+                    #[derive(Clone, Copy)]
                     #[repr(transparent)]
                     pub struct #handle_name<'owner> {
                         handle: raw::#handle_name,
@@ -369,6 +369,11 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             // should be fine as long as VK_NULL_HANDLE == 0
                             // TODO maybe just use VK_NULL_HANDLE
                             unsafe { std::mem::zeroed() }
+                        }
+                    }
+                    impl ::std::fmt::Debug for #handle_name<'_> {
+                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            write!(f, concat!(stringify!(#handle_name), "({:?})"), self.handle)
                         }
                     }
                 }
@@ -554,6 +559,11 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                             MutBorrow(self.handle)
                         }
                     }
+                    impl ::std::fmt::Debug for #owner_name<'_> {
+                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            write!(f, concat!(stringify!(#owner_name), "({:?})"), self.handle.handle)
+                        }
+                    }
                     #return_impl
                 }
             }
@@ -644,6 +654,11 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                         fn mut_handle<'owner>(&'owner mut self) -> MutBorrow<#handle_name<'owner>> {
                             MutBorrow(self.handle)
+                        }
+                    }
+                    impl std::fmt::Debug for #owner_name<'_> {
+                        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                            write!(f, concat!(stringify!(#owner_name), "({:?})"), self.handle.handle)
                         }
                     }
                     #return_impl

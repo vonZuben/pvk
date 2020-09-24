@@ -155,6 +155,11 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                     }
                 }
             }
+            //impl std::fmt::Debug for #pfn_loader_name {
+            //    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            //        write!(f, "Loader for: {}", stringify!(#pfn_name))
+            //    }
+            //}
             #owner_method
         }
     });
@@ -196,6 +201,11 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                 }
             }
         }
+        impl ::std::fmt::Debug for InstanceCommands {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                write!(f, "InstanceCommands")
+            }
+        }
 
         struct DeviceCommands {
             #( #device_command_params ),*
@@ -205,6 +215,11 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                 Self {
                     #( #device_cmd_inits, )*
                 }
+            }
+        }
+        impl ::std::fmt::Debug for DeviceCommands {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                write!(f, "DeviceCommands")
             }
         }
 
