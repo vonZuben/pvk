@@ -60,7 +60,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
 
                 let name = enum_extension.extends.as_code();
                 let const_name = crate::enumerations
-                    ::make_varient_name(enum_extension.extends.as_str(), enum_extension.name.as_str());
+                    ::make_variant_name(enum_extension.extends.as_str(), enum_extension.name.as_str()).as_code();
 
                 let val = one_option!(
 

@@ -6,7 +6,7 @@ use proc_macro2::{TokenStream};
 use crate::utils::*;
 use crate::global_data;
 
-pub fn make_varient_name(enumeration_name: &str, varient_name: &str) -> TokenStream {
+pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
     let extension_tags = global_data::extension_tags();
 
     // all tags are upper case
@@ -38,10 +38,10 @@ pub fn make_varient_name(enumeration_name: &str, varient_name: &str) -> TokenStr
 
     let is_numeric = const_name_string.chars().nth(0).map(char::is_numeric).unwrap_or(false);
     if is_numeric {
-        format!("TYPE_{}", const_name_string).as_code()
+        format!("TYPE_{}", const_name_string)
     }
     else {
-        const_name_string.as_code()
+        const_name_string
     }
 }
 
@@ -80,7 +80,7 @@ pub fn handle_enumerations<'a>(enumerations: &'a Enums, parse_state: &mut crate:
                             .expect("error: enum not in cahce")
                             .push(enum_constant.name.as_str());
 
-                        let const_name = make_varient_name(enm.name.as_str(), enum_constant.name.as_str());
+                        let const_name = make_variant_name(enm.name.as_str(), enum_constant.name.as_str()).as_code();
 
                         let val = one_option!(
 
@@ -143,7 +143,7 @@ pub fn make_enumeration_display_code<'a>(parse_state: &'a crate::ParseState) -> 
     parse_state.enum_cache.iter().map( | (enum_name, variants) | {
 
         let display_cases = variants.iter().map( |enum_constant| {
-            let const_name = make_varient_name(enum_name, enum_constant);
+            let const_name = make_variant_name(enum_name, enum_constant).as_code();
             quote!( Self::#const_name => Some(stringify!(#const_name)), )
         });
 
