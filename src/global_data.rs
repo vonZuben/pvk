@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use quote::quote;
 
 use crate::commands;
+
+#[macro_use]
 use crate::utils;
 
 use vkxml::*;
@@ -94,17 +96,6 @@ pub fn extension_tags() -> &'static Dictionary<'static> {
 //
 // we should be able to collect all information we need from only 2 passes
 
-macro_rules! filter_varient {
-    ( $varient:path ) => {
-        |elem| {
-            match elem {
-                $varient(varient) => Some(varient),
-                _ => None,
-            }
-        }
-    }
-}
-
 pub fn generate(registry: &'static vkxml::Registry) {
 
     let mut global_data = GlobalData::default();
@@ -183,7 +174,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
                         DefinitionsElement::Struct(ref stct) => {
                             structs.insert(stct.name.as_str(), stct);
                             global_data.needs_lifetime.insert(stct.name.as_str(), ());
-                            //for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member)) {
+                            //for field in stct.elements.iter().filter_map(filter_variant!(StructElement::Member)) {
                             //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
                             //        global_data.needs_lifetime.insert(stct.name.as_str(), ());
                             //        break;
@@ -243,7 +234,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
                     match def {
                         DefinitionsElement::Struct(stct) => {
                             if global_data.needs_lifetime.get(stct.name.as_str()).is_none() {
-                                for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member)) {
+                                for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
                                     if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
                                         global_data.needs_lifetime.insert(stct.name.as_str(), ());
                                         break;
@@ -252,7 +243,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
                             }
 
                             // check if struct identifies param as extern sync
-                            for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member)) {
+                            for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
                                 if let Some(synced_thing) = field.sync.as_ref() {
                                     assert_eq!(synced_thing, "true");
                                     let synced_thing = utils::field_name_expected(&field);
@@ -304,7 +295,7 @@ pub fn generate(registry: &'static vkxml::Registry) {
 
                                 let synced_thing = param.sync.as_ref().expect("already confimed sync is_some");
 
-                                for field in stct.elements.iter().filter_map(filter_varient!(StructElement::Member))
+                                for field in stct.elements.iter().filter_map(variant!(StructElement::Member))
                                     .filter(|field| synced_thing.contains(utils::field_name_expected(field)) )
                                     {
                                         // TODO consider if context for should_be_extern_sync

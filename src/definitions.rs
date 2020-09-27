@@ -6,6 +6,7 @@ use vkxml::*;
 use proc_macro2::{TokenStream};
 
 use crate::utils::*;
+
 #[macro_use]
 use crate::utils;
 use crate::ParseState;
@@ -74,7 +75,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         fname != "sType" && fname != "pNext"
                     };
 
-                    let must_init_members = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                    let must_init_members = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::must_init(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
@@ -87,7 +88,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let must_init_members2 = must_init_members.clone();
 
-                    let optional_members = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                    let optional_members = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::is_optional(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
@@ -100,7 +101,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let optional_members2 = optional_members.clone();
 
-                    let param_rules = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                    let param_rules = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
                             let param = case::camel_to_snake(utils::field_name_expected(field)).as_code();
@@ -149,7 +150,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             }
                         });
 
-                    let must_init_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                    let must_init_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::must_init(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
@@ -159,7 +160,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             }
                         });
 
-                    let optional_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                    let optional_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::is_optional(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
@@ -169,7 +170,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             }
                         });
 
-                    let to_c_copy = stct.elements.iter().filter_map(varient!(StructElement::Member))
+                    let to_c_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .map(|field| {
                             let fname = utils::field_name_expected(field);
                             let field_code = case::camel_to_snake(fname).as_code();

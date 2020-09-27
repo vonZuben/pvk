@@ -94,7 +94,7 @@ impl ReverseIndexFind<char> for &'_ str {
 }
 
 #[macro_export]
-macro_rules! varient {
+macro_rules! variant {
     ( $pattern:path ) => {
         |elem| match elem {
             $pattern(thing) => Some(thing),

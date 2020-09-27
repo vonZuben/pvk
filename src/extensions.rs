@@ -5,6 +5,7 @@ use vkxml::*;
 
 use proc_macro2::{TokenStream};
 
+#[macro_use]
 use crate::utils::*;
 use crate::commands::*;
 use crate::global_data;
@@ -19,17 +20,6 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
             return quote!();
         }
 
-        macro_rules! filter_varients {
-            ( $varient:path ) => {
-                |spec| {
-                    match spec {
-                        $varient(inner) => Some(inner),
-                        _ => None,
-                    }
-                }
-            }
-        };
-
         // NOTE the current code does not handle 'Removed' functionality
         // i.e. at the time of writing this, the vulkan spec does not remove
         // any functions in any features or extensions. Thus, we ignore the
@@ -40,9 +30,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         let enum_cache = &mut parse_state.enum_cache;
 
         let enum_extensions = extension.elements.iter()
-            .filter_map(filter_varients!(ExtensionElement::Require))
+            .filter_map(variant!(ExtensionElement::Require))
             .map(|extension_spec| extension_spec.elements.iter()
-                 .filter_map(filter_varients!(ExtensionSpecificationElement::Enum))
+                 .filter_map(variant!(ExtensionSpecificationElement::Enum))
                  )
             .flatten()
             .map(|enum_extension| {
@@ -101,9 +91,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
             });
 
         let constant_extensions = extension.elements.iter()
-            .filter_map(filter_varients!(ExtensionElement::Require))
+            .filter_map(variant!(ExtensionElement::Require))
             .map(|extension_spec| extension_spec.elements.iter()
-                 .filter_map(filter_varients!(ExtensionSpecificationElement::Constant))
+                 .filter_map(variant!(ExtensionSpecificationElement::Constant))
                  )
             .flatten()
             .map(|const_extension| {
@@ -114,9 +104,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
             });
 
         let commands_to_load = extension.elements.iter()
-            .filter_map(filter_varients!(ExtensionElement::Require))
+            .filter_map(variant!(ExtensionElement::Require))
             .map(|extension_spec| extension_spec.elements.iter()
-                 .filter_map(filter_varients!(ExtensionSpecificationElement::CommandReference))
+                 .filter_map(variant!(ExtensionSpecificationElement::CommandReference))
                  )
             .flatten()
             .map(|command_ref| {
