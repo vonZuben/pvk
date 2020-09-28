@@ -52,35 +52,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 let const_name = crate::enumerations
                     ::make_variant_name(enum_extension.extends.as_str(), enum_extension.name.as_str()).as_code();
 
-                let val = one_option!(
-
-                    &enum_extension.offset , |offset: &usize|
-                    {
-                        // see vulkan spec style guide regarding this equation
-                        let val = 1000000000 + (extension.number - 1) * 1000 + *offset as i32;
-                        if enum_extension.negate {
-                            -val
-                        }
-                        else {
-                            val
-                        }.to_string().as_code()
-                    };
-
-                    &enum_extension.number , |num: &i32|
-                        if enum_extension.negate {
-                           -*num
-                        }
-                        else {
-                           *num
-                        }.to_string().as_code() ;
-
-                    &enum_extension.hex , |_hex| panic!(
-                        format!("not expecting hex in enum extension definition: {}", enum_extension.name)) ;
-
-                    // shouldn't have negative bit positions
-                    &enum_extension.bitpos , |bitpos: &u32| format!("0x{:0>8X}", (1u32 << bitpos)).as_code() ;
-
-                );
+                let val = enum_extension.val(extension.number).as_code();
 
                 quote!{
                     impl #name {
@@ -239,5 +211,43 @@ impl ConstExtExt for vkxml::ExtensionConstant {
     }
     fn name(&self) -> TokenStream {
         self.name.as_code()
+    }
+}
+
+pub trait EnumExtExt {
+    fn val(&self, extension_number: i32) -> String; // this is s String representation of a value of any type for converting into code
+}
+
+impl EnumExtExt for ExtensionEnum {
+    fn val(&self, extension_number: i32) -> String {
+        one_option!{
+
+            &self.offset , |offset: &usize|
+            {
+                // see vulkan spec style guide regarding this equation
+                let val = 1000000000 + (extension_number - 1) * 1000 + *offset as i32;
+                if self.negate {
+                    -val
+                }
+                else {
+                    val
+                }.to_string()
+            };
+
+            &self.number , |num: &i32|
+                if self.negate {
+                    -*num
+                }
+                else {
+                    *num
+                }.to_string() ;
+
+            &self.hex , |_hex| panic!(
+                format!("not expecting hex in enum extension definition: {}", self.name)) ;
+
+            // shouldn't have negative bit positions
+            &self.bitpos , |bitpos: &u32| format!("0x{:0>8X}", (1u32 << bitpos)) ;
+
+        }
     }
 }
