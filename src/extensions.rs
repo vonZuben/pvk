@@ -1,5 +1,6 @@
 
 use quote::quote;
+use quote::ToTokens;
 
 use vkxml::*;
 
@@ -52,7 +53,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 let const_name = crate::enumerations
                     ::make_variant_name(enum_extension.extends.as_str(), enum_extension.name.as_str()).as_code();
 
-                let val = enum_extension.val(extension.number).as_code();
+                let val = enum_extension.val(extension.number);
 
                 quote!{
                     impl #name {
@@ -214,12 +215,35 @@ impl ConstExtExt for vkxml::ExtensionConstant {
     }
 }
 
+struct EnumVal {
+    bitpos: bool,
+    val: i32,
+}
+
+impl std::ops::Deref for EnumVal {
+    type Target = i32;
+    fn deref(&self) -> &i32 {
+        &self.val
+    }
+}
+
+impl ToTokens for EnumVal {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        if self.bitpos {
+            format!("0x{:0>8X}", self.val).as_code().to_tokens(tokens);
+        }
+        else {
+            format!("{}", self.val).as_code().to_tokens(tokens);
+        }
+    }
+}
+
 pub trait EnumExtExt {
-    fn val(&self, extension_number: i32) -> String; // this is s String representation of a value of any type for converting into code
+    fn val(&self, extension_number: i32) -> EnumVal; // this is s String representation of a value of any type for converting into code
 }
 
 impl EnumExtExt for ExtensionEnum {
-    fn val(&self, extension_number: i32) -> String {
+    fn val(&self, extension_number: i32) -> EnumVal {
         one_option!{
 
             &self.offset , |offset: &usize|
@@ -227,26 +251,26 @@ impl EnumExtExt for ExtensionEnum {
                 // see vulkan spec style guide regarding this equation
                 let val = 1000000000 + (extension_number - 1) * 1000 + *offset as i32;
                 if self.negate {
-                    -val
+                    EnumVal{ val: -val, bitpos: false }
                 }
                 else {
-                    val
-                }.to_string()
+                    EnumVal{ val: val, bitpos: false }
+                }
             };
 
             &self.number , |num: &i32|
                 if self.negate {
-                    -*num
+                    EnumVal{ val: -*num, bitpos: false }
                 }
                 else {
-                    *num
-                }.to_string() ;
+                    EnumVal{ val: *num, bitpos: false }
+                } ;
 
             &self.hex , |_hex| panic!(
                 format!("not expecting hex in enum extension definition: {}", self.name)) ;
 
             // shouldn't have negative bit positions
-            &self.bitpos , |bitpos: &u32| format!("0x{:0>8X}", (1u32 << bitpos)) ;
+            &self.bitpos , |bitpos: &u32| EnumVal{ val: 1i32 << bitpos, bitpos: true } ;
 
         }
     }
