@@ -3,8 +3,10 @@
 
 - [ ] consider how handles are passed in to functions and structs (somewhat inconvenient to need to manually get handle from handle owner)
 
-- [ ] consider how to incorporate VkResult into return type for commands
-        made custum error type a way to convert Vulkan error type thereto
-        change the VUlkan error type name to VkResultRaw and custum error type name to VkResult
+- [x] consider how to incorporate VkResult into return type for commands
+        made custom error type a way to convert Vulkan error type thereto
+        change the Vulkan error type name to VkResultRaw and custom error type name to VkResult
 
 - [ ] consider how to deal with "sudo" optional types, such as in VkWriteDescriptorSet
+
+- [ ] build entry code for creating instance, and also build code for properly create Devices (load Device commands)
