@@ -4,5 +4,7 @@
 - [ ] consider how handles are passed in to functions and structs (somewhat inconvenient to need to manually get handle from handle owner)
 
 - [ ] consider how to incorporate VkResult into return type for commands
+        made custum error type a way to convert Vulkan error type thereto
+        change the VUlkan error type name to VkResultRaw and custum error type name to VkResult
 
 - [ ] consider how to deal with "sudo" optional types, such as in VkWriteDescriptorSet

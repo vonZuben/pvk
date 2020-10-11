@@ -487,6 +487,9 @@ pub fn must_init(field: &vkxml::Field) -> bool {
 }
 
 pub fn ctype_to_rtype(type_name: &str) -> String {
+    if type_name == "VkResult" {
+        return "VkResultRaw".to_string();
+    }
     match type_name {
         "uint8_t" => "u8",
         "uint16_t" => "u16",

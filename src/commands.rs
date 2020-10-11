@@ -454,9 +454,22 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             _ => quote!( #field_name.to_c() ),
                         }
                     });
-                Some( quote!{
-                    #method_caller( #first_inner_param, #( #fields_inner ),* );
-                })
+                if cmd.return_type.basetype == "VkResult" {
+                    Some( quote!{
+                        let vk_result = #method_caller( #first_inner_param, #( #fields_inner ),* );
+                        // for commands where we can querry size, I assume that the result can only
+                        // be success (0) or an error (negitive number)
+                        if vk_result.0 < 0 {
+                            return vk_result.err(); // return the error code
+                        }
+                    })
+                }
+                else {
+                    assert_eq!(cmd.return_type.basetype, "void");
+                    Some( quote!{
+                        #method_caller( #first_inner_param, #( #fields_inner ),* );
+                    })
+                }
             }
             else {
                 None
@@ -491,8 +504,25 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             _ => quote!( #field_name.to_c() ),
                         }
                     });
-                quote!{
-                    #method_caller( #first_inner_param, #( #fields_inner ),* );
+                if cmd.return_type.basetype == "VkResult" {
+                    quote!{
+                        let vk_result = #method_caller( #first_inner_param, #( #fields_inner ),* );
+                        if vk_result.0 < 0 {
+                            return vk_result.err();
+                        }
+                    }
+                }
+                // if the return_type is not VkResult and is not void, then we assume that this
+                // function only returns this return_type
+                else if cmd.return_type.basetype != "void" {
+                    quote!{
+                        return #method_caller( #first_inner_param, #( #fields_inner ),* );
+                    }
+                }
+                else {
+                    quote!{
+                        #method_caller( #first_inner_param, #( #fields_inner ),* );
+                    }
                 }
             };
 
@@ -521,8 +551,14 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             let return_code;
             let return_type;
             if return_count == 0 {
-                return_type = Some( quote!(()) );
-                return_code = None;
+                if cmd.return_type.basetype == "VkResult" {
+                    return_type = Some( quote!(VkResult<()>) );
+                    return_code = Some( quote!(vk_result.success(())) )
+                }
+                else {
+                    return_type = Some( quote!(()) );
+                    return_code = None;
+                }
             }
             else {
                 let return_field_types = cmd.param.iter().filter_map(|field| {
@@ -548,16 +584,35 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             _ => None,
                         }
                     });
-                return_code = Some( quote!{
-                    let ret = ( #( #return_vars ),* ); //(A, B, ...);
-                    (ret, self).ret()
-                } );
+                return_code = if cmd.return_type.basetype == "VkResult" {
+                    Some( quote!{
+                        let ret = ( #( #return_vars ),* ); //(A, B, ...);
+                        vk_result.success((ret, self).ret())
+                    } )
+                }
+                else {
+                    Some( quote!{
+                        let ret = ( #( #return_vars ),* ); //(A, B, ...);
+                        (ret, self).ret()
+                    } )
+                };
             }
+
+            let result = if cmd.return_type.basetype == "VkResult" && return_count > 0 {
+                Some( quote!(VkResult<#return_type>) )
+            }
+            else if cmd.return_type.basetype != "void" && cmd.return_type.basetype != "VkResult" {
+                let result = utils::r_return_type(&cmd.return_type, utils::WithLifetime::Yes("'handle"));
+                Some( quote!(#result) )
+            }
+            else {
+                return_type
+            };
 
             quote!{
                 //#multi_return_type
                 impl<#lifetime_defs> #owner_name<#impl_lifetime> {
-                    pub fn #method_name<#call_lifetime>(& #self_modifier self, #( #fields_outer ),* ) -> #return_type {
+                    pub fn #method_name<#call_lifetime>(& #self_modifier self, #( #fields_outer ),* ) -> #result {
                         #( #size_vars )*
                         #size_query
                         #( #return_vars )*
@@ -592,7 +647,17 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
 
         let name = field.name.as_ref().unwrap().as_str();
 
-        if is_return_param(&field) {
+        let cmd_return_type = cmd.return_type.basetype.as_str();
+
+        // NOTE this has the following assumptions
+        // 1) if a command includes mutable pointers, it is assumed that those parameters are for
+        //    returning data, and the auto generated api doesn't require the user to provide such
+        //    parameters
+        // 2) an exception to the above is if a command returns something other than VkResult or void
+        //    then we assume that any mutable inputs must still be provided by the user and are not
+        //    just for returning data (e.g. vkGetPhysicalDeviceWaylandPresentationSupportKHR still
+        //    requires the user to provide a &mut to the 'display' parameter)
+        if is_return_param(&field) && ( cmd_return_type == "VkResult" || cmd_return_type == "void" ) {
             if field.size.is_some() {
                 catagories.insert(name, FieldCatagory::ReturnSized);
             }

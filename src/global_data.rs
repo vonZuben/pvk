@@ -7,6 +7,9 @@ use crate::commands;
 
 #[macro_use]
 use crate::utils;
+use utils::StrAsCode;
+
+use crate::extensions::EnumExtExt;
 
 use vkxml::*;
 use proc_macro2::{TokenStream};
@@ -14,7 +17,13 @@ use proc_macro2::{TokenStream};
 // TODO: GlobalData data members don't need to be public
 // want to encourage use of the helper methods
 
+pub struct VkResultMember<'a> {
+    pub name: &'a str,
+    pub is_err: bool,
+}
+
 type Dictionary<'a> = HashMap<&'a str, ()>;
+type VkResultMembers<'a> = Vec<VkResultMember<'a>>;
 
 #[derive(Default)]
 pub struct GlobalData<'a> {
@@ -27,6 +36,7 @@ pub struct GlobalData<'a> {
     pub not_sync_handles: Dictionary<'a>,
     pub not_sync_and_send_handles: Dictionary<'a>,
     pub extension_tags: Dictionary<'a>,
+    pub result_members: VkResultMembers<'a>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -47,6 +57,10 @@ pub fn lifetime(named_type: &str) -> Option<TokenStream> {
     else {
         None
     }
+}
+
+pub fn result_members() -> &'static VkResultMembers<'static> {
+    &expect_gd().result_members
 }
 
 pub fn uses_lifetime(named_type: &str) -> bool {
@@ -206,6 +220,30 @@ pub fn generate(registry: &'static vkxml::Registry) {
             RegistryElement::Constants(cnts) => {
             }
             RegistryElement::Enums(enums) => {
+                for element in enums.elements.iter() {
+                    match element {
+                        EnumsElement::Enumeration(enm) => {
+                            if enm.name.as_str() == "VkResult" {
+                                for member in enm.elements.iter() {
+                                    match member {
+                                        EnumerationElement::Enum(enum_constant) => {
+                                            let name = &enum_constant.name.as_str()[3..]; // cut off Vk_
+                                            let is_err = name.starts_with("ERROR_");
+
+                                            let result_member = VkResultMember {
+                                                name,
+                                                is_err,
+                                            };
+                                            global_data.result_members.push(result_member);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+                        EnumsElement::Notation(_) => {}
+                    }
+                }
             }
             RegistryElement::Commands(cmds) => {
                 for cmd in cmds.elements.iter() {
@@ -215,6 +253,28 @@ pub fn generate(registry: &'static vkxml::Registry) {
             RegistryElement::Features(features) => {
             }
             RegistryElement::Extensions(extensions) => {
+                for extension in extensions.elements.iter() {
+                    let enum_extensions = extension.elements.iter()
+                        .filter_map(variant!(ExtensionElement::Require))
+                        .map(|extension_spec| extension_spec.elements.iter()
+                             .filter_map(variant!(ExtensionSpecificationElement::Enum))
+                            )
+                        .flatten();
+
+                    for enum_extension in enum_extensions {
+                        let extends = enum_extension.extends.as_str();
+                        if extends == "VkResult" {
+                            let name = &enum_extension.name.as_str()[3..]; // cut off Vk_
+                            let is_err = name.starts_with("ERROR_");
+
+                            let result_member = VkResultMember {
+                                name,
+                                is_err,
+                            };
+                            global_data.result_members.push(result_member);
+                        }
+                    }
+                }
             }
             RegistryElement::Tags(tags) => {
                 for tag in tags.elements.iter() {

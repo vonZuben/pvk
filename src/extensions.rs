@@ -215,7 +215,7 @@ impl ConstExtExt for vkxml::ExtensionConstant {
     }
 }
 
-struct EnumVal {
+pub struct EnumVal {
     bitpos: bool,
     val: i32,
 }

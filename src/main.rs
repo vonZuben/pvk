@@ -20,6 +20,8 @@ mod ty;
 
 //mod take_list;
 
+use utils::StrAsCode;
+
 use std::path::Path;
 use std::collections::HashMap;
 
@@ -250,7 +252,7 @@ fn main() {
             //let mut phd: PhysicalDevice = std::ptr::null();
             //let mut phd_count: u32 = 0;
             //instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
-            let pd = instance.enumerate_physical_devices();
+            let pd = instance.enumerate_physical_devices().unwrap();
             println!("{:?}", inst);
             println!("{:?}", instance);
             println!("num physical devices: {}", pd.len());
@@ -280,6 +282,30 @@ fn main() {
 
     let platform_specific_types = utils::platform_specific_types();
 
+    let result_members = global_data::result_members();
+
+    let result_ok: Vec<_> = result_members.iter().filter_map(|member| {
+        if !member.is_err {
+            let name = member.name.as_code();
+            Some( quote!(#name) )
+        }
+        else {
+            None
+        }
+    }).collect();
+    let result_ok = result_ok.as_slice();
+
+    let result_err: Vec<_> = result_members.iter().filter_map(|member| {
+        if member.is_err {
+            let name = member.name.as_code();
+            Some( quote!(#name) )
+        }
+        else {
+            None
+        }
+    }).collect();
+    let result_err = result_err.as_slice();
+
     // code used internally by the generated vk.rs
     let util_code = quote!{
         // used for printing flagbits
@@ -299,6 +325,43 @@ fn main() {
         //        }
         //    }
         //}
+
+        #[derive(Debug)]
+        pub enum VkResult<T> {
+            //#( #result_members_code ),*
+            #( pub #result_ok(T) , )*
+            #( pub #result_err , )*
+        }
+
+        impl<T: ::std::fmt::Debug> VkResult<T> {
+            fn unwrap(self) -> T {
+                match self {
+                    #( Self::#result_ok(t) => t, )*
+                    _ => panic!("tried to unrwap {:?}", self),
+                }
+            }
+        }
+
+        impl crate::VkResultRaw {
+            // takes a possible value to wrap
+            fn success<T>(self, t: T) -> VkResult<T> {
+                match self {
+                    //#( #success_members , )*
+                    #( #result_ok => VkResult::#result_ok(t) , )*
+                    //Some( quote!(#name => VkResult::#name(t)) )
+                    x => panic!("vk.rs error. Can't handle result code {:?}", x),
+                }
+            }
+            // if err then we don't want to return anything
+            fn err<T>(self) -> VkResult<T> {
+                match self {
+                    //#( #err_members , )*
+                    #( #result_err => VkResult::#result_err , )*
+                    x => panic!("vk.rs error. Can't handle result code {:?}", x),
+                }
+            }
+        }
+
         trait Feature {
             fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands);
             fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands);
