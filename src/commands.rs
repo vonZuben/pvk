@@ -459,7 +459,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                         let vk_result = #method_caller( #first_inner_param, #( #fields_inner ),* );
                         // for commands where we can querry size, I assume that the result can only
                         // be success (0) or an error (negitive number)
-                        if vk_result.0 < 0 {
+                        if vk_result.is_err() {
                             return vk_result.err(); // return the error code
                         }
                     })
@@ -507,7 +507,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 if cmd.return_type.basetype == "VkResult" {
                     quote!{
                         let vk_result = #method_caller( #first_inner_param, #( #fields_inner ),* );
-                        if vk_result.0 < 0 {
+                        if vk_result.is_err() {
                             return vk_result.err();
                         }
                     }

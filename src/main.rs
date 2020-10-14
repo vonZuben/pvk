@@ -347,7 +347,7 @@ fn main() {
             fn success<T>(self, t: T) -> VkResult<T> {
                 match self {
                     //#( #success_members , )*
-                    #( #result_ok => VkResult::#result_ok(t) , )*
+                    #( VkResultRaw::#result_ok => VkResult::#result_ok(t) , )*
                     //Some( quote!(#name => VkResult::#name(t)) )
                     x => panic!("vk.rs error. Can't handle result code {:?}", x),
                 }
@@ -356,8 +356,15 @@ fn main() {
             fn err<T>(self) -> VkResult<T> {
                 match self {
                     //#( #err_members , )*
-                    #( #result_err => VkResult::#result_err , )*
+                    #( VkResultRaw::#result_err => VkResult::#result_err , )*
                     x => panic!("vk.rs error. Can't handle result code {:?}", x),
+                }
+            }
+
+            fn is_err(self) -> bool {
+                match self {
+                    #( VkResultRaw::#result_err => true , )*
+                    _ => false ,
                 }
             }
         }
