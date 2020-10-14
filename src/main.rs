@@ -403,11 +403,15 @@ fn main() {
 
         #[derive(Clone, Copy)]
         #[repr(transparent)]
-        pub struct MyStr<'a>(*const c_char, PhantomData<&'a CStr>);
+        // & c_char here is a reference to the fits character of a c style stirng 
+        // use & for non-nullable pointer Option<MyStr> (for same ABI as MyStr)
+        pub struct MyStr<'a>(&'a c_char);
 
         impl<'a, C: AsRef<CStr>> From<&'a C> for MyStr<'a> {
             fn from(c: &'a C) -> Self {
-                Self(c.as_ref().as_ptr(), PhantomData)
+                // safe because CStr.as_ptr() should never return null-ptr unless improperly (and unsafely) created
+                // also we borrow the owner of the CStr content so it should remain valid
+                Self(unsafe { ::std::mem::transmute(c.as_ref().as_ptr()) } )
             }
         }
 
@@ -846,7 +850,7 @@ fn main() {
         }
         impl AsRawPtr<c_char> for Option<MyStr<'_>> {
             fn as_ptr(&self) -> *const c_char {
-                //unsafe { ::std::mem::transmute::<Option<&T>, *const T>(*self) }
+                // MyStr is a transparent &c_char. Thus, Option<MyStr> haa never zero optimization and is is safe to transmute to ptr
                 unsafe { *(self as *const Option<MyStr> as *const Option<*const c_char> as *const *const c_char) }
             }
         }
