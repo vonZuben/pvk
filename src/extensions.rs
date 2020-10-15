@@ -70,10 +70,38 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                  )
             .flatten()
             .map(|const_extension| {
+                // every extension should define an extension name
+                // we will add a method for easily obtianing a C string 
+                // of the extension name
+                let extension_name_impl = if const_extension.name.ends_with("_EXTENSION_NAME") {
+                    let name = const_extension.text.as_ref().expect("error: extension name without text value");
+                    let c_name = name.to_string() + "\0";
+                    
+                    let extension_name = extension.name.as_code();
+
+                    Some(
+                        quote!{
+                            impl #extension_name {
+                                fn name(&self) -> &'static CStr {
+                                    const NAME: &'static str = #c_name;
+                                    let name_ptr = NAME.as_bytes().as_ptr() as *const c_char;
+                                    // c_name must always be a valid c string name as defined in vulkan spec (i'm pretty sure)
+                                    unsafe { CStr::from_ptr(name_ptr) }
+                                }
+                            }
+                        }
+                    )
+                }
+                else {
+                    None
+                };
                 let name = const_extension.name();
                 let ty = const_extension.ty();
                 let val = const_extension.val();
-                quote!( pub const #name: #ty = #val; )
+                quote!{ 
+                    pub const #name: #ty = #val;
+                    #extension_name_impl
+                }
             });
 
         let commands_to_load = extension.elements.iter()
