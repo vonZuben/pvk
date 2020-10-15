@@ -230,7 +230,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                                     #[allow(unused_mut)]
                                     let mut opt = Opt::default();
-                                    $( opt.$o_name = $o_val; )*
+                                    $( opt.$o_name = $o_val.into(); )*
 
                                     #[allow(unused_mut)]
                                     let mut combined = Combined {
