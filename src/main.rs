@@ -678,6 +678,13 @@ fn main() {
             }
         }
 
+        impl ConvertToC<Array<*const c_char>> for &ArrayArray<MyStr<'_>> {
+            fn to_c(self) -> Array<*const c_char> {
+                Array( unsafe{::std::mem::transmute::<*const MyStr, *const *const c_char>(self.0.as_ptr())} )
+            }
+        }
+
+
         // ================ Return conversion type =============
         // this is for creating return variabls that can automatically convert into the types we
         // want

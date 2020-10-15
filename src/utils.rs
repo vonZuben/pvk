@@ -341,11 +341,19 @@ impl<'a> Rtype<'a> {
                         vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust array PointerToPointer"),
                         vkxml::ReferenceType::PointerToConstPointer => {
                             if field.is_const {
+                                let param = if field.basetype.as_str() == "char" {
+                                    ty.basetype("MyStr")
+                                        .param(lifetime())
+                                }
+                                else {
+                                    ty.pointer(Pointer::Const)
+                                };
+
                                 Ty::new()
                                     .basetype("ArrayArray")
                                     .lifetime(lifetime())
                                     .reference(true)
-                                    .param(ty.pointer(Pointer::Const))
+                                    .param(param)
                                     //quote!(&ArrayArray<*const #basetype>)
                                     // TODO find a better type for this
                             } else {
