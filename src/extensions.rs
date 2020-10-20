@@ -303,3 +303,75 @@ impl EnumExtExt for ExtensionEnum {
         }
     }
 }
+
+pub fn generate_feature_enums_from_vk_parse_reg<'a>(feature: &'a vk_parse::Feature) -> TokenStream {
+    let q = feature.children.iter()
+        .filter_map(
+            |feature| {
+                match feature {
+                    vk_parse::ExtensionChild::Require{items, ..} => {
+                        Some( items.iter() )
+                    }
+                    _ => None,
+                }
+            }
+        )
+        .flatten()
+        .filter_map(
+            |interface_item| {
+                match interface_item {
+                    vk_parse::InterfaceItem::Enum(enm) => {
+                        match &enm.spec {
+                            vk_parse::EnumSpec::Alias{alias: _, extends: _} => {
+                                unimplemented!("not yet dealing with Aliases for enums defined by features");
+                            }
+                            vk_parse::EnumSpec::Offset{offset, extends, extnumber, dir} => {
+                                let extension_number = extnumber.expect("Feature defined enum with Offset value and no extnumber");
+                                let mut val = 1000000000 + (extension_number - 1) * 1000 + *offset;
+                                if !dir {
+                                    val = -val;
+                                }
+                                let val = format!("{}", val).as_code();
+                                let const_name = crate::enumerations
+                                    ::make_variant_name(extends.as_str(), enm.name.as_str()).as_code();
+                                let extends = extends.as_code();
+                                Some(
+                                    quote!{
+                                        impl #extends {
+                                            pub const #const_name: Self = #extends(#val);
+                                        }
+                                    }
+                                )
+                            }
+                            vk_parse::EnumSpec::Bitpos{bitpos, extends} => {
+                                let val = 1i32 << bitpos;
+                                let val = format!("0x{:0>8X}", val).as_code();
+                                match extends {
+                                    Some(extends) => {
+                                        let const_name = crate::enumerations
+                                            ::make_variant_name(extends.as_str(), enm.name.as_str()).as_code();
+                                        let extends = extends.as_code();
+                                        Some(
+                                            quote!{
+                                                impl #extends {
+                                                    pub const #const_name: Self = #extends(#val);
+                                                }
+                                            }
+                                        )
+                                    }
+                                    None => unimplemented!("not yet handle Feature defined enum with Bitset that dosn't extend another enum"),
+                                }
+                            }
+                            vk_parse::EnumSpec::Value{value: _, extends: _} => {
+                                unimplemented!("not yet handle Feature defined enum with Value")
+                            }
+                            vk_parse::EnumSpec::None => None
+                        }
+                    }
+                    _ => None,
+                }
+            }
+        );
+        
+    quote!( #(#q)* )
+}

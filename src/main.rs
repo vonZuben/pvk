@@ -896,12 +896,20 @@ fn main() {
         }
     };
 
+    let feature_enums = registry2.0.iter().map(|item| {
+        match item {
+            vk_parse::RegistryChild::Feature(feature) => Some(extensions::generate_feature_enums_from_vk_parse_reg(feature)),
+            _ => None,
+        }
+    });
+
     let mut q = quote!{
         #allow_vulkan_name_formats
         //#initial_test_code
         #util_code
         #platform_specific_types
         #(#tokens)*
+        #(#feature_enums)*
         #(#aliases)*
     };
 
