@@ -25,6 +25,8 @@ pub struct VkResultMember<'a> {
 type Dictionary<'a> = HashMap<&'a str, ()>;
 type VkResultMembers<'a> = Vec<VkResultMember<'a>>;
 
+type ExtensionMap<'a> = (String, &'a str); // extension_name (const value), and extension name for code gen
+
 #[derive(Default)]
 pub struct GlobalData<'a> {
     // extern_sync_params holds a command/struct_name and a list of params in a string that are
@@ -37,6 +39,7 @@ pub struct GlobalData<'a> {
     pub not_sync_and_send_handles: Dictionary<'a>,
     pub extension_tags: Dictionary<'a>,
     pub result_members: VkResultMembers<'a>,
+    pub extension_maps: Vec<ExtensionMap<'a>>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -57,6 +60,10 @@ pub fn lifetime(named_type: &str) -> Option<TokenStream> {
     else {
         None
     }
+}
+
+pub fn extension_maps() -> &'static Vec<ExtensionMap<'static>> {
+    &expect_gd().extension_maps
 }
 
 pub fn result_members() -> &'static VkResultMembers<'static> {
@@ -254,6 +261,13 @@ pub fn generate(registry: &'static vkxml::Registry) {
             }
             RegistryElement::Extensions(extensions) => {
                 for extension in extensions.elements.iter() {
+                    // some extensions are just placeholders and do not have a type
+                    // thus, we should not generate any code for them since they have no function
+                    if extension.ty.is_none() {
+                        continue;
+                    }
+
+                    // Enum defeined by extensions
                     let enum_extensions = extension.elements.iter()
                         .filter_map(variant!(ExtensionElement::Require))
                         .map(|extension_spec| extension_spec.elements.iter()
@@ -272,6 +286,29 @@ pub fn generate(registry: &'static vkxml::Registry) {
                                 is_err,
                             };
                             global_data.result_members.push(result_member);
+                        }
+                    }
+
+                    // Const defeined by extensions
+                    let constant_extensions = extension.elements.iter()
+                        .filter_map(variant!(ExtensionElement::Require))
+                        .map(|extension_spec| extension_spec.elements.iter()
+                            .filter_map(variant!(ExtensionSpecificationElement::Constant))
+                            )
+                        .flatten();
+
+                    for const_extension in constant_extensions {
+                        // want to add extension names to map so that we can generate a giant map from ExtensionProperties to &dyn VkExtensionLoader
+                        if utils::is_extension_name(&const_extension.name) {
+                            let name_def: &str = const_extension.text.as_ref().expect("error: extension name without text value");
+                            let name = extension.name.as_str();
+
+                            let c_name = format!("b\"{}\"", name_def);
+
+                            // note, c_name and name are probably always the same, but I am doing this anyway just to be sure
+                            // in anyevent, I need a vec with all of the possible extensions so I can map ExtensionProperties (which have a c string name)
+                            // to a &dyn VkExtensionLoader which implements the loading methods for that extension
+                            global_data.extension_maps.push((c_name, name));
                         }
                     }
                 }

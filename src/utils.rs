@@ -550,6 +550,17 @@ pub fn find_in_slice<T, F>(slice: &[T], f: F) -> Option<&T> where F: Fn(&T) -> b
     None
 }
 
+pub fn is_extension_name(name: &str) -> bool {
+    // extension names should end with _EXTENSION_NAME according to the vulkan spec style guide
+    // also need to check for ends_with("_NAME") because of an ANDROID extension which failed to follow the proper naming convention
+    //      (hopfully no extension defines a const that ends with _NAME other than the ANDROID extension name)
+    name.ends_with("_EXTENSION_NAME") || name.ends_with("_NAME")
+}
+
+pub fn extension_loader_name(extension_name: &str) -> String {
+    format!("{}_loader", extension_name)
+}
+
 pub fn platform_specific_types() -> TokenStream {
     quote! {
         pub type RROutput = c_ulong;

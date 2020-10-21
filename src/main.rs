@@ -306,6 +306,20 @@ fn main() {
     }).collect();
     let result_err = result_err.as_slice();
 
+    let ext_c_names = global_data::extension_maps().iter()
+        .map(|(c_name, _name)| {
+            // dbg!(c_name.as_bytes());
+            let c_name = c_name.as_code();
+            quote!( #c_name )
+        });
+
+    let ext_loader_names = global_data::extension_maps().iter()
+        .map(|(_c_name, name)| {
+            let name = utils::extension_loader_name(name).as_code();
+            quote!( #name )
+        });
+
+
     // code used internally by the generated vk.rs
     let util_code = quote!{
         // used for printing flagbits
@@ -373,6 +387,72 @@ fn main() {
             fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands);
             fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands);
         }
+
+        macro_rules! noop {
+            () => {
+                assert!(true);
+            };
+        }
+
+        trait VkExtension {
+            fn extension_name(&self) -> &CStr;
+        }
+
+        trait VkExtensionLoader : VkExtension {
+            fn load_instance_commands(&self, instance: Instance, commands: &mut InstanceCommands) {
+                noop!();
+            }
+            fn load_device_commands(&self, device: Device, commands: &mut DeviceCommands) {
+                noop!();
+            }
+        }
+
+        pub struct ExtLoaderWrapper(&'static dyn VkExtensionLoader);
+
+        trait AsExtLoader {
+            fn as_ext_loader(&self) -> &dyn VkExtensionLoader;
+        }
+
+        impl<T> AsExtLoader for T where T: VkExtension {
+            fn as_ext_loader(&self) -> &dyn VkExtensionLoader {
+                ex_name_to_extension_loader(self)
+            }
+        }
+
+        impl AsExtLoader for &dyn VkExtensionLoader {
+            fn as_ext_loader(&self) -> &dyn VkExtensionLoader {
+                *self
+            }
+        }
+
+        impl AsExtLoader for ExtLoaderWrapper {
+            fn as_ext_loader(&self) -> &dyn VkExtensionLoader {
+                self.0
+            }
+        }
+
+        impl VkExtension for ExtensionProperties<'_> {
+            fn extension_name(&self) -> &CStr {
+                // self.extention_name should always be a valid c string
+                // unless the vulkan implementation (driver) is wrong
+                // do I need to guard against bad drivers?
+                // hmmm?
+                // or it is fine since this will only be used internally to 
+                // pass the string straigth back to the vulkan driver via 
+                // extension loading
+                unsafe { CStr::from_ptr(self.extension_name.as_ptr()) }
+            }
+        }
+
+        fn ex_name_to_extension_loader(e: &impl VkExtension) -> &'static dyn VkExtensionLoader {
+            match e.extension_name().to_bytes() {
+                #( #ext_c_names => &#ext_loader_names, )*
+                _ => panic!("unrecognized extension name {:?}. Possibly unsupported by current version of vk.rs?",
+                        e.extension_name()
+                    )
+            }
+        }
+
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
         use std::os::raw::*;
@@ -412,6 +492,14 @@ fn main() {
                 // safe because CStr.as_ptr() should never return null-ptr unless improperly (and unsafely) created
                 // also we borrow the owner of the CStr content so it should remain valid
                 Self(unsafe { ::std::mem::transmute(c.as_ref().as_ptr()) } )
+            }
+        }
+
+        impl<'a> From<&'a CStr> for MyStr<'a> {
+            fn from(c: &'a CStr) -> Self {
+                // safe because CStr.as_ptr() should never return null-ptr unless improperly (and unsafely) created
+                // also we borrow the owner of the CStr content so it should remain valid
+                Self(unsafe { ::std::mem::transmute(c.as_ptr()) } )
             }
         }
 

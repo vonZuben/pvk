@@ -8,6 +8,7 @@ use proc_macro2::{TokenStream};
 
 #[macro_use]
 use crate::utils::*;
+use crate::utils;
 use crate::commands::*;
 use crate::global_data;
 
@@ -73,16 +74,16 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 // every extension should define an extension name
                 // we will add a method for easily obtianing a C string 
                 // of the extension name
-                let extension_name_impl = if const_extension.name.ends_with("_EXTENSION_NAME") {
+                let extension_name_impl = if utils::is_extension_name(&const_extension.name) {
                     let name = const_extension.text.as_ref().expect("error: extension name without text value");
                     let c_name = name.to_string() + "\0";
                     
-                    let extension_name = extension.name.as_code();
+                    let extension_loader_name = utils::extension_loader_name(&extension.name).as_code();
 
                     Some(
                         quote!{
-                            impl #extension_name {
-                                fn name(&self) -> &'static CStr {
+                            impl VkExtension for #extension_loader_name {
+                                fn extension_name(&self) -> &CStr {
                                     const NAME: &'static str = #c_name;
                                     let name_ptr = NAME.as_bytes().as_ptr() as *const c_char;
                                     // c_name must always be a valid c string name as defined in vulkan spec (i'm pretty sure)
@@ -104,7 +105,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 }
             });
 
-        let commands_to_load = extension.elements.iter()
+        let commands_to_load: Vec<_> = extension.elements.iter()
             .filter_map(variant!(ExtensionElement::Require))
             .map(|extension_spec| extension_spec.elements.iter()
                  .filter_map(variant!(ExtensionSpecificationElement::CommandReference))
@@ -112,72 +113,73 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
             .flatten()
             .map(|command_ref| {
                 // check the command_alias_cache to see if the extension identifies an alias
-                let name = command_alias_cache.get(command_ref.name.as_str())
-                    .map_or(command_ref.name.as_str(), |alias| *alias);
+                let command_ref_name = command_ref.name.as_str();
+                let name = command_alias_cache.get(command_ref_name)
+                    .map_or(command_ref_name, |alias| *alias);
+                (name, command_ref_name)
+            })
+            .collect();
+
+        let instance_commands = commands_to_load.iter()
+            .filter_map( |(name, command_ref_name)| {
                 let name_code = name.as_code();
                 match global_data::command_type(name) {
                     CommandCategory::Instance => {
-                        quote!( inst_cmds.#name_code.load( |raw_cmd_name|
-                                                 unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.to_c()) } ) )
+                        Some( quote!( #name_code ) )
                     }
                     CommandCategory::Device => {
-                        quote!( dev_cmds.#name_code.load( |raw_cmd_name|
-                                                 unsafe { GetDeviceProcAddr(*device, raw_cmd_name.to_c()) } ) )
+                        None
                     }
                     CommandCategory::Static => panic!(
-                        format!("error: extension command is for static command: {}",
-                                command_ref.name.as_str()) ),
+                        format!("error: extension command is for static command: {}", command_ref_name)
+                    ),
+                }
+            });
+        
+        let device_commands = commands_to_load.iter()
+            .filter_map( |(name, command_ref_name)| {
+                let name_code = name.as_code();
+                match global_data::command_type(name) {
+                    CommandCategory::Instance => {
+                        None
+                    }
+                    CommandCategory::Device => {
+                        Some( quote!( #name_code ) )
+                    }
+                    CommandCategory::Static => panic!(
+                        format!("error: extension command is for static command: {}", command_ref_name)
+                    ),
                 }
             });
 
-        //for _ in commands_to_load {}
-
-        //for x in commands_to_load {
-        //    dbg!(&extension);
-        //    dbg!(extension.name.as_str());
-        //    dbg!(x);
-        //}
-
-        let name = extension.name.as_code();
-        let command_load_code;
-        if commands_to_load.clone().count() == 0 || extension.name.as_str() == "VK_EXT_debug_utils" {
-            command_load_code = quote!();
+        let extension_loader_name = utils::extension_loader_name(&extension.name).as_code();
+        let loader_commands = if commands_to_load.len() == 0 || extension.name.as_str() == "VK_EXT_debug_utils" {
+            None
         }
         else {
-            match extension.ty.as_ref().expect(format!("error: extension without type {}", extension.name).as_str()) {
-                ExtensionType::Instance => {
-                    // when loading instance extensions, only instance commands can be loaded
-                    //
-                    // NOTE there is one known exception to the above
-                    // in particular, EXT_debug_utils is a combination of a
-                    // previously separate instance and device extensions
-                    command_load_code = quote!{
-                        fn load_commands(&self,
-                                         instance: &Instance, inst_cmds: &mut InstanceCommands) {
-                            #( #commands_to_load; )*
-                        }
-                    };
+            Some(
+                quote! {
+                    fn load_instance_commands(&self, instance: Instance, commands: &mut InstanceCommands) {
+                        let loader = |raw_cmd_name: &CStr| unsafe { GetInstanceProcAddr(instance, raw_cmd_name.to_c()) };
+                        #( commands.#instance_commands.load(loader); )*
+                    }
+                    fn load_device_commands(&self, device: Device, commands: &mut DeviceCommands) {
+                        let loader = |raw_cmd_name: &CStr| unsafe { GetDeviceProcAddr(device, raw_cmd_name.to_c()) };
+                        #( commands.#device_commands.load(loader); )*
+                    }
                 }
-                ExtensionType::Device => {
-                    // when loading device extensions, it is possible to also load some instance
-                    // commands
-                    command_load_code = quote!{
-                        fn load_commands(&self,
-                                         instance: &Instance, inst_cmds: &mut InstanceCommands,
-                                         device: &Device, dev_cmds: &mut DeviceCommands) {
-                            #( #commands_to_load; )*
-                        }
-                    };
-                }
-            }
-        }
+            )
+        };
+
+        let extension_user_name = extension.name.as_code();
 
         quote!{
             #( #enum_extensions )*
             #( #constant_extensions )*
-            struct #name;
-            impl #name {
-                #command_load_code
+            struct #extension_loader_name;
+            pub const #extension_user_name: ExtLoaderWrapper = ExtLoaderWrapper(&#extension_loader_name);
+            impl VkExtensionLoader for #extension_loader_name {
+                #loader_commands
             }
         }
 
