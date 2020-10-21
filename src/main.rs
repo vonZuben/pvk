@@ -390,8 +390,8 @@ fn main() {
         impl<T> Feature for T where T: FeatureCore + Send + Sync + 'static {}
 
         trait FeatureCore {
-            fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands);
-            fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands);
+            fn load_instance_commands(&self, instance: Instance, inst_cmds: &mut InstanceCommands);
+            fn load_device_commands(&self, device: Device, dev_cmds: &mut DeviceCommands);
             fn version(&self) -> u32;
             fn clone_feature(&self) -> Box<dyn Feature>;
         }
