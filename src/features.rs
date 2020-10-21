@@ -9,6 +9,22 @@ use crate::utils::*;
 use crate::commands::*;
 use crate::global_data;
 
+fn parse_version(ver: &str) -> TokenStream {
+
+    let mut tokens = ver.split('_');
+
+    // assert that first text is equal to VK and VERSION
+    tokens.next().map(|version|assert_eq!(version, "VK")).expect("Error parsing version, no 'VK' ...");
+    tokens.next().map(|version|assert_eq!(version, "VERSION")).expect("Error parsing version, no 'VERSION' ...");
+    let major = tokens.next().expect("error: parsing version can't get major number").as_code();
+    let minor = tokens.next().expect("error: parsing version can't get minor number").as_code();
+
+    // Note: I am assuming that the major and minor that are parsed are integers
+
+    quote!( vk_make_version(#major, #minor, 0) )
+
+}
+
 pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState) -> TokenStream {
 
     // a given feature should also load all previous features
@@ -26,6 +42,8 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
     let q = features.elements.iter().map(|feature| {
 
         let name = feature.name.as_code();
+
+        let ver = parse_version(&feature.name);
 
         let requiered_command_names = feature.elements.iter().filter_map(
             |feature_elem| match feature_elem {
@@ -55,9 +73,10 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
 
         let q = quote!{
 
+            #[derive(Clone, Copy, Debug)]
             pub struct #name;
 
-            impl Feature for #name {
+            impl FeatureCore for #name {
                 fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands) {
                     let loader = |raw_cmd_name: &CStr| unsafe { GetInstanceProcAddr(*instance, raw_cmd_name.to_c()) };
                     #( inst_cmds.#instance_commands.load(loader); )*
@@ -67,6 +86,12 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
                     let loader = |raw_cmd_name: &CStr| unsafe { GetDeviceProcAddr(*device, raw_cmd_name.to_c()) };
                     #( dev_cmds.#device_commands.load(loader); )*
                     #previous_feature_device
+                }
+                fn version(&self) -> u32 {
+                    #ver
+                }
+                fn clone_feature(&self) -> Box<dyn Feature> {
+                    Box::new(self.clone())
                 }
             }
         };

@@ -210,13 +210,16 @@ fn main() {
     };
 
     let initial_test_code = quote!{
-        macro_rules! vk_make_version {
-            ($major:expr, $minor:expr, $patch:expr) => {
-                (($major as u32) << 22) | (($minor as u32) << 12) | $patch as u32
-            };
+        // macro_rules! vk_make_version {
+        //     ($major:expr, $minor:expr, $patch:expr) => {
+        //         (($major as u32) << 22) | (($minor as u32) << 12) | $patch as u32
+        //     };
+        // }
+        fn vk_make_version(major: u32, minor: u32, patch: u32) -> u32 {
+            major << 22 | minor << 12 | patch
         }
+
         fn main(){
-            let mut inst: MaybeUninit<Instance> = MaybeUninit::uninit();
 
             let app_name = ::std::ffi::CString::new("Hello World!").unwrap();
             let engine_name = ::std::ffi::CString::new("Hello Engine!").unwrap();
@@ -383,9 +386,20 @@ fn main() {
             }
         }
 
-        trait Feature {
+        trait Feature : FeatureCore + Send + Sync + 'static {}
+        impl<T> Feature for T where T: FeatureCore + Send + Sync + 'static {}
+
+        trait FeatureCore {
             fn load_instance_commands(&self, instance: &Instance, inst_cmds: &mut InstanceCommands);
             fn load_device_commands(&self, device: &Device, dev_cmds: &mut DeviceCommands);
+            fn version(&self) -> u32;
+            fn clone_feature(&self) -> Box<dyn Feature>;
+        }
+
+        impl Clone for Box<dyn Feature> {
+            fn clone(&self) -> Self {
+                self.clone_feature()
+            }
         }
 
         macro_rules! noop {
