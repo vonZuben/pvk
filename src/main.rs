@@ -215,6 +215,22 @@ fn main() {
         //         (($major as u32) << 22) | (($minor as u32) << 12) | $patch as u32
         //     };
         // }
+
+        /// VkVersion(major, minor, patch)
+        /// generates u32 version number based on 
+        /// Vulkan specification
+        #[derive(Default, Copy, Clone, Debug)]
+        pub struct VkVersion(pub u32, pub u32, pub u32);
+
+        impl VkVersion {
+            fn make(self) -> u32 {
+                let major = self.0;
+                let minor = self.1;
+                let patch = self.2;
+                vk_make_version(major, minor, patch)
+            }
+        }
+
         fn vk_make_version(major: u32, minor: u32, patch: u32) -> u32 {
             major << 22 | minor << 12 | patch
         }
