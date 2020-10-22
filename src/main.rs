@@ -350,11 +350,11 @@ fn main() {
             #( pub #result_err , )*
         }
 
-        impl<T: ::std::fmt::Debug> VkResult<T> {
+        impl<T> VkResult<T> {
             fn unwrap(self) -> T {
                 match self {
                     #( Self::#result_ok(t) => t, )*
-                    _ => panic!("tried to unrwap {:?}", self),
+                    #( Self::#result_err => panic!(concat!("failed to unwrap VkResult::", stringify!(#result_err))), )*
                 }
             }
         }
@@ -366,7 +366,7 @@ fn main() {
                     //#( #success_members , )*
                     #( VkResultRaw::#result_ok => VkResult::#result_ok(t) , )*
                     //Some( quote!(#name => VkResult::#name(t)) )
-                    x => panic!("vk.rs error. Can't handle result code {:?}", x),
+                    x => panic!("vk.rs error. Can't handle result code {:?} (not success)", x),
                 }
             }
             // if err then we don't want to return anything
@@ -374,7 +374,7 @@ fn main() {
                 match self {
                     //#( #err_members , )*
                     #( VkResultRaw::#result_err => VkResult::#result_err , )*
-                    x => panic!("vk.rs error. Can't handle result code {:?}", x),
+                    x => panic!("vk.rs error. Can't handle result code {:?} (not an err)", x),
                 }
             }
 
