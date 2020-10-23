@@ -483,6 +483,23 @@ fn main() {
             }
         }
 
+        trait VkLayer {
+            fn layer_name(&self) -> &CStr;
+        }
+
+        impl VkLayer for LayerProperties<'_> {
+            fn layer_name(&self) -> &CStr {
+                // self.layer_name should always be a valid c string
+                // unless the vulkan implementation (driver) is wrong
+                // do I need to guard against bad drivers?
+                // hmmm?
+                // or it is fine since this will only be used internally to 
+                // pass the string straigth back to the vulkan driver via 
+                // extension loading
+                unsafe { CStr::from_ptr(self.layer_name.as_ptr()) }
+            }
+        }
+
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
         use std::os::raw::*;
