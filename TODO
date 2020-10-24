@@ -9,9 +9,12 @@
 
 - [ ] consider how to deal with "sudo" optional types, such as in VkWriteDescriptorSet
 
-- [partial - still need device code] build entry code for creating instance, and also build code for properly create Devices (load Device commands)
+- [partial] - still need device code] build entry code for creating instance, and also build code for properly create Devices (load Device commands)
 
 
+- [ ] impl Debug for all generated types
+
+- [ ] create some kind of 'Entry' code for loading commands that do not take dispatchable handles
 
 
 PROBLEM
