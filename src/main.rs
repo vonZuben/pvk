@@ -237,43 +237,20 @@ fn main() {
 
         fn main(){
 
-            let app_name = ::std::ffi::CString::new("Hello World!").unwrap();
-            let engine_name = ::std::ffi::CString::new("Hello Engine!").unwrap();
-
-            let app_info = ApplicationInfo! {
-                application_version: vk_make_version!(1, 0, 0),
-                engine_version: vk_make_version!(1, 0, 0),
-                api_version: vk_make_version!(1, 0, 0),
-            };
-
-            let a = &ArrayArray(Vec::new());
-            let create_info = InstanceCreateInfo!{
-                pp_enabled_layer_names: a,
-                pp_enabled_extension_names: a,
-            };
-
-            let res = unsafe {
-                CreateInstance(
-                    (&create_info).to_c(),
-                    None.to_c(),
-                    (&mut inst).to_c(),
-                    )
-            };
-            let inst = unsafe { inst.assume_init() };
-            println!("instance creation: {}", res);
-            println!("instance creation: {:?}", res);
-            let mut instance_commands = InstanceCommands::new();
-            let ver = VERSION_1_1;
-            ver.load_instance_commands(&inst, &mut instance_commands);
-
-            let instance = InstanceOwner::new(inst, instance_commands, Box::new(ver));
+            let instance = CreateInstance::new()
+                .app_name("heyo")
+                .create()
+                .unwrap();
 
             //let mut phd: PhysicalDevice = std::ptr::null();
             //let mut phd_count: u32 = 0;
             //instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
             let pd = instance.enumerate_physical_devices().unwrap();
-            println!("{:?}", inst);
+            //println!("{:?}", inst);
             println!("{:?}", instance);
+            for pd in &pd {
+                println!("{:?}", pd);
+            }
             println!("num physical devices: {}", pd.len());
 
             // test Flags printing
@@ -358,6 +335,121 @@ fn main() {
         //        }
         //    }
         //}
+
+        #[derive(Default)]
+        pub struct CreateInstance<'a> {
+            app_name: CString,
+            app_version: VkVersion,
+            engine_name: CString,
+            engine_version: VkVersion,
+            // Vulkan spec: The patch version number specified in apiVersion is ignored when creating an instance object. 
+            // Only the major and minor versions of the instance must match those requested in apiVersion
+            // therefore, I will only accept the custom Feature typs that I generate
+            api_version: Option<Box<dyn Feature>>,
+            enabled_layers: Vec<&'a dyn VkLayer>,
+            enabled_extensions: Vec<&'a dyn VkExtensionLoader>,
+        }
+
+        impl<'a> CreateInstance<'a> {
+            fn new() -> Self {
+                Self::default()
+            }
+
+            fn app_name(mut self, app_name: &str) -> Self {
+                self.app_name = CString::new(app_name).expect("str should not have internal null, and thus CString::new should never fail");
+                self
+            }
+
+            fn app_version(mut self, app_version: VkVersion) -> Self {
+                self.app_version = app_version;
+                self
+            }
+
+            fn engine_name(mut self, engine_name: &str) -> Self {
+                self.engine_name = CString::new(engine_name).expect("str should not have internal null, and thus CString::new should never fail");
+                self
+            }
+
+            fn engine_version(mut self, engine_version: VkVersion) -> Self {
+                self.engine_version = engine_version;
+                self
+            }
+
+            fn api_version(mut self, api_version: impl Feature) -> Self {
+                self.api_version = Some(Box::new(api_version));
+                self
+            }
+
+            fn enabled_layers(mut self, enabled_layers: impl IntoIterator<Item = &'a (impl VkLayer + 'a)>) -> Self {
+                self.enabled_layers = enabled_layers.into_iter()
+                    .map( |l| l as &dyn VkLayer )
+                    .collect();
+                self
+            }
+
+            fn enabled_extensions(mut self, enabled_extensions: impl IntoIterator<Item= &'a (impl AsExtLoader + 'a)>) -> Self {
+                self.enabled_extensions = enabled_extensions.into_iter()
+                    .map( |e| e.as_ext_loader() )
+                    .collect();
+                self
+            }
+
+            fn create(&self) -> VkResult<InstanceOwner<'static>> {
+                let app_name: MyStr = (&self.app_name).into();
+                let engine_name: MyStr = (&self.engine_name).into();
+
+                let api_version: Box<dyn Feature> = self.api_version
+                    .as_ref()
+                    .map(|boxed_ver| boxed_ver.clone())
+                    .unwrap_or(Box::new(VERSION_1_0));
+
+                let app_info = ApplicationInfo! {
+                    p_application_name: app_name,
+                    application_version: self.app_version.make(),
+                    p_engine_name: engine_name,
+                    engine_version: self.engine_version.make(),
+                    api_version: api_version.version(),
+                };
+
+                let enabled_layers = ArrayArray(self.enabled_layers.iter()
+                                                .map( |layer| layer.layer_name().into() ).collect());
+                let enabled_extensions = ArrayArray(self.enabled_extensions.iter()
+                                                .map( |extension| extension.extension_name().into() ).collect());
+
+                let create_info = InstanceCreateInfo!{
+                    p_application_info: &app_info,
+                    pp_enabled_layer_names: &enabled_layers,
+                    pp_enabled_extension_names: &enabled_extensions,
+                };
+
+                let mut inst: MaybeUninit<Instance> = MaybeUninit::uninit();
+
+                let vk_result = unsafe {
+                    CreateInstance(
+                        (&create_info).to_c(),
+                        None.to_c(),
+                        (&mut inst).to_c(),
+                        )
+                };
+
+                if vk_result.is_err() {
+                    vk_result.err()
+                }
+                else {
+                    let inst = unsafe { inst.assume_init() };
+
+                    let mut instance_commands = InstanceCommands::new();
+                    api_version.load_instance_commands(inst, &mut instance_commands);
+                    for extension in &self.enabled_extensions {
+                        extension.load_instance_commands(inst, &mut instance_commands);
+                    }
+
+                    let instance = InstanceOwner::new(inst, instance_commands, api_version);
+
+                    vk_result.success(instance)
+                }
+            }
+        }
 
         #[derive(Debug)]
         pub enum VkResult<T> {
@@ -503,7 +595,7 @@ fn main() {
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
         use std::os::raw::*;
-        use std::ffi::CStr;
+        use std::ffi::{CStr, CString};
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
             *input = *input ^ lowest_bit;
@@ -790,7 +882,7 @@ fn main() {
         // this is intended to be a type that can be targeted for easily generating
         // arrays to arrays that are compatible with multidimensional c arrays
 
-        //#[derive(Debug, Clone, Copy)]
+        #[derive(Debug)]
         //#[repr(transparent)]
         pub struct ArrayArray<T>(Vec<T>);
 
@@ -798,6 +890,12 @@ fn main() {
             type Target = Vec<T>;
             fn deref(&self) -> &Vec<T> {
                 &self.0
+            }
+        }
+
+        impl<T> Default for ArrayArray<T> {
+            fn default() -> Self {
+                Self(Default::default())
             }
         }
 
