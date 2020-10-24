@@ -9,4 +9,23 @@
 
 - [ ] consider how to deal with "sudo" optional types, such as in VkWriteDescriptorSet
 
-- [ ] build entry code for creating instance, and also build code for properly create Devices (load Device commands)
+- [partial - still need device code] build entry code for creating instance, and also build code for properly create Devices (load Device commands)
+
+
+
+
+PROBLEM
+
+The the output of vkxml (based on https://github.com/NicolBolas/New-Vulkan-XML-Format) generates an 
+incomplete version of the spec (despite how they advertise)
+
+For now I have a work around to use vk-parse out put directly to make aliases properly, and will also 
+need this for generating all enums properly (in the case wherethe enum was promoted from an extension 
+to a core feature, the extension number and offset are moved in the spec to the Feature definitions).
+There are probably other situations where information is incomplete.
+
+In the long run, it will probably be best to have an initial parseing stage based on the vk spes own
+python parser in order to generate the data I need. Then this can be further parsed with my rust code.
+This will take substantail amounts of work and re orginizing of the code to work.
+
+Or not. yolo
