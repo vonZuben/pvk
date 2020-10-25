@@ -250,6 +250,7 @@ fn main() {
             println!("{:?}", instance);
             for pd in &pd {
                 println!("{:?}", pd);
+                println!("{:?}", pd.get_physical_device_properties());
             }
             println!("num physical devices: {}", pd.len());
 
@@ -268,6 +269,10 @@ fn main() {
             println!("{}", flags);
             println!("{:?}", flags);
 
+            let u = ClearColorValue { int_32: [1, 1, 1, 1]};
+            let i = ClearValue { color: u };
+            println!("{:?}", i);
+            
             //test 1_1 feature command ?
             //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();
             //let mut phd_count: u32 = 0;
@@ -639,6 +644,31 @@ fn main() {
                 // safe because CStr.as_ptr() should never return null-ptr unless improperly (and unsafely) created
                 // also we borrow the owner of the CStr content so it should remain valid
                 Self(unsafe { ::std::mem::transmute(c.as_ptr()) } )
+            }
+        }
+
+        #[repr(transparent)]
+        #[derive(Clone, Copy)]
+        struct ArrayString<A: AsRef<[c_char]>>(A);
+
+        impl<A: AsRef<[c_char]>> ::std::fmt::Debug for ArrayString<A> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                let char_array = self.0.as_ref();
+                for c in char_array {
+                    if *c == 0 {
+                        break;
+                    } else {
+                        write!(f, "{}", *c as u8 as char)?;
+                    }
+                }
+                Ok(())
+            }
+        }
+        
+        impl<A: AsRef<[c_char]>> ::std::ops::Deref for ArrayString<A> {
+            type Target = A;
+            fn deref(&self) -> &Self::Target {
+                &self.0
             }
         }
 

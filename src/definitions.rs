@@ -293,7 +293,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                 quote!{
                     #[repr(C)]
-                    #[derive(Copy, Clone)]
+                    #[derive(Copy, Clone, Debug)]
                     pub struct #name<'handle> {
                         #( #params, )*
                         _p: PhantomData<&'handle ()>
@@ -307,11 +307,25 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                 let lifetime = global_data::lifetime(uni.name.as_str());
 
+                let possible_value = uni.elements.iter().map(|field| {
+                    case::camel_to_snake(utils::field_name_expected(field)).as_code()
+                });
+
                 quote!{
                     #[repr(C)]
                     #[derive(Copy, Clone)]
                     pub union #name #lifetime {
                         #( #params ),*
+                    }
+
+                    /// since we cannot know how to interpret the uniion when printing
+                    /// we just preint out every possible interpretation
+                    impl #lifetime ::std::fmt::Debug for #name #lifetime {
+                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            f.debug_struct(concat!(stringify!(#name), " (possible interpretations)"))
+                                #( .field(stringify!(#possible_value), unsafe{ &self.#possible_value }) )*
+                                .finish()
+                        }
                     }
                 }
 
@@ -389,18 +403,32 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             //},
             // TODO funtion pointers
             DefinitionsElement::FuncPtr(fptr) => {
-                let name = fptr.name.as_code();
+                let fptr_name_str = &fptr.name;
+                let fptr_name = (fptr.name.to_string() + "_fpointer").as_code();
                 let return_type = c_type(&fptr.return_type, WithLifetime::No, FieldContext::Member);
                 let params = fptr.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
 
-                //let lifetime = global_data::lifetime(fptr.name.as_str());
+                // we wrap the funtion pointer in a transparent struct so we can implement traits for it such as Debug
+                let name_wrapper = fptr.name.as_code();
 
                 quote!{
                     #[allow(non_camel_case_types)]
                     //pub type #name #lifetime = extern "system" fn(
-                    pub type #name = extern "system" fn(
+                    pub type #fptr_name = extern "system" fn(
                         #( #params ),*
                         ) -> #return_type;
+
+                    #[repr(transparent)]
+                    #[derive(Clone, Copy)]
+                    pub struct #name_wrapper(#fptr_name);
+
+                    // simply print the name of the function pointer
+                    // there is'nt much else hepful to print
+                    impl ::std::fmt::Debug for #name_wrapper {
+                        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                            write!(f, #fptr_name_str)
+                        }
+                    }
                 }
             },
             _ => quote!(),

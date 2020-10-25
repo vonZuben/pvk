@@ -172,7 +172,17 @@ pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                 .expect("error: field should have size");
             let ty = ty.to_array(ArrayType::array(size));
             match context {
-                FieldContext::Member => ty,
+                FieldContext::Member => {
+                    // wrap char array in custum type to impl Debug printing
+                    if field.basetype == "char" {
+                        Ty::new()
+                            .basetype("ArrayString")
+                            .param(ty)
+                    }
+                    else {
+                        ty
+                    }
+                }
                 FieldContext::FunctionParam =>
                     Ty::new().basetype("Ref")
                     .param(ty),
