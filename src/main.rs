@@ -217,7 +217,7 @@ fn main() {
         // }
 
         /// VkVersion(major, minor, patch)
-        /// generates u32 version number based on 
+        /// generates u32 version number based on
         /// Vulkan specification
         #[derive(Default, Copy, Clone, Debug)]
         pub struct VkVersion(pub u32, pub u32, pub u32);
@@ -272,7 +272,7 @@ fn main() {
             let u = ClearColorValue { int_32: [1, 1, 1, 1]};
             let i = ClearValue { color: u };
             println!("{:?}", i);
-            
+
             //test 1_1 feature command ?
             //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();
             //let mut phd_count: u32 = 0;
@@ -347,7 +347,7 @@ fn main() {
             app_version: VkVersion,
             engine_name: CString,
             engine_version: VkVersion,
-            // Vulkan spec: The patch version number specified in apiVersion is ignored when creating an instance object. 
+            // Vulkan spec: The patch version number specified in apiVersion is ignored when creating an instance object.
             // Only the major and minor versions of the instance must match those requested in apiVersion
             // therefore, I will only accept the custom Feature typs that I generate
             api_version: Option<Box<dyn Feature>>,
@@ -564,8 +564,8 @@ fn main() {
                 // unless the vulkan implementation (driver) is wrong
                 // do I need to guard against bad drivers?
                 // hmmm?
-                // or it is fine since this will only be used internally to 
-                // pass the string straigth back to the vulkan driver via 
+                // or it is fine since this will only be used internally to
+                // pass the string straigth back to the vulkan driver via
                 // extension loading
                 unsafe { CStr::from_ptr(self.extension_name.as_ptr()) }
             }
@@ -590,8 +590,8 @@ fn main() {
                 // unless the vulkan implementation (driver) is wrong
                 // do I need to guard against bad drivers?
                 // hmmm?
-                // or it is fine since this will only be used internally to 
-                // pass the string straigth back to the vulkan driver via 
+                // or it is fine since this will only be used internally to
+                // pass the string straigth back to the vulkan driver via
                 // extension loading
                 unsafe { CStr::from_ptr(self.layer_name.as_ptr()) }
             }
@@ -627,7 +627,7 @@ fn main() {
 
         #[derive(Clone, Copy)]
         #[repr(transparent)]
-        // & c_char here is a reference to the fits character of a c style stirng 
+        // & c_char here is a reference to the fits character of a c style stirng
         // use & for non-nullable pointer Option<MyStr> (for same ABI as MyStr)
         pub struct MyStr<'a>(&'a c_char);
 
@@ -664,7 +664,7 @@ fn main() {
                 Ok(())
             }
         }
-        
+
         impl<A: AsRef<[c_char]>> ::std::ops::Deref for ArrayString<A> {
             type Target = A;
             fn deref(&self) -> &Self::Target {

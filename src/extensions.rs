@@ -72,12 +72,12 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
             .flatten()
             .map(|const_extension| {
                 // every extension should define an extension name
-                // we will add a method for easily obtianing a C string 
+                // we will add a method for easily obtianing a C string
                 // of the extension name
                 let extension_name_impl = if utils::is_extension_name(&const_extension.name) {
                     let name = const_extension.text.as_ref().expect("error: extension name without text value");
                     let c_name = name.to_string() + "\0";
-                    
+
                     let extension_loader_name = utils::extension_loader_name(&extension.name).as_code();
 
                     Some(
@@ -99,7 +99,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                 let name = const_extension.name();
                 let ty = const_extension.ty();
                 let val = const_extension.val();
-                quote!{ 
+                quote!{
                     pub const #name: #ty = #val;
                     #extension_name_impl
                 }
@@ -135,7 +135,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     ),
                 }
             });
-        
+
         let device_commands = commands_to_load.iter()
             .filter_map( |(name, command_ref_name)| {
                 let name_code = name.as_code();
@@ -374,6 +374,6 @@ pub fn generate_feature_enums_from_vk_parse_reg<'a>(feature: &'a vk_parse::Featu
                 }
             }
         );
-        
+
     quote!( #(#q)* )
 }
