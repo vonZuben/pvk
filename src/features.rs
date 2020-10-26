@@ -94,6 +94,12 @@ pub fn handle_features(features: &Features, parse_state: &mut crate::ParseState)
                     Box::new(self.clone())
                 }
             }
+
+            impl From<#name> for FeatureWrapper {
+                fn from(f: #name) -> Self {
+                    Self( Box::new(f) )
+                }
+            }
         };
 
         parse_state.previous_feature_instance = Some(quote!{

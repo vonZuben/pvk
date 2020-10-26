@@ -351,55 +351,59 @@ fn main() {
             // Only the major and minor versions of the instance must match those requested in apiVersion
             // therefore, I will only accept the custom Feature typs that I generate
             api_version: Option<Box<dyn Feature>>,
-            enabled_layers: Vec<&'a dyn VkLayer>,
+            enabled_layers: Vec<&'a dyn VkLayerName>,
             enabled_extensions: Vec<&'a dyn VkExtensionLoader>,
         }
 
         impl<'a> CreateInstance<'a> {
-            fn new() -> Self {
+            pub fn new() -> Self {
                 Self::default()
             }
 
-            fn app_name(mut self, app_name: &str) -> Self {
+            pub fn app_name(mut self, app_name: &str) -> Self {
                 self.app_name = CString::new(app_name).expect("str should not have internal null, and thus CString::new should never fail");
                 self
             }
 
-            fn app_version(mut self, app_version: VkVersion) -> Self {
+            pub fn app_version(mut self, app_version: VkVersion) -> Self {
                 self.app_version = app_version;
                 self
             }
 
-            fn engine_name(mut self, engine_name: &str) -> Self {
+            pub fn engine_name(mut self, engine_name: &str) -> Self {
                 self.engine_name = CString::new(engine_name).expect("str should not have internal null, and thus CString::new should never fail");
                 self
             }
 
-            fn engine_version(mut self, engine_version: VkVersion) -> Self {
+            pub fn engine_version(mut self, engine_version: VkVersion) -> Self {
                 self.engine_version = engine_version;
                 self
             }
 
-            fn api_version(mut self, api_version: impl Feature) -> Self {
-                self.api_version = Some(Box::new(api_version));
+            pub fn api_version(mut self, api_version: impl Into<FeatureWrapper>) -> Self {
+                self.api_version = Some(api_version.into().0);
                 self
             }
 
-            fn enabled_layers(mut self, enabled_layers: impl IntoIterator<Item = &'a (impl VkLayer + 'a)>) -> Self {
+            pub fn enabled_layers<L>(mut self, enabled_layers: impl IntoIterator<Item = L>) -> Self
+                where L: Into<LayerWrapper<'a>>
+            {
                 self.enabled_layers = enabled_layers.into_iter()
-                    .map( |l| l as &dyn VkLayer )
+                    .map( |l| l.into().0 )
                     .collect();
                 self
             }
 
-            fn enabled_extensions(mut self, enabled_extensions: impl IntoIterator<Item= &'a (impl AsExtLoader + 'a)>) -> Self {
+            pub fn enabled_extensions<E>(mut self, enabled_extensions: impl IntoIterator<Item = E>) -> Self
+                where E: Into<ExtLoaderWrapper> + 'a
+            {
                 self.enabled_extensions = enabled_extensions.into_iter()
-                    .map( |e| e.as_ext_loader() )
+                    .map( |e| e.into().0 )
                     .collect();
                 self
             }
 
-            fn create(&self) -> VkResult<InstanceOwner<'static>> {
+            pub fn create(&self) -> VkResult<InstanceOwner<'static>> {
                 let app_name: MyStr = (&self.app_name).into();
                 let engine_name: MyStr = (&self.engine_name).into();
 
@@ -464,7 +468,7 @@ fn main() {
         }
 
         impl<T> VkResult<T> {
-            fn unwrap(self) -> T {
+            pub fn unwrap(self) -> T {
                 match self {
                     #( Self::#result_ok(t) => t, )*
                     #( Self::#result_err => panic!(concat!("failed to unwrap VkResult::", stringify!(#result_err))), )*
@@ -498,6 +502,8 @@ fn main() {
                 }
             }
         }
+
+        pub struct FeatureWrapper(Box<dyn Feature>);
 
         trait Feature : FeatureCore + Send + Sync + 'static {}
         impl<T> Feature for T where T: FeatureCore + Send + Sync + 'static {}
@@ -534,27 +540,18 @@ fn main() {
             }
         }
 
+        #[derive(Clone, Copy)]
         pub struct ExtLoaderWrapper(&'static dyn VkExtensionLoader);
 
-        trait AsExtLoader {
-            fn as_ext_loader(&self) -> &dyn VkExtensionLoader;
-        }
-
-        impl<T> AsExtLoader for T where T: VkExtension {
-            fn as_ext_loader(&self) -> &dyn VkExtensionLoader {
-                ex_name_to_extension_loader(self)
+        impl From<&ExtensionProperties<'_>> for ExtLoaderWrapper {
+            fn from(e: &ExtensionProperties<'_>) -> Self {
+                ExtLoaderWrapper(ex_name_to_extension_loader(e))
             }
         }
 
-        impl AsExtLoader for &dyn VkExtensionLoader {
-            fn as_ext_loader(&self) -> &dyn VkExtensionLoader {
-                *self
-            }
-        }
-
-        impl AsExtLoader for ExtLoaderWrapper {
-            fn as_ext_loader(&self) -> &dyn VkExtensionLoader {
-                self.0
+        impl From<&ExtLoaderWrapper> for ExtLoaderWrapper {
+            fn from(e: &ExtLoaderWrapper) -> Self {
+                *e
             }
         }
 
@@ -580,11 +577,33 @@ fn main() {
             }
         }
 
-        trait VkLayer {
+        pub struct LayerWrapper<'a>(&'a dyn VkLayerName);
+
+        trait VkLayerName {
             fn layer_name(&self) -> &CStr;
         }
 
-        impl VkLayer for LayerProperties<'_> {
+        pub struct VkLayer(CString);
+
+        impl VkLayer {
+            fn from_str(s: &str) -> Self {
+                Self(CString::new(s).expect("str should not have internal null"))
+            }
+        }
+
+        impl VkLayerName for VkLayer {
+            fn layer_name(&self) -> &CStr {
+                self.0.as_c_str()
+            }
+        }
+
+        impl<'a> From<&'a VkLayer> for LayerWrapper<'a> {
+            fn from(vkl: &'a VkLayer) -> Self {
+                Self(vkl)
+            }
+        }
+
+        impl VkLayerName for LayerProperties<'_> {
             fn layer_name(&self) -> &CStr {
                 // self.layer_name should always be a valid c string
                 // unless the vulkan implementation (driver) is wrong
@@ -594,6 +613,12 @@ fn main() {
                 // pass the string straigth back to the vulkan driver via
                 // extension loading
                 unsafe { CStr::from_ptr(self.layer_name.as_ptr()) }
+            }
+        }
+
+        impl<'a> From<&'a LayerProperties<'_>> for LayerWrapper<'a> {
+            fn from(l: &'a LayerProperties) -> Self {
+                Self(l)
             }
         }
 
