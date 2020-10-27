@@ -583,6 +583,7 @@ fn main() {
             fn layer_name(&self) -> &CStr;
         }
 
+        #[derive(Clone, Debug)]
         pub struct VkLayer(CString);
 
         impl VkLayer {
