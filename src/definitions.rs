@@ -376,8 +376,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         _manual_send_sync: PhantomData<*const ()>,
                     }
                     #send_or_sync_impl
-                    impl<'a> From<&#owner_name<'a>> for #handle_name<'a> {
-                        fn from(owner: &#owner_name<'a>) -> Self {
+                    impl<'owner> From<&'owner #owner_name<'_>> for #handle_name<'owner> {
+                        fn from(owner: &'owner #owner_name) -> Self {
                             owner.handle
                         }
                     }
