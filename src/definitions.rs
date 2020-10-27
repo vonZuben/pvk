@@ -200,7 +200,9 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         #[macro_export]
                         macro_rules! #name {
 
-                            ( @munch {} -> { $( $o_name:ident : $o_val:expr ),* $(,)? } ; { $( $nonoptional:tt )* } ;
+                            ( @munch {} ->
+                                    { $( $o_name:ident : $o_val:expr ),* $(,)? } ;
+                                    { $( $nono_name:ident : $nono_val:expr ),* $(,)? } ;
                                     { $( $count_setters:tt )* }) => {
                                 {
                                     use $crate::*;
@@ -224,7 +226,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     }
 
                                     let init = vk::#name {
-                                        $( $nonoptional )*
+                                        $( $nono_name: $nono_val.into(), )*
                                         _p: PhantomData,
                                     };
 
