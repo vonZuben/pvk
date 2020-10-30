@@ -27,6 +27,8 @@ type VkResultMembers<'a> = Vec<VkResultMember<'a>>;
 
 type ExtensionMap<'a> = (String, &'a str); // extension_name (const value), and extension name for code gen
 
+type EnumDictionary<'a> = HashMap<String, Vec<String>>;
+
 #[derive(Default)]
 pub struct GlobalData<'a> {
     // extern_sync_params holds a command/struct_name and a list of params in a string that are
@@ -40,6 +42,7 @@ pub struct GlobalData<'a> {
     pub extension_tags: Dictionary<'a>,
     pub result_members: VkResultMembers<'a>,
     pub extension_maps: Vec<ExtensionMap<'a>>,
+    pub all_enums: EnumDictionary<'a>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -60,6 +63,10 @@ pub fn lifetime(named_type: &str) -> Option<TokenStream> {
     else {
         None
     }
+}
+
+pub fn all_enums() -> &'static EnumDictionary<'static> {
+    &expect_gd().all_enums
 }
 
 pub fn extension_maps() -> &'static Vec<ExtensionMap<'static>> {
@@ -117,7 +124,7 @@ pub fn extension_tags() -> &'static Dictionary<'static> {
 //
 // we should be able to collect all information we need from only 2 passes
 
-pub fn generate(registry: &'static vkxml::Registry) {
+pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Registry) {
 
     let mut global_data = GlobalData::default();
 
@@ -202,6 +209,11 @@ pub fn generate(registry: &'static vkxml::Registry) {
                             //    }
                             //}
                         }
+                        DefinitionsElement::Bitmask(bitmask) => {
+                            let enm_name = utils::normalize_flag_names(&bitmask.name);
+                            assert!(global_data.all_enums.insert(enm_name, Vec::new()).is_none(),
+                                    "unextepxted value already in all_enums");
+                        }
                         DefinitionsElement::FuncPtr(fptr) => {
                             //func_ptrs.insert(fptr.name.as_str(), ());
                             //for field in fptr.param.iter() {
@@ -247,6 +259,20 @@ pub fn generate(registry: &'static vkxml::Registry) {
                                     }
                                 }
                             }
+
+                            // add new enumeration if not already there
+                            let enm_name = utils::normalize_flag_names(&enm.name);
+                            global_data.all_enums.entry(enm_name.clone())
+                                .or_default();
+
+                            // add core variants to enumeration
+                            for elem in enm.elements.iter()
+                                .filter_map(variant!(EnumerationElement::Enum))
+                                {
+                                    global_data.all_enums.get_mut(&enm_name)
+                                        .expect("error: enum not in all_enums")
+                                        .push(elem.name.clone());
+                                }
                         }
                         EnumsElement::Notation(_) => {}
                     }
@@ -266,6 +292,8 @@ pub fn generate(registry: &'static vkxml::Registry) {
                     if extension.ty.is_none() {
                         continue;
                     }
+
+                    // TODO: check vkxml::DefinitionReference variant
 
                     // Enum defeined by extensions
                     let enum_extensions = extension.elements.iter()
@@ -287,6 +315,12 @@ pub fn generate(registry: &'static vkxml::Registry) {
                             };
                             global_data.result_members.push(result_member);
                         }
+
+                        // add extension defined vairaints to enums
+                        let enm_name = utils::normalize_flag_names(&enum_extension.extends);
+                        global_data.all_enums.get_mut(&enm_name)
+                            .expect("error: extension enum not in all_enums")
+                            .push(enum_extension.name.clone());
                     }
 
                     // Const defeined by extensions
@@ -432,5 +466,61 @@ pub fn generate(registry: &'static vkxml::Registry) {
         }
     }
 
+    // ================ vk_parse REG PASS ==========================
+
+    for item in registry2.0.iter() {
+        match item {
+            vk_parse::RegistryChild::Feature(feature) => get_feature_enums_from_vk_parse_reg(feature, &mut global_data),
+            _ => {},
+        }
+    };
+
     GLOBAL_DATA.set(global_data);
+}
+
+pub fn get_feature_enums_from_vk_parse_reg(feature: &vk_parse::Feature, global_data: &mut GlobalData) {
+    for interface_item in feature.children.iter()
+        .filter_map(
+            |feature| {
+                match feature {
+                    vk_parse::ExtensionChild::Require{items, ..} => {
+                        Some( items.iter() )
+                    }
+                    _ => None,
+                }
+            }
+        )
+        .flatten() {
+                match interface_item {
+                    vk_parse::InterfaceItem::Enum(enm) => {
+                        match &enm.spec {
+                            vk_parse::EnumSpec::Alias{alias: _, extends: _} => {
+                                unimplemented!("not yet dealing with Aliases for enums defined by features");
+                            }
+                            vk_parse::EnumSpec::Offset{offset: _, extends, extnumber: _, dir: _} => {
+                                let enm_name = utils::normalize_flag_names(extends);
+                                global_data.all_enums.get_mut(&enm_name)
+                                    .expect("error: extension enum not in all_enums")
+                                    .push(enm.name.clone());
+                            }
+                            vk_parse::EnumSpec::Bitpos{bitpos: _, extends} => {
+                                match extends {
+                                    Some(extends) => {
+                                        let enm_name = utils::normalize_flag_names(extends);
+                                        global_data.all_enums.get_mut(&enm_name)
+                                            .expect("error: extension enum not in all_enums")
+                                            .push(enm.name.clone());
+                                    }
+                                    None => unimplemented!("not yet handle Feature defined enum with Bitset that dosn't extend another enum"),
+                                }
+                            }
+                            vk_parse::EnumSpec::Value{value: _, extends: _} => {
+                                unimplemented!("not yet handle Feature defined enum with Value")
+                            }
+                            vk_parse::EnumSpec::None => {}
+                        }
+                    }
+                    _ => {},
+                }
+            }
 }

@@ -43,9 +43,6 @@ pub struct ParseState<'a> {
 
     enum_constants_name_cache: HashMap<&'a str, ()>,
 
-    // <enum_name, Vec<varients>>
-    enum_cache: HashMap<&'a str, Vec<&'a str>>,
-
     command_alias_cache: HashMap<&'a str, &'a str>,
 
     handle_cache: Vec<&'a vkxml::Handle>,
@@ -64,7 +61,7 @@ pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, par
             handle_constants(cnts)
         },
         RegistryElement::Enums(enums) => {
-            handle_enumerations(enums, parse_state)
+            handle_enumerations(enums)
         }
         RegistryElement::Commands(cmds) => {
             handle_commands(cmds, parse_state)
@@ -168,8 +165,6 @@ fn main() {
 
         enum_constants_name_cache: HashMap::new(),
 
-        enum_cache: HashMap::new(),
-
         command_alias_cache: HashMap::new(),
 
         handle_cache: Vec::new(),
@@ -179,7 +174,7 @@ fn main() {
         phantom: ::std::marker::PhantomData,
     };
 
-    global_data::generate(&registry);
+    global_data::generate(&registry, &registry2);
 
     for alias_tuple in cmd_alias_iter {
         // insert a mapping for     alias -> cmd
@@ -1008,11 +1003,6 @@ fn main() {
                         $name(0)
                     }
                 }
-                impl ::std::fmt::Debug for $name {
-                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                        write!(f, "{}({:b})", stringify!($name), self.0)
-                    }
-                }
 
                 impl $name {
                     #[inline]
@@ -1203,7 +1193,7 @@ fn main() {
     };
 
     let post_process_handles = post_process_handles(&parse_state);
-    let post_process_enum_display_code = make_enumeration_display_code(&parse_state);
+    let post_process_enum_display_code = make_enumeration_display_code();
 
     q.extend(post_process_handles);
     q.extend(post_process_enum_display_code);

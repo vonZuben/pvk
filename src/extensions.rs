@@ -29,7 +29,6 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
 
         let enum_constants_name_cache = &mut parse_state.enum_constants_name_cache;
         let command_alias_cache = &parse_state.command_alias_cache;
-        let enum_cache = &mut parse_state.enum_cache;
 
         let enum_extensions = extension.elements.iter()
             .filter_map(variant!(ExtensionElement::Require))
@@ -46,13 +45,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     None => {}
                 }
 
-                enum_cache.get_mut(enum_extension.extends.as_str())
-                    .expect("error: extension enum not in cahce")
-                    .push(enum_extension.name.as_str());
-
                 let name = enum_extension.extends.as_code();
                 let const_name = crate::enumerations
-                    ::make_variant_name(enum_extension.extends.as_str(), enum_extension.name.as_str()).as_code();
+                    ::make_variant_name(&enum_extension.extends, enum_extension.name.as_str()).as_code();
 
                 let val = enum_extension.val(extension.number);
 
@@ -335,7 +330,7 @@ pub fn generate_feature_enums_from_vk_parse_reg<'a>(feature: &'a vk_parse::Featu
                                 }
                                 let val = format!("{}", val).as_code();
                                 let const_name = crate::enumerations
-                                    ::make_variant_name(extends.as_str(), enm.name.as_str()).as_code();
+                                    ::make_variant_name(extends, enm.name.as_str()).as_code();
                                 let extends = extends.as_code();
                                 Some(
                                     quote!{
@@ -351,7 +346,7 @@ pub fn generate_feature_enums_from_vk_parse_reg<'a>(feature: &'a vk_parse::Featu
                                 match extends {
                                     Some(extends) => {
                                         let const_name = crate::enumerations
-                                            ::make_variant_name(extends.as_str(), enm.name.as_str()).as_code();
+                                            ::make_variant_name(extends, enm.name.as_str()).as_code();
                                         let extends = extends.as_code();
                                         Some(
                                             quote!{

@@ -27,10 +27,13 @@ pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
         .map(|tag| &enumeration_name[..enumeration_name.len()-tag.len()])
         .unwrap_or(enumeration_name);
 
-    let ename = enumeration_name.find("FlagBits").map(|i| &enumeration_name[..i])
+    // check for both Flags and FlagBits and remove such
+    let enumeration_name = enumeration_name.find("FlagBits").map(|i| &enumeration_name[..i])
+        .unwrap_or(enumeration_name);
+    let enumeration_name = enumeration_name.find("Flags").map(|i| &enumeration_name[..i])
         .unwrap_or(enumeration_name);
 
-    let mut enum_name = case::camel_to_snake(ename);
+    let mut enum_name = case::camel_to_snake(enumeration_name);
     enum_name.make_ascii_uppercase();
     enum_name.push('_');
 
@@ -45,15 +48,10 @@ pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
     }
 }
 
-pub fn handle_enumerations<'a>(enumerations: &'a Enums, parse_state: &mut crate::ParseState<'a>) -> TokenStream {
+pub fn handle_enumerations<'a>(enumerations: &'a Enums) -> TokenStream {
 
     let q = enumerations.elements.iter().filter_map( |elem| match elem {
         EnumsElement::Enumeration(enm) => {
-
-            match parse_state.enum_cache.insert(enm.name.as_str(), Vec::new()) {
-                Some(_) => panic!("error: duplicate enum"),
-                None => {}
-            }
 
             let name = enm.name.as_code();
 
@@ -75,12 +73,7 @@ pub fn handle_enumerations<'a>(enumerations: &'a Enums, parse_state: &mut crate:
                 match elem {
                     EnumerationElement::Enum(enum_constant) => {
 
-                        // insert variants into hashmap
-                        parse_state.enum_cache.get_mut(enm.name.as_str())
-                            .expect("error: enum not in cahce")
-                            .push(enum_constant.name.as_str());
-
-                        let const_name = make_variant_name(enm.name.as_str(), enum_constant.name.as_str()).as_code();
+                        let const_name = make_variant_name(&enm.name, enum_constant.name.as_str()).as_code();
 
                         let val = one_option!(
 
@@ -138,9 +131,9 @@ pub fn handle_enumerations<'a>(enumerations: &'a Enums, parse_state: &mut crate:
 
 }
 
-pub fn make_enumeration_display_code<'a>(parse_state: &'a crate::ParseState) -> impl Iterator<Item=TokenStream> + 'a {
+pub fn make_enumeration_display_code() -> impl Iterator<Item=TokenStream> + 'static {
 
-    parse_state.enum_cache.iter().map( | (enum_name, variants) | {
+    global_data::all_enums().iter().map( | (enum_name, variants) | {
 
         let display_cases = variants.iter().map( |enum_constant| {
             let const_name = make_variant_name(enum_name, enum_constant).as_code();
@@ -149,7 +142,7 @@ pub fn make_enumeration_display_code<'a>(parse_state: &'a crate::ParseState) -> 
 
         let name = enum_name.as_code();
 
-        if enum_name.contains("FlagBits") {
+        if enum_name.contains("FlagBits") || enum_name.contains("Flags") {
             quote!{
                 impl ::std::fmt::Display for #name {
                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
@@ -183,6 +176,11 @@ pub fn make_enumeration_display_code<'a>(parse_state: &'a crate::ParseState) -> 
                         Ok(())
                     }
                 }
+                impl ::std::fmt::Debug for #name {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                        write!(f, concat!(#enum_name, "({}):[{}]"), self.0, self)
+                    }
+                }
             }
         }
         else {
@@ -203,7 +201,7 @@ pub fn make_enumeration_display_code<'a>(parse_state: &'a crate::ParseState) -> 
                 }
                 impl ::std::fmt::Debug for #name {
                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                        write!(f, concat!(#enum_name, "({})"), self.0)
+                        write!(f, concat!(#enum_name, "({}):[{}]"), self.0, self)
                     }
                 }
             }

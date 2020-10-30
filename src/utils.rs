@@ -533,6 +533,10 @@ pub fn ctype_to_rtype(type_name: &str) -> String {
     }.replace("FlagBits", "Flags")
 }
 
+pub fn normalize_flag_names(name: &str) -> String {
+    name.replace("FlagBits", "Flags")
+}
+
 macro_rules! one_option {
 
     ( $( $val:expr , $f:expr );+ $(;)* ) => {
