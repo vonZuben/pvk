@@ -583,11 +583,10 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
                     impl #owner_name<'_> {
                         #new_method
-                        fn handle<'owner>(&'owner self) -> #handle_name<'owner> {
+                    }
+                    impl<'owner> HandleOwner<'owner, #handle_name<'owner>> for #owner_name<'_> {
+                        fn handle(&'owner self) -> #handle_name<'owner> {
                             self.handle
-                        }
-                        fn mut_handle<'owner>(&'owner mut self) -> MutBorrow<#handle_name<'owner>> {
-                            MutBorrow(self.handle)
                         }
                     }
                     impl ::std::fmt::Debug for #owner_name<'_> {
@@ -680,11 +679,10 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
                     impl #owner_name<'_> {
                         #new_method
-                        fn handle<'owner>(&'owner self) -> #handle_name<'owner> {
+                    }
+                    impl<'owner> HandleOwner<'owner, #handle_name<'owner>> for #owner_name<'_> {
+                        fn handle(&'owner self) -> #handle_name<'owner> {
                             self.handle
-                        }
-                        fn mut_handle<'owner>(&'owner mut self) -> MutBorrow<#handle_name<'owner>> {
-                            MutBorrow(self.handle)
                         }
                     }
                     impl std::fmt::Debug for #owner_name<'_> {

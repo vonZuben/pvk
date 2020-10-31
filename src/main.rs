@@ -622,6 +622,9 @@ fn main() {
         use std::marker::PhantomData;
         use std::os::raw::*;
         use std::ffi::{CStr, CString};
+
+        use mut_borrow::MutBorrow;
+
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
             *input = *input ^ lowest_bit;
@@ -700,17 +703,59 @@ fn main() {
             fn to_c(self) -> C;
         }
 
-        // ============= MutBorrow<T> ================
-        // This type will be used with handles to represent whent he handle mutably borrows the
-        // owner. We need to make sure is is only ever created with a mutable borrow. It will only
-        // be used internally.
-        #[derive(Debug, Clone, Copy)]
-        #[repr(transparent)]
-        pub struct MutBorrow<T>(T);
+        pub trait HandleOwner<'owner, H: 'owner> {
+            fn handle(&'owner self) -> H;
+        }
 
-        impl<T> ConvertToC<T> for MutBorrow<T> {
-            fn to_c(self) -> T {
-                self.0
+        pub mod mut_borrow {
+
+            use super::*;
+
+            // ============= MutBorrow<T> ================
+            // Can only be created by mutably borrowing a HandleOwner
+            #[derive(Debug, Clone, Copy)]
+            #[repr(transparent)]
+            pub struct MutBorrow<T>(T);
+
+            impl<'owner, H: 'owner> MutBorrow<H> {
+                pub fn new(o: &'owner mut impl HandleOwner<'owner, H>) -> Self {
+                    Self(o.handle())
+                }
+            }
+
+            impl<'owner, H: 'owner, O> From<&'owner mut O> for MutBorrow<H>
+                where
+                    O: HandleOwner<'owner, H>
+            {
+                fn from(o: &'owner mut O) -> Self {
+                    Self::new(o)
+                }
+            }
+
+            impl<T> ConvertToC<T> for MutBorrow<T> {
+                fn to_c(self) -> T {
+                    self.0
+                }
+            }
+
+            impl<T> ConvertToC<Array<T>> for &[MutBorrow<T>] {
+                fn to_c(self) -> Array<T> {
+                    // this is maybe a bit too unsafe.
+                    // but the types we are dealing are transparent
+                    // so it should be reliable
+                    //
+                    // TODO can this just be Array(...)?
+                    unsafe { std::mem::transmute(self.as_ptr()) }
+                }
+            }
+
+            impl<T> ConvertToC<T> for Option<MutBorrow<T>> where T: Default {
+                fn to_c(self) -> T {
+                    match self {
+                        Some(t) => t.to_c(),
+                        None => T::default(),
+                    }
+                }
             }
         }
 
@@ -813,17 +858,6 @@ fn main() {
             }
         }
 
-        impl<T> ConvertToC<Array<T>> for &[MutBorrow<T>] {
-            fn to_c(self) -> Array<T> {
-                // this is maybe a bit too unsafe.
-                // but the types we are dealing are transparent
-                // so it should be reliable
-                //
-                // TODO can this just be Array(...)?
-                unsafe { std::mem::transmute(self.as_ptr()) }
-            }
-        }
-
         // ============= Ref<T> ===============
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for a single T
@@ -885,15 +919,6 @@ fn main() {
             fn to_c(self) -> T {
                 match self {
                     Some(t) => t,
-                    None => T::default(),
-                }
-            }
-        }
-
-        impl<T> ConvertToC<T> for Option<MutBorrow<T>> where T: Default {
-            fn to_c(self) -> T {
-                match self {
-                    Some(t) => t.to_c(),
                     None => T::default(),
                 }
             }
