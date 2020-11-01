@@ -175,7 +175,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
 
     let should_be_extern_sync = |context, member| -> bool {
         if still_take_mut.contains( &(context, utils::field_name_expected(member)) ) {
-            // some handle types which normally arn't sync will still need MutBorrow in some
+            // some handle types which normally arn't sync will still need MutHandle in some
             // contexts
             true
         }
