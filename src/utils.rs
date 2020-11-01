@@ -308,7 +308,7 @@ impl<'a> Rtype<'a> {
             }
             WHEN global_data::is_externsync(container, field) =>
             {
-                Ty::new().basetype("MutBorrow")
+                Ty::new().basetype("MutHandle")
                     .param(ty)
             }
             WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>

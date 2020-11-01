@@ -232,7 +232,7 @@ fn main() {
 
         fn main(){
 
-            let instance = CreateInstance::new()
+            let mut instance = CreateInstance::new()
                 .app_name("heyo")
                 .create()
                 .unwrap();
@@ -267,6 +267,18 @@ fn main() {
             let u = ClearColorValue { int_32: [1, 1, 1, 1]};
             let i = ClearValue { color: u };
             println!("{:?}", i);
+
+            let mb = handle_slice![instance, instance];
+
+            for i in &mb {
+                println!("{:?}", i);
+            }
+
+            let mb = mut_handle_slice![instance];
+
+            for i in &mb {
+                println!("{:?}", i);
+            }
 
             //test 1_1 feature command ?
             //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();
@@ -623,7 +635,7 @@ fn main() {
         use std::os::raw::*;
         use std::ffi::{CStr, CString};
 
-        use mut_borrow::MutBorrow;
+        use handles::{MutHandle, HandleOwner};
 
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
@@ -703,42 +715,68 @@ fn main() {
             fn to_c(self) -> C;
         }
 
-        pub trait HandleOwner<'owner, H: 'owner> {
-            fn handle(&'owner self) -> H;
+        macro_rules! handle_slice {
+            ( $( $($handle:expr),+ $(,)? )? ) => {
+                [
+                    $(
+                        $( $handle.handle() ),+
+                    )?
+                ]
+            }
         }
 
-        pub mod mut_borrow {
+        macro_rules! mut_handle_slice {
+            ( $( $($handle:expr),+ $(,)? )? ) => {
+                [
+                    $(
+                        $( $handle.mut_handle() ),+
+                    )?
+                ]
+            }
+        }
+
+        pub mod handles {
 
             use super::*;
 
-            // ============= MutBorrow<T> ================
+            pub trait HandleOwner<'owner, H: 'owner> {
+                fn handle(&'owner self) -> H;
+                fn mut_handle(&'owner mut self) -> MutHandle<H> {
+                    self.into()
+                }
+            }
+
+            // ============= MutHandle<T> ================
             // Can only be created by mutably borrowing a HandleOwner
             #[derive(Debug, Clone, Copy)]
             #[repr(transparent)]
-            pub struct MutBorrow<T>(T);
+            pub struct MutHandle<T>(T);
 
-            impl<'owner, H: 'owner> MutBorrow<H> {
-                pub fn new(o: &'owner mut impl HandleOwner<'owner, H>) -> Self {
+            impl<'owner, H: 'owner> MutHandle<H> {
+                pub fn new<O>(o: &'owner mut O) -> Self
+                where
+                    O: HandleOwner<'owner, H> + ?Sized
+                {
                     Self(o.handle())
                 }
             }
 
-            impl<'owner, H: 'owner, O> From<&'owner mut O> for MutBorrow<H>
+            impl<'owner, H: 'owner, O> From<&'owner mut O> for MutHandle<H>
                 where
-                    O: HandleOwner<'owner, H>
+                    O: HandleOwner<'owner, H> + ?Sized
             {
                 fn from(o: &'owner mut O) -> Self {
                     Self::new(o)
                 }
             }
 
-            impl<T> ConvertToC<T> for MutBorrow<T> {
+            impl<T> ConvertToC<T> for MutHandle<T> {
                 fn to_c(self) -> T {
                     self.0
                 }
             }
 
-            impl<T> ConvertToC<Array<T>> for &[MutBorrow<T>] {
+            impl<T> ConvertToC<Array<T>> for &[MutHandle<T>] {
                 fn to_c(self) -> Array<T> {
                     // this is maybe a bit too unsafe.
                     // but the types we are dealing are transparent
@@ -749,7 +787,7 @@ fn main() {
                 }
             }
 
-            impl<T> ConvertToC<T> for Option<MutBorrow<T>> where T: Default {
+            impl<T> ConvertToC<T> for Option<MutHandle<T>> where T: Default {
                 fn to_c(self) -> T {
                     match self {
                         Some(t) => t.to_c(),
