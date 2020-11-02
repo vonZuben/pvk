@@ -17,6 +17,10 @@
 
 - [ ] create some kind of 'Entry' code for loading commands that do not take dispatchable handles
 
+- [ ] remember to deal with comamdns that still arn't generated (e.g. ebcause they have a void param)
+
+- [ ] figure out how to represent void
+
 
 PROBLEM
 
