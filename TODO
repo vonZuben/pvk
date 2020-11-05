@@ -19,7 +19,8 @@
 
 - [ ] remember to deal with comamdns that still arn't generated (e.g. ebcause they have a void param)
 
-- [ ] figure out how to represent void
+- [x] figure out how to represent void
+        (some solution for this was made, but there may be room to improve this still)
 
 
 PROBLEM
