@@ -231,11 +231,26 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
 }
 
-fn is_return_param(field: &&vkxml::Field) -> bool {
-    field.reference.is_some() && field.is_const == false
-}
-fn not_return_param(field: &&vkxml::Field) -> bool {
-    !is_return_param(field)
+fn is_return_param(field: &&vkxml::Field, catagories: &HashMap<&str, FieldCatagory>) -> bool {
+    // exception for *mut c_void
+    let exception;
+    if field.basetype.as_str() == "void" && matches!(field.reference, Some(ReferenceType::Pointer)) {
+        // the exception does not take place if the *mut c_void has a corresponding mutable size param
+        if let Some(size) = field.size.as_ref() {
+            exception = catagories
+                            .get(size.as_str())
+                            .map(|cat| !matches!(cat, FieldCatagory::Return))
+                            .unwrap_or(true);
+        }
+        else {
+            exception = true;
+        }
+    }
+    else {
+        exception = false;
+    }
+
+    field.reference.is_some() && field.is_const == false && !exception
 }
 
 // this is for automatically generating methods which provide a more ideal rust interface for calling
@@ -250,20 +265,6 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
     }
 
     let category_map = category_map.unwrap();
-
-    // NOTE if method has a void return parameter, then we will not generate a method for it
-    for field in cmd.param.iter() {
-        let field_name = field_name(field);
-        match category_map.get(field_name).unwrap() {
-            FieldCatagory::ReturnSized | FieldCatagory::Return => {
-                if field.basetype.as_str() == "void" {
-                    eprintln!("cmd {} with void return type: {}", cmd.name, field_name);
-                    return quote!();
-                }
-            }
-            _ => {},
-        }
-    }
 
     let name = cmd.name.as_code();
     let owner_name = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
@@ -424,7 +425,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                                 vkxml::ArrayType::Static => None,
                                 vkxml::ArrayType::Dynamic =>
                                 {
-                                    let is_size_set = size_set.get(size_raw).expect("error: NormalSized with no size");
+                                    let is_size_set = size_set.get(size_raw).expect(format!("error: NormalSized with no size {}", cmd.name).as_str());
                                     if !is_size_set {
                                         size_set.entry(size_raw).and_modify(|x| *x=true);
                                         Some(quote!( #size = #field_name.len() as _; ))
@@ -657,7 +658,9 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
         //    then we assume that any mutable inputs must still be provided by the user and are not
         //    just for returning data (e.g. vkGetPhysicalDeviceWaylandPresentationSupportKHR still
         //    requires the user to provide a &mut to the 'display' parameter)
-        if is_return_param(&field) && ( cmd_return_type == "VkResult" || cmd_return_type == "void" ) {
+        // 3) another exception we will make is for functions that take a *mut c_void. These will
+        //    require the user to provide a buffer of the appropriate size manually.
+        if is_return_param(&field, &catagories) && ( cmd_return_type == "VkResult" || cmd_return_type == "void" ) {
             if field.size.is_some() {
                 catagories.insert(name, FieldCatagory::ReturnSized);
             }

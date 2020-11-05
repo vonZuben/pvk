@@ -196,7 +196,14 @@ pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldC
                         if field.is_const {
                             Ty::new().basetype("Array").param(ty)
                         } else {
-                            Ty::new().basetype("ArrayMut").param(ty)
+                            if field.basetype == "void" {
+                                // assumeing that void pointers to a dynamically sized buffer are always mutable
+                                assert!(!field.is_const);
+                                Ty::new().basetype("OpaqueMutPtr")
+                            }
+                            else {
+                                Ty::new().basetype("ArrayMut").param(ty)
+                            }
                         }
                     }
                     vkxml::ReferenceType::PointerToPointer => {
@@ -342,10 +349,20 @@ impl<'a> Rtype<'a> {
                                         .reference(true)
                                 }
                             } else {
-                                ty.to_array(ArrayType::Slice)
-                                    .lifetime(lifetime())
-                                    .reference(true)
-                                    .mutable(true)
+                                if field.basetype == "void" {
+                                    Ty::new()
+                                        .basetype("u8")
+                                        .to_array(ArrayType::Slice)
+                                        .lifetime(lifetime())
+                                        .reference(true)
+                                        .mutable(true)
+                                }
+                                else {
+                                    ty.to_array(ArrayType::Slice)
+                                        .lifetime(lifetime())
+                                        .reference(true)
+                                        .mutable(true)
+                                }
                             }
                         }
                         vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust array PointerToPointer"),
@@ -446,6 +463,9 @@ pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
         STAGE {
             if global_data::is_handle(basetype_str) {
                 ty.basetype(make_handle_owner_name(basetype_str))
+            }
+            else if basetype_str == "void" && !matches!(field.reference, Some(vkxml::ReferenceType::PointerToPointer)) {
+                ty.basetype("u8")
             }
             else {
                 ty.basetype(basetype_str)

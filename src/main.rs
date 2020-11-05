@@ -797,6 +797,31 @@ fn main() {
             }
         }
 
+        #[derive(Debug)]
+        #[repr(transparent)]
+        pub struct OpaqueMutPtr(*mut c_void);
+
+        impl ConvertToC<OpaqueMutPtr> for &mut [u8] {
+            fn to_c(self) -> OpaqueMutPtr {
+                OpaqueMutPtr(self.as_mut_ptr() as *mut c_void)
+            }
+        }
+
+        impl ConvertToC<OpaqueMutPtr> for &mut Vec<u8> {
+            fn to_c(self) -> OpaqueMutPtr {
+                OpaqueMutPtr(self.as_mut_ptr() as *mut c_void)
+            }
+        }
+
+        impl ConvertToC<OpaqueMutPtr> for Option<OpaqueMutPtr> {
+            fn to_c(self) -> OpaqueMutPtr {
+                match self {
+                    Some(o) => o,
+                    None => OpaqueMutPtr(::std::ptr::null_mut()),
+                }
+            }
+        }
+
         // ============= Array<T> ===============
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for an array of T
