@@ -153,104 +153,172 @@ impl<'a> From<&'a str> for WithLifetime<'a> {
     }
 }
 
-pub fn c_type(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Ty {
-    pipe!{ ty = Ty::new() =>
-        STAGE ty.basetype(field.basetype.as_str());
-        WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
-        {
-            match with_lifetime {
-                WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
-                WithLifetime::No => ty,
+pub struct CType<'a> {
+    field: &'a vkxml::Field,
+    with_lifetime: WithLifetime<'a>,
+    context: FieldContext,
+    is_return_type: bool,
+}
+
+impl<'a> CType<'a> {
+    pub fn new(field: &'a vkxml::Field) -> Self {
+        Self {
+            field,
+            with_lifetime: WithLifetime::No,
+            context: FieldContext::FunctionParam,
+            is_return_type: false,
+        }
+    }
+    pub fn with_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.with_lifetime = lifetime.into();
+        self
+    }
+    pub fn context(mut self, context: FieldContext) -> Self {
+        self.context = context;
+        self
+    }
+    pub fn is_return_type(mut self, is_return_type: bool) -> Self {
+        self.is_return_type = is_return_type;
+        self
+    }
+    pub fn as_field(&self) -> Field {
+        Field::new(case::camel_to_snake(field_name_expected(self.field)), self.as_ty())
+    }
+    pub fn as_ty(&self) -> Ty {
+        let field = self.field;
+        let with_lifetime = self.with_lifetime;
+        let context = self.context;
+        let is_return_type = self.is_return_type;
+
+        if field.basetype == "void" {
+            assert!(field.reference.is_some() || is_return_type,
+                format!("error raw void type in non return position: {}",
+                    field.name.as_ref().map(AsRef::<str>::as_ref)
+                    .unwrap_or("(probably unlabled return type, use CType.is_return_type(true))"))
+            );
+            // if field.reference.is_none() && !is_return_type {
+            //     println!("error void not ref");
+            // }
+
+            // Early return with () which is the rust version of void for return type
+            if is_return_type {
+                return Ty::new().basetype("()");
             }
         }
-        DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
-        {
-            let size = field
-                .size
-                .as_ref()
-                .or_else(|| field.size_enumref.as_ref())
-                .expect("error: field should have size");
-            let ty = ty.to_array(ArrayType::array(size));
-            match context {
-                FieldContext::Member => {
-                    // wrap char array in custum type to impl Debug printing
-                    if field.basetype == "char" {
-                        Ty::new()
-                            .basetype("ArrayString")
-                            .param(ty)
-                    }
-                    else {
-                        ty
-                    }
+        pipe!{ ty = Ty::new() =>
+            STAGE ty.basetype(field.basetype.as_str());
+            WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
+            {
+                match with_lifetime {
+                    WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                    WithLifetime::No => ty,
                 }
-                FieldContext::FunctionParam =>
-                    Ty::new().basetype("Ref")
-                    .param(ty),
             }
-        }
-        DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
-        {
-            match &field.reference {
-                Some(r) => match r {
-                    vkxml::ReferenceType::Pointer => {
-                        if field.is_const {
-                            Ty::new().basetype("Array").param(ty)
-                        } else {
-                            if field.basetype == "void" {
-                                // assumeing that void pointers to a dynamically sized buffer are always mutable
-                                assert!(!field.is_const);
-                                Ty::new().basetype("OpaqueMutPtr")
-                            }
-                            else {
-                                Ty::new().basetype("ArrayMut").param(ty)
-                            }
+            DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
+            {
+                let size = field
+                    .size
+                    .as_ref()
+                    .or_else(|| field.size_enumref.as_ref())
+                    .expect("error: field should have size");
+                let ty = ty.to_array(ArrayType::array(size));
+                match context {
+                    FieldContext::Member => {
+                        // wrap char array in custum type to impl Debug printing
+                        if field.basetype == "char" {
+                            Ty::new()
+                                .basetype("ArrayString")
+                                .param(ty)
+                        }
+                        else {
+                            ty
                         }
                     }
-                    vkxml::ReferenceType::PointerToPointer => {
-                        unimplemented!("unimplemented c_type Array PointerToPointer");
-                        //eprintln!("PointerToPointer: {}: {}", field_name_expected(field), field.basetype.as_str());
-                    }
-                    vkxml::ReferenceType::PointerToConstPointer => {
-                        if field.is_const {
-                            // TODO a special case fro string arrays would probably be good
-                            Ty::new().basetype("Array")
-                                .param(ty.pointer(Pointer::Const))
-                        } else {
-                            unimplemented!("unimplemented c_type Array PointerToConstPointer (Mut)");
-                        }
-                    }
-                },
-                None => ty,
+                    FieldContext::FunctionParam =>
+                        Ty::new().basetype("Ref")
+                        .param(ty),
+                }
             }
-        }
-        DONE WHEN matches!(field.array, None) =>
-        {
-            match &field.reference {
-                Some(r) => match r {
-                    vkxml::ReferenceType::Pointer => {
-                        if field.is_const {
-                            Ty::new().basetype("Ref").param(ty)
-                        } else {
-                            Ty::new().basetype("RefMut").param(ty)
+            DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
+            {
+                match &field.reference {
+                    Some(r) => match r {
+                        vkxml::ReferenceType::Pointer => {
+                            if field.is_const {
+                                Ty::new().basetype("Array").param(ty)
+                            } else {
+                                if field.basetype == "void" {
+                                    // assumeing that void pointers to a dynamically sized buffer are always mutable
+                                    assert!(!field.is_const);
+                                    Ty::new().basetype("OpaqueMutPtr")
+                                }
+                                else {
+                                    Ty::new().basetype("ArrayMut").param(ty)
+                                }
+                            }
                         }
-                    }
-                    vkxml::ReferenceType::PointerToPointer => {
-                        assert!(field.is_const == false);
-                        Ty::new().basetype("RefMut")
-                            .param(ty.pointer(Pointer::Mut))
-                    }
-                    vkxml::ReferenceType::PointerToConstPointer => {
-                        unimplemented!("unimplemented c_type Ref PointerToConstPointer (Const/Mut)");
-                    }
-                },
-                None => ty,
+                        vkxml::ReferenceType::PointerToPointer => {
+                            unimplemented!("unimplemented c_type Array PointerToPointer");
+                            //eprintln!("PointerToPointer: {}: {}", field_name_expected(field), field.basetype.as_str());
+                        }
+                        vkxml::ReferenceType::PointerToConstPointer => {
+                            if field.is_const {
+                                // TODO a special case fro string arrays would probably be good
+                                Ty::new().basetype("Array")
+                                    .param(ty.pointer(Pointer::Const))
+                            } else {
+                                unimplemented!("unimplemented c_type Array PointerToConstPointer (Mut)");
+                            }
+                        }
+                    },
+                    None => ty,
+                }
+            }
+            DONE WHEN matches!(field.array, None) =>
+            {
+                match &field.reference {
+                    Some(r) => match r {
+                        vkxml::ReferenceType::Pointer => {
+                            if field.is_const {
+                                Ty::new().basetype("Ref").param(ty)
+                            } else {
+                                Ty::new().basetype("RefMut").param(ty)
+                            }
+                        }
+                        vkxml::ReferenceType::PointerToPointer => {
+                            assert!(field.is_const == false);
+                            Ty::new().basetype("RefMut")
+                                .param(ty.pointer(Pointer::Mut))
+                        }
+                        vkxml::ReferenceType::PointerToConstPointer => {
+                            unimplemented!("unimplemented c_type Ref PointerToConstPointer (Const/Mut)");
+                        }
+                    },
+                    None => ty,
+                }
             }
         }
     }
 }
 
-pub fn c_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Field {
-    Field::new(case::camel_to_snake(field_name_expected(field)), c_type(field, with_lifetime, context))
+impl ToTokens for CType<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.as_ty().to_tokens(tokens);
+    }
+}
+
+pub fn c_type<'a>(field: &'a vkxml::Field, with_lifetime: WithLifetime<'a>, context: FieldContext) -> CType<'a> {
+    CType::new(field)
+        .with_lifetime(with_lifetime)
+        .context(context)
+}
+
+pub fn c_field<'a>(field: &'a vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Field {
+    // Field::new(case::camel_to_snake(field_name_expected(field)), c_type(field, with_lifetime, context))
+    CType::new(field)
+        .with_lifetime(with_lifetime)
+        .context(context)
+        .as_field()
 }
 
 pub struct Rtype<'a> {
@@ -303,6 +371,10 @@ impl<'a> Rtype<'a> {
             WithLifetime::Yes(lifetime) => Lifetime::from(lifetime),
             WithLifetime::No => Lifetime::from("'_"),
         };
+
+        if field.basetype == "void" {
+            assert!(field.reference.is_some());
+        }
 
         pipe!{ ty = Ty::new() =>
             STAGE ty.basetype(field.basetype.as_str());
@@ -451,13 +523,16 @@ impl ToTokens for Rtype<'_> {
 }
 
 pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Field {
-    let mut ty = Rtype::new(field, container)
+    Rtype::new(field, container)
         .context(context)
-        .param_lifetime(with_lifetime);
-    Field::new(case::camel_to_snake(field_name_expected(field)), ty.as_ty())
+        .param_lifetime(with_lifetime)
+        .as_field()
 }
 
 pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
+    if field.basetype == "void" {
+        assert!(field.reference.is_some());
+    }
     let basetype_str = field.basetype.as_str();
     pipe!{ ty = Ty::new() =>
         STAGE {

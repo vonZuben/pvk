@@ -407,7 +407,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             DefinitionsElement::FuncPtr(fptr) => {
                 let fptr_name_str = &fptr.name;
                 let fptr_name = (fptr.name.to_string() + "_fpointer").as_code();
-                let return_type = c_type(&fptr.return_type, WithLifetime::No, FieldContext::Member);
+                let return_type = c_type(&fptr.return_type, WithLifetime::No, FieldContext::Member) // TODO: should this be FieldContext::FunctionParam?
+                                                .is_return_type(true);
                 let params = fptr.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
 
                 // we wrap the funtion pointer in a transparent struct so we can implement traits for it such as Debug

@@ -121,7 +121,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
         let raw_name = &cmd.name;
 
-        let return_type = c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
+        let return_type = c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member)
+                                    .is_return_type(true);
         let params1 = cmd.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
         let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
@@ -166,7 +167,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
     let static_command_definitions = static_commands.map(|cmd| {
         let name = cmd.name.as_code();
-        let return_type = c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member);
+        let return_type = c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member)
+                                    .is_return_type(true);
         let params1 = cmd.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
         let params2 = params1.clone();
 
