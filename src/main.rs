@@ -635,7 +635,7 @@ fn main() {
         use std::os::raw::*;
         use std::ffi::{CStr, CString};
 
-        use handles::{MutHandle, HandleOwner};
+        use handles::*;
 
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
@@ -739,7 +739,9 @@ fn main() {
 
             use super::*;
 
-            pub trait HandleOwner<'owner, H: 'owner> {
+            pub trait Handle {}
+
+            pub trait HandleOwner<'owner, H: Handle + 'owner> {
                 fn handle(&'owner self) -> H;
                 fn mut_handle(&'owner mut self) -> MutHandle<H> {
                     self.into()
@@ -750,9 +752,9 @@ fn main() {
             // Can only be created by mutably borrowing a HandleOwner
             #[derive(Debug, Clone, Copy)]
             #[repr(transparent)]
-            pub struct MutHandle<T>(T);
+            pub struct MutHandle<H>(H);
 
-            impl<'owner, H: 'owner> MutHandle<H> {
+            impl<'owner, H: Handle + 'owner> MutHandle<H> {
                 pub fn new<O>(o: &'owner mut O) -> Self
                 where
                     O: HandleOwner<'owner, H> + ?Sized
@@ -761,7 +763,7 @@ fn main() {
                 }
             }
 
-            impl<'owner, H: 'owner, O> From<&'owner mut O> for MutHandle<H>
+            impl<'owner, H: Handle + 'owner, O> From<&'owner mut O> for MutHandle<H>
                 where
                     O: HandleOwner<'owner, H> + ?Sized
             {
@@ -770,14 +772,14 @@ fn main() {
                 }
             }
 
-            impl<T> ConvertToC<T> for MutHandle<T> {
-                fn to_c(self) -> T {
+            impl<H> ConvertToC<H> for MutHandle<H> {
+                fn to_c(self) -> H {
                     self.0
                 }
             }
 
-            impl<T> ConvertToC<Array<T>> for &[MutHandle<T>] {
-                fn to_c(self) -> Array<T> {
+            impl<H> ConvertToC<Array<H>> for &[MutHandle<H>] {
+                fn to_c(self) -> Array<H> {
                     // this is maybe a bit too unsafe.
                     // but the types we are dealing are transparent
                     // so it should be reliable
@@ -787,11 +789,11 @@ fn main() {
                 }
             }
 
-            impl<T> ConvertToC<T> for Option<MutHandle<T>> where T: Default {
-                fn to_c(self) -> T {
+            impl<H> ConvertToC<H> for Option<MutHandle<H>> where H: Default {
+                fn to_c(self) -> H {
                     match self {
                         Some(t) => t.to_c(),
-                        None => T::default(),
+                        None => H::default(),
                     }
                 }
             }
