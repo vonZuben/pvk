@@ -534,6 +534,15 @@ pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
         assert!(field.reference.is_some());
     }
     let basetype_str = field.basetype.as_str();
+
+    // special case for handle arrays
+    if global_data::is_handle(&field.basetype) && matches!(field.reference, Some(vkxml::ReferenceType::Pointer)) && field.size.is_some() {
+        return Ty::new()
+                .basetype("HandleVec")
+                .param(Ty::new().basetype(make_handle_owner_name(basetype_str)))
+                // .param(Ty::new().basetype("Vec").param(Ty::new().basetype(&field.basetype).param(Lifetime::from("'static"))))
+    }
+
     pipe!{ ty = Ty::new() =>
         STAGE {
             if global_data::is_handle(basetype_str) {

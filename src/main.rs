@@ -268,17 +268,58 @@ fn main() {
             let i = ClearValue { color: u };
             println!("{:?}", i);
 
-            let mb = handle_slice![instance, instance];
 
-            for i in &mb {
-                println!("{:?}", i);
-            }
+            // #[derive(Copy, Clone)]
+            // struct A<'owner>(PhantomData<&'owner ()>);
+            // impl A<'_> {
+            //     fn new() -> Self {
+            //         Self(PhantomData)
+            //     }
+            // }
+            // impl Handle for A<'_> {
+            //     // type Owner = Own<'parent>;
+            // }
 
-            let mb = mut_handle_slice![instance];
+            // struct Own<'parent> {
+            //     handle: A<'static>,
+            //     parent: &'parent InstanceOwner<'parent>,
+            // }
 
-            for i in &mb {
-                println!("{:?}", i);
-            }
+            // impl<'parent> CreateOwner<'parent> for Own<'parent> {
+            //     type Handle = A<'static>;
+            //     type DispatchParent = InstanceOwner<'parent>;
+            //     fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
+            //         Self {
+            //             handle: handle,
+            //             parent: dispatch_parent,
+            //         }
+            //     }
+            // }
+
+            // impl InstanceOwner<'_> {
+            //     pub fn owner<'parent>(
+            //         &'parent self,
+            //     ) -> (Handles<'parent, Own<'parent>, Vec<A>>) {
+            //         let v = vec![A::new(), A::new(), A::new(), A::new()];
+
+            //         todo!()
+            //         // ((v), self).ret()
+            //     }
+            // }
+
+            // let o = instance.owner();
+
+            // let mb = handle_slice![instance, instance];
+
+            // for i in &mb {
+            //     println!("{:?}", i);
+            // }
+
+            // let mb = mut_handle_slice![instance];
+
+            // for i in &mb {
+            //     println!("{:?}", i);
+            // }
 
             //test 1_1 feature command ?
             //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();
@@ -634,6 +675,7 @@ fn main() {
         use std::marker::PhantomData;
         use std::os::raw::*;
         use std::ffi::{CStr, CString};
+        use std::mem::ManuallyDrop;
 
         use handles::*;
 
@@ -739,12 +781,301 @@ fn main() {
 
             use super::*;
 
-            pub trait Handle {}
+            pub trait Handle: Copy {}
+
+            pub trait CreateOwner<'parent> {
+                type Handle: Handle + 'static;
+                type DispatchParent: 'parent;
+                fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self;
+                fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent);
+            }
 
             pub trait HandleOwner<'owner, H: Handle + 'owner> {
                 fn handle(&'owner self) -> H;
                 fn mut_handle(&'owner mut self) -> MutHandle<H> {
                     self.into()
+                }
+            }
+
+            pub struct TempOwner<'parent, O> {
+                owner: ManuallyDrop<O>,
+                _p: PhantomData<&'parent ()>,
+            }
+
+            impl<O> TempOwner<'_, O> {
+                fn new(o: O) -> Self {
+                    Self {
+                        owner: ManuallyDrop::new(o),
+                        _p: PhantomData,
+                    }
+                }
+            }
+
+            impl<O> ::std::ops::Deref for TempOwner<'_, O> {
+                type Target = O;
+                fn deref(&self) -> &Self::Target {
+                    &self.owner
+                }
+            }
+
+            impl<O: ::std::fmt::Debug> ::std::fmt::Debug for TempOwner<'_, O> {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    (*self.owner).fmt(f)
+                }
+            }
+
+            pub struct TempOwnerMut<'parent, O> {
+                owner: ManuallyDrop<O>,
+                _p: PhantomData<&'parent ()>,
+            }
+
+            impl<O> TempOwnerMut<'_, O> {
+                fn new(o: O) -> Self {
+                    Self {
+                        owner: ManuallyDrop::new(o),
+                        _p: PhantomData,
+                    }
+                }
+            }
+
+            impl<O> ::std::ops::Deref for TempOwnerMut<'_, O> {
+                type Target = O;
+                fn deref(&self) -> &Self::Target {
+                    &self.owner
+                }
+            }
+
+            impl<O> ::std::ops::DerefMut for TempOwnerMut<'_, O> {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    &mut self.owner
+                }
+            }
+
+            impl<O: ::std::fmt::Debug> ::std::fmt::Debug for TempOwnerMut<'_, O> {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    (*self.owner).fmt(f)
+                }
+            }
+
+            pub struct Handles<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> {
+                dispatch_parent: &'parent O::DispatchParent,
+                handles: A,
+                destroy_handles: bool,
+                _owners: PhantomData<[O]>,
+            }
+
+            pub type HandleVec<'parent, O> = Handles<'parent, O, Vec<<O as CreateOwner<'parent>>::Handle>>;
+
+            impl<'parent, O: CreateOwner<'parent> + ::std::fmt::Debug, A: AsRef<[O::Handle]>> ::std::fmt::Debug for Handles<'parent, O, A> {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    f.debug_list().entries(self).finish()
+                }
+            }
+
+            pub struct HandleIter<'h, 'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> {
+                index: usize,
+                len: usize,
+                handles: &'h Handles<'parent, O, A>,
+            }
+
+            pub struct HandleIterMut<'h, 'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> {
+                index: usize,
+                len: usize,
+                handles: &'h mut Handles<'parent, O, A>,
+            }
+
+            pub struct HandleDrain<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> {
+                index: usize,
+                len: usize,
+                handles: Handles<'parent, O, A>,
+            }
+
+            impl<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> Handles<'parent, O, A> {
+                fn new(dispatch_parent: &'parent O::DispatchParent, handles: A) -> Self {
+                    Self {
+                        dispatch_parent,
+                        handles,
+                        destroy_handles: true,
+                        _owners: PhantomData,
+                    }
+                }
+                pub fn len(&self) -> usize {
+                    self.handles.as_ref().len()
+                }
+
+                pub fn index<'h>(&'h self, i: usize) -> TempOwner<'h, O> {
+                    let handles = self.handles.as_ref();
+                    TempOwner::new(O::new(handles[i].value(), self.dispatch_parent))
+                }
+
+                pub fn index_mut<'h>(&'h mut self, i: usize) -> TempOwnerMut<'h, O> {
+                    let handles = self.handles.as_ref();
+                    TempOwnerMut::new(O::new(handles[i].value(), self.dispatch_parent))
+                }
+
+                pub fn iter<'h>(&'h self) -> HandleIter<'h, 'parent, O, A> {
+                    HandleIter {
+                        index: 0,
+                        len: self.handles.as_ref().len(),
+                        handles: self,
+                    }
+                }
+
+                pub fn iter_mut<'h>(&'h mut self) -> HandleIterMut<'h, 'parent, O, A> {
+                    HandleIterMut {
+                        index: 0,
+                        len: self.handles.as_ref().len(),
+                        handles: self,
+                    }
+                }
+
+                pub fn drain(mut self) -> HandleDrain<'parent, O, A> {
+                    self.destroy_handles = false;
+                    HandleDrain {
+                        index: 0,
+                        len: self.handles.as_ref().len(),
+                        handles: self,
+                    }
+                }
+            }
+
+            // impl<'parent, O: CreateOwner<'parent>>, F: IntoIterator<Item=O>> From<F> for HandleVec<'parent, O> {
+            //     fn from(f: F) -> Self {
+            //         let f= f.into_iter();
+            //         let handles = Vec::with_capcity(f.size_hint());
+
+            //         for o in f {
+            //             let (handle, dispatch_owner) = o.disassemble();
+
+            //         }
+            //     }
+            // }
+
+            // impl<'parent, O: CreateOwner<'parent> + HandleOwner<'static, O::Handle>> HandleVec<'parent, O>
+            // where
+            //     O::Handle: Handle,
+            // {
+            //     // unsafe since user needs to ensure that all owsners have the same dispatch parent
+            //     unsafe fn from_slice(o: impl AsRef<[O]> + 'static) -> Self {
+
+            //         let owners = o.as_ref();
+
+            //         let dispatch_parent = owners[0].dispatch_parent();
+
+            //         let handles: Vec<O::Handle> = owners.iter().map(|o| o.handle()).collect();
+
+            //         Handles {
+            //             dispatch_parent,
+            //             handles,
+            //             _owners: PhantomData,
+            //         }
+            //     }
+            // }
+
+            impl<'h, 'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> Iterator for HandleIter<'h, 'parent, O, A> {
+                type Item = TempOwner<'h, O>;
+                fn next(&mut self) -> Option<Self::Item>{
+                    if self.index == self.len {
+                        None
+                    }
+                    else {
+                        let handle = unsafe {self.handles.handles.as_ref().get_unchecked(self.index)};
+                        self.index += 1;
+                        Some(
+                            TempOwner::new(O::new(handle.value(), self.handles.dispatch_parent))
+                        )
+                    }
+                }
+            }
+
+            impl<'h, 'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> Iterator for HandleIterMut<'h, 'parent, O, A> {
+                type Item = TempOwnerMut<'h, O>;
+                fn next(&mut self) -> Option<Self::Item>{
+                    if self.index == self.len {
+                        None
+                    }
+                    else {
+                        let handle = unsafe {self.handles.handles.as_ref().get_unchecked(self.index)};
+                        self.index += 1;
+                        Some(
+                            TempOwnerMut::new(O::new(handle.value(), self.handles.dispatch_parent))
+                        )
+                    }
+                }
+            }
+
+            impl<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> Iterator for HandleDrain<'parent, O, A> {
+                type Item = O;
+                fn next(&mut self) -> Option<Self::Item>{
+                    if self.index == self.len {
+                        None
+                    }
+                    else {
+                        let handle = unsafe {self.handles.handles.as_ref().get_unchecked(self.index)};
+                        self.index += 1;
+                        Some(
+                            O::new(handle.value(), self.handles.dispatch_parent)
+                        )
+                    }
+                }
+            }
+
+            impl<'h, 'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> IntoIterator for &'h Handles<'parent, O, A> {
+                type Item = TempOwner<'h, O>;
+                type IntoIter = HandleIter<'h, 'parent, O, A>;
+                fn into_iter(self) -> Self::IntoIter {
+                    self.iter()
+                }
+            }
+
+            impl<'h, 'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> IntoIterator for &'h mut Handles<'parent, O, A> {
+                type Item = TempOwnerMut<'h, O>;
+                type IntoIter = HandleIterMut<'h, 'parent, O, A>;
+                fn into_iter(self) -> Self::IntoIter {
+                    self.iter_mut()
+                }
+            }
+
+            impl<'h, 'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> IntoIterator for Handles<'parent, O, A> {
+                type Item = O;
+                type IntoIter = HandleDrain<'parent, O, A>;
+                fn into_iter(self) -> Self::IntoIter {
+                    self.drain()
+                }
+            }
+
+            impl<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> Drop for Handles<'parent, O, A> {
+                fn drop(&mut self) {
+                    if std::mem::needs_drop::<O>() && self.destroy_handles {
+                        for handle in self.handles.as_ref().iter().copied() {
+                            O::new(handle, self.dispatch_parent); // create the owner which will be imediatly dropped
+                        }
+                    }
+                }
+            }
+
+            impl<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> Drop for HandleDrain<'parent, O, A> {
+                fn drop(&mut self) {
+                    if std::mem::needs_drop::<O>() {
+                        let remaining_handles = &self.handles.handles.as_ref()[self.index..]; // only drop handles which havn't been retured in the iterator
+                        for handle in remaining_handles.iter().copied() {
+                            O::new(handle, self.handles.dispatch_parent); // create the owner which will be imediatly dropped
+                        }
+                    }
+                }
+            }
+
+            impl<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> ConvertToC<Array<O::Handle>> for Handles<'parent, O, A> {
+                fn to_c(self) -> Array<O::Handle> {
+                    Array(self.handles.as_ref().as_ptr())
+                }
+            }
+
+            impl<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> Return<Handles<'parent, O, A>>
+                for ((A), &'parent O::DispatchParent)
+            {
+                fn ret(self) -> Handles<'parent, O, A> {
+                    Handles::new(self.1, self.0)
                 }
             }
 

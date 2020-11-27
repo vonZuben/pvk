@@ -259,6 +259,11 @@ fn is_return_param(field: &&vkxml::Field, catagories: &HashMap<&str, FieldCatago
 // vulkan commands
 fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStream {
 
+    // skip vkCreateDevice since it needs special handling
+    if &cmd.name == "vkCreateDevice" {
+        return quote!();
+    }
+
     let category_map = catagorize_fields(&cmd);
     if category_map.is_err() {
         // error generating category_map and automatic method create cannot be done

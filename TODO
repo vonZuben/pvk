@@ -22,6 +22,13 @@
 - [x] figure out how to represent void
         (some solution for this was made, but there may be room to improve this still)
 
+- [ ] IMPORTANT how to deal with HandleOwners when we don't own the handle
+        e.g. we only "get" swapchain images (we do not create them and we should not destroy them)
+        IDEA, HandleOwners should only be used from "create" commands. All other commands only return a basic handle.
+                SUB PROBLEM: how to deal with CommandBuffers which still want to have command dispatch
+                also PhysicalDevice
+                also Queue
+
 
 PROBLEM
 
