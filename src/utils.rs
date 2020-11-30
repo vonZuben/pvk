@@ -529,62 +529,109 @@ pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: Field
         .as_field()
 }
 
-pub fn r_return_type(field: &vkxml::Field, with_lifetime: WithLifetime) -> Ty {
-    if field.basetype == "void" {
-        assert!(field.reference.is_some());
-    }
-    let basetype_str = field.basetype.as_str();
+pub struct RreturnType<'a> {
+    field: &'a vkxml::Field,
+    with_lifetime: WithLifetime<'a>,
+    command_verb: Option<&'a str>,
+}
 
-    // special case for handle arrays
-    if global_data::is_handle(&field.basetype) && matches!(field.reference, Some(vkxml::ReferenceType::Pointer)) && field.size.is_some() {
-        return Ty::new()
-                .basetype("HandleVec")
-                .param(Ty::new().basetype(make_handle_owner_name(basetype_str)))
-                // .param(Ty::new().basetype("Vec").param(Ty::new().basetype(&field.basetype).param(Lifetime::from("'static"))))
+impl<'a> RreturnType<'a> {
+    pub fn new(field: &'a vkxml::Field) -> Self {
+        Self {
+            field,
+            with_lifetime: WithLifetime::No,
+            command_verb: None,
+        }
     }
+    pub fn with_lifetime(mut self, with_lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.with_lifetime = with_lifetime.into();
+        self
+    }
+    pub fn command_verb(mut self, command_verb: impl Into<Option<&'a str>>) -> Self {
+        self.command_verb = command_verb.into();
+        self
+    }
+   pub fn as_ty(&self) -> Ty {
+        let field = self.field;
+        let with_lifetime = self.with_lifetime;
+        let command_verb = self.command_verb;
 
-    pipe!{ ty = Ty::new() =>
-        STAGE {
-            if global_data::is_handle(basetype_str) {
-                ty.basetype(make_handle_owner_name(basetype_str))
-            }
-            else if basetype_str == "void" && !matches!(field.reference, Some(vkxml::ReferenceType::PointerToPointer)) {
-                ty.basetype("u8")
-            }
-            else {
-                ty.basetype(basetype_str)
-            }
+        if field.basetype == "void" {
+            assert!(field.reference.is_some());
         }
-        WHEN global_data::uses_lifetime(basetype_str) => {
-            match with_lifetime {
-                WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
-                WithLifetime::No => ty,
+        let basetype_str = field.basetype.as_str();
+
+        pipe!{ ty = Ty::new() =>
+            STAGE {
+                if global_data::is_handle(basetype_str) {
+                    ty.basetype(make_handle_owner_name(basetype_str))
+                }
+                else if basetype_str == "void" && !matches!(field.reference, Some(vkxml::ReferenceType::PointerToPointer)) {
+                    ty.basetype("u8")
+                }
+                else {
+                    ty.basetype(basetype_str)
+                }
             }
-        }
-        STAGE {
-            match field.reference {
-                Some(vkxml::ReferenceType::Pointer) => {
-                    if field.size.is_some() {
-                        Ty::new()
-                            .basetype("Vec")
-                            .param(ty)
+            WHEN global_data::uses_lifetime(basetype_str) => {
+                match with_lifetime {
+                    WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                    WithLifetime::No => ty,
+                }
+            }
+            WHEN command_verb.is_some() => {
+                match command_verb.unwrap() {
+                    // all create commands (like create_image) and register commands (like register_{}_event)
+                    // create a handle which should be destroyed by the creater (i.e. caller)
+                    // Thus, we tag as Owned so the destrutor with run the corresponding "destroy" command
+                    "create" | "register" => ty.param(Ty::new().basetype("Owned")),
+                    // allocate commands create handles that need to be manually freed
+                    "allocate" => ty.param(Ty::new().basetype("ManuallyManaged")),
+                    _ => ty,
+                }
+            }
+            // special case for handle arrays
+            DONE WHEN global_data::is_handle(&field.basetype) && matches!(field.reference, Some(vkxml::ReferenceType::Pointer)) && field.size.is_some() => {
+                Ty::new()
+                    .basetype("HandleVec")
+                    .param(ty)
+            }
+            STAGE {
+                match field.reference {
+                    Some(vkxml::ReferenceType::Pointer) => {
+                        if field.size.is_some() {
+                            Ty::new()
+                                .basetype("Vec")
+                                .param(ty)
+                        }
+                        else {
+                            ty
+                        }
                     }
-                    else {
+                    Some(vkxml::ReferenceType::PointerToPointer) => {
+                        ty.pointer(Pointer::Mut)
+                    }
+                    Some(vkxml::ReferenceType::PointerToConstPointer) => {
+                        panic!("error: PointerToConstPointer in return type")
+                    }
+                    None => {
                         ty
                     }
                 }
-                Some(vkxml::ReferenceType::PointerToPointer) => {
-                    ty.pointer(Pointer::Mut)
-                }
-                Some(vkxml::ReferenceType::PointerToConstPointer) => {
-                    panic!("error: PointerToConstPointer in return type")
-                }
-                None => {
-                    ty
-                }
             }
         }
     }
+}
+
+impl ToTokens for RreturnType<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.as_ty().to_tokens(tokens)
+    }
+}
+
+pub fn r_return_type<'a>(field: &'a vkxml::Field, with_lifetime: WithLifetime<'a>) -> RreturnType<'a> {
+    RreturnType::new(field)
+        .with_lifetime(with_lifetime)
 }
 
 pub fn is_optional(field: &vkxml::Field) -> bool {

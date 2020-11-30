@@ -451,7 +451,7 @@ fn main() {
                 self
             }
 
-            pub fn create(&self) -> VkResult<InstanceOwner<'static>> {
+            pub fn create(&self) -> VkResult<InstanceOwner<'static, Owned>> {
                 let app_name: MyStr = (&self.app_name).into();
                 let engine_name: MyStr = (&self.engine_name).into();
 
@@ -550,6 +550,15 @@ fn main() {
                 }
             }
         }
+
+        #[derive(Debug, Default)]
+        pub struct Owned;
+
+        #[derive(Debug, Default)]
+        pub struct ManuallyManaged;
+
+        #[derive(Debug, Default)]
+        pub struct Borrowed;
 
         pub struct FeatureWrapper(Box<dyn Feature>);
 

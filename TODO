@@ -22,12 +22,17 @@
 - [x] figure out how to represent void
         (some solution for this was made, but there may be room to improve this still)
 
-- [ ] IMPORTANT how to deal with HandleOwners when we don't own the handle
+- [x] IMPORTANT how to deal with HandleOwners when we don't own the handle
         e.g. we only "get" swapchain images (we do not create them and we should not destroy them)
         IDEA, HandleOwners should only be used from "create" commands. All other commands only return a basic handle.
                 SUB PROBLEM: how to deal with CommandBuffers which still want to have command dispatch
                 also PhysicalDevice
                 also Queue
+        FIXED: solution, HandleOwners have an 'Own' state that can be Owned, ManuallyManaged, and Borrowed.
+                only Owned HandleOwners can destroy the handles
+                ManuallyManaged is used for things that are allocated and should be manually freed.
+                Everything derefs to Borrowed, which is also where most method implementations are
+        Note: It would be nice in future to think of a better name than HandleOwner, since they do not necessarily "own" the handle anymore
 
 
 PROBLEM

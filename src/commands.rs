@@ -325,9 +325,12 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             }
 
             quote!{
-                impl Drop for #owner_name<'_> {
+                impl<Own> Drop for #owner_name<'_, Own> {
                     fn drop(&mut self) {
-                        #method_caller(#method_params);
+                        use ::std::any::TypeId;
+                        if TypeId::of::<Own>() == TypeId::of::<Owned>() {
+                            #method_caller(#method_params);
+                        }
                     }
                 }
             }
@@ -571,7 +574,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             else {
                 let return_field_types = cmd.param.iter().filter_map(|field| {
                     match category_map.get(field_name(field)).unwrap() {
-                        FieldCatagory::Return | FieldCatagory::ReturnSized => Some(utils::r_return_type(field, with_lifetime)),
+                        FieldCatagory::Return | FieldCatagory::ReturnSized => Some(utils::r_return_type(field, with_lifetime).command_verb(method_verb)),
                         _ => None,
                     }
                 });
@@ -609,6 +612,8 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             let result = if cmd.return_type.basetype == "VkResult" && return_count > 0 {
                 Some( quote!(VkResult<#return_type>) )
             }
+            // this branch should only ever be hit for commands which have non prameter return types
+            // (i.e. the return type is not written to some user provided pointer)
             else if cmd.return_type.basetype != "void" && cmd.return_type.basetype != "VkResult" {
                 let result = utils::r_return_type(&cmd.return_type, utils::WithLifetime::Yes("'handle"));
                 Some( quote!(#result) )

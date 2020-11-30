@@ -377,11 +377,6 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     }
                     impl Handle for #handle_name<'_> {}
                     #send_or_sync_impl
-                    impl<'owner> From<&'owner #owner_name<'_>> for #handle_name<'owner> {
-                        fn from(owner: &'owner #owner_name) -> Self {
-                            owner.handle
-                        }
-                    }
                     impl Default for #handle_name<'_> {
                         fn default() -> Self {
                             // should be fine as long as VK_NULL_HANDLE == 0
@@ -513,39 +508,42 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
                 let implements = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        impl #owner_name<'_> {
+                        impl #owner_name<'static, Owned> {
                             fn new(handle: Instance<'static>, commands: InstanceCommands,
-                               feature_version: Box<dyn Feature>) -> #owner_name<'static> {
+                               feature_version: Box<dyn Feature>) -> Self {
                                     #owner_name {
                                         handle,
                                         commands,
                                         feature_version,
                                         _parent: PhantomData,
+                                        _is_owned: PhantomData,
                                     }
                             }
                         }
                     },
                     "VkDevice" => quote!{
-                        impl #owner_name<'_> {
-                            fn new<'parent>(handle: Device<'static>, commands: DeviceCommands,
-                               dispatch_parent: &'parent PhysicalDeviceOwner) -> #owner_name<'parent> {
+                        impl<'parent> #owner_name<'parent, Owned> {
+                            fn new(handle: Device<'static>, commands: DeviceCommands,
+                               dispatch_parent: &'parent PhysicalDeviceOwner) -> Self {
                                     #owner_name {
                                         handle,
                                         commands,
                                         dispatch_parent,
+                                        _is_owned: PhantomData,
                                     }
                             }
                         }
                     },
                     _ => {
                         quote!{
-                            impl<'parent> CreateOwner<'parent> for #owner_name<'parent> {
+                            impl<'parent, Own> CreateOwner<'parent> for #owner_name<'parent, Own> {
                                 type Handle = #handle_name<'static>;
                                 type DispatchParent = #dispatch_parent<'parent>;
                                 fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
                                     #owner_name {
                                         handle,
                                         dispatch_parent,
+                                        _is_owned: PhantomData,
                                     }
                                 }
                                 fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
@@ -559,23 +557,17 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 let return_impl = match handle.name.as_str() {
                     "VkInstance" => None,
                     "VkDevice" => Some(quote!{
-                        impl<'parent> Return<#owner_name<'parent>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
-                            fn ret(self) -> #owner_name<'parent> {
+                        impl<'parent, Own> Return<#owner_name<'parent, Own>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
+                            fn ret(self) -> #owner_name<'parent, Own> {
                                 unimplemented!()
                                     //#owner_name::new(self.0, self.1);
                             }
                         }
                     }),
                     _ => Some(quote!{
-                        impl<'parent> Return<#owner_name<'parent>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
-                            fn ret(self) -> #owner_name<'parent> {
+                        impl<'parent, Own> Return<#owner_name<'parent, Own>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
+                            fn ret(self) -> #owner_name<'parent, Own> {
                                 #owner_name::new(self.0, self.1)
-                            }
-                        }
-                        impl<'parent> Return<Vec<#owner_name<'parent>>> for
-                                ((Vec<#handle_name<'static>>), &'parent #dispatch_parent<'_>) {
-                            fn ret(self) -> Vec<#owner_name<'parent>> {
-                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
                             }
                         }
                     })
@@ -587,10 +579,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     // 'virtual' borrow of any direct parent (e.g. CommandBufferOwner holds a
                     // reference of the Device, and the CommandBufferOwner borrows the CommandPool
                     // due to the way that the allocate fn is defined
-                    pub struct #owner_name<'parent> {
+                    #[repr(C)]
+                    pub struct #owner_name<'parent, Own=Borrowed> where Own: 'static {
                         // the interpretation of this is that nothing is acutally borrowed, and nothing is 'static
                         handle: #handle_name<'static>,
                         #owner_members
+                        _is_owned: PhantomData<Own>,
                         //#( #pfn_params ),*
                     }
                     #implements
@@ -599,9 +593,22 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                             self.handle
                         }
                     }
-                    impl ::std::fmt::Debug for #owner_name<'_> {
+                    impl<Own: ::std::fmt::Debug + Default> ::std::fmt::Debug for #owner_name<'_, Own> {
                         fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                            write!(f, concat!(stringify!(#owner_name), "({:?})"), self.handle.handle)
+                            write!(f, concat!(stringify!(#owner_name), "({:?})({:?})"), self.handle.handle, Own::default())
+                        }
+                    }
+                    // Notes: There transumtes should be completely safe, especiialy since we use C repr
+                    impl<'parent> ::std::ops::Deref for #owner_name<'parent, Owned> {
+                        type Target = #owner_name<'parent, Borrowed>;
+                        fn deref(&self) -> &Self::Target {
+                            unsafe { ::std::mem::transmute::<&#owner_name<'parent, Owned>, &#owner_name<'parent, Borrowed>>(self) }
+                        }
+                    }
+                    impl<'parent> ::std::ops::Deref for #owner_name<'parent, ManuallyManaged> {
+                        type Target = #owner_name<'parent, Borrowed>;
+                        fn deref(&self) -> &Self::Target {
+                            unsafe { ::std::mem::transmute::<&#owner_name<'parent, ManuallyManaged>, &#owner_name<'parent, Borrowed>>(self) }
                         }
                     }
                     #return_impl
@@ -623,13 +630,14 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                             .unwrap_or(quote!(DeviceOwner));
 
                     implements = quote!{
-                        impl<'parent> CreateOwner<'parent> for #owner_name<'parent> {
+                        impl<'parent, Own> CreateOwner<'parent> for #owner_name<'parent, Own> {
                             type Handle = #handle_name<'static>;
                             type DispatchParent = #dispatch_parent<'parent>;
                             fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
                                 #owner_name {
                                     handle,
                                     dispatch_parent,
+                                    _is_owned: PhantomData,
                                 }
                             }
                             fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
@@ -639,15 +647,9 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     };
 
                     return_impl = quote!{
-                        impl<'parent> Return<#owner_name<'parent>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
-                            fn ret(self) -> #owner_name<'parent> {
+                        impl<'parent, Own> Return<#owner_name<'parent, Own>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
+                            fn ret(self) -> #owner_name<'parent, Own> {
                                 #owner_name::new(self.0, self.1)
-                            }
-                        }
-                        impl<'parent> Return<Vec<#owner_name<'parent>>> for
-                                ((Vec<#handle_name<'static>>), &'parent #dispatch_parent<'_>) {
-                            fn ret(self) -> Vec<#owner_name<'parent>> {
-                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
                             }
                         }
                     };
@@ -660,7 +662,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 // takes a parent parameter for consistency and just ignoring the param
                 else {
                     implements = quote!{
-                        impl<'parent> CreateOwner<'parent> for #owner_name<'parent> {
+                        impl<'parent, Own> CreateOwner<'parent> for #owner_name<'parent, Own> {
                             type Handle = #handle_name<'static>;
                             type DispatchParent = PhysicalDeviceOwner<'parent>;
                             fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
@@ -668,6 +670,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                     handle,
                                     // phantom: PhantomData,
                                     dispatch_parent,
+                                    _is_owned: PhantomData,
                                 }
                             }
                             fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
@@ -676,20 +679,14 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         }
                     };
                     return_impl = quote!{
-                        impl<'parent> Return<#owner_name<'parent>> for ((#handle_name<'static>), &'parent PhysicalDeviceOwner<'_>) {
-                            fn ret(self) -> #owner_name<'parent> {
+                        impl<'parent, Own> Return<#owner_name<'parent, Own>> for ((#handle_name<'static>), &'parent PhysicalDeviceOwner<'_>) {
+                            fn ret(self) -> #owner_name<'parent, Own> {
                                 #owner_name::new(self.0, self.1)
                             }
                         }
-                        impl<'parent, A: Copy> Return<(A, #owner_name<'parent>)> for ((A, #handle_name<'static>), &'parent PhysicalDeviceOwner<'_>) {
-                            fn ret(self) -> (A, #owner_name<'parent>) {
+                        impl<'parent, Own, A: Copy> Return<(A, #owner_name<'parent, Own>)> for ((A, #handle_name<'static>), &'parent PhysicalDeviceOwner<'_>) {
+                            fn ret(self) -> (A, #owner_name<'parent, Own>) {
                                 ((self.0).0, #owner_name::new((self.0).1, self.1))
-                            }
-                        }
-                        impl<'parent> Return<Vec<#owner_name<'parent>>> for
-                                ((Vec<#handle_name<'static>>), &'parent PhysicalDeviceOwner<'_>) {
-                            fn ret(self) -> Vec<#owner_name<'parent>> {
-                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
                             }
                         }
                     };
@@ -698,9 +695,11 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 };
 
                 quote!{
-                    pub struct #owner_name<'parent> {
+                    #[repr(C)]
+                    pub struct #owner_name<'parent, Own=Borrowed> where Own: 'static {
                         handle: #handle_name<'static>,
                         #dispatch_member
+                        _is_owned: PhantomData<Own>,
                     }
                     #implements
                     impl<'owner> HandleOwner<'owner, #handle_name<'owner>> for #owner_name<'_> {
@@ -708,9 +707,21 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                             self.handle
                         }
                     }
-                    impl std::fmt::Debug for #owner_name<'_> {
+                    impl<Own: ::std::fmt::Debug + Default> std::fmt::Debug for #owner_name<'_, Own> {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                            write!(f, concat!(stringify!(#owner_name), "({:?})"), self.handle.handle)
+                            write!(f, concat!(stringify!(#owner_name), "({:?})({:?})"), self.handle.handle, Own::default())
+                        }
+                    }
+                    impl<'parent> ::std::ops::Deref for #owner_name<'parent, Owned> {
+                        type Target = #owner_name<'parent, Borrowed>;
+                        fn deref(&self) -> &Self::Target {
+                            unsafe { ::std::mem::transmute::<&#owner_name<'parent, Owned>, &#owner_name<'parent, Borrowed>>(self) }
+                        }
+                    }
+                    impl<'parent> ::std::ops::Deref for #owner_name<'parent, ManuallyManaged> {
+                        type Target = #owner_name<'parent, Borrowed>;
+                        fn deref(&self) -> &Self::Target {
+                            unsafe { ::std::mem::transmute::<&#owner_name<'parent, ManuallyManaged>, &#owner_name<'parent, Borrowed>>(self) }
                         }
                     }
                     #return_impl
