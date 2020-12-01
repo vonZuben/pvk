@@ -590,19 +590,20 @@ impl<'a> RreturnType<'a> {
                     _ => ty,
                 }
             }
-            // special case for handle arrays
-            DONE WHEN global_data::is_handle(&field.basetype) && matches!(field.reference, Some(vkxml::ReferenceType::Pointer)) && field.size.is_some() => {
-                Ty::new()
-                    .basetype("HandleVec")
-                    .param(ty)
-            }
             STAGE {
                 match field.reference {
                     Some(vkxml::ReferenceType::Pointer) => {
                         if field.size.is_some() {
-                            Ty::new()
-                                .basetype("Vec")
-                                .param(ty)
+                            if global_data::is_handle(&field.basetype) {
+                                Ty::new()
+                                    .basetype("HandleVec")
+                                    .param(ty)
+                            }
+                            else {
+                                Ty::new()
+                                    .basetype("Vec")
+                                    .param(ty)
+                            }
                         }
                         else {
                             ty
