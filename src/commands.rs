@@ -375,9 +375,9 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 "create" | "allocate" => {
                     lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
-                    call_lifetime = quote!('parent);
-                    self_modifier = quote!('parent);
-                    with_lifetime = WithLifetime::Yes("'parent");
+                    call_lifetime = quote!();
+                    self_modifier = quote!();
+                    with_lifetime = WithLifetime::No;
                 }
                 "cmd" => {
                     lifetime_defs = quote!('resource);
