@@ -34,6 +34,9 @@
                 Everything derefs to Borrowed, which is also where most method implementations are
         Note: It would be nice in future to think of a better name than HandleOwner, since they do not necessarily "own" the handle anymore
 
+- [ ] consider proper lifetimes more for creating and allocating where the passed in parameters such as "CreateInfo" structs
+        pass handles that should also be borrowed by the created HandleOwner (such as in allocate_descriptor_sets)
+
 
 PROBLEM
 

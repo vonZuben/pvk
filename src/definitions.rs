@@ -588,7 +588,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         //#( #pfn_params ),*
                     }
                     #implements
-                    impl<'owner> HandleOwner<'owner, #handle_name<'owner>> for #owner_name<'_> {
+                    impl<'owner> HandleOwner<'owner> for #owner_name<'_> {
+                        type Handle = #handle_name<'owner>;
                         fn handle(&'owner self) -> #handle_name<'owner> {
                             self.handle
                         }
@@ -702,7 +703,8 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         _is_owned: PhantomData<Own>,
                     }
                     #implements
-                    impl<'owner> HandleOwner<'owner, #handle_name<'owner>> for #owner_name<'_> {
+                    impl<'owner> HandleOwner<'owner> for #owner_name<'_> {
+                        type Handle = #handle_name<'owner>;
                         fn handle(&'owner self) -> #handle_name<'owner> {
                             self.handle
                         }

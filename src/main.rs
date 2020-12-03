@@ -799,9 +799,10 @@ fn main() {
                 fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent);
             }
 
-            pub trait HandleOwner<'owner, H: Handle + 'owner> {
-                fn handle(&'owner self) -> H;
-                fn mut_handle(&'owner mut self) -> MutHandle<H> {
+            pub trait HandleOwner<'owner> {
+                type Handle: Handle + 'owner;
+                fn handle(&'owner self) -> Self::Handle;
+                fn mut_handle(&'owner mut self) -> MutHandle<Self::Handle> {
                     self.into()
                 }
             }
@@ -1097,7 +1098,7 @@ fn main() {
             impl<'owner, H: Handle + 'owner> MutHandle<H> {
                 pub fn new<O>(o: &'owner mut O) -> Self
                 where
-                    O: HandleOwner<'owner, H> + ?Sized
+                    O: HandleOwner<'owner, Handle = H> + ?Sized,
                 {
                     Self(o.handle())
                 }
@@ -1105,7 +1106,7 @@ fn main() {
 
             impl<'owner, H: Handle + 'owner, O> From<&'owner mut O> for MutHandle<H>
                 where
-                    O: HandleOwner<'owner, H> + ?Sized
+                    O: HandleOwner<'owner, Handle = H> + ?Sized,
             {
                 fn from(o: &'owner mut O) -> Self {
                     Self::new(o)
