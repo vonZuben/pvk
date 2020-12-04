@@ -612,6 +612,11 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                             unsafe { ::std::mem::transmute::<&#owner_name<'parent, ManuallyManaged>, &#owner_name<'parent, Borrowed>>(self) }
                         }
                     }
+                    impl<Own> ConvertToC<#handle_name<'static>> for #owner_name<'_, Own> {
+                        fn to_c(self) -> #handle_name<'static> {
+                            self.handle
+                        }
+                    }
                     #return_impl
                 }
             }
@@ -724,6 +729,11 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         type Target = #owner_name<'parent, Borrowed>;
                         fn deref(&self) -> &Self::Target {
                             unsafe { ::std::mem::transmute::<&#owner_name<'parent, ManuallyManaged>, &#owner_name<'parent, Borrowed>>(self) }
+                        }
+                    }
+                    impl<Own> ConvertToC<#handle_name<'static>> for #owner_name<'_, Own> {
+                        fn to_c(self) -> #handle_name<'static> {
+                            self.handle
                         }
                     }
                     #return_impl

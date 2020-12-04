@@ -326,6 +326,7 @@ pub struct Rtype<'a> {
     context: FieldContext,
     container: &'a str,
     allow_optional: bool,
+    command_verb: Option<&'a str>,
 }
 
 impl<'a> Rtype<'a> {
@@ -337,6 +338,7 @@ impl<'a> Rtype<'a> {
             ref_lifetime: WithLifetime::No,
             context: FieldContext::FunctionParam, // FieldContext Member is the odd one out in c
             allow_optional: true,
+            command_verb: None,
         }
     }
     pub fn param_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
@@ -355,6 +357,10 @@ impl<'a> Rtype<'a> {
         self.allow_optional = allow;
         self
     }
+    pub fn command_verb(mut self, command_verb: impl Into<Option<&'a str>>) -> Self {
+        self.command_verb = command_verb.into();
+        self
+    }
     pub fn as_field(&self) -> Field {
         Field::new(case::camel_to_snake(field_name_expected(self.field)), self.as_ty())
     }
@@ -364,6 +370,7 @@ impl<'a> Rtype<'a> {
         let param_lifetime = self.param_lifetime;
         let context = self.context;
         let allow_optional = self.allow_optional;
+        let command_verb = self.command_verb;
 
         let lifetime = || match self.ref_lifetime {
             WithLifetime::Yes(lifetime) => Lifetime::from(lifetime),
@@ -374,16 +381,30 @@ impl<'a> Rtype<'a> {
             assert!(field.reference.is_some());
         }
 
+        let basetype_str = field.basetype.as_str();
+
+        let for_freeing = matches!(command_verb, Some("free")) && global_data::is_freeable_handle(basetype_str);
+
         pipe!{ ty = Ty::new() =>
-            STAGE ty.basetype(field.basetype.as_str());
-            WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
+            STAGE {
+                if for_freeing {
+                    ty.basetype(make_handle_owner_name(basetype_str))
+                }
+                else {
+                    ty.basetype(basetype_str)
+                }
+            }
+            WHEN global_data::uses_lifetime(basetype_str) =>
             {
                 match param_lifetime {
                     WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
                     WithLifetime::No => ty,
                 }
             }
-            WHEN global_data::is_externsync(container, field) =>
+            WHEN for_freeing => {
+                ty.param(Ty::new().basetype("ManuallyManaged"))
+            }
+            WHEN global_data::is_externsync(container, field) && !for_freeing =>
             {
                 Ty::new().basetype("MutHandle")
                     .param(ty)
@@ -409,9 +430,15 @@ impl<'a> Rtype<'a> {
                     Some(r) => match r {
                         vkxml::ReferenceType::Pointer => {
                             if field.is_const {
-                                if field.basetype.as_str() == "char" {
+                                if basetype_str == "char" {
                                     ty.basetype("MyStr")
                                         .param(lifetime())
+                                }
+                                else if for_freeing {
+                                    Ty::new()
+                                        .basetype("HandleVec")
+                                        .param(Lifetime::from(param_lifetime))
+                                        .param(ty)
                                 }
                                 else {
                                     ty.to_array(ArrayType::Slice)
@@ -419,7 +446,7 @@ impl<'a> Rtype<'a> {
                                         .reference(true)
                                 }
                             } else {
-                                if field.basetype == "void" {
+                                if basetype_str == "void" {
                                     Ty::new()
                                         .basetype("u8")
                                         .to_array(ArrayType::Slice)
@@ -438,7 +465,7 @@ impl<'a> Rtype<'a> {
                         vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust array PointerToPointer"),
                         vkxml::ReferenceType::PointerToConstPointer => {
                             if field.is_const {
-                                let param = if field.basetype.as_str() == "char" {
+                                let param = if basetype_str == "char" {
                                     ty.basetype("MyStr")
                                         .param(lifetime())
                                 }
@@ -490,6 +517,7 @@ impl<'a> Rtype<'a> {
             WHEN is_optional(field)
                 && (matches!(context, FieldContext::FunctionParam) || matches!(field.reference, Some(_)))
                 && allow_optional
+                && !for_freeing
             => {
                 Ty::new()
                     .basetype("Option")
@@ -518,13 +546,6 @@ impl ToTokens for Rtype<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.as_ty().to_tokens(tokens);
     }
-}
-
-pub fn r_field(field: &vkxml::Field, with_lifetime: WithLifetime, context: FieldContext, container: &str) -> Field {
-    Rtype::new(field, container)
-        .context(context)
-        .param_lifetime(with_lifetime)
-        .as_field()
 }
 
 pub struct RreturnType<'a> {

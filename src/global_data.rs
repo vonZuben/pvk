@@ -43,6 +43,7 @@ pub struct GlobalData<'a> {
     pub result_members: VkResultMembers<'a>,
     pub extension_maps: Vec<ExtensionMap<'a>>,
     pub all_enums: EnumDictionary<'a>,
+    pub is_freeable_handle: Dictionary<'a>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -84,6 +85,10 @@ pub fn uses_lifetime(named_type: &str) -> bool {
     else {
         false
     }
+}
+
+pub fn is_freeable_handle(handle_basetype: &str) -> bool {
+    expect_gd().is_freeable_handle.contains_key(handle_basetype)
 }
 
 pub fn command_type(cmd_name: &str) -> commands::CommandCategory {
@@ -281,6 +286,14 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
             RegistryElement::Commands(cmds) => {
                 for cmd in cmds.elements.iter() {
                     global_data.command_types.insert(cmd.name.as_str(), commands::command_category(&cmd));
+
+                    // assume last param of an allocate command is the handles which is allocated
+                    // all allocated handles should have a command for freeing
+                    // thus assume said handle is freeable
+                    if cmd.name.starts_with("vkAllocate") {
+                        let freeable_param = cmd.param.last().expect("error: allocate command with no last param");
+                        global_data.is_freeable_handle.insert(freeable_param.basetype.as_str(), ());
+                    }
                 }
             }
             RegistryElement::Features(features) => {

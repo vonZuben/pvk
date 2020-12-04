@@ -335,22 +335,22 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 }
             }
         }
-        "free" => {
+        // "free" => {
 
-          eprint!("{} (", cmd.name.as_str());
-          for param in cmd.param.iter() {
-              eprint!("{}, ", param.name.as_ref().unwrap().as_str());
-          }
-          eprintln!(") -> {:?}", cmd.return_type.basetype);
+        //   eprint!("{} (", cmd.name.as_str());
+        //   for param in cmd.param.iter() {
+        //       eprint!("{}, ", param.name.as_ref().unwrap().as_str());
+        //   }
+        //   eprintln!(") -> {:?}", cmd.return_type.basetype);
 
-          //quote!()
-            //dbg!(&cmd);
-            //let category_map = catagorize_fields(&cmd);
-            //for category in category_map.iter() {
-            //    dbg!(category);
-            //}
-            quote!()
-        }
+        //   //quote!()
+        //     //dbg!(&cmd);
+        //     //let category_map = catagorize_fields(&cmd);
+        //     //for category in category_map.iter() {
+        //     //    dbg!(category);
+        //     //}
+        //     quote!()
+        // }
         //"queue" => {
         //    dbg!(cmd.name.as_str());
         //    quote!()
@@ -386,6 +386,13 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     self_modifier = quote!(mut);
                     with_lifetime = WithLifetime::Yes("'resource");
                 }
+                "free" => {
+                    lifetime_defs = quote!();
+                    impl_lifetime = quote!('_);
+                    call_lifetime = quote!('a);
+                    self_modifier = quote!();
+                    with_lifetime = WithLifetime::Yes("'a");
+                }
                 _ => {
                     lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
@@ -407,7 +414,13 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     FieldCatagory::Normal | FieldCatagory::NormalSized => true,
                     _ => false,
                 })
-            .map(|field|r_field(field, with_lifetime, FieldContext::FunctionParam, cmd.name.as_str()));
+            .map(|field| {
+                Rtype::new(field, cmd.name.as_str())
+                    .param_lifetime(with_lifetime)
+                    .command_verb(method_verb)
+                    .as_field()
+                // r_field(field, with_lifetime, FieldContext::FunctionParam, cmd.name.as_str()).command_verb(command_verb)
+            });
 
             // when a count/size variable affects multiple input arrays, set the size once
             // based on the first input array, and debug_assert that the other input arrays are the

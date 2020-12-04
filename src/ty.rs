@@ -7,6 +7,7 @@ use quote::{quote, ToTokens}; // 1.0.3
 use std::default::Default;
 
 use crate::utils::StrAsCode;
+use crate::utils;
 
 pub enum Reference {
     True,
@@ -46,6 +47,16 @@ pub struct Lifetime {
 impl<S: ToString> From<S> for Lifetime {
     fn from(s: S) -> Self {
         Lifetime{ l: s.to_string() }
+    }
+}
+
+impl From<utils::WithLifetime<'_>> for Lifetime {
+    fn from(lt: utils::WithLifetime) -> Self {
+        use utils::WithLifetime;
+        match lt {
+            WithLifetime::Yes(lifetime) => lifetime.into(),
+            WithLifetime::No => "".into(),
+        }
     }
 }
 
