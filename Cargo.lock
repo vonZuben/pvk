@@ -22,7 +22,6 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn",
  "vk-parse",
  "vkxml",
 ]

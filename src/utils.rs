@@ -1,6 +1,4 @@
 
-use syn::{Expr};
-
 use quote::quote;
 use quote::ToTokens;
 
