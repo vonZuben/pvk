@@ -508,29 +508,41 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
 
                 let implements = match handle.name.as_str() {
                     "VkInstance" => quote!{
-                        impl #owner_name<'static, Owned> {
-                            fn new(handle: Instance<'static>, commands: InstanceCommands,
-                               feature_version: Box<dyn Feature>) -> Self {
-                                    #owner_name {
-                                        handle,
-                                        commands,
-                                        feature_version,
-                                        _parent: PhantomData,
-                                        _is_owned: PhantomData,
-                                    }
+                        impl<'parent, Own> CreateOwner<'parent> for #owner_name<'parent, Own> {
+                            type Handle = #handle_name<'static>;
+                            type DispatchParent = ();
+                            fn new(handle: Self::Handle, _dispatch_parent: &'parent Self::DispatchParent) -> Self {
+                                #owner_name {
+                                    handle,
+                                    commands: InstanceCommands::new(),
+                                    feature_version: Box::new(VERSION_1_0),
+                                    _parent: PhantomData,
+                                    _is_owned: PhantomData,
+                                }
+                            }
+                            fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
+                                let ret = (self.handle, &());
+                                ::std::mem::forget(self);
+                                ret
                             }
                         }
                     },
                     "VkDevice" => quote!{
-                        impl<'parent> #owner_name<'parent, Owned> {
-                            fn new(handle: Device<'static>, commands: DeviceCommands,
-                               dispatch_parent: &'parent PhysicalDeviceOwner) -> Self {
-                                    #owner_name {
-                                        handle,
-                                        commands,
-                                        dispatch_parent,
-                                        _is_owned: PhantomData,
-                                    }
+                        impl<'parent, Own> CreateOwner<'parent> for #owner_name<'parent, Own> {
+                            type Handle = #handle_name<'static>;
+                            type DispatchParent = PhysicalDeviceOwner<'parent>;
+                            fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
+                                #owner_name {
+                                    handle,
+                                    commands: DeviceCommands::new(),
+                                    dispatch_parent,
+                                    _is_owned: PhantomData,
+                                }
+                            }
+                            fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
+                                let ret = (self.handle, self.dispatch_parent);
+                                ::std::mem::forget(self);
+                                ret
                             }
                         }
                     },
@@ -547,7 +559,9 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                     }
                                 }
                                 fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
-                                    (self.handle, self.dispatch_parent)
+                                    let ret = (self.handle, self.dispatch_parent);
+                                    ::std::mem::forget(self);
+                                    ret
                                 }
                             }
                         }
@@ -614,7 +628,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
                     impl<Own> ConvertToC<#handle_name<'static>> for #owner_name<'_, Own> {
                         fn to_c(self) -> #handle_name<'static> {
-                            self.handle
+                            self.disassemble().0
                         }
                     }
                     #return_impl
@@ -647,7 +661,9 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                 }
                             }
                             fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
-                                (self.handle, self.dispatch_parent)
+                                let ret = (self.handle, self.dispatch_parent);
+                                ::std::mem::forget(self);
+                                ret
                             }
                         }
                     };
@@ -680,7 +696,9 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                 }
                             }
                             fn disassemble(self) -> (Self::Handle, &'parent Self::DispatchParent) {
-                                (self.handle, self.dispatch_parent)
+                                let ret = (self.handle, self.dispatch_parent);
+                                ::std::mem::forget(self);
+                                ret
                             }
                         }
                     };
@@ -733,7 +751,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     }
                     impl<Own> ConvertToC<#handle_name<'static>> for #owner_name<'_, Own> {
                         fn to_c(self) -> #handle_name<'static> {
-                            self.handle
+                            self.disassemble().0
                         }
                     }
                     #return_impl

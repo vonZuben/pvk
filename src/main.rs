@@ -495,13 +495,14 @@ fn main() {
                 else {
                     let inst = unsafe { inst.assume_init() };
 
-                    let mut instance_commands = InstanceCommands::new();
-                    api_version.load_instance_commands(inst, &mut instance_commands);
+                    let mut instance: InstanceOwner<'static, Owned> = InstanceOwner::new(inst, &());
+
+                    api_version.load_instance_commands(instance.handle, &mut instance.commands);
                     for extension in &self.enabled_extensions {
-                        extension.load_instance_commands(inst, &mut instance_commands);
+                        extension.load_instance_commands(instance.handle, &mut instance.commands);
                     }
 
-                    let instance = InstanceOwner::new(inst, instance_commands, api_version);
+                    instance.feature_version = api_version;
 
                     vk_result.success(instance)
                 }
