@@ -37,6 +37,10 @@
 - [ ] consider proper lifetimes more for creating and allocating where the passed in parameters such as "CreateInfo" structs
         pass handles that should also be borrowed by the created HandleOwner (such as in allocate_descriptor_sets)
 
+- [ ] fix struct generator macros
+        right now, the macros are really awkward to use because .into() doesn't play nice with all types (especially numbers)
+        also there are issues with creating references to temporary values being created (such as with &[] inside the macro call)
+
 
 PROBLEM
 
