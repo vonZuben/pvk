@@ -5,6 +5,8 @@ use vkxml::*;
 
 use proc_macro2::{TokenStream};
 
+use std::collections::HashMap;
+
 use crate::utils::*;
 
 #[macro_use]
@@ -70,34 +72,49 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 }
                 let builder_code = if not_return(&stct) {
 
+                    // keep track of fields that are just for indicating array lengths
+                    // these will be set automatically by passing in an array
+                    let mut size_params = HashMap::new();
+                    for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
+                        if let Some(size) = field.size.as_ref() {
+                            size_params.insert(size.as_str(), ());
+                        }
+                    }
+
                     let ignore_stype_pnext = |field: &&vkxml::Field| {
                         let fname = utils::field_name_expected(field);
                         fname != "sType" && fname != "pNext"
                     };
 
+                    let struct_field = |field| {
+                        utils::Rtype::new(field, stct.name.as_str())
+                        .param_lifetime("'handle")
+                        .ref_lifetime("'handle")
+                        .context(FieldContext::Member)
+                        .as_field()
+                    };
+
+                    let is_size_param = |field| {
+                        let field_name = utils::field_name_expected(field);
+                        if size_params.contains_key(field_name) {
+                            true
+                        }
+                        else {
+                            false
+                        }
+                    };
+
                     let must_init_members = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::must_init(field))
+                        .filter(|field| utils::must_init(field) && !is_size_param(field))
                         .filter(ignore_stype_pnext)
-                        .map(|field| {
-                            utils::Rtype::new(field, stct.name.as_str())
-                                .param_lifetime("'handle")
-                                .ref_lifetime("'handle")
-                                .context(FieldContext::Member)
-                                .as_field()
-                        });
+                        .map(struct_field);
 
                     let must_init_members2 = must_init_members.clone();
 
                     let optional_members = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::is_optional(field))
+                        .filter(|field| utils::is_optional(field) || is_size_param(field))
                         .filter(ignore_stype_pnext)
-                        .map(|field| {
-                            utils::Rtype::new(field, stct.name.as_str())
-                                .param_lifetime("'handle")
-                                .ref_lifetime("'handle")
-                                .context(FieldContext::Member)
-                                .as_field()
-                        });
+                        .map(struct_field);
 
                     let optional_members2 = optional_members.clone();
 
@@ -151,7 +168,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         });
 
                     let must_init_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::must_init(field))
+                        .filter(|field| utils::must_init(field) && !is_size_param(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
                             let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
@@ -161,7 +178,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         });
 
                     let optional_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::is_optional(field))
+                        .filter(|field| utils::is_optional(field) || is_size_param(field))
                         .filter(ignore_stype_pnext)
                         .map(|field| {
                             let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
