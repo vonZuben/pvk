@@ -205,6 +205,9 @@ impl<'a> CType<'a> {
         }
         pipe!{ ty = Ty::new() =>
             STAGE ty.basetype(field.basetype.as_str());
+            DONE WHEN is_return_type && field.basetype == "PFN_vkVoidFunction" => {
+                Ty::new().basetype("Option").param(ty)
+            }
             WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
             {
                 match with_lifetime {

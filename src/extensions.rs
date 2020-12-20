@@ -154,11 +154,11 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         else {
             Some(
                 quote! {
-                    fn load_instance_commands(&self, instance: Instance, commands: &mut InstanceCommands) {
+                    unsafe fn load_instance_commands(&self, instance: Instance, commands: &InstanceCommands) {
                         let loader = |raw_cmd_name: &CStr| unsafe { GetInstanceProcAddr(instance, raw_cmd_name.to_c()) };
                         #( commands.#instance_commands.load(loader); )*
                     }
-                    fn load_device_commands(&self, device: Device, commands: &mut DeviceCommands) {
+                    unsafe fn load_device_commands(&self, device: Device, commands: &DeviceCommands) {
                         let loader = |raw_cmd_name: &CStr| unsafe { GetDeviceProcAddr(device, raw_cmd_name.to_c()) };
                         #( commands.#device_commands.load(loader); )*
                     }

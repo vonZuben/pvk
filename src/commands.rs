@@ -137,23 +137,38 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
                 #( #params1 ),*
             ) -> #return_type;
 
-            struct #pfn_loader_name(#pfn_name);
+            struct #pfn_loader_name(UnsafeCell<#pfn_name>);
             impl #pfn_loader_name {
                 fn new() -> Self {
                     extern "system" fn default_function( #( #params2 ),* ) -> #return_type {
                         panic!(concat!(#raw_name, " is not loaded. Make sure the correct feature/extension is enabled"))
                     }
-                    Self(default_function)
+                    Self(UnsafeCell::new(default_function))
                 }
-                fn load<F>(&mut self, mut f: F) where F: FnMut(&::std::ffi::CStr) -> PFN_vkVoidFunction {
+                // this function is unsafe since the caller (in general) must ensure that the command loader is
+                // not aliased
+                // in practice, this only needs to be considered when creating a DeviceOwner,
+                // wherein the InstanceOwner must not be aliased since some device extensions might load
+                // some instance commands in the InstanceOwner which is shared
+                // Further note, the only real concern is if a "torn" value can be observed
+                // i.e. if a cpu platform writes or reads a function pointer non-atomically, then
+                // it may be possible to use a function pointer which is only partially written
+                // causing massive UB
+                // but if you are confident that your platform writes/reads function pointers
+                // atomically, then there is no real issue here, and synchronization should be safe
+                // to ignore
+                unsafe fn load<F>(&self, mut f: F) where F: FnMut(&::std::ffi::CStr) -> Option<PFN_vkVoidFunction> {
                     let cname = ::std::ffi::CString::new(#raw_name).unwrap();
-                    let function_pointer = unsafe { ::std::mem::transmute::<_, *const ::std::ffi::c_void>( f(&cname) ) };
-                    if function_pointer.is_null(){
-                        panic!(concat!("error: couldn't load ", #raw_name));
+                    let function_pointer = f(&cname);
+                    if let Some(fptr) = function_pointer {
+                        self.0.get().write(::std::mem::transmute(fptr));
                     }
                     else{
-                        self.0 = unsafe { ::std::mem::transmute(function_pointer) };
+                        panic!(concat!("error: couldn't load ", #raw_name));
                     }
+                }
+                fn call(&self) -> #pfn_name {
+                    unsafe { self.0.get().read() }
                 }
             }
             //impl std::fmt::Debug for #pfn_loader_name {
@@ -280,9 +295,9 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
     let method_name = method_name_raw.as_code();
 
     let method_caller = match cmd.param[0].basetype.as_str() {
-        "VkInstance" | "VkDevice" => quote!( self.commands.#name.0 ),
+        "VkInstance" | "VkDevice" => quote!( self.commands.#name.call() ),
         _ => {
-            quote!( self.dispatch_parent.commands.#name.0 )
+            quote!( self.dispatch_parent.commands.#name.call() )
         }
     };
 
@@ -312,7 +327,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     let type_to_destroy = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
                     method_params = quote!( self.handle, None.to_c() );
-                    method_caller = quote!( self.commands.#name.0 );
+                    method_caller = quote!( self.commands.#name.call() );
                 }
                 _ => {
                     // for everything else, the second parameter should be the type we are
@@ -320,7 +335,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     let type_to_destroy = utils::make_handle_owner_name(cmd.param[1].basetype.as_str());
                     owner_name = quote!( #type_to_destroy );
                     method_params = quote!( self.dispatch_parent.handle, self.handle, None.to_c() );
-                    method_caller = quote!( self.dispatch_parent.commands.#name.0 );
+                    method_caller = quote!( self.dispatch_parent.commands.#name.call() );
                 }
             }
 

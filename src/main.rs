@@ -232,7 +232,7 @@ fn main() {
 
         fn main(){
 
-            let mut instance = CreateInstance::new()
+            let mut instance = InstanceCreator::new()
                 .app_name("heyo")
                 .create()
                 .unwrap();
@@ -268,6 +268,20 @@ fn main() {
             let i = ClearValue { color: u };
             println!("{:?}", i);
 
+
+            // test DeviceCreator
+
+            let queue_info = [
+                DeviceQueueCreateInfo!{
+                    queue_family_index: 0u32,
+                    p_queue_priorities: &[1f32][..],
+                }
+            ];
+
+            let pd1 = pd.index(0);
+
+            let device = unsafe { pd1.device_creator(&queue_info[..]).create().unwrap() };
+            println!("{:?}", device);
 
             // #[derive(Copy, Clone)]
             // struct A<'owner>(PhantomData<&'owner ()>);
@@ -390,7 +404,7 @@ fn main() {
         //}
 
         #[derive(Default)]
-        pub struct CreateInstance<'a> {
+        pub struct InstanceCreator<'a> {
             app_name: CString,
             app_version: VkVersion,
             engine_name: CString,
@@ -403,7 +417,7 @@ fn main() {
             enabled_extensions: Vec<&'a dyn VkExtensionLoader>,
         }
 
-        impl<'a> CreateInstance<'a> {
+        impl<'a> InstanceCreator<'a> {
             pub fn new() -> Self {
                 Self::default()
             }
@@ -497,14 +511,108 @@ fn main() {
 
                     let mut instance: InstanceOwner<'static, Owned> = InstanceOwner::new(inst, &());
 
-                    api_version.load_instance_commands(instance.handle, &mut instance.commands);
+                    // loading commands when creating an instance is guaranteed safe since it
+                    // is impossible to be aliased
+                    unsafe { api_version.load_instance_commands(instance.handle, &instance.commands); }
                     for extension in &self.enabled_extensions {
-                        extension.load_instance_commands(instance.handle, &mut instance.commands);
+                        unsafe { extension.load_instance_commands(instance.handle, &instance.commands); }
                     }
 
                     instance.feature_version = api_version;
 
                     vk_result.success(instance)
+                }
+            }
+        }
+
+        pub struct DeviceCreator<'a, 'parent> {
+            physical_device: &'parent PhysicalDeviceOwner<'parent>,
+            queue_create_info: &'a [DeviceQueueCreateInfo<'a>],
+            enabled_layers: Vec<&'a dyn VkLayerName>,
+            enabled_extensions: Vec<&'a dyn VkExtensionLoader>,
+            enabled_features: Option<&'a PhysicalDeviceFeatures<'a>>,
+        }
+
+        impl<'a, 'parent> DeviceCreator<'a, 'parent> {
+            pub fn enabled_layers<L>(mut self, enabled_layers: impl IntoIterator<Item = L>) -> Self
+                where L: Into<LayerWrapper<'a>>
+            {
+                self.enabled_layers = enabled_layers.into_iter()
+                    .map( |l| l.into().0 )
+                    .collect();
+                self
+            }
+
+            pub fn enabled_extensions<E>(mut self, enabled_extensions: impl IntoIterator<Item = E>) -> Self
+                where E: Into<ExtLoaderWrapper> + 'a
+            {
+                self.enabled_extensions = enabled_extensions.into_iter()
+                    .map( |e| e.into().0 )
+                    .collect();
+                self
+            }
+            pub fn enabled_features(mut self, enabled_features: &'a PhysicalDeviceFeatures) -> Self {
+                self.enabled_features = enabled_features.into();
+                self
+            }
+            pub unsafe fn create(&self) -> VkResult<DeviceOwner<'parent, Owned>> {
+
+                let enabled_layers = ArrayArray(self.enabled_layers.iter()
+                                                .map( |layer| layer.layer_name().into() ).collect());
+                let enabled_extensions = ArrayArray(self.enabled_extensions.iter()
+                                                .map( |extension| extension.extension_name().into() ).collect());
+
+                let create_info = DeviceCreateInfo!{
+                    flags: DeviceCreateFlags::empty(),
+                    p_queue_create_infos: self.queue_create_info,
+                    pp_enabled_layer_names: &enabled_layers,
+                    pp_enabled_extension_names: &enabled_extensions,
+                    p_enabled_features: self.enabled_features,
+                };
+
+                let mut device: MaybeUninit<Device> = MaybeUninit::uninit();
+
+                let vk_result = unsafe {
+                    self.physical_device.dispatch_parent.commands
+                        .CreateDevice.call()(
+                            self.physical_device.handle(),
+                            (&create_info).to_c(),
+                            None.to_c(),
+                            (&mut device).to_c(),
+                            )
+                };
+
+                if vk_result.is_err() {
+                    vk_result.err()
+                }
+                else {
+                    let device = unsafe { device.assume_init() };
+
+                    let device: DeviceOwner<'parent, Owned> = DeviceOwner::new(device, self.physical_device);
+
+                    self.physical_device.dispatch_parent
+                        .feature_version
+                        .load_device_commands(device.handle, &device.commands);
+                    for extension in &self.enabled_extensions {
+                        extension.load_device_commands(device.handle, &device.commands);
+                        extension.load_instance_commands(self.physical_device.dispatch_parent.handle,
+                                                         &self.physical_device.dispatch_parent.commands);
+                    }
+
+                    vk_result.success(device)
+                }
+
+            }
+        }
+
+        impl PhysicalDeviceOwner<'_> {
+            pub fn device_creator<'parent, 'a>(&'parent self, queue_create_info: &'a [DeviceQueueCreateInfo]) -> DeviceCreator<'a, 'parent> {
+                DeviceCreator {
+                    physical_device: self,
+                    queue_create_info: queue_create_info,
+                    enabled_layers: Default::default(),
+                    enabled_extensions: Default::default(),
+                    enabled_features: Default::default(),
                 }
             }
         }
@@ -567,8 +675,8 @@ fn main() {
         impl<T> Feature for T where T: FeatureCore + Send + Sync + 'static {}
 
         trait FeatureCore {
-            fn load_instance_commands(&self, instance: Instance, inst_cmds: &mut InstanceCommands);
-            fn load_device_commands(&self, device: Device, dev_cmds: &mut DeviceCommands);
+            unsafe fn load_instance_commands(&self, instance: Instance, inst_cmds: &InstanceCommands);
+            unsafe fn load_device_commands(&self, device: Device, dev_cmds: &DeviceCommands);
             fn version(&self) -> u32;
             fn clone_feature(&self) -> Box<dyn Feature>;
         }
@@ -590,10 +698,10 @@ fn main() {
         }
 
         trait VkExtensionLoader : VkExtension {
-            fn load_instance_commands(&self, instance: Instance, commands: &mut InstanceCommands) {
+            unsafe fn load_instance_commands(&self, instance: Instance, commands: &InstanceCommands) {
                 noop!();
             }
-            fn load_device_commands(&self, device: Device, commands: &mut DeviceCommands) {
+            unsafe fn load_device_commands(&self, device: Device, commands: &DeviceCommands) {
                 noop!();
             }
         }
@@ -686,6 +794,7 @@ fn main() {
         use std::os::raw::*;
         use std::ffi::{CStr, CString};
         use std::mem::ManuallyDrop;
+        use std::cell::UnsafeCell;
 
         use handles::*;
 
