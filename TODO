@@ -41,8 +41,10 @@
         right now, the macros are really awkward to use because .into() doesn't play nice with all types (especially numbers)
         also there are issues with creating references to temporary values being created (such as with &[] inside the macro call)
 
-- [ ] EXT_debug_utils_loader doesn't generate the proper loading commands for some reason
+- [x] EXT_debug_utils_loader doesn't generate the proper loading commands for some reason
         this needs to be fixed in order to ever use the debug extesion (maybe other extension have same problemaybe other extension have same problem)
+        LOL, my bad. I had intentionall excluded generating command loaders for EXT_debug_utils for some reason.
+        I don't remeber why so I just removed this exclusion
 
 PROBLEM
 
