@@ -16,10 +16,24 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
 
     let q = extensions.elements.iter().map(|extension| {
 
-        // some extensions are just placeholders and do not have a type
-        // thus, we should not generate any code for them since they have no function
-        if extension.ty.is_none() {
-            return quote!();
+        let ex_ty;
+        let ex_marker_name;
+        let ex_obj;
+        use vkxml::ExtensionType;
+        match extension.ty {
+            Some(ExtensionType::Instance) => {
+                ex_ty = "InstanceExtension".as_code();
+                ex_marker_name = "InstanceExtensionMarker".as_code();
+                ex_obj = "InsEx".as_code();
+            }
+            Some(ExtensionType::Device) => {
+                ex_ty = "DeviceExtension".as_code();
+                ex_marker_name = "DeviceExtensionMarker".as_code();
+                ex_obj = "DevEx".as_code();
+            }
+            // some extensions are just placeholders and do not have a type
+            // thus, we should not generate any code for them since they have no function
+            None => return quote!(),
         }
 
         // NOTE the current code does not handle 'Removed' functionality
@@ -171,8 +185,15 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         quote!{
             #( #enum_extensions )*
             #( #constant_extensions )*
+            #[derive(Debug)]
             struct #extension_loader_name;
-            pub const #extension_user_name: ExtLoaderWrapper = ExtLoaderWrapper(&#extension_loader_name);
+            impl #extension_loader_name {
+                fn as_trait_obj(self) -> #ex_obj {
+                    &#extension_loader_name
+                }
+            }
+            impl #ex_marker_name for #extension_loader_name {}
+            pub const #extension_user_name: #ex_ty = #ex_ty(&#extension_loader_name);
             impl VkExtensionLoader for #extension_loader_name {
                 #loader_commands
             }

@@ -414,7 +414,7 @@ fn main() {
             // therefore, I will only accept the custom Feature typs that I generate
             api_version: Option<Box<dyn Feature>>,
             enabled_layers: Vec<&'a dyn VkLayerName>,
-            enabled_extensions: Vec<&'a dyn VkExtensionLoader>,
+            enabled_extensions: Vec<InstanceExtension>,
         }
 
         impl<'a> InstanceCreator<'a> {
@@ -457,10 +457,10 @@ fn main() {
             }
 
             pub fn enabled_extensions<E>(mut self, enabled_extensions: impl IntoIterator<Item = E>) -> Self
-                where E: Into<ExtLoaderWrapper> + 'a
+                where E: Into<InstanceExtension> + 'a
             {
                 self.enabled_extensions = enabled_extensions.into_iter()
-                    .map( |e| e.into().0 )
+                    .map( |e| e.into() )
                     .collect();
                 self
             }
@@ -485,7 +485,7 @@ fn main() {
                 let enabled_layers = ArrayArray(self.enabled_layers.iter()
                                                 .map( |layer| layer.layer_name().into() ).collect());
                 let enabled_extensions = ArrayArray(self.enabled_extensions.iter()
-                                                .map( |extension| extension.extension_name().into() ).collect());
+                                                .map( |extension| extension.0.extension_name().into() ).collect());
 
                 let create_info = InstanceCreateInfo!{
                     p_application_info: &app_info,
@@ -515,7 +515,7 @@ fn main() {
                     // is impossible to be aliased
                     unsafe { api_version.load_instance_commands(instance.handle, &instance.commands); }
                     for extension in &self.enabled_extensions {
-                        unsafe { extension.load_instance_commands(instance.handle, &instance.commands); }
+                        unsafe { extension.0.load_instance_commands(instance.handle, &instance.commands); }
                     }
 
                     instance.feature_version = api_version;
@@ -529,7 +529,7 @@ fn main() {
             physical_device: &'parent PhysicalDeviceOwner<'parent>,
             queue_create_info: &'a [DeviceQueueCreateInfo<'a>],
             enabled_layers: Vec<&'a dyn VkLayerName>,
-            enabled_extensions: Vec<&'a dyn VkExtensionLoader>,
+            enabled_extensions: Vec<DeviceExtension>,
             enabled_features: Option<&'a PhysicalDeviceFeatures<'a>>,
         }
 
@@ -544,10 +544,10 @@ fn main() {
             }
 
             pub fn enabled_extensions<E>(mut self, enabled_extensions: impl IntoIterator<Item = E>) -> Self
-                where E: Into<ExtLoaderWrapper> + 'a
+                where E: Into<DeviceExtension> + 'a
             {
                 self.enabled_extensions = enabled_extensions.into_iter()
-                    .map( |e| e.into().0 )
+                    .map( |e| e.into() )
                     .collect();
                 self
             }
@@ -560,7 +560,7 @@ fn main() {
                 let enabled_layers = ArrayArray(self.enabled_layers.iter()
                                                 .map( |layer| layer.layer_name().into() ).collect());
                 let enabled_extensions = ArrayArray(self.enabled_extensions.iter()
-                                                .map( |extension| extension.extension_name().into() ).collect());
+                                                .map( |extension| extension.0.extension_name().into() ).collect());
 
                 let create_info = DeviceCreateInfo!{
                     flags: DeviceCreateFlags::empty(),
@@ -594,8 +594,8 @@ fn main() {
                         .feature_version
                         .load_device_commands(device.handle, &device.commands);
                     for extension in &self.enabled_extensions {
-                        extension.load_device_commands(device.handle, &device.commands);
-                        extension.load_instance_commands(self.physical_device.dispatch_parent.handle,
+                        extension.0.load_device_commands(device.handle, &device.commands);
+                        extension.0.load_instance_commands(self.physical_device.dispatch_parent.handle,
                                                          &self.physical_device.dispatch_parent.commands);
                     }
 
@@ -693,6 +693,12 @@ fn main() {
             };
         }
 
+        trait InstanceExtensionMarker: VkExtensionLoader + Debug {}
+        type InsEx = &'static dyn InstanceExtensionMarker;
+
+        trait DeviceExtensionMarker: VkExtensionLoader + Debug {}
+        type DevEx = &'static dyn DeviceExtensionMarker;
+
         trait VkExtension {
             fn extension_name(&self) -> &CStr;
         }
@@ -706,23 +712,73 @@ fn main() {
             }
         }
 
-        #[derive(Clone, Copy)]
-        pub struct ExtLoaderWrapper(&'static dyn VkExtensionLoader);
+        enum Ext {
+            Instance(InsEx),
+            Device(DevEx),
+        }
 
-        impl From<&ExtensionProperties<'_>> for ExtLoaderWrapper {
-            fn from(e: &ExtensionProperties<'_>) -> Self {
-                ExtLoaderWrapper(ex_name_to_extension_loader(e))
+        impl From<InsEx> for Ext {
+            fn from(ex: InsEx) -> Self {
+                Ext::Instance(ex)
             }
         }
 
-        impl From<&ExtLoaderWrapper> for ExtLoaderWrapper {
-            fn from(e: &ExtLoaderWrapper) -> Self {
+        impl From<DevEx> for Ext {
+            fn from(ex: DevEx) -> Self {
+                Ext::Device(ex)
+            }
+        }
+
+        impl From<Ext> for InsEx {
+            fn from(ex: Ext) -> Self {
+                match ex {
+                    Ext::Instance(ex) => ex,
+                    _ => panic!("{:?} is not an Instance Extension"),
+                }
+            }
+        }
+
+        impl From<Ext> for DevEx {
+            fn from(ex: Ext) -> Self {
+                match ex {
+                    Ext::Device(ex) => ex,
+                    _ => panic!("{:?} is not an Device Extension"),
+                }
+            }
+        }
+
+        #[derive(Clone, Copy)]
+        pub struct InstanceExtension(InsEx);
+
+        impl<E> From<E> for InstanceExtension where E: AsRef<str> {
+            fn from(e: E) -> Self {
+                Self(str_to_extension_loader(e.as_ref()).into())
+            }
+        }
+
+        impl From<&InstanceExtension> for InstanceExtension {
+            fn from(e: &InstanceExtension) -> Self {
                 *e
             }
         }
 
-        impl VkExtension for ExtensionProperties<'_> {
-            fn extension_name(&self) -> &CStr {
+        #[derive(Clone, Copy)]
+        pub struct DeviceExtension(DevEx);
+
+        impl<E> From<E> for DeviceExtension where E: AsRef<str> {
+            fn from(e: E) -> Self {
+                Self(str_to_extension_loader(e.as_ref()).into())
+            }
+        }
+
+        impl From<&DeviceExtension> for DeviceExtension {
+            fn from(e: &DeviceExtension) -> Self {
+                *e
+            }
+        }
+
+        impl AsRef<str> for ExtensionProperties<'_> {
+            fn as_ref(&self) -> &str {
                 // self.extention_name should always be a valid c string
                 // unless the vulkan implementation (driver) is wrong
                 // do I need to guard against bad drivers?
@@ -730,15 +786,16 @@ fn main() {
                 // or it is fine since this will only be used internally to
                 // pass the string straigth back to the vulkan driver via
                 // extension loading
-                unsafe { CStr::from_ptr(self.extension_name.as_ptr()) }
+                unsafe { CStr::from_ptr(self.extension_name.as_ptr()).to_str().unwrap() }
             }
         }
 
-        fn ex_name_to_extension_loader(e: &impl VkExtension) -> &'static dyn VkExtensionLoader {
-            match e.extension_name().to_bytes() {
-                #( #ext_c_names => &#ext_loader_names, )*
+        //fn ex_name_to_extension_loader(e: &impl VkExtension) -> &'static dyn VkExtensionLoader {
+        fn str_to_extension_loader(e: &str) -> Ext {
+            match e.as_bytes() {
+                #( #ext_c_names => #ext_loader_names.as_trait_obj().into(), )*
                 _ => panic!("unrecognized extension name {:?}. Possibly unsupported by current version of vk.rs?",
-                        e.extension_name()
+                        e
                     )
             }
         }
@@ -795,6 +852,7 @@ fn main() {
         use std::ffi::{CStr, CString};
         use std::mem::ManuallyDrop;
         use std::cell::UnsafeCell;
+        use std::fmt::Debug;
 
         use handles::*;
 
