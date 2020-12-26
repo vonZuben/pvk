@@ -733,7 +733,7 @@ fn main() {
             fn from(ex: Ext) -> Self {
                 match ex {
                     Ext::Instance(ex) => ex,
-                    _ => panic!("{:?} is not an Instance Extension"),
+                    Ext::Device(ex) => panic!("{:?} is not an Instance Extension", ex.extension_name()),
                 }
             }
         }
@@ -742,7 +742,7 @@ fn main() {
             fn from(ex: Ext) -> Self {
                 match ex {
                     Ext::Device(ex) => ex,
-                    _ => panic!("{:?} is not an Device Extension"),
+                    Ext::Instance(ex) => panic!("{:?} is not an Device Extension", ex.extension_name()),
                 }
             }
         }
