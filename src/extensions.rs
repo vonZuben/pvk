@@ -148,7 +148,7 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
             });
 
         let extension_loader_name = utils::extension_loader_name(&extension.name).as_code();
-        let loader_commands = if commands_to_load.len() == 0 || extension.name.as_str() == "VK_EXT_debug_utils" {
+        let loader_commands = if commands_to_load.len() == 0 {
             None
         }
         else {
