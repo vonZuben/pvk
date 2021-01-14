@@ -142,6 +142,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     CommandCategory::Static => panic!(
                         format!("error: extension command is for static command: {}", command_ref_name)
                     ),
+                    CommandCategory::Entry => panic!(
+                        format!("error: extension command is for Entry command: {}", command_ref_name)
+                    ),
                 }
             });
 
@@ -157,6 +160,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     }
                     CommandCategory::Static => panic!(
                         format!("error: extension command is for static command: {}", command_ref_name)
+                    ),
+                    CommandCategory::Entry => panic!(
+                        format!("error: extension command is for Entry command: {}", command_ref_name)
                     ),
                 }
             });

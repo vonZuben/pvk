@@ -15,7 +15,7 @@
 
 - [x] impl Debug for all generated types
 
-- [ ] create some kind of 'Entry' code for loading commands that do not take dispatchable handles
+- [x] create some kind of 'Entry' code for loading commands that do not take dispatchable handles
 
 - [ ] remember to deal with comamdns that still arn't generated (e.g. ebcause they have a void param)
 

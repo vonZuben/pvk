@@ -38,6 +38,7 @@ pub enum CommandCategory {
     Device,
     Instance,
     Static,
+    Entry,
 }
 
 pub fn command_category(cmd: &Command) -> CommandCategory {
@@ -47,7 +48,7 @@ pub fn command_category(cmd: &Command) -> CommandCategory {
             match cmd.param[0].basetype.as_str() {
                 "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandCategory::Device,
                 "VkInstance" | "VkPhysicalDevice" => CommandCategory::Instance,
-                _ => CommandCategory::Static,
+                _ => CommandCategory::Entry,
             }
     }
 }
@@ -92,8 +93,8 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
     let instance_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Instance));
     let device_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Device));
-    let instance_and_device_commands = commands.elements.iter().filter(
-        filter_varients!(CommandCategory::Instance | CommandCategory::Device));
+    let non_static_commands = commands.elements.iter().filter(
+        filter_varients!(CommandCategory::Instance | CommandCategory::Device | CommandCategory::Entry));
     let static_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Static));
 
     // parameters are made the same for instance and device commands
@@ -115,7 +116,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
     let device_cmd_inits = device_commands.clone().map(make_cmd_inits);
 
     // make definitions for instance and device (non-static) commands
-    let non_static_command_definitions = instance_and_device_commands.map(|cmd| {
+    let non_static_command_definitions = non_static_commands.map(|cmd| {
         let name = cmd.name.as_code();
         let pfn_name = make_pfn_name(cmd.name.as_str());
         let pfn_loader_name = make_pfn_loader_name(cmd.name.as_str());
@@ -123,24 +124,51 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
 
         let return_type = c_type(&cmd.return_type, WithLifetime::No, FieldContext::Member)
                                     .is_return_type(true);
-        let params1 = cmd.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam));
-        let params2 = params1.clone(); // because params is needed twice and quote will consume params1
+        let params: Vec<_> = cmd.param.iter().map(|field|c_field(field, WithLifetime::No, FieldContext::FunctionParam)).collect();
+        //let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
         // create owner methods
         let owner_name = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
 
         let owner_method = make_owner_method(&cmd, parse_state);
 
+        let entry_loader = if matches!(command_category(cmd), CommandCategory::Entry) {
+            Some(
+                quote!{
+                    struct #name;
+                    impl #name {
+                        fn call() -> #pfn_name {
+                            use std::sync::Once;
+                            static LOAD: Once = Once::new();
+                            static mut PFN: MaybeUninit<#pfn_loader_name> = MaybeUninit::uninit();
+                            unsafe {
+                                LOAD.call_once(||{
+                                    let loader = |raw_cmd_name: &CStr| unsafe { GetInstanceProcAddr(Default::default(), raw_cmd_name.to_c()) };
+                                    let pfn = #pfn_loader_name::new();
+                                    pfn.load(loader);
+                                    PFN.as_mut_ptr().write(pfn)
+                                });
+                                PFN.as_ptr().read().call()
+                            }
+                        }
+                    }
+                }
+            )
+        }
+        else {
+            None
+        };
+
         quote!{
             #[allow(non_camel_case_types)]
             pub type #pfn_name = extern "system" fn(
-                #( #params1 ),*
+                #( #params ),*
             ) -> #return_type;
 
             struct #pfn_loader_name(UnsafeCell<#pfn_name>);
             impl #pfn_loader_name {
                 fn new() -> Self {
-                    extern "system" fn default_function( #( #params2 ),* ) -> #return_type {
+                    extern "system" fn default_function( #( #params ),* ) -> #return_type {
                         panic!(concat!(#raw_name, " is not loaded. Make sure the correct feature/extension is enabled"))
                     }
                     Self(UnsafeCell::new(default_function))
@@ -176,6 +204,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
             //        write!(f, "Loader for: {}", stringify!(#pfn_name))
             //    }
             //}
+            #entry_loader
             #owner_method
         }
     });
@@ -275,7 +304,7 @@ fn is_return_param(field: &&vkxml::Field, catagories: &HashMap<&str, FieldCatago
 fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStream {
 
     // skip vkCreateDevice since it needs special handling
-    if &cmd.name == "vkCreateDevice" {
+    if &cmd.name == "vkCreateDevice" || &cmd.name == "vkCreateInstance" {
         return quote!();
     }
 
@@ -294,12 +323,30 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
     let method_name_raw = case::camel_to_snake(cmd.name.as_str());
     let method_name = method_name_raw.as_code();
 
-    let method_caller = match cmd.param[0].basetype.as_str() {
-        "VkInstance" | "VkDevice" => quote!( self.commands.#name.call() ),
-        _ => {
-            quote!( self.dispatch_parent.commands.#name.call() )
-        }
+    let cmd_cat = command_category(cmd);
+    let skip_first = if matches!(cmd_cat, CommandCategory::Entry) {
+        0
+    }
+    else {
+        1
     };
+
+    let method_caller;
+    match cmd.param[0].basetype.as_str() {
+        "VkInstance" | "VkDevice" => {
+            method_caller = quote!( self.commands.#name.call() );
+        }
+        _ => {
+            match cmd_cat {
+                CommandCategory::Entry => {
+                    method_caller = quote!( #name::call() );
+                }
+                _ => {
+                    method_caller = quote!( self.dispatch_parent.commands.#name.call() );
+                }
+            }
+        }
+    }
 
     // check method verb
     //
@@ -309,7 +356,12 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
     let method_verb = method_name_raw.split('_').skip(1).next().expect("error: method name without verb");
 
     // for each method, the first parameter should be the dispatchable handle
-    let first_inner_param = Some( quote!( self.handle ) );
+    let first_inner_param = if matches!(cmd_cat, CommandCategory::Entry){
+        None
+    }
+    else {
+        Some( quote!( self.handle , ) )
+    };
 
     match method_verb {
         "destroy" => {
@@ -384,7 +436,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             let impl_lifetime;
             let call_lifetime;
             let self_modifier;
-            let with_lifetime;
+            let mut with_lifetime;
 
             match method_verb {
                 "create" | "allocate" => {
@@ -417,6 +469,10 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 }
             }
 
+            if matches!(cmd_cat, CommandCategory::Entry) {
+                with_lifetime = WithLifetime::Yes("'static");
+            }
+
             // determine if method should call the vulkan command twice in order to query a size
             // field category
             let can_query_size = category_map
@@ -424,7 +480,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 .find(|category| match category { FieldCatagory::SizeMut => true, _ => false } )
                 .is_some();
 
-            let fields_outer = cmd.param.iter().skip(1)
+            let fields_outer = cmd.param.iter().skip(skip_first)
                 .filter(|field| match category_map.get(field_name(field)).unwrap() {
                     FieldCatagory::Normal | FieldCatagory::NormalSized => true,
                     _ => false,
@@ -484,7 +540,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 });
 
             let size_query = if can_query_size {
-                let fields_inner = cmd.param.iter().skip(1)
+                let fields_inner = cmd.param.iter().skip(skip_first)
                     .map( |field| {
                         let name_raw = field_name(&field);
                         let field_name = case::camel_to_snake(name_raw).as_code();
@@ -495,7 +551,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     });
                 if cmd.return_type.basetype == "VkResult" {
                     Some( quote!{
-                        let vk_result = #method_caller( #first_inner_param, #( #fields_inner ),* );
+                        let vk_result = #method_caller( #first_inner_param #( #fields_inner ),* );
                         // for commands where we can querry size, I assume that the result can only
                         // be success (0) or an error (negitive number)
                         if vk_result.is_err() {
@@ -506,7 +562,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 else {
                     assert_eq!(cmd.return_type.basetype, "void");
                     Some( quote!{
-                        #method_caller( #first_inner_param, #( #fields_inner ),* );
+                        #method_caller( #first_inner_param #( #fields_inner ),* );
                     })
                 }
             }
@@ -534,7 +590,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
             let main_call = {
                 let fields_inner = cmd.param
                     .iter()
-                    .skip(1)
+                    .skip(skip_first)
                     .map( |field| {
                         let name_raw = field_name(&field);
                         let field_name = case::camel_to_snake(name_raw).as_code();
@@ -545,7 +601,7 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     });
                 if cmd.return_type.basetype == "VkResult" {
                     quote!{
-                        let vk_result = #method_caller( #first_inner_param, #( #fields_inner ),* );
+                        let vk_result = #method_caller( #first_inner_param #( #fields_inner ),* );
                         if vk_result.is_err() {
                             return vk_result.err();
                         }
@@ -555,12 +611,12 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 // function only returns this return_type
                 else if cmd.return_type.basetype != "void" {
                     quote!{
-                        return #method_caller( #first_inner_param, #( #fields_inner ),* );
+                        return #method_caller( #first_inner_param #( #fields_inner ),* );
                     }
                 }
                 else {
                     quote!{
-                        #method_caller( #first_inner_param, #( #fields_inner ),* );
+                        #method_caller( #first_inner_param #( #fields_inner ),* );
                     }
                 }
             };
@@ -623,16 +679,22 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                             _ => None,
                         }
                     });
+                let return_tuple = if matches!(cmd_cat, CommandCategory::Entry) {
+                    quote!{ (ret, &()) }
+                }
+                else {
+                    quote!{ (ret, self) }
+                };
                 return_code = if cmd.return_type.basetype == "VkResult" {
                     Some( quote!{
                         let ret = ( #( #return_vars ),* ); //(A, B, ...);
-                        vk_result.success((ret, self).ret())
+                        vk_result.success(#return_tuple.ret())
                     } )
                 }
                 else {
                     Some( quote!{
                         let ret = ( #( #return_vars ),* ); //(A, B, ...);
-                        (ret, self).ret()
+                        #return_tuple.ret()
                     } )
                 };
             }
@@ -650,16 +712,32 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                 return_type
             };
 
-            quote!{
-                //#multi_return_type
-                impl<#lifetime_defs> #owner_name<#impl_lifetime> {
-                    pub fn #method_name<#call_lifetime>(& #self_modifier self, #( #fields_outer ),* ) -> #result {
-                        #( #size_vars )*
-                        #size_query
-                        #( #return_vars )*
-                        #main_call
-                        #( #prep_return_vars )*
-                        #return_code
+            let this = if matches!(cmd_cat, CommandCategory::Entry) {
+                None
+            }
+            else {
+                Some( quote!( & #self_modifier self, ) )
+            };
+
+            let method = quote!{
+                pub fn #method_name<#call_lifetime>( #this #( #fields_outer ),* ) -> #result {
+                    #( #size_vars )*
+                    #size_query
+                    #( #return_vars )*
+                    #main_call
+                    #( #prep_return_vars )*
+                    #return_code
+                }
+            };
+
+            if matches!(command_category(cmd), CommandCategory::Entry) {
+                method
+            }
+            else {
+                quote!{
+                    //#multi_return_type
+                    impl<#lifetime_defs> #owner_name<#impl_lifetime> {
+                        #method
                     }
                 }
             }

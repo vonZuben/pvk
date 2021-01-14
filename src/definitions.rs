@@ -586,15 +586,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 };
 
                 let return_impl = match handle.name.as_str() {
-                    "VkInstance" => None,
-                    "VkDevice" => Some(quote!{
-                        impl<'parent, Own> Return<#owner_name<'parent, Own>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
-                            fn ret(self) -> #owner_name<'parent, Own> {
-                                unimplemented!()
-                                    //#owner_name::new(self.0, self.1);
-                            }
-                        }
-                    }),
+                    "VkInstance" | "VkDevice" => None,
                     _ => Some(quote!{
                         impl<'parent, Own> Return<#owner_name<'parent, Own>> for ((#handle_name<'static>), &'parent #dispatch_parent<'_>) {
                             fn ret(self) -> #owner_name<'parent, Own> {

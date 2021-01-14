@@ -496,7 +496,7 @@ fn main() {
                 let mut inst: MaybeUninit<Instance> = MaybeUninit::uninit();
 
                 let vk_result = unsafe {
-                    CreateInstance(
+                    CreateInstance::call()(
                         (&create_info).to_c(),
                         None.to_c(),
                         (&mut inst).to_c(),
