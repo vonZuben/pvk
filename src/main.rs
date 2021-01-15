@@ -617,18 +617,48 @@ fn main() {
             }
         }
 
-        #[derive(Debug)]
-        pub enum VkResult<T> {
-            //#( #result_members_code ),*
-            #( pub #result_ok(T) , )*
-            #( pub #result_err , )*
+        pub struct VkResult<T> {
+            val: MaybeUninit<T>,
+            result_code: VkResultRaw,
         }
 
         impl<T> VkResult<T> {
             pub fn unwrap(self) -> T {
-                match self {
-                    #( Self::#result_ok(t) => t, )*
-                    #( Self::#result_err => panic!(concat!("failed to unwrap VkResult::", stringify!(#result_err))), )*
+                self.to_std_result().unwrap()
+            }
+            pub fn to_std_result(self) -> Result<T, VkResultRaw> {
+                if self.result_code.is_err() {
+                    Err(self.result_code)
+                }
+                else {
+                    unsafe { Ok(self.val.assume_init()) }
+                }
+            }
+            pub fn result_code(&self) -> VkResultRaw {
+                self.result_code
+            }
+        }
+
+        impl<T> Debug for VkResult<T> where T: Debug {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                // use to get Display impl of VkResultRaw inside Debug context
+                struct VkErr(VkResultRaw);
+                impl Debug for VkErr {
+                    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                        write!(f, "{}", self.0)
+                    }
+                }
+                if self.result_code.is_err() {
+                    f.debug_struct("VkResult")
+                        .field("code", &VkErr(self.result_code))
+                        .field("value", &())
+                        .finish()
+                }
+                else {
+                    f.debug_struct("VkResult")
+                        .field("code", &VkErr(self.result_code))
+                        .field("value", unsafe { &*self.val.as_ptr() })
+                        .finish()
                 }
             }
         }
@@ -636,27 +666,22 @@ fn main() {
         impl crate::VkResultRaw {
             // takes a possible value to wrap
             fn success<T>(self, t: T) -> VkResult<T> {
-                match self {
-                    //#( #success_members , )*
-                    #( VkResultRaw::#result_ok => VkResult::#result_ok(t) , )*
-                    //Some( quote!(#name => VkResult::#name(t)) )
-                    x => panic!("vk.rs error. Can't handle result code {:?} (not success)", x),
+                assert!(!self.is_err());
+                VkResult {
+                    val: MaybeUninit::new(t),
+                    result_code: self,
                 }
             }
             // if err then we don't want to return anything
             fn err<T>(self) -> VkResult<T> {
-                match self {
-                    //#( #err_members , )*
-                    #( VkResultRaw::#result_err => VkResult::#result_err , )*
-                    x => panic!("vk.rs error. Can't handle result code {:?} (not an err)", x),
+                assert!(self.is_err());
+                VkResult {
+                    val: MaybeUninit::uninit(),
+                    result_code: self,
                 }
             }
-
             fn is_err(self) -> bool {
-                match self {
-                    #( VkResultRaw::#result_err => true , )*
-                    _ => false ,
-                }
+                self.0 < 0
             }
         }
 
