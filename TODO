@@ -8,16 +8,18 @@
         made custom error type a way to convert Vulkan error type thereto
         change the Vulkan error type name to VkResultRaw and custom error type name to VkResult
 
-- [ ] consider how to deal with "sudo" optional types, such as in VkWriteDescriptorSet
+- [?] consider how to deal with "sudo" optional types, such as in VkWriteDescriptorSet
+        maybe this is out of scope for this library
 
-- [partial] - still need device code] build entry code for creating instance, and also build code for properly create Devices (load Device commands)
+- [x] - still need device code build entry code for creating instance, and also build code for properly create Devices (load Device commands)
 
 
 - [x] impl Debug for all generated types
 
 - [x] create some kind of 'Entry' code for loading commands that do not take dispatchable handles
 
-- [ ] remember to deal with comamdns that still arn't generated (e.g. ebcause they have a void param)
+- [x] remember to deal with comands that still arn't generated (e.g. because they have a void param)
+        I forgot I dealt with this a long time ago (around 11/5/2020 and 11/7/2020)
 
 - [x] figure out how to represent void
         (some solution for this was made, but there may be room to improve this still)
