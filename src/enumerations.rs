@@ -131,9 +131,9 @@ pub fn handle_enumerations<'a>(enumerations: &'a Enums) -> TokenStream {
 
 }
 
-pub fn make_enumeration_display_code() -> impl Iterator<Item=TokenStream> + 'static {
+pub fn make_enumeration_display_code<'a>(enums: &'a [(&String, &Vec<String>)]) -> impl Iterator<Item=TokenStream> + 'a {
 
-    global_data::all_enums().iter().map( | (enum_name, variants) | {
+    enums.iter().map( | (enum_name, variants) | {
 
         let display_cases = variants.iter().map( |enum_constant| {
             let const_name = make_variant_name(enum_name, enum_constant).as_code();

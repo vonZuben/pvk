@@ -1810,8 +1810,11 @@ fn main() {
         #(#aliases)*
     };
 
+    let mut sorted_enums: Vec<_> = global_data::all_enums().iter().collect();
+    sorted_enums.sort();
+
     let post_process_handles = post_process_handles(&parse_state);
-    let post_process_enum_display_code = make_enumeration_display_code();
+    let post_process_enum_display_code = make_enumeration_display_code(&sorted_enums);
 
     q.extend(post_process_handles);
     q.extend(post_process_enum_display_code);
