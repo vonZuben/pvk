@@ -10,7 +10,7 @@ use crate::utils::StrAsCode;
 use crate::utils;
 
 pub enum Reference {
-    True,
+    True(Lifetime),
     False,
 }
 
@@ -23,9 +23,21 @@ impl Default for Reference {
 impl From<bool> for Reference {
     fn from(b: bool) -> Self {
         match b {
-            true => Reference::True,
+            true => Reference::True(Lifetime::None),
             false => Reference::False,
         }
+    }
+}
+
+impl From<Lifetime> for Reference {
+    fn from(lifetime: Lifetime) -> Self {
+        Self::True(lifetime)
+    }
+}
+
+impl From<&str> for Reference {
+    fn from(lifetime: &str) -> Self {
+        Lifetime::from(lifetime).into()
     }
 }
 
@@ -33,20 +45,35 @@ impl ToTokens for Reference {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use Reference::*;
         match &self {
-            True => quote!(&).to_tokens(tokens),
+            True(lifetime) => quote!( & #lifetime ).to_tokens(tokens),
             False => {}
         }
     }
 }
 
-#[derive(Default)]
-pub struct Lifetime {
-    l: String,
+pub enum Lifetime {
+    None,
+    Anonymous,
+    Named(String),
 }
 
 impl<S: ToString> From<S> for Lifetime {
     fn from(s: S) -> Self {
-        Lifetime{ l: s.to_string() }
+        Lifetime::named(s)
+    }
+}
+
+impl Lifetime {
+    fn named(s: impl ToString) -> Self {
+        let s = s.to_string();
+        assert!(s.starts_with('\''));
+        Lifetime::Named(s)
+    }
+}
+
+impl Default for Lifetime {
+    fn default() -> Self {
+        Lifetime::None
     }
 }
 
@@ -55,15 +82,20 @@ impl From<utils::WithLifetime<'_>> for Lifetime {
         use utils::WithLifetime;
         match lt {
             WithLifetime::Yes(lifetime) => lifetime.into(),
-            WithLifetime::No => "".into(),
+            WithLifetime::No => Lifetime::None,
         }
     }
 }
 
 impl ToTokens for Lifetime {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.l.as_code().to_tokens(tokens);
+        //self.l.as_code().to_tokens(tokens);
+        match self {
+            Lifetime::None => {}
+            Lifetime::Anonymous => "'_".as_code().to_tokens(tokens),
+            Lifetime::Named(name) => name.as_code().to_tokens(tokens),
     }
+}
 }
 
 pub enum Mutable {
@@ -119,44 +151,28 @@ impl ToTokens for Pointer {
     }
 }
 
+#[derive(Default)]
 pub struct Basetype {
-    pub name: String,
-    pub params: Option<TypeParams>,
-}
-
-impl Basetype {
-    fn push_param(&mut self, p: impl Into<Ty>) {
-        match self.params {
-            None => {
-                let mut tp = TypeParams::default();
-                tp.push(p);
-                self.params = Some(tp);
-            }
-            Some(ref mut tp) => tp.push(p),
-        }
-    }
-}
-
-impl Default for Basetype {
-    fn default() -> Self {
-        "".into()
-    }
+    pub name: Option<String>,
+    pub generics: Generics,
 }
 
 impl<S: ToString> From<S> for Basetype {
     fn from(s: S) -> Self {
         Basetype {
-            name: s.to_string(),
-            params: None,
+            name: Some(s.to_string()),
+            generics: Generics::default(),
         }
     }
 }
 
 impl ToTokens for Basetype {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = self.name.as_code();
-        let params = &self.params;
-        quote!( #name #params ).to_tokens(tokens);
+        let name = self.name.as_ref().expect("error: never gave Basetype a name");
+        assert!(!name.is_empty());
+        let name = name.as_code();
+        let generics = &self.generics;
+        quote!( #name #generics ).to_tokens(tokens);
     }
 }
 
@@ -172,9 +188,15 @@ impl Default for Core {
 }
 
 impl Core {
-    pub fn push_param(&mut self, p: impl Into<Ty>) {
+    fn push_lifetime_param(&mut self, l: impl Into<Lifetime>) {
         match self {
-            Core::Basetype(basetype) => basetype.push_param(p),
+            Core::Basetype(basetype) => basetype.generics.push_lifetime_param(l),
+            _ => panic!("can only push params when core is Basetype"),
+        }
+    }
+    fn push_type_param(&mut self, t: impl Into<Ty>) {
+        match self {
+            Core::Basetype(basetype) => basetype.generics.push_type_param(t),
             _ => panic!("can only push params when core is Basetype"),
         }
     }
@@ -209,19 +231,27 @@ impl ToTokens for Core {
 }
 
 #[derive(Default)]
-pub struct TypeParams(Vec<Ty>);
+pub struct Generics {
+    lifetime_params: Vec<Lifetime>,
+    type_params: Vec<Ty>,
+}
 
-impl TypeParams {
-    pub fn push(&mut self, p: impl Into<Ty>) {
-        self.0.push(p.into());
+impl Generics {
+    fn push_lifetime_param(&mut self, l: impl Into<Lifetime>) {
+        self.lifetime_params.push(l.into());
+    }
+    fn push_type_param(&mut self, t: impl Into<Ty>) {
+        self.type_params.push(t.into());
     }
 }
 
-impl ToTokens for TypeParams {
+impl ToTokens for Generics {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let p = self.0.iter();
-        if !self.0.is_empty() {
-            quote!( < #(#p),* > ).to_tokens(tokens)
+        if ! self.lifetime_params.is_empty() || ! self.type_params.is_empty() {
+            let lifetime_params = self.lifetime_params.iter().map(|i|{i as &dyn ToTokens});
+            let type_params = self.type_params.iter().map(|i|{i as &dyn ToTokens});
+            let iter = lifetime_params.chain(type_params);
+            quote!( < #(#iter),* > ).to_tokens(tokens)
         }
     }
 }
@@ -277,7 +307,6 @@ impl ArrayType {
 #[derive(Default)]
 pub struct Ty {
     reference: Reference,
-    lifetime: Lifetime,
     mutable: Mutable,
     pointer: Vec<Pointer>,
     core: Core,
@@ -286,46 +315,15 @@ pub struct Ty {
 impl ToTokens for Ty {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let reference = &self.reference;
-        let lifetime = &self.lifetime;
         let mutable = &self.mutable;
         let pointer = &self.pointer;
         let core = &self.core;
 
-        quote!( #reference #lifetime #mutable #(#pointer)* #core ).to_tokens(tokens);
+        quote!( #reference #mutable #(#pointer)* #core ).to_tokens(tokens);
     }
 }
 
-impl From<Reference> for Ty {
-    fn from(r: Reference) -> Self {
-        Ty::new().reference(r)
-    }
-}
 
-impl From<Lifetime> for Ty {
-    fn from(l: Lifetime) -> Self {
-        Ty::new().lifetime(l)
-    }
-}
-
-impl From<Mutable> for Ty {
-    fn from(m: Mutable) -> Self {
-        Ty::new().mutable(m)
-    }
-}
-
-impl From<Pointer> for Ty {
-    fn from(p: Pointer) -> Self {
-        Ty::new().pointer(p)
-    }
-}
-
-impl From<Core> for Ty {
-    fn from(c: Core) -> Self {
-        let mut ty = Ty::new();
-        ty.core = c;
-        ty
-    }
-}
 
 impl Ty {
     pub fn new() -> Self {
@@ -334,13 +332,6 @@ impl Ty {
     pub fn reference(mut self, r: impl Into<Reference>) -> Self {
         self.reference = r.into();
         self
-    }
-    pub fn lifetime(mut self, l: impl Into<Lifetime>) -> Self {
-        self.lifetime = l.into();
-        self
-    }
-    pub fn set_lifetime(&mut self, l: impl Into<Lifetime>) {
-        self.lifetime = l.into();
     }
     pub fn mutable(mut self, m: impl Into<Mutable>) -> Self {
         self.mutable = m.into();
@@ -359,12 +350,13 @@ impl Ty {
     pub fn to_array(self, array_type: ArrayType) -> Self {
         Ty::new().array(self, array_type)
     }
-    pub fn param(mut self, p: impl Into<Ty>) -> Self {
-        self.core.push_param(p);
+    pub fn lifetime_param(mut self, l: impl Into<Lifetime>) -> Self {
+        self.core.push_lifetime_param(l);
         self
     }
-    pub fn push_param(&mut self, p: impl Into<Ty>) {
-        self.core.push_param(p);
+    pub fn type_param(mut self, p: impl Into<Ty>) -> Self {
+        self.core.push_type_param(p);
+        self
     }
     pub fn core(mut self, core: impl Into<Core>) -> Self {
         self.core = core.into();
@@ -396,12 +388,11 @@ impl ToTokens for Field {
 
 pub fn test() {
     let ty2 = Ty::new()
-        .reference(true)
-        .lifetime("'r")
+        .reference("'r")
         .pointer(Pointer::Const)
         .basetype("Ref")
-        .param(Lifetime::from("'a"))
-        .param(Ty::new().basetype("Hello").param(Lifetime::from("'a")))
+        .lifetime_param("'a")
+        .type_param(Ty::new().basetype("Hello").lifetime_param("'a"))
         .to_array(ArrayType::Slice)
         .reference(true);
 

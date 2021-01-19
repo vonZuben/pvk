@@ -206,12 +206,12 @@ impl<'a> CType<'a> {
         pipe!{ ty = Ty::new() =>
             STAGE ty.basetype(field.basetype.as_str());
             DONE WHEN is_return_type && field.basetype == "PFN_vkVoidFunction" => {
-                Ty::new().basetype("Option").param(ty)
+                Ty::new().basetype("Option").type_param(ty)
             }
             WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
             {
                 match with_lifetime {
-                    WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                    WithLifetime::Yes(lifetime) => ty.lifetime_param(lifetime),
                     WithLifetime::No => ty,
                 }
             }
@@ -229,7 +229,7 @@ impl<'a> CType<'a> {
                         if field.basetype == "char" {
                             Ty::new()
                                 .basetype("ArrayString")
-                                .param(ty)
+                                .type_param(ty)
                         }
                         else {
                             ty
@@ -237,7 +237,7 @@ impl<'a> CType<'a> {
                     }
                     FieldContext::FunctionParam =>
                         Ty::new().basetype("Ref")
-                        .param(ty),
+                        .type_param(ty),
                 }
             }
             DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
@@ -246,7 +246,7 @@ impl<'a> CType<'a> {
                     Some(r) => match r {
                         vkxml::ReferenceType::Pointer => {
                             if field.is_const {
-                                Ty::new().basetype("Array").param(ty)
+                                Ty::new().basetype("Array").type_param(ty)
                             } else {
                                 if field.basetype == "void" {
                                     // assumeing that void pointers to a dynamically sized buffer are always mutable
@@ -254,7 +254,7 @@ impl<'a> CType<'a> {
                                     Ty::new().basetype("OpaqueMutPtr")
                                 }
                                 else {
-                                    Ty::new().basetype("ArrayMut").param(ty)
+                                    Ty::new().basetype("ArrayMut").type_param(ty)
                                 }
                             }
                         }
@@ -266,7 +266,7 @@ impl<'a> CType<'a> {
                             if field.is_const {
                                 // TODO a special case fro string arrays would probably be good
                                 Ty::new().basetype("Array")
-                                    .param(ty.pointer(Pointer::Const))
+                                    .type_param(ty.pointer(Pointer::Const))
                             } else {
                                 unimplemented!("unimplemented c_type Array PointerToConstPointer (Mut)");
                             }
@@ -281,15 +281,15 @@ impl<'a> CType<'a> {
                     Some(r) => match r {
                         vkxml::ReferenceType::Pointer => {
                             if field.is_const {
-                                Ty::new().basetype("Ref").param(ty)
+                                Ty::new().basetype("Ref").type_param(ty)
                             } else {
-                                Ty::new().basetype("RefMut").param(ty)
+                                Ty::new().basetype("RefMut").type_param(ty)
                             }
                         }
                         vkxml::ReferenceType::PointerToPointer => {
                             assert!(field.is_const == false);
                             Ty::new().basetype("RefMut")
-                                .param(ty.pointer(Pointer::Mut))
+                                .type_param(ty.pointer(Pointer::Mut))
                         }
                         vkxml::ReferenceType::PointerToConstPointer => {
                             unimplemented!("unimplemented c_type Ref PointerToConstPointer (Const/Mut)");
@@ -400,17 +400,17 @@ impl<'a> Rtype<'a> {
             WHEN global_data::uses_lifetime(basetype_str) =>
             {
                 match param_lifetime {
-                    WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                    WithLifetime::Yes(lifetime) => ty.lifetime_param(lifetime),
                     WithLifetime::No => ty,
                 }
             }
             WHEN for_freeing => {
-                ty.param(Ty::new().basetype("ManuallyManaged"))
+                ty.type_param(Ty::new().basetype("ManuallyManaged"))
             }
             WHEN global_data::is_externsync(container, field) && !for_freeing =>
             {
                 Ty::new().basetype("MutHandle")
-                    .param(ty)
+                    .type_param(ty)
             }
             WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
             {
@@ -424,7 +424,7 @@ impl<'a> Rtype<'a> {
                     FieldContext::Member => ty,
 
                     // assuming never mut for static size arrays
-                    FieldContext::FunctionParam => ty.lifetime(lifetime()).reference(true),
+                    FieldContext::FunctionParam => ty.reference(lifetime()),
                 }
             }
             WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
@@ -435,32 +435,29 @@ impl<'a> Rtype<'a> {
                             if field.is_const {
                                 if basetype_str == "char" {
                                     ty.basetype("MyStr")
-                                        .param(lifetime())
+                                        .lifetime_param(lifetime())
                                 }
                                 else if for_freeing {
                                     Ty::new()
                                         .basetype("HandleVec")
-                                        .param(Lifetime::from(param_lifetime))
-                                        .param(ty)
+                                        .lifetime_param(param_lifetime)
+                                        .type_param(ty)
                                 }
                                 else {
                                     ty.to_array(ArrayType::Slice)
-                                        .lifetime(lifetime())
-                                        .reference(true)
+                                        .reference(lifetime())
                                 }
                             } else {
                                 if basetype_str == "void" {
                                     Ty::new()
                                         .basetype("u8")
                                         .to_array(ArrayType::Slice)
-                                        .lifetime(lifetime())
-                                        .reference(true)
+                                        .reference(lifetime())
                                         .mutable(true)
                                 }
                                 else {
                                     ty.to_array(ArrayType::Slice)
-                                        .lifetime(lifetime())
-                                        .reference(true)
+                                        .reference(lifetime())
                                         .mutable(true)
                                 }
                             }
@@ -470,7 +467,7 @@ impl<'a> Rtype<'a> {
                             if field.is_const {
                                 let param = if basetype_str == "char" {
                                     ty.basetype("MyStr")
-                                        .param(lifetime())
+                                        .lifetime_param(lifetime())
                                 }
                                 else {
                                     ty.pointer(Pointer::Const)
@@ -478,9 +475,8 @@ impl<'a> Rtype<'a> {
 
                                 Ty::new()
                                     .basetype("ArrayArray")
-                                    .lifetime(lifetime())
-                                    .reference(true)
-                                    .param(param)
+                                    .reference(lifetime())
+                                    .type_param(param)
                                     //quote!(&ArrayArray<*const #basetype>)
                                     // TODO find a better type for this
                             } else {
@@ -497,12 +493,10 @@ impl<'a> Rtype<'a> {
                     Some(r) => match r {
                         vkxml::ReferenceType::Pointer => {
                             if field.is_const {
-                                ty.reference(true)
-                                    .lifetime(lifetime())
+                                ty.reference(lifetime())
                             } else {
-                                ty.reference(true)
+                                ty.reference(lifetime())
                                     .mutable(true)
-                                    .lifetime(lifetime())
                             }
                         }
                         vkxml::ReferenceType::PointerToPointer => unimplemented!("unimplemented rust ref PointerToPointer"),
@@ -524,7 +518,7 @@ impl<'a> Rtype<'a> {
             => {
                 Ty::new()
                     .basetype("Option")
-                    .param(ty)
+                    .type_param(ty)
             }
             //WHEN field.optional.as_ref().map(|opt|opt.split(',').next() == Some("true")).unwrap_or(false) =>
             //{
@@ -597,7 +591,7 @@ impl<'a> RreturnType<'a> {
             }
             WHEN global_data::uses_lifetime(basetype_str) => {
                 match with_lifetime {
-                    WithLifetime::Yes(lifetime) => ty.param(Lifetime::from(lifetime)),
+                    WithLifetime::Yes(lifetime) => ty.lifetime_param(lifetime),
                     WithLifetime::No => ty,
                 }
             }
@@ -606,9 +600,9 @@ impl<'a> RreturnType<'a> {
                     // all create commands (like create_image) and register commands (like register_{}_event)
                     // create a handle which should be destroyed by the creater (i.e. caller)
                     // Thus, we tag as Owned so the destrutor with run the corresponding "destroy" command
-                    "create" | "register" => ty.param(Ty::new().basetype("Owned")),
+                    "create" | "register" => ty.type_param(Ty::new().basetype("Owned")),
                     // allocate commands create handles that need to be manually freed
-                    "allocate" => ty.param(Ty::new().basetype("ManuallyManaged")),
+                    "allocate" => ty.type_param(Ty::new().basetype("ManuallyManaged")),
                     _ => ty,
                 }
             }
@@ -619,12 +613,12 @@ impl<'a> RreturnType<'a> {
                             if global_data::is_handle(&field.basetype) {
                                 Ty::new()
                                     .basetype("HandleVec")
-                                    .param(ty)
+                                    .type_param(ty)
                             }
                             else {
                                 Ty::new()
                                     .basetype("Vec")
-                                    .param(ty)
+                                    .type_param(ty)
                             }
                         }
                         else {
