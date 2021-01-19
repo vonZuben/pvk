@@ -5,8 +5,6 @@ use quote::quote;
 // just for coverting the xml file into a vkxml registry
 extern crate vk_parse;
 
-use once_cell::sync::OnceCell;
-
 #[macro_use]
 mod utils;
 mod global_data;
@@ -47,8 +45,6 @@ pub struct ParseState<'a> {
 
     handle_cache: Vec<&'a vkxml::Handle>,
 
-    struct_with_sync_member: HashMap<&'a str, &'a str>,
-
     phantom: ::std::marker::PhantomData<&'a ()>,
 }
 
@@ -64,7 +60,7 @@ pub fn vkxml_registry_token_stream<'a>(reg_elem: &'a vkxml::RegistryElement, par
             handle_enumerations(enums)
         }
         RegistryElement::Commands(cmds) => {
-            handle_commands(cmds, parse_state)
+            handle_commands(cmds)
         }
         RegistryElement::Features(features) => {
             handle_features(features, parse_state)
@@ -135,7 +131,7 @@ fn main() {
     // this it the easier to parse registry
     let registry = vk_parse::parse_file_as_vkxml(Path::new("vk.xml")).expect("failed to parse and convert vk.xml");
 
-    global_data::REGISTRY.set(registry);
+    assert!(global_data::REGISTRY.set(registry).is_ok());
 
     let registry = global_data::REGISTRY.get().unwrap();
 
@@ -168,8 +164,6 @@ fn main() {
         command_alias_cache: HashMap::new(),
 
         handle_cache: Vec::new(),
-
-        struct_with_sync_member: HashMap::new(),
 
         phantom: ::std::marker::PhantomData,
     };
@@ -345,29 +339,29 @@ fn main() {
 
     let platform_specific_types = utils::platform_specific_types();
 
-    let result_members = global_data::result_members();
+    //let result_members = global_data::result_members();
 
-    let result_ok: Vec<_> = result_members.iter().filter_map(|member| {
-        if !member.is_err {
-            let name = member.name.as_code();
-            Some( quote!(#name) )
-        }
-        else {
-            None
-        }
-    }).collect();
-    let result_ok = result_ok.as_slice();
+    // let result_ok: Vec<_> = result_members.iter().filter_map(|member| {
+    //     if !member.is_err {
+    //         let name = member.name.as_code();
+    //         Some( quote!(#name) )
+    //     }
+    //     else {
+    //         None
+    //     }
+    // }).collect();
+    // let result_ok = result_ok.as_slice();
 
-    let result_err: Vec<_> = result_members.iter().filter_map(|member| {
-        if member.is_err {
-            let name = member.name.as_code();
-            Some( quote!(#name) )
-        }
-        else {
-            None
-        }
-    }).collect();
-    let result_err = result_err.as_slice();
+    // let result_err: Vec<_> = result_members.iter().filter_map(|member| {
+    //     if member.is_err {
+    //         let name = member.name.as_code();
+    //         Some( quote!(#name) )
+    //     }
+    //     else {
+    //         None
+    //     }
+    // }).collect();
+    // let result_err = result_err.as_slice();
 
     let ext_c_names = global_data::extension_maps().iter()
         .map(|(c_name, _name)| {

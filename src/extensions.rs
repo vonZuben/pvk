@@ -6,7 +6,6 @@ use vkxml::*;
 
 use proc_macro2::{TokenStream};
 
-#[macro_use]
 use crate::utils::*;
 use crate::utils;
 use crate::commands::*;
@@ -19,7 +18,6 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
         let ex_ty;
         let ex_marker_name;
         let ex_obj;
-        use vkxml::ExtensionType;
         match extension.ty {
             Some(ExtensionType::Instance) => {
                 ex_ty = "InstanceExtension".as_code();

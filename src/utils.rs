@@ -4,7 +4,7 @@ use quote::ToTokens;
 
 use proc_macro2::{TokenStream};
 
-use crate::ty::{self, *};
+use crate::ty::*;
 use crate::global_data;
 
 macro_rules! pipe {
@@ -129,6 +129,7 @@ pub fn make_handle_owner_name(name: &str) -> TokenStream {
     format!("{}Owner", name).as_code()
 }
 
+#[allow(unused)]
 pub fn make_handle_owner_name_string(name: &str) -> String {
     format!("{}Owner", name)
 }

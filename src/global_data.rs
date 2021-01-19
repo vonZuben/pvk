@@ -5,11 +5,7 @@ use quote::quote;
 
 use crate::commands;
 
-#[macro_use]
 use crate::utils;
-use utils::StrAsCode;
-
-use crate::extensions::EnumExtExt;
 
 use vkxml::*;
 use proc_macro2::{TokenStream};
@@ -54,9 +50,6 @@ fn expect_gd() -> &'static GlobalData<'static> {
     GLOBAL_DATA.get().expect("error: GLOBAL_DATA not set")
 }
 
-
-type Identifier<'a> = &'a str;
-
 pub fn lifetime(named_type: &str) -> Option<TokenStream> {
     if expect_gd().needs_lifetime.contains_key(named_type) {
         Some( quote!(<'handle>) )
@@ -74,6 +67,7 @@ pub fn extension_maps() -> &'static Vec<ExtensionMap<'static>> {
     &expect_gd().extension_maps
 }
 
+#[allow(unused)]
 pub fn result_members() -> &'static VkResultMembers<'static> {
     &expect_gd().result_members
 }
@@ -219,7 +213,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                             assert!(global_data.all_enums.insert(enm_name, Vec::new()).is_none(),
                                     "unextepxted value already in all_enums");
                         }
-                        DefinitionsElement::FuncPtr(fptr) => {
+                        DefinitionsElement::FuncPtr(_fptr) => {
                             //func_ptrs.insert(fptr.name.as_str(), ());
                             //for field in fptr.param.iter() {
                             //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
@@ -241,7 +235,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                     }
                 }
             }
-            RegistryElement::Constants(cnts) => {
+            RegistryElement::Constants(_cnts) => {
             }
             RegistryElement::Enums(enums) => {
                 for element in enums.elements.iter() {
@@ -296,7 +290,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                     }
                 }
             }
-            RegistryElement::Features(features) => {
+            RegistryElement::Features(_features) => {
             }
             RegistryElement::Extensions(extensions) => {
                 for extension in extensions.elements.iter() {
@@ -400,7 +394,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                                 }
                             }
                         }
-                        DefinitionsElement::FuncPtr(fptr) => {
+                        DefinitionsElement::FuncPtr(_fptr) => {
                             //if global_data.needs_lifetime.get(fptr.name.as_str()).is_none() {
                             //    for field in fptr.param.iter() {
                             //        if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
@@ -424,9 +418,9 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                     }
                 }
             }
-            RegistryElement::Constants(cnts) => {
+            RegistryElement::Constants(_cnts) => {
             }
-            RegistryElement::Enums(enums) => {
+            RegistryElement::Enums(_enums) => {
             }
             RegistryElement::Commands(cmds) => {
                 for cmd in cmds.elements.iter() {
@@ -471,9 +465,9 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                     }
                 }
             }
-            RegistryElement::Features(features) => {
+            RegistryElement::Features(_features) => {
             }
-            RegistryElement::Extensions(extensions) => {
+            RegistryElement::Extensions(_extensions) => {
             }
             _ => {}
         }
@@ -488,7 +482,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
         }
     };
 
-    GLOBAL_DATA.set(global_data);
+    assert!(GLOBAL_DATA.set(global_data).is_ok());
 }
 
 pub fn get_feature_enums_from_vk_parse_reg(feature: &vk_parse::Feature, global_data: &mut GlobalData) {

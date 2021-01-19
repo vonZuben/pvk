@@ -7,8 +7,6 @@ use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 use crate::utils;
-use crate::global_data;
-use crate::definitions;
 
 use std::collections::HashMap;
 
@@ -53,32 +51,32 @@ pub fn command_category(cmd: &Command) -> CommandCategory {
     }
 }
 
-fn field_first_indirection_optional(field: &vkxml::Field) -> bool {
-    if field.basetype.as_str() == "char" {
-        return false;
-    }
-    field.optional.as_ref().map(|option_type| {
-        // vkxml optional is a comma separated list representing if each level of
-        // indirection is optional
-        //
-        // we only care about the first level of indirection
-        let first_indirection_optional = option_type.split(',')
-            .next().expect(format!("error: empty optional? -> {:?}", field.name).as_str());
+// fn field_first_indirection_optional(field: &vkxml::Field) -> bool {
+//     if field.basetype.as_str() == "char" {
+//         return false;
+//     }
+//     field.optional.as_ref().map(|option_type| {
+//         // vkxml optional is a comma separated list representing if each level of
+//         // indirection is optional
+//         //
+//         // we only care about the first level of indirection
+//         let first_indirection_optional = option_type.split(',')
+//             .next().expect(format!("error: empty optional? -> {:?}", field.name).as_str());
 
-        match first_indirection_optional {
-            "true" => true,
-            "false" => false,
-            _ => panic!(format!("error: optional type not true or false -> {:?}", field.name)),
-        }
-    }).unwrap_or(false)
-}
+//         match first_indirection_optional {
+//             "true" => true,
+//             "false" => false,
+//             _ => panic!(format!("error: optional type not true or false -> {:?}", field.name)),
+//         }
+//     }).unwrap_or(false)
+// }
 
 fn field_name(field: &vkxml::Field) -> &str {
     field.name.as_ref()
         .expect("error: field with no name").as_str()
 }
 
-pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::ParseState<'a>) -> TokenStream {
+pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
 
     macro_rules! filter_varients {
         ( $( $varient:tt )* ) => {
@@ -128,9 +126,7 @@ pub fn handle_commands<'a>(commands: &'a Commands, parse_state: &mut crate::Pars
         //let params2 = params1.clone(); // because params is needed twice and quote will consume params1
 
         // create owner methods
-        let owner_name = utils::make_handle_owner_name(cmd.param[0].basetype.as_str());
-
-        let owner_method = make_owner_method(&cmd, parse_state);
+        let owner_method = make_owner_method(&cmd);
 
         let entry_loader = if matches!(command_category(cmd), CommandCategory::Entry) {
             Some(
@@ -301,7 +297,7 @@ fn is_return_param(field: &&vkxml::Field, catagories: &HashMap<&str, FieldCatago
 
 // this is for automatically generating methods which provide a more ideal rust interface for calling
 // vulkan commands
-fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStream {
+fn make_owner_method(cmd: &Command) -> TokenStream {
 
     // skip vkCreateDevice since it needs special handling
     if &cmd.name == "vkCreateDevice" || &cmd.name == "vkCreateInstance" {
@@ -741,9 +737,6 @@ fn make_owner_method(cmd: &Command, parse_state: &crate::ParseState) -> TokenStr
                     }
                 }
             }
-        }
-        _ => {
-            quote!()
         }
     }
 }

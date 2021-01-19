@@ -9,13 +9,10 @@ use std::collections::HashMap;
 
 use crate::utils::*;
 
-#[macro_use]
 use crate::utils;
 use crate::ParseState;
 
 use crate::global_data;
-
-use crate::ty::{Ty};
 
 pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut ParseState<'a>) -> TokenStream {
 
@@ -58,8 +55,6 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     StructElement::Member(field) => Some(c_field(field, WithLifetime::Yes("'handle"), FieldContext::Member)),
                     StructElement::Notation(_) => None,
                 });
-
-                let lifetime = global_data::lifetime(stct.name.as_str());
 
                 // gererate bulders and initializers for only non return types
                 fn not_return(stct: &Struct) -> bool {
@@ -651,7 +646,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 let dispatch_member = if let Some(parent_name) = handle.parent.as_ref() {
                     // NOTE some non-dispatchable handle type can have multiple parents
                     // for now, we just take the first parent
-                    let parent_name = parent_name.as_str().split(',')
+                    let _ = parent_name.as_str().split(',')
                         .next()
                         .expect("there must be at least one elemet in the parent names");
 

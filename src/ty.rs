@@ -341,10 +341,10 @@ impl Ty {
         self.pointer.push(p);
         self
     }
-    pub fn basetype(mut self, c: impl Into<Basetype>) -> Self {
+    pub fn basetype(self, c: impl Into<Basetype>) -> Self {
         self.core(c.into())
     }
-    pub fn array(mut self, ty: Ty, array_type: ArrayType) -> Self {
+    pub fn array(self, ty: Ty, array_type: ArrayType) -> Self {
         self.core( Array{ ty, array_type } )
     }
     pub fn to_array(self, array_type: ArrayType) -> Self {
