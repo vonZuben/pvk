@@ -1,14 +1,11 @@
 use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 
-use quote::quote;
-
 use crate::commands;
 
 use crate::utils;
 
 use vkxml::*;
-use proc_macro2::{TokenStream};
 
 // TODO: GlobalData data members don't need to be public
 // want to encourage use of the helper methods
@@ -17,6 +14,21 @@ pub struct VkResultMember<'a> {
     pub name: &'a str,
     pub is_err: bool,
 }
+
+#[derive(Default, Clone, Copy, Debug)]
+pub struct TypeLifetime {
+    pub public: bool,
+    pub private: bool,
+}
+
+impl TypeLifetime {
+    fn merge(&mut self, other: TypeLifetime) {
+        self.public |= other.public;
+        self.private |= other.private;
+    }
+}
+
+type TypeLifetimes<'a> = HashMap<&'a str, TypeLifetime>;
 
 type Dictionary<'a> = HashMap<&'a str, ()>;
 type VkResultMembers<'a> = Vec<VkResultMember<'a>>;
@@ -30,7 +42,6 @@ pub struct GlobalData<'a> {
     // extern_sync_params holds a command/struct_name and a list of params in a string that are
     // externally synced
     pub extern_sync_params: HashMap<&'a str, String>,
-    pub needs_lifetime: Dictionary<'a>,
     pub handles: Dictionary<'a>,
     pub command_types: HashMap<&'a str, commands::CommandCategory>,
     pub not_sync_handles: Dictionary<'a>,
@@ -40,6 +51,7 @@ pub struct GlobalData<'a> {
     pub extension_maps: Vec<ExtensionMap<'a>>,
     pub all_enums: EnumDictionary<'a>,
     pub is_freeable_handle: Dictionary<'a>,
+    pub type_lifetimes: TypeLifetimes<'a>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -48,15 +60,6 @@ pub static REGISTRY: OnceCell<Registry> = OnceCell::new();
 
 fn expect_gd() -> &'static GlobalData<'static> {
     GLOBAL_DATA.get().expect("error: GLOBAL_DATA not set")
-}
-
-pub fn lifetime(named_type: &str) -> Option<TokenStream> {
-    if expect_gd().needs_lifetime.contains_key(named_type) {
-        Some( quote!(<'handle>) )
-    }
-    else {
-        None
-    }
 }
 
 pub fn all_enums() -> &'static EnumDictionary<'static> {
@@ -70,15 +73,6 @@ pub fn extension_maps() -> &'static Vec<ExtensionMap<'static>> {
 #[allow(unused)]
 pub fn result_members() -> &'static VkResultMembers<'static> {
     &expect_gd().result_members
-}
-
-pub fn uses_lifetime(named_type: &str) -> bool {
-    if expect_gd().needs_lifetime.contains_key(named_type) {
-            true
-    }
-    else {
-        false
-    }
 }
 
 pub fn is_freeable_handle(handle_basetype: &str) -> bool {
@@ -114,6 +108,10 @@ pub fn extension_tags() -> &'static Dictionary<'static> {
     &expect_gd().extension_tags
 }
 
+pub fn type_lifetime(name: &str) -> Option<TypeLifetime> {
+    expect_gd().type_lifetimes.get(name).copied()
+}
+
 // the first pass of the registry is for collecting information about the kinds of basetypes
 // and other things that can be collected and used to make other decisions in a second pass
 //
@@ -128,6 +126,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
     let mut global_data = GlobalData::default();
 
     let mut structs = HashMap::new();
+    type Structs<'a> = HashMap<&'a str, &'a Struct>;
     //let mut func_ptrs = HashMap::new();
     let mut unions = HashMap::new();
 
@@ -196,11 +195,10 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                         // NOTE: we are assuming that Handles are parsed before other definitions
                         DefinitionsElement::Handle(handle) => {
                             global_data.handles.insert(handle.name.as_str(), ());
-                            global_data.needs_lifetime.insert(handle.name.as_str(), ());
+                            global_data.type_lifetimes.insert(handle.name.as_str(), TypeLifetime { public: true, private: false });
                         }
                         DefinitionsElement::Struct(ref stct) => {
                             structs.insert(stct.name.as_str(), stct);
-                            global_data.needs_lifetime.insert(stct.name.as_str(), ());
                             //for field in stct.elements.iter().filter_map(filter_variant!(StructElement::Member)) {
                             //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
                             //        global_data.needs_lifetime.insert(stct.name.as_str(), ());
@@ -224,13 +222,13 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                         }
                         DefinitionsElement::Union(uni) => {
                             unions.insert(uni.name.as_str(), ());
-                            for field in uni.elements.iter() {
-                                if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
-                                    global_data.needs_lifetime.insert(uni.name.as_str(), ());
-                                    break;
+                            // for field in uni.elements.iter() {
+                            //     if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
+                            //         global_data.needs_lifetime.insert(uni.name.as_str(), ());
+                            //         break;
+                            //     }
+                            // }
                                 }
-                            }
-                        }
                         _ => {}
                     }
                 }
@@ -371,15 +369,6 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                 for def in definitions.elements.iter() {
                     match def {
                         DefinitionsElement::Struct(stct) => {
-                            if global_data.needs_lifetime.get(stct.name.as_str()).is_none() {
-                                for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
-                                    if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
-                                        global_data.needs_lifetime.insert(stct.name.as_str(), ());
-                                        break;
-                                    }
-                                }
-                            }
-
                             // check if struct identifies param as extern sync
                             for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
                                 if let Some(synced_thing) = field.sync.as_ref() {
@@ -404,15 +393,15 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                             //    }
                             //}
                         }
-                        DefinitionsElement::Union(uni) => {
-                            if global_data.needs_lifetime.get(uni.name.as_str()).is_none() {
-                                for field in uni.elements.iter() {
-                                    if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
-                                        global_data.needs_lifetime.insert(uni.name.as_str(), ());
-                                        break;
-                                    }
-                                }
-                            }
+                        DefinitionsElement::Union(_uni) => {
+                            // if global_data.needs_lifetime.get(uni.name.as_str()).is_none() {
+                            //     for field in uni.elements.iter() {
+                            //         if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
+                            //             global_data.needs_lifetime.insert(uni.name.as_str(), ());
+                            //             break;
+                            //         }
+                            //     }
+                            // }
                         }
                         _ => {}
                     }
@@ -481,6 +470,63 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
             _ => {},
         }
     };
+
+    fn get_struct_lifetime<'a>(name: &'a str, structs: &Structs<'a>, handles: &Dictionary, s_lifetime: &mut TypeLifetimes<'a>) -> TypeLifetime {
+        let mut lifetime = TypeLifetime::default();
+        let stct = structs.get(name).unwrap();
+
+        if s_lifetime.contains_key(name) {
+            return *s_lifetime.get(name).unwrap();
+        }
+
+        for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
+            let field_type = field.basetype.as_str();
+
+            if field.name.as_ref().map(String::as_str) == Some("pNext") {
+                lifetime.public = true;
+                lifetime.private = true;
+                break;
+            }
+
+            if field_type == name {
+                continue;
+            }
+
+            if structs.contains_key(field_type) {
+                if s_lifetime.contains_key(field_type) {
+                    let field_lifetime = *s_lifetime.get(field_type).unwrap();
+                    lifetime.merge(field_lifetime);
+                }
+                else {
+                    let field_lifetime = get_struct_lifetime(field_type, structs, handles, s_lifetime);
+                    s_lifetime.insert(field_type, field_lifetime);
+                    lifetime.merge(field_lifetime);
+                }
+             }
+
+            if handles.contains_key(field_type) {
+                lifetime.public = true;
+            }
+
+            if field.reference.is_some() {
+                lifetime.private = true;
+            }
+
+            // break early since we alreay know this struct has both types of lifetimes
+            if lifetime.public && lifetime.private {
+                break;
+            }
+        }
+        lifetime
+    }
+
+    for stct in structs.iter() {
+        let name = stct.0;
+        if !global_data.type_lifetimes.contains_key(name) {
+            let lifetime = get_struct_lifetime(name, &structs, &global_data.handles, &mut global_data.type_lifetimes);
+            global_data.type_lifetimes.insert(name, lifetime);
+        }
+    }
 
     assert!(GLOBAL_DATA.set(global_data).is_ok());
 }

@@ -438,9 +438,9 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                 "create" | "allocate" => {
                     lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
-                    call_lifetime = quote!();
-                    self_modifier = quote!();
-                    with_lifetime = WithLifetime::No;
+                    call_lifetime = quote!('handle);
+                    self_modifier = quote!('handle);
+                    with_lifetime = WithLifetime::Yes("'handle");
                 }
                 "cmd" => {
                     lifetime_defs = quote!('resource);
@@ -483,7 +483,7 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                 })
             .map(|field| {
                 Rtype::new(field, cmd.name.as_str())
-                    .param_lifetime(with_lifetime)
+                    .public_lifetime(with_lifetime)
                     .command_verb(method_verb)
                     .as_field()
                 // r_field(field, with_lifetime, FieldContext::FunctionParam, cmd.name.as_str()).command_verb(command_verb)
@@ -521,7 +521,6 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                                         Some(quote!( #size = #field_name.len() as _; ))
                                     } else {
                                         let a_type = Rtype::new(field, cmd.name.as_str())
-                                            .param_lifetime(with_lifetime)
                                             .allow_optional(false);
                                         Some(quote!{
                                             let o: Option<#a_type> = (#field_name).into();

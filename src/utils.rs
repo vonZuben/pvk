@@ -154,7 +154,8 @@ impl<'a> From<&'a str> for WithLifetime<'a> {
 
 pub struct CType<'a> {
     field: &'a vkxml::Field,
-    with_lifetime: WithLifetime<'a>,
+    public_lifetime: WithLifetime<'a>,
+    private_lifetime: WithLifetime<'a>,
     context: FieldContext,
     is_return_type: bool,
 }
@@ -163,13 +164,18 @@ impl<'a> CType<'a> {
     pub fn new(field: &'a vkxml::Field) -> Self {
         Self {
             field,
-            with_lifetime: WithLifetime::No,
+            public_lifetime: WithLifetime::No,
+            private_lifetime: WithLifetime::No,
             context: FieldContext::FunctionParam,
             is_return_type: false,
         }
     }
-    pub fn with_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
-        self.with_lifetime = lifetime.into();
+    pub fn public_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.public_lifetime = lifetime.into();
+        self
+    }
+    pub fn private_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.private_lifetime = lifetime.into();
         self
     }
     pub fn context(mut self, context: FieldContext) -> Self {
@@ -185,9 +191,17 @@ impl<'a> CType<'a> {
     }
     pub fn as_ty(&self) -> Ty {
         let field = self.field;
-        let with_lifetime = self.with_lifetime;
+        let public_lifetime = self.public_lifetime;
+        let private_lifetime = self.private_lifetime;
         let context = self.context;
         let is_return_type = self.is_return_type;
+
+        if field.name.as_ref().map(String::as_str) == Some("pNext") {
+            return Ty::new()
+                .basetype("Pnext")
+                .lifetime_param(public_lifetime)
+                .lifetime_param(private_lifetime);
+        }
 
         if field.basetype == "void" {
             assert!(field.reference.is_some() || is_return_type,
@@ -204,16 +218,27 @@ impl<'a> CType<'a> {
                 return Ty::new().basetype("()");
             }
         }
+
+        let type_lifetime = global_data::type_lifetime(field.basetype.as_str());
+
         pipe!{ ty = Ty::new() =>
             STAGE ty.basetype(field.basetype.as_str());
             DONE WHEN is_return_type && field.basetype == "PFN_vkVoidFunction" => {
                 Ty::new().basetype("Option").type_param(ty)
             }
-            WHEN global_data::uses_lifetime(field.basetype.as_str()) =>
-            {
-                match with_lifetime {
-                    WithLifetime::Yes(lifetime) => ty.lifetime_param(lifetime),
-                    WithLifetime::No => ty,
+            STAGE {
+                if let Some(type_lifetime) = type_lifetime {
+                    pipe! { ty =>
+                        WHEN type_lifetime.public => {
+                            ty.lifetime_param(public_lifetime)
+                        }
+                        WHEN type_lifetime.private => {
+                            ty.lifetime_param(private_lifetime)
+                        }
+                    }
+                }
+                else {
+                    ty
                 }
             }
             DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Static)) =>
@@ -238,7 +263,8 @@ impl<'a> CType<'a> {
                     }
                     FieldContext::FunctionParam =>
                         Ty::new().basetype("Ref")
-                        .type_param(ty),
+                            .lifetime_param(private_lifetime)
+                            .type_param(ty),
                 }
             }
             DONE WHEN matches!(field.array, Some(vkxml::ArrayType::Dynamic)) =>
@@ -247,7 +273,9 @@ impl<'a> CType<'a> {
                     Some(r) => match r {
                         vkxml::ReferenceType::Pointer => {
                             if field.is_const {
-                                Ty::new().basetype("Array").type_param(ty)
+                                Ty::new().basetype("Array")
+                                    .lifetime_param(private_lifetime)
+                                    .type_param(ty)
                             } else {
                                 if field.basetype == "void" {
                                     // assumeing that void pointers to a dynamically sized buffer are always mutable
@@ -255,7 +283,9 @@ impl<'a> CType<'a> {
                                     Ty::new().basetype("OpaqueMutPtr")
                                 }
                                 else {
-                                    Ty::new().basetype("ArrayMut").type_param(ty)
+                                    Ty::new().basetype("ArrayMut")
+                                        .lifetime_param(private_lifetime)
+                                        .type_param(ty)
                                 }
                             }
                         }
@@ -267,6 +297,7 @@ impl<'a> CType<'a> {
                             if field.is_const {
                                 // TODO a special case fro string arrays would probably be good
                                 Ty::new().basetype("Array")
+                                    .lifetime_param(private_lifetime)
                                     .type_param(ty.pointer(Pointer::Const))
                             } else {
                                 unimplemented!("unimplemented c_type Array PointerToConstPointer (Mut)");
@@ -282,14 +313,19 @@ impl<'a> CType<'a> {
                     Some(r) => match r {
                         vkxml::ReferenceType::Pointer => {
                             if field.is_const {
-                                Ty::new().basetype("Ref").type_param(ty)
+                                Ty::new().basetype("Ref")
+                                    .lifetime_param(private_lifetime)
+                                    .type_param(ty)
                             } else {
-                                Ty::new().basetype("RefMut").type_param(ty)
+                                Ty::new().basetype("RefMut")
+                                    .lifetime_param(private_lifetime)
+                                    .type_param(ty)
                             }
                         }
                         vkxml::ReferenceType::PointerToPointer => {
                             assert!(field.is_const == false);
                             Ty::new().basetype("RefMut")
+                                .lifetime_param(private_lifetime)
                                 .type_param(ty.pointer(Pointer::Mut))
                         }
                         vkxml::ReferenceType::PointerToConstPointer => {
@@ -311,21 +347,21 @@ impl ToTokens for CType<'_> {
 
 pub fn c_type<'a>(field: &'a vkxml::Field, with_lifetime: WithLifetime<'a>, context: FieldContext) -> CType<'a> {
     CType::new(field)
-        .with_lifetime(with_lifetime)
+        .private_lifetime(with_lifetime)
         .context(context)
 }
 
 pub fn c_field<'a>(field: &'a vkxml::Field, with_lifetime: WithLifetime, context: FieldContext) -> Field {
-    // Field::new(case::camel_to_snake(field_name_expected(field)), c_type(field, with_lifetime, context))
     CType::new(field)
-        .with_lifetime(with_lifetime)
+        .private_lifetime(with_lifetime)
         .context(context)
         .as_field()
 }
 
 pub struct Rtype<'a> {
     field: &'a vkxml::Field,
-    param_lifetime: WithLifetime<'a>,
+    public_lifetime: WithLifetime<'a>,
+    private_lifetime: WithLifetime<'a>,
     ref_lifetime: WithLifetime<'a>,
     context: FieldContext,
     container: &'a str,
@@ -338,15 +374,20 @@ impl<'a> Rtype<'a> {
         Self {
             field,
             container,
-            param_lifetime: WithLifetime::No,
+            public_lifetime: WithLifetime::No,
+            private_lifetime: WithLifetime::No,
             ref_lifetime: WithLifetime::No,
             context: FieldContext::FunctionParam, // FieldContext Member is the odd one out in c
             allow_optional: true,
             command_verb: None,
         }
     }
-    pub fn param_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
-        self.param_lifetime = lifetime.into();
+    pub fn public_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.public_lifetime = lifetime.into();
+        self
+    }
+    pub fn private_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.private_lifetime = lifetime.into();
         self
     }
     pub fn ref_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
@@ -371,7 +412,8 @@ impl<'a> Rtype<'a> {
     pub fn as_ty(&self) -> Ty {
         let field = self.field;
         let container = self.container;
-        let param_lifetime = self.param_lifetime;
+        let public_lifetime = self.public_lifetime;
+        let private_lifetime = self.private_lifetime;
         let context = self.context;
         let allow_optional = self.allow_optional;
         let command_verb = self.command_verb;
@@ -389,6 +431,8 @@ impl<'a> Rtype<'a> {
 
         let for_freeing = matches!(command_verb, Some("free")) && global_data::is_freeable_handle(basetype_str);
 
+        let type_lifetime = global_data::type_lifetime(field.basetype.as_str());
+
         pipe!{ ty = Ty::new() =>
             STAGE {
                 if for_freeing {
@@ -398,11 +442,19 @@ impl<'a> Rtype<'a> {
                     ty.basetype(basetype_str)
                 }
             }
-            WHEN global_data::uses_lifetime(basetype_str) =>
-            {
-                match param_lifetime {
-                    WithLifetime::Yes(lifetime) => ty.lifetime_param(lifetime),
-                    WithLifetime::No => ty,
+            STAGE {
+                if let Some(type_lifetime) = type_lifetime {
+                    pipe! { ty =>
+                        WHEN type_lifetime.public => {
+                            ty.lifetime_param(public_lifetime)
+                        }
+                        WHEN type_lifetime.private => {
+                            ty.lifetime_param(private_lifetime)
+                        }
+                    }
+                }
+                else {
+                    ty
                 }
             }
             WHEN for_freeing => {
@@ -441,7 +493,7 @@ impl<'a> Rtype<'a> {
                                 else if for_freeing {
                                     Ty::new()
                                         .basetype("HandleVec")
-                                        .lifetime_param(param_lifetime)
+                                        .lifetime_param(public_lifetime)
                                         .type_param(ty)
                                 }
                                 else {
@@ -548,7 +600,8 @@ impl ToTokens for Rtype<'_> {
 
 pub struct RreturnType<'a> {
     field: &'a vkxml::Field,
-    with_lifetime: WithLifetime<'a>,
+    public_lifetime: WithLifetime<'a>,
+    private_lifetime: WithLifetime<'a>,
     command_verb: Option<&'a str>,
 }
 
@@ -556,12 +609,18 @@ impl<'a> RreturnType<'a> {
     pub fn new(field: &'a vkxml::Field) -> Self {
         Self {
             field,
-            with_lifetime: WithLifetime::No,
+            public_lifetime: WithLifetime::No,
+            private_lifetime: WithLifetime::No,
             command_verb: None,
         }
     }
-    pub fn with_lifetime(mut self, with_lifetime: impl Into<WithLifetime<'a>>) -> Self {
-        self.with_lifetime = with_lifetime.into();
+    pub fn public_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.public_lifetime = lifetime.into();
+        self
+    }
+    #[allow(unused)]
+    pub fn private_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
+        self.private_lifetime = lifetime.into();
         self
     }
     pub fn command_verb(mut self, command_verb: impl Into<Option<&'a str>>) -> Self {
@@ -570,13 +629,16 @@ impl<'a> RreturnType<'a> {
     }
    pub fn as_ty(&self) -> Ty {
         let field = self.field;
-        let with_lifetime = self.with_lifetime;
+        let public_lifetime = self.public_lifetime;
+        let private_lifetime = self.private_lifetime;
         let command_verb = self.command_verb;
 
         if field.basetype == "void" {
             assert!(field.reference.is_some());
         }
         let basetype_str = field.basetype.as_str();
+
+        let type_lifetime = global_data::type_lifetime(field.basetype.as_str());
 
         pipe!{ ty = Ty::new() =>
             STAGE {
@@ -590,10 +652,19 @@ impl<'a> RreturnType<'a> {
                     ty.basetype(basetype_str)
                 }
             }
-            WHEN global_data::uses_lifetime(basetype_str) => {
-                match with_lifetime {
-                    WithLifetime::Yes(lifetime) => ty.lifetime_param(lifetime),
-                    WithLifetime::No => ty,
+            STAGE {
+                if let Some(type_lifetime) = type_lifetime {
+                    pipe! { ty =>
+                        WHEN type_lifetime.public => {
+                            ty.lifetime_param(public_lifetime)
+                        }
+                        WHEN type_lifetime.private => {
+                            ty.lifetime_param(private_lifetime)
+                        }
+                    }
+                }
+                else {
+                    ty
                 }
             }
             WHEN command_verb.is_some() => {
@@ -649,7 +720,7 @@ impl ToTokens for RreturnType<'_> {
 
 pub fn r_return_type<'a>(field: &'a vkxml::Field, with_lifetime: WithLifetime<'a>) -> RreturnType<'a> {
     RreturnType::new(field)
-        .with_lifetime(with_lifetime)
+        .public_lifetime(with_lifetime)
 }
 
 pub fn is_optional(field: &vkxml::Field) -> bool {

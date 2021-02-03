@@ -82,7 +82,7 @@ impl From<utils::WithLifetime<'_>> for Lifetime {
         use utils::WithLifetime;
         match lt {
             WithLifetime::Yes(lifetime) => lifetime.into(),
-            WithLifetime::No => Lifetime::None,
+            WithLifetime::No => Lifetime::Anonymous,
         }
     }
 }
@@ -237,10 +237,10 @@ pub struct Generics {
 }
 
 impl Generics {
-    fn push_lifetime_param(&mut self, l: impl Into<Lifetime>) {
+    pub fn push_lifetime_param(&mut self, l: impl Into<Lifetime>) {
         self.lifetime_params.push(l.into());
     }
-    fn push_type_param(&mut self, t: impl Into<Ty>) {
+    pub fn push_type_param(&mut self, t: impl Into<Ty>) {
         self.type_params.push(t.into());
     }
 }

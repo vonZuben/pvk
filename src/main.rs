@@ -15,6 +15,9 @@ mod commands;
 mod features;
 mod extensions;
 mod ty;
+mod r#struct;
+
+use r#struct as stct;
 
 //mod take_list;
 
@@ -519,17 +522,17 @@ fn main() {
             }
         }
 
-        pub struct DeviceCreator<'a, 'parent> {
-            physical_device: &'parent PhysicalDeviceOwner<'parent>,
-            queue_create_info: &'a [DeviceQueueCreateInfo<'a>],
-            enabled_layers: Vec<&'a dyn VkLayerName>,
+        pub struct DeviceCreator<'public, 'private> {
+            physical_device: &'public PhysicalDeviceOwner<'public>,
+            queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>],
+            enabled_layers: Vec<&'private dyn VkLayerName>,
             enabled_extensions: Vec<DeviceExtension>,
-            enabled_features: Option<&'a PhysicalDeviceFeatures<'a>>,
+            enabled_features: Option<&'private PhysicalDeviceFeatures>,
         }
 
-        impl<'a, 'parent> DeviceCreator<'a, 'parent> {
+        impl<'public, 'private> DeviceCreator<'public, 'private> {
             pub fn enabled_layers<L>(mut self, enabled_layers: impl IntoIterator<Item = L>) -> Self
-                where L: Into<LayerWrapper<'a>>
+                where L: Into<LayerWrapper<'private>>
             {
                 self.enabled_layers = enabled_layers.into_iter()
                     .map( |l| l.into().0 )
@@ -538,18 +541,18 @@ fn main() {
             }
 
             pub fn enabled_extensions<E>(mut self, enabled_extensions: impl IntoIterator<Item = E>) -> Self
-                where E: Into<DeviceExtension> + 'a
+                where E: Into<DeviceExtension> + 'private
             {
                 self.enabled_extensions = enabled_extensions.into_iter()
                     .map( |e| e.into() )
                     .collect();
                 self
             }
-            pub fn enabled_features(mut self, enabled_features: &'a PhysicalDeviceFeatures) -> Self {
+            pub fn enabled_features(mut self, enabled_features: &'private PhysicalDeviceFeatures) -> Self {
                 self.enabled_features = enabled_features.into();
                 self
             }
-            pub unsafe fn create(&self) -> VkResult<DeviceOwner<'parent, Owned>> {
+            pub unsafe fn create(&self) -> VkResult<DeviceOwner<'public, Owned>> {
 
                 let enabled_layers = ArrayArray(self.enabled_layers.iter()
                                                 .map( |layer| layer.layer_name().into() ).collect());
@@ -582,7 +585,7 @@ fn main() {
                 else {
                     let device = unsafe { device.assume_init() };
 
-                    let device: DeviceOwner<'parent, Owned> = DeviceOwner::new(device, self.physical_device);
+                    let device: DeviceOwner<'public, Owned> = DeviceOwner::new(device, self.physical_device);
 
                     self.physical_device.dispatch_parent
                         .feature_version
@@ -599,8 +602,8 @@ fn main() {
             }
         }
 
-        impl PhysicalDeviceOwner<'_> {
-            pub fn device_creator<'parent, 'a>(&'parent self, queue_create_info: &'a [DeviceQueueCreateInfo]) -> DeviceCreator<'a, 'parent> {
+        impl<'public> PhysicalDeviceOwner<'public> {
+            pub fn device_creator<'private>(&'public self, queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>]) -> DeviceCreator<'public, 'private> {
                 DeviceCreator {
                     physical_device: self,
                     queue_create_info: queue_create_info,
@@ -796,7 +799,7 @@ fn main() {
             }
         }
 
-        impl AsRef<str> for ExtensionProperties<'_> {
+        impl AsRef<str> for ExtensionProperties {
             fn as_ref(&self) -> &str {
                 // self.extention_name should always be a valid c string
                 // unless the vulkan implementation (driver) is wrong
@@ -846,7 +849,7 @@ fn main() {
             }
         }
 
-        impl VkLayerName for LayerProperties<'_> {
+        impl VkLayerName for LayerProperties {
             fn layer_name(&self) -> &CStr {
                 // self.layer_name should always be a valid c string
                 // unless the vulkan implementation (driver) is wrong
@@ -859,9 +862,112 @@ fn main() {
             }
         }
 
-        impl<'a> From<&'a LayerProperties<'_>> for LayerWrapper<'a> {
+        impl<'a> From<&'a LayerProperties> for LayerWrapper<'a> {
             fn from(l: &'a LayerProperties) -> Self {
                 Self(l)
+            }
+        }
+
+        #[repr(C)]
+        pub struct BaseStructure<'public> {
+            s_type: StructureType,
+            p_next: *mut BaseStructure<'public>,
+        }
+
+        impl<'public> BaseStructure<'public> {
+            pub fn cast_ref<T: Base<'public>>(&self) -> Option<&T> {
+                if self.s_type == T::ST {
+                    unsafe {
+                        Some( &*(self as *const Self as *const T) )
+                    }
+                }
+                else {
+                    None
+                }
+            }
+        }
+
+        impl fmt::Debug for BaseStructure<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                match self.s_type {
+                    // TODO
+                    // StructureType::MAIN => self.cast_ref::<MainStruct>().unwrap().fmt(f),
+                    // StructureType::EXT => self.cast_ref::<ExtensionStruct>().unwrap().fmt(f),
+                    // StructureType::EXT2 => self.cast_ref::<ExtensionStruct2>().unwrap().fmt(f),
+                    _ => {write!(f, "Unknown Structure type {}", self.s_type.0)}
+                }
+            }
+        }
+
+        // only impl for things that can be intepreted with BaseStructure
+        pub unsafe trait Base<'public> {
+            const ST: StructureType;
+        }
+
+        // node in p_next chain
+        #[repr(transparent)]
+        #[derive(Clone, Copy)]
+        struct Pnext<'public, 'private> {
+            base: *mut BaseStructure<'public>,
+            _ext: PhantomData<&'private mut BaseStructure<'public>>,
+        }
+
+        pub struct PnextIter<'public, 'private> {
+            base: *const BaseStructure<'public>,
+            _pn: PhantomData<&'private Pnext<'public, 'private>>,
+        }
+
+        impl<'public, 'pn> Iterator for PnextIter<'public, 'pn> {
+            type Item = &'pn BaseStructure<'public>;
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.base.is_null() {
+                    None
+                }
+                else {
+                    unsafe {
+                        let ret = &*self.base;
+                        self.base = ret.p_next;
+                        Some(ret)
+                    }
+                }
+            }
+        }
+
+        impl Pnext<'_, '_> {
+            fn new() -> Self {
+                Self {
+                    base: ptr::null_mut(),
+                    _ext: PhantomData,
+                }
+            }
+        }
+
+        impl<'public, 'private> Pnext<'public, 'private> {
+            fn push<E: Base<'public>>(&mut self, e: &'private mut E) {
+                let base = e as *mut E as *mut BaseStructure;
+                unsafe { (*base).p_next = self.base };
+                self.base = base;
+            }
+
+            fn iter<'pn>(&'pn self) -> PnextIter<'public, 'pn> {
+                PnextIter {
+                    base: self.base,
+                    _pn: PhantomData,
+                }
+            }
+        }
+
+        impl fmt::Debug for Pnext<'_, '_> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                if f.alternate() {
+                    writeln!(f, " -> ")?;
+                }
+                else {
+                    write!(f, " -> ")?;
+                }
+                f.debug_list()
+                    .entries(self.iter())
+                    .finish()
             }
         }
 
@@ -872,6 +978,8 @@ fn main() {
         use std::mem::ManuallyDrop;
         use std::cell::UnsafeCell;
         use std::fmt::Debug;
+        use std::fmt;
+        use std::ptr;
 
         use handles::*;
 
@@ -1262,9 +1370,9 @@ fn main() {
                 }
             }
 
-            impl<'parent, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> ConvertToC<Array<O::Handle>> for Handles<'parent, O, A> {
-                fn to_c(self) -> Array<O::Handle> {
-                    Array(self.handles.as_ref().as_ptr())
+            impl<'parent, 'h, O: CreateOwner<'parent>, A: AsRef<[O::Handle]>> ConvertToC<Array<'h, O::Handle>> for Handles<'parent, O, A> where Self: 'h {
+                fn to_c(self) -> Array<'h, O::Handle> {
+                    unsafe { Array::from_ptr(self.handles.as_ref().as_ptr()) }
                 }
             }
 
@@ -1306,14 +1414,14 @@ fn main() {
                 }
             }
 
-            impl<H> ConvertToC<Array<H>> for &[MutHandle<H>] {
-                fn to_c(self) -> Array<H> {
+            impl<'a, H> ConvertToC<Array<'a, H>> for &'a [MutHandle<H>] {
+                fn to_c(self) -> Array<'a, H> {
                     // this is maybe a bit too unsafe.
                     // but the types we are dealing are transparent
                     // so it should be reliable
                     //
                     // TODO can this just be Array(...)?
-                    unsafe { std::mem::transmute(self.as_ptr()) }
+                    unsafe { Array::from_ptr(self.as_ptr() as *const H) }
                 }
             }
 
@@ -1329,25 +1437,34 @@ fn main() {
 
         #[derive(Debug)]
         #[repr(transparent)]
-        pub struct OpaqueMutPtr(*mut c_void);
+        pub struct OpaqueMutPtr<'a>(*mut c_void, PhantomData<&'a mut ()>);
 
-        impl ConvertToC<OpaqueMutPtr> for &mut [u8] {
-            fn to_c(self) -> OpaqueMutPtr {
-                OpaqueMutPtr(self.as_mut_ptr() as *mut c_void)
+        impl<'a> OpaqueMutPtr<'a> {
+            fn new<T>(p: &'a mut T) -> Self {
+                Self(p as *mut T as *mut c_void, PhantomData)
+            }
+            unsafe fn from_ptr<T>(p: *mut T) -> Self {
+                Self(p as *mut c_void, PhantomData)
+        }
+        }
+
+        impl<'a> ConvertToC<OpaqueMutPtr<'a>> for &'a mut [u8] {
+            fn to_c(self) -> OpaqueMutPtr<'a> {
+                unsafe { OpaqueMutPtr::from_ptr(self.as_mut_ptr()) }
             }
         }
 
-        impl ConvertToC<OpaqueMutPtr> for &mut Vec<u8> {
-            fn to_c(self) -> OpaqueMutPtr {
-                OpaqueMutPtr(self.as_mut_ptr() as *mut c_void)
+        impl<'a> ConvertToC<OpaqueMutPtr<'a>> for &'a mut Vec<u8> {
+            fn to_c(self) -> OpaqueMutPtr<'a> {
+                unsafe { OpaqueMutPtr::from_ptr(self.as_mut_ptr()) }
             }
         }
 
-        impl ConvertToC<OpaqueMutPtr> for Option<OpaqueMutPtr> {
-            fn to_c(self) -> OpaqueMutPtr {
+        impl<'a> ConvertToC<OpaqueMutPtr<'a>> for Option<OpaqueMutPtr<'a>> {
+            fn to_c(self) -> OpaqueMutPtr<'a> {
                 match self {
                     Some(o) => o,
-                    None => OpaqueMutPtr(::std::ptr::null_mut()),
+                    None => unsafe { OpaqueMutPtr::from_ptr(::std::ptr::null_mut::<()>()) },
                 }
             }
         }
@@ -1358,11 +1475,17 @@ fn main() {
 
         #[derive(Debug)]
         #[repr(transparent)]
-        pub struct Array<T>(*const T);
+        pub struct Array<'a, T>(*const T, PhantomData<&'a [T]>);
 
-        impl<T> Copy for Array<T> {}
+        impl<'a, T> Array<'a, T> {
+            unsafe fn from_ptr(p: *const T) -> Self {
+                Self(p, PhantomData)
+            }
+        }
 
-        impl<T> Clone for Array<T> {
+        impl<T> Copy for Array<'_, T> {}
+
+        impl<T> Clone for Array<'_, T> {
             fn clone(&self) -> Self {
                 *self
             }
@@ -1370,11 +1493,17 @@ fn main() {
 
         #[derive(Debug)]
         #[repr(transparent)]
-        pub struct ArrayMut<T>(*mut T);
+        pub struct ArrayMut<'a, T>(*mut T, PhantomData<&'a mut [T]>);
 
-        impl<T> Copy for ArrayMut<T> {}
+        impl<'a, T> ArrayMut<'a, T> {
+            unsafe fn from_ptr(p: *mut T) -> Self {
+                Self(p, PhantomData)
+            }
+        }
 
-        impl<T> Clone for ArrayMut<T> {
+        impl<T> Copy for ArrayMut<'_, T> {}
+
+        impl<T> Clone for ArrayMut<'_, T> {
             fn clone(&self) -> Self {
                 *self
             }
@@ -1403,51 +1532,51 @@ fn main() {
         //    }
         //}
 
-        impl<T> ConvertToC<Array<T>> for &[T] {
-            fn to_c(self) -> Array<T> {
-                Array(self.as_ptr())
+        impl<'a, T> ConvertToC<Array<'a, T>> for &'a [T] {
+            fn to_c(self) -> Array<'a, T> {
+                unsafe { Array::from_ptr(self.as_ptr()) }
             }
         }
 
-        impl<T> ConvertToC<Array<T>> for Option<&[T]> {
-            fn to_c(self) -> Array<T> {
-                Array(self.as_ptr())
+        impl<'a, T> ConvertToC<Array<'a, T>> for Option<&'a [T]> {
+            fn to_c(self) -> Array<'a, T> {
+                unsafe { Array::from_ptr(self.as_ptr()) }
             }
         }
 
-        impl ConvertToC<Array<c_char>> for Option<MyStr<'_>> {
-            fn to_c(self) -> Array<c_char> {
-                Array(self.as_ptr())
+        impl<'a> ConvertToC<Array<'a, c_char>> for Option<MyStr<'a>> {
+            fn to_c(self) -> Array<'a, c_char> {
+                unsafe { Array::from_ptr(self.as_ptr()) }
             }
         }
 
-        impl<T> ConvertToC<ArrayMut<T>> for &mut [T] {
-            fn to_c(self) -> ArrayMut<T> {
-                ArrayMut(self.as_mut_ptr())
+        impl<'a, T> ConvertToC<ArrayMut<'a, T>> for &'a mut [T] {
+            fn to_c(self) -> ArrayMut<'a, T> {
+                unsafe { ArrayMut::from_ptr(self.as_mut_ptr()) }
             }
         }
 
-        impl<T> ConvertToC<ArrayMut<T>> for Option<&mut [T]> {
-            fn to_c(mut self) -> ArrayMut<T> {
-                ArrayMut(self.as_mut_ptr())
+        impl<'a, T> ConvertToC<ArrayMut<'a, T>> for Option<&'a mut [T]> {
+            fn to_c(mut self) -> ArrayMut<'a, T> {
+                unsafe { ArrayMut::from_ptr(self.as_mut_ptr()) }
             }
         }
 
-        impl<T> ConvertToC<ArrayMut<T>> for &mut Vec<T> {
-            fn to_c(self) -> ArrayMut<T> {
-                ArrayMut(self.as_mut_ptr())
+        impl<'a, T> ConvertToC<ArrayMut<'a, T>> for &'a mut Vec<T> {
+            fn to_c(self) -> ArrayMut<'a, T> {
+                unsafe { ArrayMut::from_ptr(self.as_mut_ptr()) }
             }
         }
 
-        impl ConvertToC<Array<c_char>> for &CStr {
-            fn to_c(self) -> Array<c_char> {
-                Array(self.as_ptr())
+        impl<'a> ConvertToC<Array<'a, c_char>> for &'a CStr {
+            fn to_c(self) -> Array<'a, c_char> {
+                unsafe { Array::from_ptr(self.as_ptr()) }
             }
         }
 
-        impl ConvertToC<Array<c_char>> for MyStr<'_> {
-            fn to_c(self) -> Array<c_char> {
-                Array(self.0)
+        impl<'a> ConvertToC<Array<'a, c_char>> for MyStr<'a> {
+            fn to_c(self) -> Array<'a, c_char> {
+                unsafe { Array::from_ptr(self.0) }
             }
         }
 
@@ -1455,27 +1584,62 @@ fn main() {
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for a single T
 
-        #[derive(Debug)]
+        // #[derive(Debug)]
         #[repr(transparent)]
-        pub struct Ref<T>(*const T);
+        pub struct Ref<'a, T>(*const T, PhantomData<&'a T>);
 
-        impl<T> Copy for Ref<T> {}
+        impl<'a, T> Ref<'a, T> {
+            fn new(r: &'a T) -> Self {
+                Self(r, PhantomData)
+            }
+            unsafe fn from_ptr(p: *const T) -> Self {
+                Self(p, PhantomData)
+            }
+        }
 
-        impl<T> Clone for Ref<T> {
+        impl<T> Copy for Ref<'_, T> {}
+
+        impl<T> Clone for Ref<'_, T> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        #[derive(Debug)]
+        impl<T: Debug> Debug for Ref<'_, T> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.debug_struct("Ref")
+                    .field("ptr", &self.0)
+                    .field("val", unsafe{ &*self.0 })
+                    .finish()
+            }
+        }
+
         #[repr(transparent)]
-        pub struct RefMut<T>(*mut T);
+        pub struct RefMut<'a, T>(*mut T, PhantomData<&'a mut T>);
 
-        impl<T> Copy for RefMut<T> {}
+        impl<'a, T> RefMut<'a, T> {
+            fn new(r: &'a mut T) -> Self {
+                Self(r, PhantomData)
+            }
+            unsafe fn from_ptr(p: *mut T) -> Self {
+                Self(p, PhantomData)
+            }
+        }
 
-        impl<T> Clone for RefMut<T> {
+        impl<T> Copy for RefMut<'_, T> {}
+
+        impl<T> Clone for RefMut<'_, T> {
             fn clone(&self) -> Self {
                 *self
+            }
+        }
+
+        impl<T: Debug> Debug for RefMut<'_, T> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.debug_struct("RefMut")
+                    .field("ptr", &self.0)
+                    .field("val", unsafe{ &*self.0 })
+                    .finish()
             }
         }
 
@@ -1517,33 +1681,33 @@ fn main() {
             }
         }
 
-        impl<T> ConvertToC<Ref<T>> for &T {
-            fn to_c(self) -> Ref<T> {
-                Ref(self)
+        impl<'a, T> ConvertToC<Ref<'a, T>> for &'a T {
+            fn to_c(self) -> Ref<'a, T> {
+                Ref::new(self)
             }
         }
 
-        impl<T> ConvertToC<Ref<T>> for Option<&T> {
-            fn to_c(self) -> Ref<T> {
-                Ref(self.as_ptr())
+        impl<'a, T> ConvertToC<Ref<'a, T>> for Option<&'a T> {
+            fn to_c(self) -> Ref<'a, T> {
+                unsafe { Ref::from_ptr(self.as_ptr()) }
             }
         }
 
-        impl<T> ConvertToC<RefMut<T>> for &mut T {
-            fn to_c(self) -> RefMut<T> {
-                RefMut(self)
+        impl<'a, T> ConvertToC<RefMut<'a, T>> for &'a mut T {
+            fn to_c(self) -> RefMut<'a, T> {
+                RefMut::new(self)
             }
         }
 
-        impl<T> ConvertToC<RefMut<T>> for Option<&mut T> {
-            fn to_c(mut self) -> RefMut<T> {
-                RefMut(self.as_mut_ptr())
+        impl<'a, T> ConvertToC<RefMut<'a, T>> for Option<&'a mut T> {
+            fn to_c(mut self) -> RefMut<'a, T> {
+                unsafe { RefMut::from_ptr(self.as_mut_ptr()) }
             }
         }
 
-        impl<T> ConvertToC<RefMut<T>> for &mut MaybeUninit<T> {
-            fn to_c(self) -> RefMut<T> {
-                RefMut(self.as_mut_ptr())
+        impl<'a, T> ConvertToC<RefMut<'a, T>> for &'a mut MaybeUninit<T> {
+            fn to_c(self) -> RefMut<'a, T> {
+                unsafe { RefMut::from_ptr(self.as_mut_ptr()) }
             }
         }
 
@@ -1574,15 +1738,15 @@ fn main() {
         //    }
         //}
 
-        impl<T> ConvertToC<Array<*const T>> for &ArrayArray<*const T> {
-            fn to_c(self) -> Array<*const T> {
-                Array(self.0.as_ptr())
+        impl<'a, T> ConvertToC<Array<'a, *const T>> for &'a ArrayArray<*const T> {
+            fn to_c(self) -> Array<'a, *const T> {
+                unsafe { Array::from_ptr(self.0.as_ptr()) }
             }
         }
 
-        impl ConvertToC<Array<*const c_char>> for &ArrayArray<MyStr<'_>> {
-            fn to_c(self) -> Array<*const c_char> {
-                Array( unsafe{::std::mem::transmute::<*const MyStr, *const *const c_char>(self.0.as_ptr())} )
+        impl<'a> ConvertToC<Array<'a, *const c_char>> for &'a ArrayArray<MyStr<'_>> {
+            fn to_c(self) -> Array<'a, *const c_char> {
+                unsafe { Array::from_ptr( ::std::mem::transmute::<*const MyStr, *const *const c_char>(self.0.as_ptr()) ) }
             }
         }
 

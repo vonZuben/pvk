@@ -9,6 +9,9 @@ use std::collections::HashMap;
 
 use crate::utils::*;
 
+use crate::stct;
+use crate::ty;
+
 use crate::utils;
 use crate::ParseState;
 
@@ -51,10 +54,36 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             DefinitionsElement::Struct(stct) => {
                 let name = stct.name.as_code();
 
-                let params = stct.elements.iter().filter_map( |elem| match elem {
-                    StructElement::Member(field) => Some(c_field(field, WithLifetime::Yes("'handle"), FieldContext::Member)),
-                    StructElement::Notation(_) => None,
-                });
+                let public_lifetime = "'public";
+                let private_lifetime = "'private";
+
+                let fields = stct.elements.iter().filter_map(variant!(StructElement::Member))
+                    .map(|field| {
+                        CType::new(field)
+                            .public_lifetime(public_lifetime)
+                            .private_lifetime(private_lifetime)
+                            .context(FieldContext::Member)
+                            .as_field()
+                    });
+
+                let type_lifetime = global_data::type_lifetime(stct.name.as_str()).unwrap_or_default();
+
+                let gen_struct = pipe!{ st = stct::Struct::new(&stct.name) =>
+                    STAGE {
+                        st.public()
+                            .attribute(quote!(#[repr(C)]))
+                            .attribute(quote!(#[derive(Copy, Clone, Debug)]))
+                    }
+                    STAGE {
+                        st.fields(fields)
+                    }
+                    WHEN type_lifetime.public => {
+                        st.lifetime_param(public_lifetime)
+                    }
+                    WHEN type_lifetime.private => {
+                        st.lifetime_param(private_lifetime)
+                    }
+                };
 
                 // gererate bulders and initializers for only non return types
                 fn not_return(stct: &Struct) -> bool {
@@ -83,8 +112,9 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     let struct_field = |field| {
                         utils::Rtype::new(field, stct.name.as_str())
-                        .param_lifetime("'handle")
-                        .ref_lifetime("'handle")
+                        .public_lifetime(public_lifetime)
+                        .private_lifetime(private_lifetime)
+                        .ref_lifetime(private_lifetime)
                         .context(FieldContext::Member)
                         .as_field()
                     };
@@ -196,7 +226,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             }
                             else if fname == "pNext" {
                                 quote!{
-                                    #field_code: None.to_c(),
+                                    #field_code: Pnext::new(),
                                 }
                             }
                             // otherwise, covnert the user provided/default data to the final c
@@ -220,26 +250,30 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     use $crate::*;
                                     mod vk {
                                         use $crate::*;
-                                        pub struct #name<'handle> {
+                                        pub struct #name<'public, 'private> {
                                             #( pub #must_init_members , )*
-                                            pub _p: PhantomData<&'handle ()>,
+                                            pub _p1: PhantomData<&'public ()>,
+                                            pub _p2: PhantomData<&'private ()>,
                                         }
                                     }
                                     #[derive(Default)]
-                                    struct Opt<'handle> {
+                                    struct Opt<'public, 'private> {
                                         #( #optional_members , )*
-                                        _p: PhantomData<&'handle ()>,
+                                        _p1: PhantomData<&'public ()>,
+                                        _p2: PhantomData<&'private ()>,
                                     }
 
-                                    struct Combined<'handle> {
+                                    struct Combined<'public, 'private> {
                                         #( #must_init_members2 , )*
                                         #( #optional_members2 , )*
-                                        _p: PhantomData<&'handle ()>,
+                                        _p1: PhantomData<&'public ()>,
+                                        _p2: PhantomData<&'private ()>,
                                     }
 
                                     let init = vk::#name {
                                         $( $nono_name: $nono_val.into(), )*
-                                        _p: PhantomData,
+                                        _p1: PhantomData,
+                                        _p2: PhantomData,
                                     };
 
                                     #[allow(unused_mut)]
@@ -250,14 +284,14 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     let mut combined = Combined {
                                         #( #must_init_copy )*
                                         #( #optional_copy )*
-                                        _p: PhantomData,
+                                        _p1: PhantomData,
+                                        _p2: PhantomData,
                                     };
 
                                     #name!( @count_setter combined -> $($count_setters)* );
 
                                     #name {
                                         #( #to_c_copy )*
-                                        _p: PhantomData,
                                     }
                                 }
                             };
@@ -306,20 +340,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 };
 
                 quote!{
-                    #[repr(C)]
-                    #[derive(Copy, Clone, Debug)]
-                    pub struct #name<'handle> {
-                        #( #params, )*
-                        _p: PhantomData<&'handle ()>
-                    }
+                    #gen_struct
                     #builder_code
                 }
             },
             DefinitionsElement::Union(uni) => {
                 let name = uni.name.as_code();
                 let params = uni.elements.iter().map(|field|c_field(field, WithLifetime::Yes("'handle"), FieldContext::Member));
-
-                let lifetime = global_data::lifetime(uni.name.as_str());
 
                 let possible_value = uni.elements.iter().map(|field| {
                     case::camel_to_snake(utils::field_name_expected(field)).as_code()
@@ -328,13 +355,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 quote!{
                     #[repr(C)]
                     #[derive(Copy, Clone)]
-                    pub union #name #lifetime {
+                    pub union #name {
                         #( #params ),*
                     }
 
                     /// since we cannot know how to interpret the uniion when printing
                     /// we just preint out every possible interpretation
-                    impl #lifetime ::std::fmt::Debug for #name #lifetime {
+                    impl ::std::fmt::Debug for #name {
                         fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                             f.debug_struct(concat!(stringify!(#name), " (possible interpretations)"))
                                 #( .field(stringify!(#possible_value), unsafe{ &self.#possible_value }) )*
@@ -805,16 +832,19 @@ pub fn generate_aliases_of_types<'a>(types: &'a vk_parse::Types) -> TokenStream 
             let name_ident = name.as_code();
             let alias_ident = alias.as_code();
 
-            let alias_ident = if global_data::GLOBAL_DATA.get().expect("error: global_data not set")
-                .needs_lifetime.get(alias.as_str()).is_some() {
-                    quote!( #alias_ident<'a> )
-                }
-            else {
-                quote!( #alias_ident )
-            };
+            let mut generics = ty::Generics::default();
+
+            let type_lifetime = global_data::type_lifetime(alias.as_str()).unwrap_or_default();
+
+            if type_lifetime.public {
+                generics.push_lifetime_param("'public")
+            }
+            if type_lifetime.private {
+                generics.push_lifetime_param("'private")
+            }
 
             let tokens = quote! {
-                pub type #name_ident<'a> = #alias_ident;
+                pub type #name_ident #generics = #alias_ident #generics;
             };
             Some(tokens)
         });
