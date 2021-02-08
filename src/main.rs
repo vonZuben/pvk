@@ -280,6 +280,19 @@ fn main() {
             let device = unsafe { pd1.device_creator(&queue_info[..]).create().unwrap() };
             println!("{:?}", device);
 
+            let mut ma = MemoryAllocateInfo! {
+                allocation_size: 1000u64,
+                memory_type_index: 0u32,
+            };
+
+            let mut di = DedicatedAllocationMemoryAllocateInfoNV! {
+
+            };
+
+            ma.extend(&mut di);
+
+            println!("{:?}", ma);
+
             // #[derive(Copy, Clone)]
             // struct A<'owner>(PhantomData<&'owner ()>);
             // impl A<'_> {
@@ -379,6 +392,8 @@ fn main() {
             quote!( #name )
         });
 
+    let struct_names: Vec<_> = global_data::structure_types().iter().map(|x|x.name.as_code()).collect();
+    let struct_st_names: Vec<_> = global_data::structure_types().iter().map(|x|x.st_name.as_code()).collect();
 
     // code used internally by the generated vk.rs
     let util_code = quote!{
@@ -875,28 +890,42 @@ fn main() {
         }
 
         impl<'public> BaseStructure<'public> {
+            fn raw_s_type(&self) -> i32 {
+                self.s_type.0
+            }
+            unsafe fn cast_ref_unchecked<T: Base<'public>>(&self) -> &T {
+                &*(self as *const Self as *const T)
+            }
             pub fn cast_ref<T: Base<'public>>(&self) -> Option<&T> {
                 if self.s_type == T::ST {
                     unsafe {
-                        Some( &*(self as *const Self as *const T) )
+                        Some( self.cast_ref_unchecked() )
                     }
                 }
                 else {
                     None
                 }
             }
+            pub fn cast_ref_enum<'private>(&'private self) -> Stype<'public, 'private> {
+                match self.s_type {
+                    #( StructureType::#struct_st_names => Stype::#struct_names(unsafe{ self.cast_ref_unchecked() }), )*
+                    _=> Stype::Unknown(self),
+                }
+            }
         }
 
         impl fmt::Debug for BaseStructure<'_> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                match self.s_type {
-                    // TODO
-                    // StructureType::MAIN => self.cast_ref::<MainStruct>().unwrap().fmt(f),
-                    // StructureType::EXT => self.cast_ref::<ExtensionStruct>().unwrap().fmt(f),
-                    // StructureType::EXT2 => self.cast_ref::<ExtensionStruct2>().unwrap().fmt(f),
-                    _ => {write!(f, "Unknown Structure type {}", self.s_type.0)}
+                match self.cast_ref_enum() {
+                    #( Stype::#struct_names(s) => s.fmt(f), )*
+                    Stype::Unknown(s) => write!(f, "Unknown Structure type {}", s.s_type.0),
                 }
             }
+        }
+
+        pub enum Stype<'public, 'private> {
+            #( #struct_names(&'private #struct_names<'public, 'private>), )*
+            Unknown(&'private BaseStructure<'public>),
         }
 
         // only impl for things that can be intepreted with BaseStructure
@@ -955,19 +984,29 @@ fn main() {
                     _pn: PhantomData,
                 }
             }
+
+            fn base(&self) -> Option<&BaseStructure<'public>> {
+                if self.base.is_null() {
+                    None
+                }
+                else {
+                    Some( unsafe { &*self.base } )
+                }
+            }
         }
 
         impl fmt::Debug for Pnext<'_, '_> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                if f.alternate() {
-                    writeln!(f, " -> ")?;
+                if let Some(base) = self.base() {
+                    if f.alternate() {
+                        writeln!(f)?;
+                    }
+                    write!(f, "::pNext -> ")?;
+                    base.fmt(f)
                 }
                 else {
-                    write!(f, " -> ")?;
+                    Ok(())
                 }
-                f.debug_list()
-                    .entries(self.iter())
-                    .finish()
             }
         }
 

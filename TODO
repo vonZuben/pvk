@@ -55,6 +55,11 @@
 - [partial] Remove old needs_lifetime from global_data - being replaced by type_lifetimes
         - TODO - deal with unions, seems there are no current examples of a union that would need a lifetime anyway
 
+- [ ] NEED TO FIX COMMMANDS WHICH RETURN STRUCTS WITH P_NEXT
+        I assumed before that a struct with p_next would be filled in by the vulkan implementation. However, this is wrong, and the user
+        needs to provide the struct with the pNext chain already built.
+        Need to provide api that cat take user provided destination, and return the destination initialized
+
 PROBLEM
 
 The the output of vkxml (based on https://github.com/NicolBolas/New-Vulkan-XML-Format) generates an

@@ -15,6 +15,11 @@ pub struct VkResultMember<'a> {
     pub is_err: bool,
 }
 
+pub struct VKSt<'a> {
+    pub name: &'a str,
+    pub st_name: &'a str,
+}
+
 #[derive(Default, Clone, Copy, Debug)]
 pub struct TypeLifetime {
     pub public: bool,
@@ -52,6 +57,8 @@ pub struct GlobalData<'a> {
     pub all_enums: EnumDictionary<'a>,
     pub is_freeable_handle: Dictionary<'a>,
     pub type_lifetimes: TypeLifetimes<'a>,
+    pub extendable: Dictionary<'a>,
+    pub all_structure_types: Vec<VKSt<'a>>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -110,6 +117,14 @@ pub fn extension_tags() -> &'static Dictionary<'static> {
 
 pub fn type_lifetime(name: &str) -> Option<TypeLifetime> {
     expect_gd().type_lifetimes.get(name).copied()
+}
+
+pub fn is_extendable(name: &str) -> bool {
+    expect_gd().extendable.contains_key(name)
+}
+
+pub fn structure_types() -> &'static Vec<VKSt<'static>> {
+    &expect_gd().all_structure_types
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -199,12 +214,28 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                         }
                         DefinitionsElement::Struct(ref stct) => {
                             structs.insert(stct.name.as_str(), stct);
-                            //for field in stct.elements.iter().filter_map(filter_variant!(StructElement::Member)) {
+
+                            if let Some(extends) = stct.extends.as_ref() {
+                                for extends in extends.split(',') {
+                                    global_data.extendable.entry(extends)
+                                        .or_insert(());
+                                }
+                            }
+                            for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
+                                if stct.name.as_str() == "VkBaseOutStructure" || stct.name.as_str() == "VkBaseInStructure" {
+                                    break;
+                                }
+                                if field.basetype.as_str() == "VkStructureType" {
+                                    let name = stct.name.as_str();
+                                    let st_name = utils::structure_type_name(field);
+                                    global_data.all_structure_types.push(VKSt{name, st_name});
+                                    break;
+                                }
                             //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
                             //        global_data.needs_lifetime.insert(stct.name.as_str(), ());
                             //        break;
                             //    }
-                            //}
+                            }
                         }
                         DefinitionsElement::Bitmask(bitmask) => {
                             let enm_name = utils::normalize_flag_names(&bitmask.name);

@@ -72,7 +72,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     STAGE {
                         st.public()
                             .attribute(quote!(#[repr(C)]))
-                            .attribute(quote!(#[derive(Copy, Clone, Debug)]))
+                            .attribute(quote!(#[derive(Copy, Clone)]))
                     }
                     STAGE {
                         st.fields(fields)
@@ -339,8 +339,142 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     None
                 };
 
+                fn is_base(stct: &Struct) -> bool {
+                    if stct.name.as_str() == "VkBaseOutStructure" || stct.name.as_str() == "VkBaseInStructure" {
+                        return false;
+                    }
+                    for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
+                        if field.name.as_ref().map(String::as_str) == Some("pNext") {
+                            return true;
+                        }
+                    }
+                    false
+                }
+
+                fn is_ex(stct: &Struct) -> bool {
+                    is_base(stct) && stct.extends.is_some()
+                }
+
+                let get_st = || {
+                    for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
+                        if field.name.as_ref().map(String::as_str) == Some("sType") {
+                            return utils::structure_type_name(field);
+                        }
+                    }
+                    panic!("error: no sType in {}", stct.name);
+                };
+
+                let impl_base = if is_base(stct) {
+                    let name = stct.name.as_code();
+                    let st = get_st().as_code();
+                    Some(
+                        quote! {
+                            unsafe impl<'public> Base<'public> for #name<'public, '_> {
+                                const ST: StructureType = StructureType::#st;
+                            }
+                        }
+                    )
+                }
+                else {
+                    None
+                };
+
+                let ex_trait;
+                let impl_struct;
+                if global_data::is_extendable(&stct.name) {
+                    let ex_trait_name = utils::ex_trait_name(&stct.name).as_code();
+                    ex_trait = Some(
+                        quote! {
+                            pub trait #ex_trait_name<'public> : Base<'public> {}
+                        }
+                    );
+
+                    let name = stct.name.as_code();
+                    impl_struct = Some(
+                        quote!{
+                            impl<'public, 'private> #name <'public, 'private> {
+                                fn extend<E: #ex_trait_name <'public> > (&mut self, e: &'private mut E) {
+                                    self.p_next.push(e);
+                                }
+                            }
+                        }
+                    );
+                }
+                else {
+                    ex_trait = None;
+                    impl_struct = None;
+                }
+
+                let impl_ex_trait: Vec<_> = if is_ex(stct) {
+                    let name = stct.name.as_code();
+                    stct.extends.as_ref().unwrap().split(',').map(|extends| {
+                        let ex_trait_name = utils::ex_trait_name(extends).as_code();
+                        quote! {
+                            impl<'public> #ex_trait_name<'public> for #name<'public, '_> {}
+                        }
+                    }).collect()
+                }
+                else {
+                    Vec::new()
+                };
+
+                fn filter_redundent(field: &&Field) -> bool {
+                    if field.name.as_ref().map(String::as_str) == Some("pNext") || field.name.as_ref().map(String::as_str) == Some("sType"){
+                        return false;
+                    }
+                    true
+                }
+
+                let name = stct.name.as_code();
+                let name_str = stct.name.as_str();
+
+                let field_names = stct.elements.iter()
+                    .filter_map(variant!(StructElement::Member))
+                    .filter(filter_redundent)
+                    .map(|field|{
+                        utils::formatted_field_name(field)
+                    });
+                let field_members = stct.elements.iter()
+                    .filter_map(variant!(StructElement::Member))
+                    .filter(filter_redundent)
+                    .map(|field|{
+                        utils::formatted_field_name(field).as_code()
+                    });
+
+                let mut generics = ty::Generics::default();
+                if type_lifetime.public { generics.push_lifetime_param("'_") }
+                if type_lifetime.private { generics.push_lifetime_param("'_") }
+
+                let p_next_fmt = if is_base(stct) {
+                    Some(
+                        quote! { // inside Debug::fmt(self, f)
+                            self.p_next.fmt(f)?;
+                        }
+                    )
+                }
+                else {
+                    None
+                };
+
+                let impl_debug = quote! {
+                    impl fmt::Debug for #name #generics {
+                        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                            f.debug_struct(#name_str)
+                                #( .field(#field_names, &self.#field_members) )*
+                                .finish()?;
+                            #p_next_fmt
+                            Ok(())
+                        }
+                    }
+                };
+
                 quote!{
                     #gen_struct
+                    #impl_struct
+                    #impl_base
+                    #ex_trait
+                    #(#impl_ex_trait)*
+                    #impl_debug
                     #builder_code
                 }
             },

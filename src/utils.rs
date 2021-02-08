@@ -134,6 +134,14 @@ pub fn make_handle_owner_name_string(name: &str) -> String {
     format!("{}Owner", name)
 }
 
+pub fn ex_trait_name(struct_name: &str) -> String {
+    format!("{}Ext", struct_name)
+}
+
+pub fn formatted_field_name(field: &vkxml::Field) -> String {
+    case::camel_to_snake(field_name_expected(field))
+}
+
 #[derive(Clone, Copy)]
 pub enum FieldContext {
     Member,
@@ -187,7 +195,7 @@ impl<'a> CType<'a> {
         self
     }
     pub fn as_field(&self) -> Field {
-        Field::new(case::camel_to_snake(field_name_expected(self.field)), self.as_ty())
+        Field::new(formatted_field_name(self.field), self.as_ty())
     }
     pub fn as_ty(&self) -> Ty {
         let field = self.field;
@@ -407,7 +415,7 @@ impl<'a> Rtype<'a> {
         self
     }
     pub fn as_field(&self) -> Field {
-        Field::new(case::camel_to_snake(field_name_expected(self.field)), self.as_ty())
+        Field::new(formatted_field_name(self.field), self.as_ty())
     }
     pub fn as_ty(&self) -> Ty {
         let field = self.field;
