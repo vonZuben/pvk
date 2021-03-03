@@ -5,8 +5,9 @@ use vkxml::*;
 
 use proc_macro2::{TokenStream};
 
-use crate::utils::*;
+use crate::{global_data, utils::*};
 use crate::utils;
+use crate::ty;
 
 use std::collections::HashMap;
 
@@ -430,36 +431,40 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
 
             let lifetime_defs;
             let impl_lifetime;
-            let call_lifetime;
+            // let call_lifetime;
             let self_modifier;
             let mut with_lifetime;
+
+            let mut fn_generics = ty::Generics::default();
 
             match method_verb {
                 "create" | "allocate" => {
                     lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
-                    call_lifetime = quote!('handle);
+                    // call_lifetime = quote!('handle);
+                    fn_generics.push_lifetime_param("'handle");
                     self_modifier = quote!('handle);
                     with_lifetime = WithLifetime::Yes("'handle");
                 }
                 "cmd" => {
                     lifetime_defs = quote!('resource);
                     impl_lifetime = quote!('resource);
-                    call_lifetime = quote!();
+                    // call_lifetime = quote!();
                     self_modifier = quote!(mut);
                     with_lifetime = WithLifetime::Yes("'resource");
                 }
                 "free" => {
                     lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
-                    call_lifetime = quote!('a);
+                    // call_lifetime = quote!('a);
+                    fn_generics.push_lifetime_param("'a");
                     self_modifier = quote!();
                     with_lifetime = WithLifetime::Yes("'a");
                 }
                 _ => {
                     lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
-                    call_lifetime = quote!();
+                    // call_lifetime = quote!();
                     self_modifier = quote!();
                     with_lifetime = WithLifetime::No
                 }
@@ -469,25 +474,29 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                 with_lifetime = WithLifetime::Yes("'static");
             }
 
+            // assuming there is only ever one return pn parameter, we create only one generic type to handle it
+            for field in  cmd.param.iter() {
+                if category_map.get(field_name(field)).unwrap().is_pn() {
+                    let bt = field.basetype.as_code();
+                    fn_generics.push_type_param(quote!(C: PnChain<#bt<'static, 'static>>));
+                }
+            }
+
             // determine if method should call the vulkan command twice in order to query a size
             // field category
             let can_query_size = category_map
                 .values()
-                .find(|category| match category { FieldCatagory::SizeMut => true, _ => false } )
+                .find(|cat| cat.is_size_mut())
                 .is_some();
 
             let fields_outer = cmd.param.iter().skip(skip_first)
-                .filter(|field| match category_map.get(field_name(field)).unwrap() {
-                    FieldCatagory::Normal | FieldCatagory::NormalSized => true,
-                    _ => false,
-                })
-            .map(|field| {
-                Rtype::new(field, cmd.name.as_str())
-                    .public_lifetime(with_lifetime)
-                    .command_verb(method_verb)
-                    .as_field()
-                // r_field(field, with_lifetime, FieldContext::FunctionParam, cmd.name.as_str()).command_verb(command_verb)
-            });
+                .filter(|field| category_map.get(field_name(field)).unwrap().is_normal())
+                .map(|field| {
+                    Rtype::new(field, cmd.name.as_str())
+                        .public_lifetime(with_lifetime)
+                        .command_verb(method_verb)
+                        .as_field()
+                });
 
             // when a count/size variable affects multiple input arrays, set the size once
             // based on the first input array, and debug_assert that the other input arrays are the
@@ -539,9 +548,11 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                     .map( |field| {
                         let name_raw = field_name(&field);
                         let field_name = case::camel_to_snake(name_raw).as_code();
-                        match category_map.get(name_raw).unwrap() {
-                            FieldCatagory::ReturnSized => quote!( None.to_c() ),
-                            _ => quote!( #field_name.to_c() ),
+                        if category_map.get(name_raw).unwrap().is_return_sized() {
+                            quote!( None.to_c() )
+                        }
+                        else {
+                            quote!( #field_name.to_c() )
                         }
                     });
                 if cmd.return_type.basetype == "VkResult" {
@@ -578,6 +589,26 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                             let size = case::camel_to_snake(size.as_str()).as_code();
                             Some(quote!( let mut #field_name = Vec::with_capacity(#size.value() as _); ))
                         }
+                        FieldCatagory::ReturnPn => {
+                            let bt = field.basetype.as_code();
+                            Some(quote!(
+                                let mut #field_name: PnTuple<#bt<'static, 'static>, C> = PnTuple::new();
+                                #field_name.link_list();
+                            ))
+                        }
+                        FieldCatagory::ReturnPnSized => {
+                            let size = field.size.as_ref().unwrap().replace("::", ".");
+                            let size = case::camel_to_snake(size.as_str()).as_code();
+                            let bt = field.basetype.as_code();
+                            Some(quote!(
+                                let mut #field_name: Vec<_> = (0..#size.value()).into_iter().map(|_|#bt::init_s_type()).collect();
+                                let mut pn_chains: Vec<_> = (0..#size.value()).into_iter().map(|_|C::new_chain()).collect();
+                                for (head, chain) in #field_name.iter_mut().zip(pn_chains.iter_mut()) {
+                                    chain.link_chain();
+                                    head.add_chain(chain);
+                                }
+                            ))
+                        }
                         _ => None,
                     }
                 });
@@ -589,9 +620,11 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                     .map( |field| {
                         let name_raw = field_name(&field);
                         let field_name = case::camel_to_snake(name_raw).as_code();
-                        match category_map.get(name_raw).unwrap() {
-                            FieldCatagory::ReturnSized | FieldCatagory::Return => quote!( (&mut #field_name).to_c() ),
-                            _ => quote!( #field_name.to_c() ),
+                        if category_map.get(name_raw).unwrap().is_return() {
+                            quote!( (&mut #field_name).to_c() )
+                        }
+                        else {
+                            quote!( #field_name.to_c() )
                         }
                     });
                 if cmd.return_type.basetype == "VkResult" {
@@ -629,13 +662,20 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                             let size = case::camel_to_snake(size.as_str()).as_code();
                             Some(quote!( unsafe { #field_name.set_len(#size.value() as _) }; ))
                         }
+                        FieldCatagory::ReturnPnSized => {
+                            Some(quote!(
+                                let #field_name: Vec<_> = #field_name.drain(..).zip(pn_chains.drain(..))
+                                    .map(|(head, chain)|PnTuple::from_parts(head, chain))
+                                    .collect();
+                            ))
+                        }
                         _ => None,
                     }
                 });
 
-            let return_count = category_map.iter()
-                .filter(|(_field_name, category)|
-                        match category { FieldCatagory::Return | FieldCatagory::ReturnSized => true, _ => false })
+            let return_count = category_map
+                .values()
+                .filter(|cat|cat.is_return())
                 .count();
 
             let return_code;
@@ -652,9 +692,27 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
             }
             else {
                 let return_field_types = cmd.param.iter().filter_map(|field| {
-                    match category_map.get(field_name(field)).unwrap() {
-                        FieldCatagory::Return | FieldCatagory::ReturnSized => Some(utils::r_return_type(field, with_lifetime).command_verb(method_verb)),
-                        _ => None,
+                    let field_cat = category_map.get(field_name(field)).unwrap();
+                    if field_cat.is_return() {
+                        // Some(utils::r_return_type(field, with_lifetime).command_verb(method_verb))
+                        Some(
+                            pipe!{ ret = RreturnType::new(&field) =>
+                                STAGE {
+                                    ret.command_verb(method_verb)
+                                }
+                                WHEN field_cat.is_pn() => {
+                                    ret.public_lifetime("'static")
+                                        .private_lifetime("'static")
+                                        .pn_tuple()
+                                }
+                                WHEN !field_cat.is_pn() => {
+                                    ret.public_lifetime(with_lifetime)
+                                }
+                            }
+                        )
+                    }
+                    else {
+                        None
                     }
                 });
                 return_type = Some(
@@ -667,11 +725,11 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                     .filter_map(|field| {
                         let field_name_raw = field_name(field);
                         let field_name = case::camel_to_snake(field_name_raw).as_code();
-                        match category_map.get(field_name_raw).unwrap() {
-                            FieldCatagory::Return | FieldCatagory::ReturnSized => {
-                                Some(quote!( #field_name ))
-                            }
-                            _ => None,
+                        if category_map.get(field_name_raw).unwrap().is_return() {
+                            Some(quote!( #field_name ))
+                        }
+                        else {
+                            None
                         }
                     });
                 let return_tuple = if matches!(cmd_cat, CommandCategory::Entry) {
@@ -700,7 +758,7 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
             // this branch should only ever be hit for commands which have non prameter return types
             // (i.e. the return type is not written to some user provided pointer)
             else if cmd.return_type.basetype != "void" && cmd.return_type.basetype != "VkResult" {
-                let result = utils::r_return_type(&cmd.return_type, utils::WithLifetime::Yes("'handle"));
+                let result = utils::r_return_type(&cmd.return_type, with_lifetime);
                 Some( quote!(#result) )
             }
             else {
@@ -715,7 +773,7 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
             };
 
             let method = quote!{
-                pub fn #method_name<#call_lifetime>( #this #( #fields_outer ),* ) -> #result {
+                pub fn #method_name #fn_generics ( #this #( #fields_outer ),* ) -> #result {
                     #( #size_vars )*
                     #size_query
                     #( #return_vars )*
@@ -748,8 +806,55 @@ enum FieldCatagory {
     NormalSized,
     Return,
     ReturnSized,
+    ReturnPn,
+    ReturnPnSized,
     Size,
     SizeMut,
+}
+
+impl FieldCatagory {
+    fn is_return(&self) -> bool {
+        use FieldCatagory::*;
+        match self {
+            Return | ReturnPn | ReturnSized | ReturnPnSized => true,
+            _ => false,
+        }
+    }
+    fn is_return_sized(&self) -> bool {
+        use FieldCatagory::*;
+        match self {
+            ReturnSized | ReturnPnSized => true,
+            _ => false,
+        }
+    }
+    fn is_normal(&self) -> bool {
+        use FieldCatagory::*;
+        match self {
+            Normal | NormalSized => true,
+            _ => false,
+        }
+    }
+    fn is_pn(&self) -> bool {
+        use FieldCatagory::*;
+        match self {
+            ReturnPn | ReturnPnSized => true,
+            _ => false,
+        }
+    }
+    // fn is_size(&self) -> bool {
+    //     use FieldCatagory::*;
+    //     match self {
+    //         Size | SizeMut => true,
+    //         _ => false,
+    //     }
+    // }
+    fn is_size_mut(&self) -> bool {
+        use FieldCatagory::*;
+        match self {
+            SizeMut => true,
+            _ => false,
+        }
+    }
 }
 
 fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
@@ -759,6 +864,8 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
         let name = field.name.as_ref().unwrap().as_str();
 
         let cmd_return_type = cmd.return_type.basetype.as_str();
+
+        let extendable = global_data::is_extendable(&field.basetype);
 
         // NOTE this has the following assumptions
         // 1) if a command includes mutable pointers, it is assumed that those parameters are for
@@ -771,7 +878,13 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
         // 3) another exception we will make is for functions that take a *mut c_void. These will
         //    require the user to provide a buffer of the appropriate size manually.
         if is_return_param(&field, &catagories) && ( cmd_return_type == "VkResult" || cmd_return_type == "void" ) {
-            if field.size.is_some() {
+            if field.size.is_some() && extendable {
+                catagories.insert(name, FieldCatagory::ReturnPnSized);
+            }
+            else if extendable {
+                catagories.insert(name, FieldCatagory::ReturnPn);
+            }
+            else if field.size.is_some() {
                 catagories.insert(name, FieldCatagory::ReturnSized);
             }
             else {

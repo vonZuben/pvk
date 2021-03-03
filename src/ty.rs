@@ -194,7 +194,7 @@ impl Core {
             _ => panic!("can only push params when core is Basetype"),
         }
     }
-    fn push_type_param(&mut self, t: impl Into<Ty>) {
+    fn push_type_param(&mut self, t: impl ToTokens) {
         match self {
             Core::Basetype(basetype) => basetype.generics.push_type_param(t),
             _ => panic!("can only push params when core is Basetype"),
@@ -233,15 +233,15 @@ impl ToTokens for Core {
 #[derive(Default)]
 pub struct Generics {
     lifetime_params: Vec<Lifetime>,
-    type_params: Vec<Ty>,
+    type_params: Vec<TokenStream>,
 }
 
 impl Generics {
     pub fn push_lifetime_param(&mut self, l: impl Into<Lifetime>) {
         self.lifetime_params.push(l.into());
     }
-    pub fn push_type_param(&mut self, t: impl Into<Ty>) {
-        self.type_params.push(t.into());
+    pub fn push_type_param(&mut self, t: impl ToTokens) {
+        self.type_params.push(quote!(#t));
     }
 }
 
@@ -354,7 +354,7 @@ impl Ty {
         self.core.push_lifetime_param(l);
         self
     }
-    pub fn type_param(mut self, p: impl Into<Ty>) -> Self {
+    pub fn type_param(mut self, p: impl ToTokens) -> Self {
         self.core.push_type_param(p);
         self
     }

@@ -611,6 +611,7 @@ pub struct RreturnType<'a> {
     public_lifetime: WithLifetime<'a>,
     private_lifetime: WithLifetime<'a>,
     command_verb: Option<&'a str>,
+    pn_tuple: bool,
 }
 
 impl<'a> RreturnType<'a> {
@@ -620,6 +621,7 @@ impl<'a> RreturnType<'a> {
             public_lifetime: WithLifetime::No,
             private_lifetime: WithLifetime::No,
             command_verb: None,
+            pn_tuple: false,
         }
     }
     pub fn public_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
@@ -635,11 +637,16 @@ impl<'a> RreturnType<'a> {
         self.command_verb = command_verb.into();
         self
     }
-   pub fn as_ty(&self) -> Ty {
+    pub fn pn_tuple(mut self) -> Self {
+        self.pn_tuple = true;
+        self
+    }
+    pub fn as_ty(&self) -> Ty {
         let field = self.field;
         let public_lifetime = self.public_lifetime;
         let private_lifetime = self.private_lifetime;
         let command_verb = self.command_verb;
+        let pn_tuple = self.pn_tuple;
 
         if field.basetype == "void" {
             assert!(field.reference.is_some());
@@ -685,6 +692,12 @@ impl<'a> RreturnType<'a> {
                     "allocate" => ty.type_param(Ty::new().basetype("ManuallyManaged")),
                     _ => ty,
                 }
+            }
+            WHEN pn_tuple => {
+                Ty::new()
+                    .basetype("PnTuple")
+                    .type_param(ty)
+                    .type_param("C".as_code())
             }
             STAGE {
                 match field.reference {

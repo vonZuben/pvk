@@ -16,6 +16,7 @@ mod features;
 mod extensions;
 mod ty;
 mod r#struct;
+// mod methods;
 
 use r#struct as stct;
 
@@ -230,6 +231,7 @@ fn main() {
         fn main(){
 
             let mut instance = InstanceCreator::new()
+                .enabled_extensions(&[KHR_get_physical_device_properties2])
                 .app_name("heyo")
                 .create()
                 .unwrap();
@@ -292,6 +294,10 @@ fn main() {
             ma.extend(&mut di);
 
             println!("{:?}", ma);
+
+            let props = pd.index(0).get_physical_device_features_2::<(PhysicalDeviceVariablePointerFeatures, PhysicalDevice16BitStorageFeatures)>();
+            println!("{:?}", props);
+            println!("{:?}", props.pn().0);
 
             // #[derive(Copy, Clone)]
             // struct A<'owner>(PhantomData<&'owner ()>);
@@ -675,6 +681,25 @@ fn main() {
             }
         }
 
+        // this is made so it can be called in the same way as VkResultRaw to make code gen easier
+        trait FakeResult {
+            fn success<T>(self, t: T) -> Self;
+            fn err<T>(self) -> !;
+            fn is_err(self) -> bool;
+        }
+
+        impl<T> FakeResult for T {
+            fn success<F>(self, t: F) -> Self {
+                self
+            }
+            fn err<F>(self) -> ! {
+                panic!("shouldn't call err() with FakeResult");
+            }
+            fn is_err(self) -> bool {
+                false
+            }
+        }
+
         impl crate::VkResultRaw {
             // takes a possible value to wrap
             fn success<T>(self, t: T) -> VkResult<T> {
@@ -883,6 +908,178 @@ fn main() {
             }
         }
 
+        mod private_struct_interface {
+            use super::BaseStructure;
+            pub trait StypeInit: Sized + super::Base<'static> {
+                fn init_s_type() -> Self {
+                    let mut this = std::mem::MaybeUninit::zeroed();
+                    {
+                        let ptr = this.as_mut_ptr() as *mut BaseStructure;
+                        unsafe { (*ptr).s_type = <Self as super::Base>::ST; }
+                    }
+                    unsafe { this.assume_init() }
+                }
+            }
+            pub trait AddChain : Sized + super::Base<'static> {
+                fn add_chain<C: PnChain<Self>>(&mut self, c: &mut C) {
+                    let ptr = self as *mut Self as *mut BaseStructure;
+                    unsafe {
+                        (*ptr).p_next = c.head();
+                    }
+                }
+            }
+            pub trait PnLink<Extendee> : super::Base<'static> {
+                fn link<T: PnLink<Extendee>>(&mut self, l: &mut T) {
+                    let ptr = self as *mut Self as *mut BaseStructure;
+                    unsafe {
+                        (*ptr).p_next = l as *mut T as *mut BaseStructure;
+                    }
+                }
+            }
+            pub trait PnChain<Extendee> {
+                fn new_chain() -> Self;
+                fn link_chain(&mut self);
+                fn head(&mut self) -> *mut BaseStructure<'static>;
+            }
+        }
+
+        macro_rules! tuple_impl {
+            ( @link_list $this:ident $id1:tt, ) => {};
+            ( @link_list $this:ident $id1:tt, $id2:tt, $($rest:tt)* ) => {
+                $this.$id1.link(&mut $this.$id2);
+                tuple_impl!( @link_list $this $id2, $($rest)* )
+            };
+            ( @dbg $this:ident ( ) ; $($dbl:tt)* ) => {
+                $($dbl)* .finish()
+            };
+            ( @dbg $this:ident ( $id:tt, $($rest:tt)* ) ; $($dbl:tt)* ) => {
+                tuple_impl!( @dbg $this ( $($rest)* ) ; $($dbl)* .entry(&$this.$id) )
+            };
+            ( $($id:tt, $t:ident);* ) => {
+                impl<$($t),* , Extendee> PnChain<Extendee> for ($($t,)*)
+                where
+                    $($t: PnLink<Extendee> + StypeInit),*
+                {
+                    fn new_chain() -> Self {
+                        ($($t::init_s_type(),)*)
+                    }
+                    fn link_chain(&mut self) {
+                        tuple_impl!( @link_list self $($id,)* );
+                    }
+                    fn head(&mut self) -> *mut BaseStructure<'static> {
+                        &mut self.0 as *mut T0 as *mut BaseStructure
+                    }
+                }
+
+                impl<$($t: fmt::Debug),*, Extendee: fmt::Debug> fmt::Debug for PnTuple<Extendee, ($($t,)*)>
+                {
+                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                        self.0.fmt(f)?;
+                        let this = &self.1;
+                        tuple_impl!(@dbg this ( $($id,)* ) ; f.debug_list() )
+                    }
+                }
+            }
+        }
+
+        macro_rules! tuple_combos {
+            ( @inner ( $($list:tt)* ) => ( ) ) => {
+                tuple_impl!($($list)*);
+            };
+            ( @inner ( $($list:tt)* ) => ( $id:tt, $t:ident $( ; $($rest:tt)* )? ) ) => {
+                tuple_impl!($($list)*);
+                tuple_combos!( @inner ( $($list)* ; $id, $t ) => ( $( $($rest)* )? ) );
+            };
+            ( $first_id:tt, $first_t:ident; $($id:tt, $t:ident);* ) => {
+                tuple_combos!( @inner ( $first_id, $first_t ) => ( $($id, $t);* ) );
+            }
+
+        }
+
+        impl<Extendee> PnChain<Extendee> for () {
+            fn new_chain() -> () {
+                ()
+            }
+            fn link_chain(&mut self) {}
+            fn head(&mut self) -> *mut BaseStructure<'static> {
+                std::ptr::null_mut()
+            }
+        }
+
+        // there are (at this time) at least 27 extensions to VkPhysicalDeviceProperties2
+        // so we should be able to support that many in the PnChain tuple
+        tuple_combos! {
+            0, T0;
+            1, T1;
+            2, T2;
+            3, T3;
+            4, T4;
+            5, T5;
+            6, T6;
+            7, T7;
+            8, T8;
+            9, T9;
+            10, T10;
+            11, T11;
+            12, T12;
+            13, T13;
+            14, T14;
+            15, T15;
+            16, T16;
+            17, T17;
+            18, T18;
+            19, T19;
+            20, T20;
+            21, T21;
+            22, T22;
+            23, T23;
+            24, T24;
+            25, T25;
+            26, T26;
+            27, T27;
+            28, T28;
+            29, T29;
+            30, T30
+        }
+
+        pub struct PnTuple<A, C>(A, C);
+
+        impl<A: StypeInit + AddChain, C: PnChain<A>> PnTuple<A, C> {
+            fn new() -> Self {
+                Self(A::init_s_type(), C::new_chain())
+            }
+            #[allow(unused)]
+            fn from_parts(a: A, c: C) -> Self {
+                Self(a, c)
+            }
+            fn link_list(&mut self) {
+                self.1.link_chain();
+                self.0.add_chain(&mut self.1);
+            }
+            pub fn pn(&self) -> &C {
+                &self.1
+            }
+        }
+
+        impl<A, C> std::ops::Deref for PnTuple<A, C> {
+            type Target = A;
+            fn deref(&self) -> &A {
+                &self.0
+            }
+        }
+
+        impl<Extendee: fmt::Debug> fmt::Debug for PnTuple<Extendee, ()> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        impl<'a, A, C> ConvertToC<RefMut<'a, A>> for &'a mut PnTuple<A, C> where A: 'a {
+            fn to_c(self) -> RefMut<'a, A> {
+                RefMut::new(&mut self.0)
+            }
+        }
+
         #[repr(C)]
         pub struct BaseStructure<'public> {
             s_type: StructureType,
@@ -941,26 +1138,26 @@ fn main() {
             _ext: PhantomData<&'private mut BaseStructure<'public>>,
         }
 
-        pub struct PnextIter<'public, 'private> {
-            base: *const BaseStructure<'public>,
-            _pn: PhantomData<&'private Pnext<'public, 'private>>,
-        }
+        // pub struct PnextIter<'public, 'private> {
+        //     base: *const BaseStructure<'public>,
+        //     _pn: PhantomData<&'private Pnext<'public, 'private>>,
+        // }
 
-        impl<'public, 'pn> Iterator for PnextIter<'public, 'pn> {
-            type Item = &'pn BaseStructure<'public>;
-            fn next(&mut self) -> Option<Self::Item> {
-                if self.base.is_null() {
-                    None
-                }
-                else {
-                    unsafe {
-                        let ret = &*self.base;
-                        self.base = ret.p_next;
-                        Some(ret)
-                    }
-                }
-            }
-        }
+        // impl<'public, 'pn> Iterator for PnextIter<'public, 'pn> {
+        //     type Item = &'pn BaseStructure<'public>;
+        //     fn next(&mut self) -> Option<Self::Item> {
+        //         if self.base.is_null() {
+        //             None
+        //         }
+        //         else {
+        //             unsafe {
+        //                 let ret = &*self.base;
+        //                 self.base = ret.p_next;
+        //                 Some(ret)
+        //             }
+        //         }
+        //     }
+        // }
 
         impl Pnext<'_, '_> {
             fn new() -> Self {
@@ -978,37 +1175,37 @@ fn main() {
                 self.base = base;
             }
 
-            fn iter<'pn>(&'pn self) -> PnextIter<'public, 'pn> {
-                PnextIter {
-                    base: self.base,
-                    _pn: PhantomData,
-                }
-            }
+            // fn iter<'pn>(&'pn self) -> PnextIter<'public, 'pn> {
+            //     PnextIter {
+            //         base: self.base,
+            //         _pn: PhantomData,
+            //     }
+            // }
 
-            fn base(&self) -> Option<&BaseStructure<'public>> {
-                if self.base.is_null() {
-                    None
-                }
-                else {
-                    Some( unsafe { &*self.base } )
-                }
-            }
+            // fn base(&self) -> Option<&BaseStructure<'public>> {
+            //     if self.base.is_null() {
+            //         None
+            //     }
+            //     else {
+            //         Some( unsafe { &*self.base } )
+            //     }
+            // }
         }
 
-        impl fmt::Debug for Pnext<'_, '_> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                if let Some(base) = self.base() {
-                    if f.alternate() {
-                        writeln!(f)?;
-                    }
-                    write!(f, "::pNext -> ")?;
-                    base.fmt(f)
-                }
-                else {
-                    Ok(())
-                }
-            }
-        }
+        // impl fmt::Debug for Pnext<'_, '_> {
+        //     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        //         if let Some(base) = self.base() {
+        //             if f.alternate() {
+        //                 writeln!(f)?;
+        //             }
+        //             write!(f, "::pNext -> ")?;
+        //             base.fmt(f)
+        //         }
+        //         else {
+        //             Ok(())
+        //         }
+        //     }
+        // }
 
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
@@ -1021,6 +1218,7 @@ fn main() {
         use std::ptr;
 
         use handles::*;
+        use private_struct_interface::*;
 
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();

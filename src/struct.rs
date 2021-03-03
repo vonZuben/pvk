@@ -50,7 +50,7 @@ impl Struct {
         self
     }
     #[allow(unused)]
-    pub fn type_param(mut self, t: impl Into<Ty>) -> Self {
+    pub fn type_param(mut self, t: impl ToTokens) -> Self {
         self.generics.push_type_param(t);
         self
     }

@@ -372,6 +372,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             unsafe impl<'public> Base<'public> for #name<'public, '_> {
                                 const ST: StructureType = StructureType::#st;
                             }
+                            impl StypeInit for #name<'static, '_> {}
+                            impl AddChain for #name<'static, '_> {}
                         }
                     )
                 }
@@ -409,8 +411,10 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     let name = stct.name.as_code();
                     stct.extends.as_ref().unwrap().split(',').map(|extends| {
                         let ex_trait_name = utils::ex_trait_name(extends).as_code();
+                        let extends = extends.as_code();
                         quote! {
                             impl<'public> #ex_trait_name<'public> for #name<'public, '_> {}
+                            impl PnLink<#extends<'static, 'static>> for #name<'static, 'static> {}
                         }
                     }).collect()
                 }
@@ -445,25 +449,25 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 if type_lifetime.public { generics.push_lifetime_param("'_") }
                 if type_lifetime.private { generics.push_lifetime_param("'_") }
 
-                let p_next_fmt = if is_base(stct) {
-                    Some(
-                        quote! { // inside Debug::fmt(self, f)
-                            self.p_next.fmt(f)?;
-                        }
-                    )
-                }
-                else {
-                    None
-                };
+                // let p_next_fmt = if is_base(stct) {
+                //     Some(
+                //         quote! { // inside Debug::fmt(self, f)
+                //             self.p_next.fmt(f)?;
+                //         }
+                //     )
+                // }
+                // else {
+                //     None
+                // };
 
                 let impl_debug = quote! {
                     impl fmt::Debug for #name #generics {
                         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                             f.debug_struct(#name_str)
                                 #( .field(#field_names, &self.#field_members) )*
-                                .finish()?;
-                            #p_next_fmt
-                            Ok(())
+                                .finish()
+                            // #p_next_fmt
+                            // Ok(())
                         }
                     }
                 };
