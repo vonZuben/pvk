@@ -544,7 +544,7 @@ fn main() {
         }
 
         pub struct DeviceCreator<'public, 'private> {
-            physical_device: &'public PhysicalDeviceOwner<'public>,
+            physical_device: &'private PhysicalDeviceOwner<'public>,
             queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>],
             enabled_layers: Vec<&'private dyn VkLayerName>,
             enabled_extensions: Vec<DeviceExtension>,
@@ -606,7 +606,7 @@ fn main() {
                 else {
                     let device = unsafe { device.assume_init() };
 
-                    let device: DeviceOwner<'public, Owned> = DeviceOwner::new(device, self.physical_device);
+                    let device: DeviceOwner<'public, Owned> = DeviceOwner::new(device, self.physical_device.dispatch_parent);
 
                     self.physical_device.dispatch_parent
                         .feature_version
@@ -624,7 +624,7 @@ fn main() {
         }
 
         impl<'public> PhysicalDeviceOwner<'public> {
-            pub fn device_creator<'private>(&'public self, queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>]) -> DeviceCreator<'public, 'private> {
+            pub fn device_creator<'private>(&'private self, queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>]) -> DeviceCreator<'public, 'private> {
                 DeviceCreator {
                     physical_device: self,
                     queue_create_info: queue_create_info,

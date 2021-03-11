@@ -674,7 +674,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     },
                     "VkDevice" => quote!{
                         commands: DeviceCommands,
-                        dispatch_parent: &'parent PhysicalDeviceOwner<'parent>,
+                        dispatch_parent: &'parent InstanceOwner<'parent>,
                     },
                     _ => {
                         quote!{
@@ -707,7 +707,7 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                     "VkDevice" => quote!{
                         impl<'parent, Own> CreateOwner<'parent> for #owner_name<'parent, Own> {
                             type Handle = #handle_name<'static>;
-                            type DispatchParent = PhysicalDeviceOwner<'parent>;
+                            type DispatchParent = InstanceOwner<'parent>;
                             fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
                                 #owner_name {
                                     handle,
