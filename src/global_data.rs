@@ -237,10 +237,6 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                                     global_data.is_base.entry(name).or_insert(());
                                     break;
                                 }
-                            //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
-                            //        global_data.needs_lifetime.insert(stct.name.as_str(), ());
-                            //        break;
-                            //    }
                             }
                         }
                         DefinitionsElement::Bitmask(bitmask) => {
@@ -249,23 +245,10 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                                     "unextepxted value already in all_enums");
                         }
                         DefinitionsElement::FuncPtr(_fptr) => {
-                            //func_ptrs.insert(fptr.name.as_str(), ());
-                            //for field in fptr.param.iter() {
-                            //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
-                            //        global_data.needs_lifetime.insert(fptr.name.as_str(), ());
-                            //        break;
-                            //    }
-                            //}
                         }
                         DefinitionsElement::Union(uni) => {
                             unions.insert(uni.name.as_str(), ());
-                            // for field in uni.elements.iter() {
-                            //     if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
-                            //         global_data.needs_lifetime.insert(uni.name.as_str(), ());
-                            //         break;
-                            //     }
-                            // }
-                                }
+                        }
                         _ => {}
                     }
                 }
@@ -421,24 +404,8 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                             }
                         }
                         DefinitionsElement::FuncPtr(_fptr) => {
-                            //if global_data.needs_lifetime.get(fptr.name.as_str()).is_none() {
-                            //    for field in fptr.param.iter() {
-                            //        if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {
-                            //            global_data.needs_lifetime.insert(fptr.name.as_str(), ());
-                            //            break;
-                            //        }
-                            //    }
-                            //}
                         }
                         DefinitionsElement::Union(_uni) => {
-                            // if global_data.needs_lifetime.get(uni.name.as_str()).is_none() {
-                            //     for field in uni.elements.iter() {
-                            //         if global_data.needs_lifetime.contains_key(field.basetype.as_str()) {
-                            //             global_data.needs_lifetime.insert(uni.name.as_str(), ());
-                            //             break;
-                            //         }
-                            //     }
-                            // }
                         }
                         _ => {}
                     }

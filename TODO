@@ -52,7 +52,7 @@
         LOL, my bad. I had intentionall excluded generating command loaders for EXT_debug_utils for some reason.
         I don't remeber why so I just removed this exclusion
 
-- [partial] Remove old needs_lifetime from global_data - being replaced by type_lifetimes
+- [x] Remove old needs_lifetime from global_data - being replaced by type_lifetimes
         - TODO - deal with unions, seems there are no current examples of a union that would need a lifetime anyway
 
 - [x] NEED TO FIX COMMMANDS WHICH RETURN STRUCTS WITH P_NEXT
