@@ -611,7 +611,7 @@ pub struct RreturnType<'a> {
     public_lifetime: WithLifetime<'a>,
     private_lifetime: WithLifetime<'a>,
     command_verb: Option<&'a str>,
-    pn_tuple: bool,
+    pn_tuple: Option<&'a str>,
 }
 
 impl<'a> RreturnType<'a> {
@@ -621,7 +621,7 @@ impl<'a> RreturnType<'a> {
             public_lifetime: WithLifetime::No,
             private_lifetime: WithLifetime::No,
             command_verb: None,
-            pn_tuple: false,
+            pn_tuple: None,
         }
     }
     pub fn public_lifetime(mut self, lifetime: impl Into<WithLifetime<'a>>) -> Self {
@@ -637,8 +637,8 @@ impl<'a> RreturnType<'a> {
         self.command_verb = command_verb.into();
         self
     }
-    pub fn pn_tuple(mut self) -> Self {
-        self.pn_tuple = true;
+    pub fn pn_tuple(mut self, chain_name: &'a str) -> Self {
+        self.pn_tuple = Some(chain_name);
         self
     }
     pub fn as_ty(&self) -> Ty {
@@ -693,11 +693,11 @@ impl<'a> RreturnType<'a> {
                     _ => ty,
                 }
             }
-            WHEN pn_tuple => {
+            WHEN matches!(pn_tuple, Some(_)) => {
                 Ty::new()
                     .basetype("PnTuple")
                     .type_param(ty)
-                    .type_param("C".as_code())
+                    .type_param(pn_tuple.as_ref().unwrap().as_code())
             }
             STAGE {
                 match field.reference {

@@ -58,6 +58,7 @@ pub struct GlobalData<'a> {
     pub is_freeable_handle: Dictionary<'a>,
     pub type_lifetimes: TypeLifetimes<'a>,
     pub extendable: Dictionary<'a>,
+    pub is_base: Dictionary<'a>,
     pub all_structure_types: Vec<VKSt<'a>>,
 }
 
@@ -121,6 +122,10 @@ pub fn type_lifetime(name: &str) -> Option<TypeLifetime> {
 
 pub fn is_extendable(name: &str) -> bool {
     expect_gd().extendable.contains_key(name)
+}
+
+pub fn is_base(name: &str) -> bool {
+    expect_gd().is_base.contains_key(name)
 }
 
 pub fn structure_types() -> &'static Vec<VKSt<'static>> {
@@ -229,6 +234,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                                     let name = stct.name.as_str();
                                     let st_name = utils::structure_type_name(field);
                                     global_data.all_structure_types.push(VKSt{name, st_name});
+                                    global_data.is_base.entry(name).or_insert(());
                                     break;
                                 }
                             //    if global_data.needs_lifetime.get(field.basetype.as_str()).is_some() {

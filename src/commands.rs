@@ -474,11 +474,23 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                 with_lifetime = WithLifetime::Yes("'static");
             }
 
+            let mut count = 0;
+            let mut new_generic_name = || {
+                let name = format!("C{}", count);
+                count += 1;
+                name
+            };
+
+            let mut generic_names = HashMap::new();
+
             // assuming there is only ever one return pn parameter, we create only one generic type to handle it
             for field in  cmd.param.iter() {
                 if category_map.get(field_name(field)).unwrap().is_pn() {
                     let bt = field.basetype.as_code();
-                    fn_generics.push_type_param(quote!(C: PnChain<#bt<'static, 'static>>));
+                    let generic_name = new_generic_name();
+                    let generic_name_code = generic_name.as_code();
+                    generic_names.insert(field_name(field), generic_name);
+                    fn_generics.push_type_param(quote!(#generic_name_code: PnChain<#bt<'static, 'static>>));
                 }
             }
 
@@ -578,32 +590,34 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
 
             let return_vars = cmd.param.iter()
                 .filter_map(|field| {
-                    let field_name_raw = field_name(field);
-                    let field_name = case::camel_to_snake(field_name_raw).as_code();
-                    match category_map.get(field_name_raw).unwrap() {
+                    let f_name_raw = field_name(field);
+                    let f_name = case::camel_to_snake(f_name_raw).as_code();
+                    match category_map.get(f_name_raw).unwrap() {
                         FieldCatagory::Return => {
-                            Some(quote!( let mut #field_name = MaybeUninit::uninit(); ))
+                            Some(quote!( let mut #f_name = MaybeUninit::uninit(); ))
                         }
                         FieldCatagory::ReturnSized => {
                             let size = field.size.as_ref().unwrap().replace("::", ".");
                             let size = case::camel_to_snake(size.as_str()).as_code();
-                            Some(quote!( let mut #field_name = Vec::with_capacity(#size.value() as _); ))
+                            Some(quote!( let mut #f_name = Vec::with_capacity(#size.value() as _); ))
                         }
                         FieldCatagory::ReturnPn => {
                             let bt = field.basetype.as_code();
+                            let generic_name = generic_names.get(field_name(field)).unwrap().as_code();
                             Some(quote!(
-                                let mut #field_name: PnTuple<#bt<'static, 'static>, C> = PnTuple::new();
-                                #field_name.link_list();
+                                let mut #f_name: PnTuple<#bt<'static, 'static>, #generic_name> = PnTuple::new();
+                                #f_name.link_list();
                             ))
                         }
                         FieldCatagory::ReturnPnSized => {
                             let size = field.size.as_ref().unwrap().replace("::", ".");
                             let size = case::camel_to_snake(size.as_str()).as_code();
                             let bt = field.basetype.as_code();
+                            let generic_name = generic_names.get(field_name(field)).unwrap().as_code();
                             Some(quote!(
-                                let mut #field_name: Vec<_> = (0..#size.value()).into_iter().map(|_|#bt::init_s_type()).collect();
-                                let mut pn_chains: Vec<_> = (0..#size.value()).into_iter().map(|_|C::new_chain()).collect();
-                                for (head, chain) in #field_name.iter_mut().zip(pn_chains.iter_mut()) {
+                                let mut #f_name: Vec<_> = (0..#size.value()).into_iter().map(|_|#bt::init_s_type()).collect();
+                                let mut pn_chains: Vec<_> = (0..#size.value()).into_iter().map(|_|#generic_name::new_chain()).collect();
+                                for (head, chain) in #f_name.iter_mut().zip(pn_chains.iter_mut()) {
                                     chain.link_chain();
                                     head.add_chain(chain);
                                 }
@@ -703,7 +717,7 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
                                 WHEN field_cat.is_pn() => {
                                     ret.public_lifetime("'static")
                                         .private_lifetime("'static")
-                                        .pn_tuple()
+                                        .pn_tuple(generic_names.get(field_name(field)).unwrap())
                                 }
                                 WHEN !field_cat.is_pn() => {
                                     ret.public_lifetime(with_lifetime)
@@ -865,7 +879,7 @@ fn catagorize_fields(cmd: &Command) -> Result<CategoryMap, &'static str> {
 
         let cmd_return_type = cmd.return_type.basetype.as_str();
 
-        let extendable = global_data::is_extendable(&field.basetype);
+        let extendable = global_data::is_base(&field.basetype);
 
         // NOTE this has the following assumptions
         // 1) if a command includes mutable pointers, it is assumed that those parameters are for
