@@ -438,7 +438,7 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
             let mut fn_generics = ty::Generics::default();
 
             match method_verb {
-                "create" | "allocate" => {
+                "create" | "allocate" | "enumerate" | "get" => {
                     lifetime_defs = quote!();
                     impl_lifetime = quote!('_);
                     // call_lifetime = quote!('handle);
