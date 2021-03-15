@@ -277,7 +277,7 @@ fn main() {
                 }
             ];
 
-            let pd1 = pd.index(0);
+            let pd1 = &pd[0];
 
             let device = unsafe { pd1.device_creator(&queue_info).create().unwrap() };
             println!("{:?}", device);
@@ -295,7 +295,7 @@ fn main() {
 
             println!("{:?}", ma);
 
-            let props = pd.index(0).get_physical_device_features_2::<(PhysicalDeviceVariablePointerFeatures, PhysicalDevice16BitStorageFeatures)>();
+            let props = pd[0].get_physical_device_features_2::<(PhysicalDeviceVariablePointerFeatures, PhysicalDevice16BitStorageFeatures)>();
             println!("{:?}", props);
             println!("{:?}", props.pn().0);
 

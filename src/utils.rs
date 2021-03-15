@@ -703,16 +703,9 @@ impl<'a> RreturnType<'a> {
                 match field.reference {
                     Some(vkxml::ReferenceType::Pointer) => {
                         if field.size.is_some() {
-                            if global_data::is_handle(&field.basetype) {
-                                Ty::new()
-                                    .basetype("HandleVec")
-                                    .type_param(ty)
-                            }
-                            else {
-                                Ty::new()
-                                    .basetype("Vec")
-                                    .type_param(ty)
-                            }
+                            Ty::new()
+                                .basetype("Vec")
+                                .type_param(ty)
                         }
                         else {
                             ty

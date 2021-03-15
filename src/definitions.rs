@@ -753,6 +753,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                 #owner_name::new(self.0, self.1)
                             }
                         }
+                        impl<'parent, Own> Return<Vec<#owner_name<'parent, Own>>> for
+                                ((Vec<#handle_name<'static>>), &'parent #dispatch_parent<'_>) {
+                            fn ret(self) -> Vec<#owner_name<'parent, Own>> {
+                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
+                            }
+                        }
                     })
                 };
 
@@ -843,6 +849,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                 #owner_name::new(self.0, self.1)
                             }
                         }
+                        impl<'parent, Own> Return<Vec<#owner_name<'parent, Own>>> for
+                                ((Vec<#handle_name<'static>>), &'parent #dispatch_parent<'_>) {
+                            fn ret(self) -> Vec<#owner_name<'parent, Own>> {
+                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
+                            }
+                        }
                     };
 
                     quote!{
@@ -880,6 +892,12 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                         impl<'parent, Own, A: Copy> Return<(A, #owner_name<'parent, Own>)> for ((A, #handle_name<'static>), &'parent PhysicalDeviceOwner<'_>) {
                             fn ret(self) -> (A, #owner_name<'parent, Own>) {
                                 ((self.0).0, #owner_name::new((self.0).1, self.1))
+                            }
+                        }
+                        impl<'parent, Own> Return<Vec<#owner_name<'parent, Own>>> for
+                                ((Vec<#handle_name<'static>>), &'parent PhysicalDeviceOwner<'_>) {
+                            fn ret(self) -> Vec<#owner_name<'parent, Own>> {
+                                self.0.iter().copied().map(|handle| ((handle), self.1).ret()).collect()
                             }
                         }
                     };
