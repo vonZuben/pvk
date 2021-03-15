@@ -272,14 +272,14 @@ fn main() {
 
             let queue_info = [
                 DeviceQueueCreateInfo!{
-                    queue_family_index: 0u32,
-                    p_queue_priorities: &[1f32][..],
+                    queue_family_index: 0,
+                    p_queue_priorities: &[1f32],
                 }
             ];
 
             let pd1 = pd.index(0);
 
-            let device = unsafe { pd1.device_creator(&queue_info[..]).create().unwrap() };
+            let device = unsafe { pd1.device_creator(&queue_info).create().unwrap() };
             println!("{:?}", device);
 
             let mut ma = MemoryAllocateInfo! {
@@ -493,9 +493,9 @@ fn main() {
                     .unwrap_or(Box::new(VERSION_1_0));
 
                 let app_info = ApplicationInfo! {
-                    p_application_name: app_name,
+                    p_application_name: Some(app_name),
                     application_version: self.app_version.make(),
-                    p_engine_name: engine_name,
+                    p_engine_name: Some(engine_name),
                     engine_version: self.engine_version.make(),
                     api_version: api_version.version(),
                 };
@@ -506,7 +506,7 @@ fn main() {
                                                 .map( |extension| extension.0.extension_name().into() ).collect());
 
                 let create_info = InstanceCreateInfo!{
-                    p_application_info: &app_info,
+                    p_application_info: Some(&app_info),
                     pp_enabled_layer_names: &enabled_layers,
                     pp_enabled_extension_names: &enabled_extensions,
                 };

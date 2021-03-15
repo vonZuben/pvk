@@ -271,14 +271,14 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     }
 
                                     let init = vk::#name {
-                                        $( $nono_name: $nono_val.into(), )*
+                                        $( $nono_name: $nono_val, )*
                                         _p1: PhantomData,
                                         _p2: PhantomData,
                                     };
 
                                     #[allow(unused_mut)]
                                     let mut opt = Opt::default();
-                                    $( opt.$o_name = $o_val.into(); )*
+                                    $( opt.$o_name = $o_val; )*
 
                                     #[allow(unused_mut)]
                                     let mut combined = Combined {
