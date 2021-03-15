@@ -43,9 +43,11 @@
         such as handles, and also ensure that the borrowing is not to limiting by not unnecessarily borrowing
         - TODO - still need to consider if all times are correct, such as AllocationCallbacks
 
-- [ ] fix struct generator macros
+- [x] fix struct generator macros
         right now, the macros are really awkward to use because .into() doesn't play nice with all types (especially numbers)
         also there are issues with creating references to temporary values being created (such as with &[] inside the macro call)
+        this is not so bad for now.
+        I will continue to use this and see if i can try it in a test project
 
 - [x] EXT_debug_utils_loader doesn't generate the proper loading commands for some reason
         this needs to be fixed in order to ever use the debug extesion (maybe other extension have same problemaybe other extension have same problem)
@@ -60,6 +62,21 @@
         needs to provide the struct with the pNext chain already built.
         -- OLD -- Need to provide api that cat take user provided destination, and return the destination initialized
         Solution: made fuctions whcih return to p_next chains generic over the types that can be in the p_next chain
+
+
+========= LONG TERM GOALS (not blocking for MVP) ==================
+
+- [ ] When GAT is available, I want to make commands that return array like data generic and user configurable over different array like
+        containers such as Vec and static Array. This will allow the user to choose if the this library uses heap or stack storage.
+        For now, everything just returns a Vec
+        If we can also get some form of default type parameter for functions, then we can even make this change non breaking
+        but it would otherwise be a breaking change as users will need to specify the return type everywhere.
+
+- [ ] Make HandleOwners that do not need to store parent ref or commands (ABI compatible with raw handle array). This may be a pipe dream goal.
+        Some design wherein staticly known memory locations are used for parent refs and commands has been considered, but it is very linmiting
+        since you would need to hard code every possible VkDevice (and maybe even all types you plan to use). Maybe make it
+        optional, it may be helpful in uses cases where hardware is alrady known and many things can be made static.
+
 
 PROBLEM
 
