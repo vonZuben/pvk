@@ -77,6 +77,11 @@
         since you would need to hard code every possible VkDevice (and maybe even all types you plan to use). Maybe make it
         optional, it may be helpful in uses cases where hardware is alrady known and many things can be made static.
 
+- [ ] Support custom allocators. The current implementation simply ignores any user provided custom allocator
+        It is not necessary to support this now as it should be possible to add later without any breaking change
+        and I do not care about custom allocators at this time
+        Also, maybe custom allocators can be related to the above GAT related code??
+
 
 PROBLEM
 
