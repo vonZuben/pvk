@@ -7,7 +7,7 @@ default:
 	chmod +x /tmp/test_build.sh
 
 run: /tmp/test_build.sh
-	cargo run > /tmp/tmp.rs
+	cargo run --bin vk_stdout vk.xml > /tmp/tmp.rs
 	rustfmt /tmp/tmp.rs
 	vim /tmp/tmp.rs
 
