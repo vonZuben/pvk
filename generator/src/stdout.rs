@@ -25,7 +25,18 @@ fn main() {
 
     let code = append_main(code);
 
+    let code = prepend_global_attributes(code);
+
     println!("{}", code);
+}
+
+fn prepend_global_attributes(code: String) -> String {
+    format!("
+    #![allow(non_camel_case_types)]
+    #![allow(non_snake_case)]
+    #![allow(non_upper_case_globals)]
+    #![allow(unused)]
+    {}", code)
 }
 
 fn append_main(code: String) -> String {

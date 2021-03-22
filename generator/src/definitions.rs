@@ -248,8 +248,10 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     { $( $count_setters:tt )* }) => {
                                 {
                                     use $crate::*;
+                                    use std::marker::PhantomData;
                                     mod vk {
                                         use $crate::*;
+                                        use std::marker::PhantomData;
                                         pub struct #name<'public, 'private> {
                                             #( pub #must_init_members , )*
                                             pub _p1: PhantomData<&'public ()>,
@@ -288,7 +290,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                         _p2: PhantomData,
                                     };
 
-                                    #name!( @count_setter combined -> $($count_setters)* );
+                                    $crate::#name!( @count_setter combined -> $($count_setters)* );
 
                                     #name {
                                         #( #to_c_copy )*

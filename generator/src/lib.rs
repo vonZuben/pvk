@@ -194,15 +194,6 @@ pub fn generate(vk_xml_path: &str) -> String {
             _ => None,
         });
 
-    let allow_vulkan_name_formats = quote!{
-        #![allow(non_camel_case_types)]
-        #![allow(non_snake_case)]
-        #![allow(non_upper_case_globals)]
-        #![allow(unused)]
-
-        //trace_macros!(true);
-    };
-
     let initial_test_code = quote!{
         // macro_rules! vk_make_version {
         //     ($major:expr, $minor:expr, $patch:expr) => {
@@ -364,23 +355,46 @@ pub fn generate(vk_xml_path: &str) -> String {
                     .map(|boxed_ver| boxed_ver.clone())
                     .unwrap_or(Box::new(VERSION_1_0));
 
-                let app_info = ApplicationInfo! {
-                    p_application_name: Some(app_name),
+                // let app_info = crate::ApplicationInfo! {
+                //     p_application_name: Some(app_name),
+                //     application_version: self.app_version.make(),
+                //     p_engine_name: Some(engine_name),
+                //     engine_version: self.engine_version.make(),
+                //     api_version: api_version.version(),
+                // };
+
+                // cannot use the exported macros internally due to
+                // #[deny(macro-expanded-macro-exports-accessed-by-absolute-paths)]
+                let app_info = ApplicationInfo {
+                    s_type: StructureType::APPLICATION_INFO,
+                    p_next: Pnext::new(),
+                    p_application_name: app_name.to_c(),
                     application_version: self.app_version.make(),
-                    p_engine_name: Some(engine_name),
+                    p_engine_name: engine_name.to_c(),
                     engine_version: self.engine_version.make(),
                     api_version: api_version.version(),
                 };
 
-                let enabled_layers = ArrayArray(self.enabled_layers.iter()
+                let enabled_layers: ArrayArray<MyStr> = ArrayArray(self.enabled_layers.iter()
                                                 .map( |layer| layer.layer_name().into() ).collect());
-                let enabled_extensions = ArrayArray(self.enabled_extensions.iter()
+                let enabled_extensions: ArrayArray<MyStr> = ArrayArray(self.enabled_extensions.iter()
                                                 .map( |extension| extension.0.extension_name().into() ).collect());
 
-                let create_info = InstanceCreateInfo!{
-                    p_application_info: Some(&app_info),
-                    pp_enabled_layer_names: &enabled_layers,
-                    pp_enabled_extension_names: &enabled_extensions,
+                // let create_info = crate::InstanceCreateInfo!{
+                //     p_application_info: Some(&app_info),
+                //     pp_enabled_layer_names: &enabled_layers,
+                //     pp_enabled_extension_names: &enabled_extensions,
+                // };
+
+                let create_info = InstanceCreateInfo {
+                    s_type: StructureType::INSTANCE_CREATE_INFO,
+                    p_next: Pnext::new(),
+                    flags: Default::default(),
+                    p_application_info: (&app_info).to_c(),
+                    enabled_layer_count: enabled_layers.len() as _,
+                    pp_enabled_layer_names: (&enabled_layers).to_c(),
+                    enabled_extension_count: enabled_extensions.len() as _,
+                    pp_enabled_extension_names: (&enabled_extensions).to_c(),
                 };
 
                 let mut inst: MaybeUninit<Instance> = MaybeUninit::uninit();
@@ -447,17 +461,30 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
             pub unsafe fn create(&self) -> VkResult<DeviceOwner<'public, Owned>> {
 
-                let enabled_layers = ArrayArray(self.enabled_layers.iter()
+                let enabled_layers: ArrayArray<MyStr> = ArrayArray(self.enabled_layers.iter()
                                                 .map( |layer| layer.layer_name().into() ).collect());
-                let enabled_extensions = ArrayArray(self.enabled_extensions.iter()
+                let enabled_extensions: ArrayArray<MyStr> = ArrayArray(self.enabled_extensions.iter()
                                                 .map( |extension| extension.0.extension_name().into() ).collect());
 
-                let create_info = DeviceCreateInfo!{
-                    flags: DeviceCreateFlags::empty(),
-                    p_queue_create_infos: self.queue_create_info,
-                    pp_enabled_layer_names: &enabled_layers,
-                    pp_enabled_extension_names: &enabled_extensions,
-                    p_enabled_features: self.enabled_features,
+                // let create_info = crate::DeviceCreateInfo!{
+                //     flags: DeviceCreateFlags::empty(),
+                //     p_queue_create_infos: self.queue_create_info,
+                //     pp_enabled_layer_names: &enabled_layers,
+                //     pp_enabled_extension_names: &enabled_extensions,
+                //     p_enabled_features: self.enabled_features,
+                // };
+
+                let create_info = DeviceCreateInfo {
+                    s_type: StructureType::DEVICE_CREATE_INFO,
+                    p_next: Pnext::new(),
+                    flags: Default::default(),
+                    queue_create_info_count: self.queue_create_info.len() as _,
+                    p_queue_create_infos: self.queue_create_info.to_c(),
+                    enabled_layer_count: enabled_layers.len() as _,
+                    pp_enabled_layer_names: (&enabled_layers).to_c(),
+                    enabled_extension_count: enabled_extensions.len() as _,
+                    pp_enabled_extension_names: (&enabled_extensions).to_c(),
+                    p_enabled_features: self.enabled_features.to_c(),
                 };
 
                 let mut device: MaybeUninit<Device> = MaybeUninit::uninit();
@@ -1078,19 +1105,6 @@ pub fn generate(vk_xml_path: &str) -> String {
         //         }
         //     }
         // }
-
-        use std::mem::MaybeUninit;
-        use std::marker::PhantomData;
-        use std::os::raw::*;
-        use std::ffi::{CStr, CString};
-        use std::mem::ManuallyDrop;
-        use std::cell::UnsafeCell;
-        use std::fmt::Debug;
-        use std::fmt;
-        use std::ptr;
-
-        use handles::*;
-        use private_struct_interface::*;
 
         fn take_lowest_bit(input: &mut i32) -> Option<i32> {
             let lowest_bit = *input & (*input).wrapping_neg();
@@ -2074,8 +2088,19 @@ pub fn generate(vk_xml_path: &str) -> String {
     });
 
     let mut q = quote!{
-        #allow_vulkan_name_formats
-        //#initial_test_code
+        use std::mem::MaybeUninit;
+        use std::marker::PhantomData;
+        use std::os::raw::*;
+        use std::ffi::{CStr, CString};
+        use std::mem::ManuallyDrop;
+        use std::cell::UnsafeCell;
+        use std::fmt::Debug;
+        use std::fmt;
+        use std::ptr;
+
+        use handles::*;
+        use private_struct_interface::*;
+
         #util_code
         #platform_specific_types
         #(#tokens)*
