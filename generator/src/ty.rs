@@ -367,6 +367,7 @@ impl Ty {
 pub struct Field {
     pub name: String,
     pub ty: Ty,
+    pub public: bool,
 }
 
 impl Field {
@@ -374,7 +375,12 @@ impl Field {
         Field {
             name: name.to_string(),
             ty: ty.into(),
+            public: false,
         }
+    }
+    pub fn public(mut self) -> Self {
+        self.public = true;
+        self
     }
 }
 
@@ -382,7 +388,11 @@ impl ToTokens for Field {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = self.name.as_code();
         let ty = &self.ty;
-        quote!( #name : #ty ).to_tokens(tokens);
+        let public = match self.public {
+            true => Some(quote!(pub)),
+            false => None,
+        };
+        quote!( #public #name : #ty ).to_tokens(tokens);
     }
 }
 

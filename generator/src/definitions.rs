@@ -57,13 +57,33 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 let public_lifetime = "'public";
                 let private_lifetime = "'private";
 
+                let not_stype_pnext = |field: &&vkxml::Field| {
+                    let fname = utils::field_name_expected(field);
+                    fname != "sType" && fname != "pNext"
+                };
+
+                let not_return = |stct: &Struct| {
+                    if stct.name.contains("BaseOutStructure") || stct.name.contains("BaseInStructure") {
+                        false
+                    }
+                    else {
+                        !stct.is_return
+                    }
+                };
+
                 let fields = stct.elements.iter().filter_map(variant!(StructElement::Member))
                     .map(|field| {
-                        CType::new(field)
+                        let ty = CType::new(field)
                             .public_lifetime(public_lifetime)
                             .private_lifetime(private_lifetime)
                             .context(FieldContext::Member)
-                            .as_field()
+                            .as_field();
+                        if not_stype_pnext(&field) {
+                            ty.public()
+                        }
+                        else {
+                            ty
+                        }
                     });
 
                 let type_lifetime = global_data::type_lifetime(stct.name.as_str()).unwrap_or_default();
@@ -83,17 +103,12 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                     WHEN type_lifetime.private => {
                         st.lifetime_param(private_lifetime)
                     }
+                    WHEN not_return(&stct) => {
+                        st.setters(stct.elements.iter().filter_map(variant!(StructElement::Member)).filter(not_stype_pnext))
+                    }
                 };
 
                 // gererate bulders and initializers for only non return types
-                fn not_return(stct: &Struct) -> bool {
-                    if stct.name.contains("BaseOutStructure") || stct.name.contains("BaseInStructure") {
-                        false
-                    }
-                    else {
-                        !stct.is_return
-                    }
-                }
                 let builder_code = if not_return(&stct) {
 
                     // keep track of fields that are just for indicating array lengths
@@ -104,11 +119,6 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             size_params.insert(size.as_str(), ());
                         }
                     }
-
-                    let ignore_stype_pnext = |field: &&vkxml::Field| {
-                        let fname = utils::field_name_expected(field);
-                        fname != "sType" && fname != "pNext"
-                    };
 
                     let struct_field = |field| {
                         utils::Rtype::new(field, stct.name.as_str())
@@ -129,22 +139,20 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         }
                     };
 
-                    let must_init_members = stct.elements.iter().filter_map(variant!(StructElement::Member))
+                    let must_init_members: Vec<_> = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::must_init(field) && !is_size_param(field))
-                        .filter(ignore_stype_pnext)
-                        .map(struct_field);
+                        .filter(not_stype_pnext)
+                        .map(struct_field)
+                        .collect();
 
-                    let must_init_members2 = must_init_members.clone();
-
-                    let optional_members = stct.elements.iter().filter_map(variant!(StructElement::Member))
+                    let optional_members: Vec<_> = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::is_optional(field) || is_size_param(field))
-                        .filter(ignore_stype_pnext)
-                        .map(struct_field);
-
-                    let optional_members2 = optional_members.clone();
+                        .filter(not_stype_pnext)
+                        .map(struct_field)
+                        .collect();
 
                     let param_rules = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(ignore_stype_pnext)
+                        .filter(not_stype_pnext)
                         .map(|field| {
                             let param = case::camel_to_snake(utils::field_name_expected(field)).as_code();
 
@@ -192,49 +200,25 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             }
                         });
 
-                    let must_init_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
+                    let must_init_move = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::must_init(field) && !is_size_param(field))
-                        .filter(ignore_stype_pnext)
+                        .filter(not_stype_pnext)
                         .map(|field| {
+                            let set_field = format!("set_{}", case::camel_to_snake(utils::field_name_expected(field))).as_code();
                             let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
                             quote!{
-                                #field: init.#field,
+                                fin.#set_field(init.#field);
                             }
                         });
 
-                    let optional_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
+                    let optional_move = stct.elements.iter().filter_map(variant!(StructElement::Member))
                         .filter(|field| utils::is_optional(field) || is_size_param(field))
-                        .filter(ignore_stype_pnext)
+                        .filter(not_stype_pnext)
                         .map(|field| {
+                            let set_field = format!("set_{}", case::camel_to_snake(utils::field_name_expected(field))).as_code();
                             let field = case::camel_to_snake(utils::field_name_expected(field)).as_code();
                             quote!{
-                                #field: opt.#field,
-                            }
-                        });
-
-                    let to_c_copy = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .map(|field| {
-                            let fname = utils::field_name_expected(field);
-                            let field_code = case::camel_to_snake(fname).as_code();
-
-                            // generate proper s_type field and generate default p_next as empty
-                            if fname == "sType" {
-                                let stype = utils::structure_type_name(field).as_code();
-                                quote!{
-                                    #field_code: StructureType::#stype,
-                                }
-                            }
-                            else if fname == "pNext" {
-                                quote!{
-                                    #field_code: Pnext::new(),
-                                }
-                            }
-                            // otherwise, covnert the user provided/default data to the final c
-                            // struct
-                            else {
-                                quote!{
-                                    #field_code: combined.#field_code.to_c(),
-                                }
+                                fin.#set_field(opt.#field);
                             }
                         });
 
@@ -266,8 +250,8 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     }
 
                                     struct Combined<'public, 'private> {
-                                        #( #must_init_members2 , )*
-                                        #( #optional_members2 , )*
+                                        #( #must_init_members , )*
+                                        #( #optional_members , )*
                                         _p1: PhantomData<&'public ()>,
                                         _p2: PhantomData<&'private ()>,
                                     }
@@ -282,30 +266,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     let mut opt = Opt::default();
                                     $( opt.$o_name = $o_val; )*
 
-                                    #[allow(unused_mut)]
-                                    let mut combined = Combined {
-                                        #( #must_init_copy )*
-                                        #( #optional_copy )*
-                                        _p1: PhantomData,
-                                        _p2: PhantomData,
-                                    };
+                                    let mut fin = #name::new();
+                                    #(#must_init_move)*
+                                    #(#optional_move)*
 
-                                    $crate::#name!( @count_setter combined -> $($count_setters)* );
-
-                                    #name {
-                                        #( #to_c_copy )*
-                                    }
+                                    fin
                                 }
                             };
-
-                            // expand all count_setters
-                            ( @count_setter $combined:ident -> { $size:ident, $array:ident ; $($mod:tt)* } $($rest:tt)* ) => {{
-                                $combined.$size = $combined.$array.len() $($mod)*;
-                                $crate::#name!( @count_setter $combined -> $($rest)* )
-                            }};
-
-                            // last count_setter empty
-                            ( @count_setter $combined:ident -> ) => {{}};
 
                             ( @munch { s_type $($restin:tt)* } $($rest:tt)* ) => {
                                 compile_error!("s_type param is automatically set. Do not set manually");
@@ -374,7 +341,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                             unsafe impl<'public> Base<'public> for #name<'public, '_> {
                                 const ST: StructureType = StructureType::#st;
                             }
-                            impl StypeInit for #name<'static, '_> {}
+                            impl<'public, 'private> StypeInit<'public> for #name<'public, 'private> {}
                             impl AddChain for #name<'static, '_> {}
                         }
                     )
@@ -598,7 +565,13 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
 
                     #[repr(transparent)]
                     #[derive(Clone, Copy)]
-                    pub struct #name_wrapper(#fptr_name);
+                    pub struct #name_wrapper(Option<#fptr_name>);
+
+                    impl #name_wrapper {
+                        fn take(self) -> Option<#fptr_name> {
+                            self.0
+                        }
+                    }
 
                     // simply print the name of the function pointer
                     // there is'nt much else hepful to print

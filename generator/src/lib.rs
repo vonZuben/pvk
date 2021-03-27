@@ -809,7 +809,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
         mod private_struct_interface {
             use super::BaseStructure;
-            pub trait StypeInit: Sized + super::Base<'static> {
+            pub trait StypeInit<'public>: Sized + super::Base<'public> {
                 fn init_s_type() -> Self {
                     let mut this = std::mem::MaybeUninit::zeroed();
                     {
@@ -857,7 +857,7 @@ pub fn generate(vk_xml_path: &str) -> String {
             ( $($id:tt, $t:ident);* ) => {
                 impl<$($t),* , Extendee> PnChain<Extendee> for ($($t,)*)
                 where
-                    $($t: PnLink<Extendee> + StypeInit),*
+                    $($t: PnLink<Extendee> + StypeInit<'static>),*
                 {
                     fn new_chain() -> Self {
                         ($($t::init_s_type(),)*)
@@ -943,7 +943,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
         pub struct PnTuple<A, C>(A, C);
 
-        impl<A: StypeInit + AddChain, C: PnChain<A>> PnTuple<A, C> {
+        impl<A: StypeInit<'static> + AddChain, C: PnChain<A>> PnTuple<A, C> {
             fn new() -> Self {
                 Self(A::init_s_type(), C::new_chain())
             }
@@ -1130,6 +1130,15 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
         }
 
+        impl<T> Len for Option<&mut [T]> {
+            fn len(&self) -> usize {
+                match self {
+                    Some(a) => a.len(),
+                    None => 0,
+                }
+            }
+        }
+
         #[derive(Clone, Copy)]
         #[repr(transparent)]
         // & c_char here is a reference to the fits character of a c style stirng
@@ -1154,7 +1163,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
         #[repr(transparent)]
         #[derive(Clone, Copy)]
-        struct ArrayString<A: AsRef<[c_char]>>(A);
+        pub struct ArrayString<A: AsRef<[c_char]>>(A);
 
         impl<A: AsRef<[c_char]>> ::std::fmt::Debug for ArrayString<A> {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1596,12 +1605,11 @@ pub fn generate(vk_xml_path: &str) -> String {
         // this is only intended to be used with *const and *mut
         // to indicate that the pointer is for an array of T
 
-        #[derive(Debug)]
         #[repr(transparent)]
         pub struct Array<'a, T>(*const T, PhantomData<&'a [T]>);
 
         impl<'a, T> Array<'a, T> {
-            unsafe fn from_ptr(p: *const T) -> Self {
+            fn from_ptr(p: *const T) -> Self {
                 Self(p, PhantomData)
             }
         }
@@ -1614,12 +1622,20 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
         }
 
-        #[derive(Debug)]
+        impl<T: Debug> Debug for Array<'_, T> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.debug_struct("Array")
+                    .field("ptr", &self.0)
+                    // .field("val", unsafe{ &*self.0 })
+                    .finish()
+            }
+        }
+
         #[repr(transparent)]
         pub struct ArrayMut<'a, T>(*mut T, PhantomData<&'a mut [T]>);
 
         impl<'a, T> ArrayMut<'a, T> {
-            unsafe fn from_ptr(p: *mut T) -> Self {
+            fn from_ptr(p: *mut T) -> Self {
                 Self(p, PhantomData)
             }
         }
@@ -1629,6 +1645,15 @@ pub fn generate(vk_xml_path: &str) -> String {
         impl<T> Clone for ArrayMut<'_, T> {
             fn clone(&self) -> Self {
                 *self
+            }
+        }
+
+        impl<T: Debug> Debug for ArrayMut<'_, T> {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                f.debug_struct("ArrayMut")
+                    .field("ptr", &self.0)
+                    // .field("val", unsafe{ &*self.0 })
+                    .finish()
             }
         }
 
@@ -1715,7 +1740,7 @@ pub fn generate(vk_xml_path: &str) -> String {
             fn new(r: &'a T) -> Self {
                 Self(r, PhantomData)
             }
-            unsafe fn from_ptr(p: *const T) -> Self {
+            fn from_ptr(p: *const T) -> Self {
                 Self(p, PhantomData)
             }
         }
@@ -1732,7 +1757,7 @@ pub fn generate(vk_xml_path: &str) -> String {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 f.debug_struct("Ref")
                     .field("ptr", &self.0)
-                    .field("val", unsafe{ &*self.0 })
+                    // .field("val", unsafe{ &*self.0 })
                     .finish()
             }
         }
@@ -1744,7 +1769,7 @@ pub fn generate(vk_xml_path: &str) -> String {
             fn new(r: &'a mut T) -> Self {
                 Self(r, PhantomData)
             }
-            unsafe fn from_ptr(p: *mut T) -> Self {
+            fn from_ptr(p: *mut T) -> Self {
                 Self(p, PhantomData)
             }
         }
@@ -1761,7 +1786,7 @@ pub fn generate(vk_xml_path: &str) -> String {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                 f.debug_struct("RefMut")
                     .field("ptr", &self.0)
-                    .field("val", unsafe{ &*self.0 })
+                    // .field("val", unsafe{ &*self.0 })
                     .finish()
             }
         }

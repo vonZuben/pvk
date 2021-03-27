@@ -231,9 +231,9 @@ impl<'a> CType<'a> {
 
         pipe!{ ty = Ty::new() =>
             STAGE ty.basetype(field.basetype.as_str());
-            DONE WHEN is_return_type && field.basetype == "PFN_vkVoidFunction" => {
-                Ty::new().basetype("Option").type_param(ty)
-            }
+            // DONE WHEN is_return_type && field.basetype == "PFN_vkVoidFunction" => {
+            //     Ty::new().basetype("Option").type_param(ty)
+            // }
             STAGE {
                 if let Some(type_lifetime) = type_lifetime {
                     pipe! { ty =>

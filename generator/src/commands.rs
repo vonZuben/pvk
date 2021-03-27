@@ -182,9 +182,9 @@ pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
                 // but if you are confident that your platform writes/reads function pointers
                 // atomically, then there is no real issue here, and synchronization should be safe
                 // to ignore
-                unsafe fn load<F>(&self, mut f: F) where F: FnMut(&::std::ffi::CStr) -> Option<PFN_vkVoidFunction> {
+                unsafe fn load<F>(&self, mut f: F) where F: FnMut(&::std::ffi::CStr) -> PFN_vkVoidFunction {
                     let cname = ::std::ffi::CString::new(#raw_name).unwrap();
-                    let function_pointer = f(&cname);
+                    let function_pointer = f(&cname).take();
                     if let Some(fptr) = function_pointer {
                         self.0.get().write(::std::mem::transmute(fptr));
                     }
