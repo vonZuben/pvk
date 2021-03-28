@@ -99,10 +99,38 @@ impl ToTokens for Struct<'_> {
                     unsafe { MaybeUninit::uninit().assume_init() }
                 }
             };
+
+            let must_init_setters: Vec<_> = setters.iter()
+                .filter(|setter| utils::must_init(self.name, setter.field)).collect();
+
+            let field_names: Vec<_> = must_init_setters.iter()
+                .map(|setter|{
+                    let name = utils::case::camel_to_snake(utils::field_name_expected(setter.field)).as_code();
+                    quote!(#name)
+                })
+                .collect();
+
+            let field_types: Vec<_> = must_init_setters.iter()
+                .map(|setter|{
+                    let ty = utils::Rtype::new(setter.field, setter.container)
+                        .public_lifetime("'public")
+                        .private_lifetime("'private")
+                        .ref_lifetime("'private")
+                        .context(utils::FieldContext::Member);
+                    quote!(#ty)
+                })
+                .collect();
+
             Some(quote!{
                 impl #generics #name #generics {
-                    pub fn new() -> Self {
+                    pub fn uninit() -> Self {
                         #init
+                    }
+                    pub fn new(#(#field_names: #field_types),*) -> Self {
+                        Self {
+                            #(#field_names: #field_names.to_c(),)*
+                            ..Self::uninit()
+                        }
                     }
                     #(#setters)*
                 }

@@ -572,7 +572,7 @@ impl<'a> Rtype<'a> {
                     None => ty,
                 }
             }
-            WHEN is_optional(field)
+            WHEN is_optional(container, field)
                 && (matches!(context, FieldContext::FunctionParam) || matches!(field.reference, Some(_)))
                 && allow_optional
                 && !for_freeing
@@ -737,7 +737,12 @@ pub fn r_return_type<'a>(field: &'a vkxml::Field, with_lifetime: WithLifetime<'a
         .public_lifetime(with_lifetime)
 }
 
-pub fn is_optional(field: &vkxml::Field) -> bool {
+pub fn is_optional(context: &str, field: &vkxml::Field) -> bool {
+
+    if global_data::is_size_field(context, field) {
+        return true;
+    }
+
     // optional is a comma seperated list of booleans
     // if the first boolean is true, then is_optional returns true
     if field.optional.as_ref()
@@ -754,8 +759,8 @@ pub fn is_optional(field: &vkxml::Field) -> bool {
     }
 }
 
-pub fn must_init(field: &vkxml::Field) -> bool {
-    ! is_optional(field)
+pub fn must_init(context: &str, field: &vkxml::Field) -> bool {
+    ! is_optional(context, field)
 }
 
 pub fn ctype_to_rtype(type_name: &str) -> String {

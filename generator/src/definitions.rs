@@ -5,8 +5,6 @@ use vkxml::*;
 
 use proc_macro2::{TokenStream};
 
-use std::collections::HashMap;
-
 use crate::utils::*;
 
 use crate::stct;
@@ -111,15 +109,6 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                 // gererate bulders and initializers for only non return types
                 let builder_code = if not_return(&stct) {
 
-                    // keep track of fields that are just for indicating array lengths
-                    // these will be set automatically by passing in an array
-                    let mut size_params = HashMap::new();
-                    for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
-                        if let Some(size) = field.size.as_ref() {
-                            size_params.insert(size.as_str(), ());
-                        }
-                    }
-
                     let struct_field = |field| {
                         utils::Rtype::new(field, stct.name.as_str())
                         .public_lifetime(public_lifetime)
@@ -129,24 +118,14 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         .as_field()
                     };
 
-                    let is_size_param = |field| {
-                        let field_name = utils::field_name_expected(field);
-                        if size_params.contains_key(field_name) {
-                            true
-                        }
-                        else {
-                            false
-                        }
-                    };
-
                     let must_init_members: Vec<_> = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::must_init(field) && !is_size_param(field))
+                        .filter(|field| utils::must_init(&stct.name, field))
                         .filter(not_stype_pnext)
                         .map(struct_field)
                         .collect();
 
                     let optional_members: Vec<_> = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::is_optional(field) || is_size_param(field))
+                        .filter(|field| utils::is_optional(&stct.name, field))
                         .filter(not_stype_pnext)
                         .map(struct_field)
                         .collect();
@@ -176,7 +155,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     }
                                 });
 
-                            if is_optional(field) {
+                            if is_optional(&stct.name, field) {
                                 quote!{
                                     ( @munch { #param: $val:expr $( , $( $rest:tt )* )? }
                                         -> { $( $optional:tt )* } ; { $( $nonoptional:tt )* } ; { $($count_setters:tt)* } ) => {
@@ -201,7 +180,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         });
 
                     let must_init_move = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::must_init(field) && !is_size_param(field))
+                        .filter(|field| utils::must_init(&stct.name, field))
                         .filter(not_stype_pnext)
                         .map(|field| {
                             let set_field = format!("set_{}", case::camel_to_snake(utils::field_name_expected(field))).as_code();
@@ -212,7 +191,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                         });
 
                     let optional_move = stct.elements.iter().filter_map(variant!(StructElement::Member))
-                        .filter(|field| utils::is_optional(field) || is_size_param(field))
+                        .filter(|field| utils::is_optional(&stct.name, field))
                         .filter(not_stype_pnext)
                         .map(|field| {
                             let set_field = format!("set_{}", case::camel_to_snake(utils::field_name_expected(field))).as_code();
@@ -266,7 +245,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
                                     let mut opt = Opt::default();
                                     $( opt.$o_name = $o_val; )*
 
-                                    let mut fin = #name::new();
+                                    let mut fin = #name::uninit();
                                     #(#must_init_move)*
                                     #(#optional_move)*
 

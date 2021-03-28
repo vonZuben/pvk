@@ -37,6 +37,7 @@ type TypeLifetimes<'a> = HashMap<&'a str, TypeLifetime>;
 
 type Dictionary<'a> = HashMap<&'a str, ()>;
 type VkResultMembers<'a> = Vec<VkResultMember<'a>>;
+type GenericDictionary<T> = HashMap<T, ()>;
 
 type ExtensionMap<'a> = (String, &'a str); // extension_name (const value), and extension name for code gen
 
@@ -60,6 +61,7 @@ pub struct GlobalData<'a> {
     pub extendable: Dictionary<'a>,
     pub is_base: Dictionary<'a>,
     pub all_structure_types: Vec<VKSt<'a>>,
+    pub size_fields: GenericDictionary<(&'a str, &'a str)>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -130,6 +132,10 @@ pub fn is_base(name: &str) -> bool {
 
 pub fn structure_types() -> &'static Vec<VKSt<'static>> {
     &expect_gd().all_structure_types
+}
+
+pub fn is_size_field(context: &str, field: &Field) -> bool {
+    expect_gd().size_fields.contains_key(&(context, utils::field_name_expected(field)))
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -228,14 +234,19 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                             }
                             for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
                                 if stct.name.as_str() == "VkBaseOutStructure" || stct.name.as_str() == "VkBaseInStructure" {
-                                    break;
+                                    continue;
                                 }
+
+                                let name = stct.name.as_str();
+
                                 if field.basetype.as_str() == "VkStructureType" {
-                                    let name = stct.name.as_str();
                                     let st_name = utils::structure_type_name(field);
                                     global_data.all_structure_types.push(VKSt{name, st_name});
                                     global_data.is_base.entry(name).or_insert(());
-                                    break;
+                                }
+
+                                if let Some(size) = field.size.as_ref() {
+                                    global_data.size_fields.insert((name, size.as_str()), ());
                                 }
                             }
                         }
