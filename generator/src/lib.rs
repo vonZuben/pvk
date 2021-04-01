@@ -2123,7 +2123,7 @@ pub fn generate(vk_xml_path: &str) -> String {
         use std::fmt;
         use std::ptr;
 
-        use handles::*;
+        pub use handles::*;
         use private_struct_interface::*;
 
         #util_code
