@@ -96,7 +96,7 @@ impl ToTokens for Struct<'_> {
             }
             else {
                 quote! {
-                    unsafe { MaybeUninit::uninit().assume_init() }
+                    unsafe { MaybeUninit::zeroed().assume_init() }
                 }
             };
 
@@ -127,10 +127,8 @@ impl ToTokens for Struct<'_> {
                         #init
                     }
                     pub fn new(#(#field_names: #field_types),*) -> Self {
-                        Self {
-                            #(#field_names: #field_names.to_c(),)*
-                            ..Self::uninit()
-                        }
+                        Self::uninit()
+                            #(.#field_names(#field_names))*
                     }
                     #(#setters)*
                 }
