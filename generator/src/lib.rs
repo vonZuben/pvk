@@ -212,11 +212,17 @@ pub fn generate(vk_xml_path: &str) -> String {
         pub struct VkVersion(pub u32, pub u32, pub u32);
 
         impl VkVersion {
-            fn make(self) -> u32 {
+            pub fn make(self) -> u32 {
                 let major = self.0;
                 let minor = self.1;
                 let patch = self.2;
                 vk_make_version(major, minor, patch)
+            }
+            pub fn from_raw(ver: u32) -> Self {
+                let major = ver >> 22;
+                let minor = (ver >> 12) & 0x3FF;
+                let patch = ver & 0x7FF;
+                Self(major, minor, patch)
             }
         }
 
