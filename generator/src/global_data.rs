@@ -62,11 +62,14 @@ pub struct GlobalData<'a> {
     pub is_base: Dictionary<'a>,
     pub all_structure_types: Vec<VKSt<'a>>,
     pub size_fields: GenericDictionary<(&'a str, &'a str)>,
+    pub optional_size: GenericDictionary<(&'a str, &'a str)>,
+    pub noautovalid: GenericDictionary<(&'a str, &'a str)>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
 
 pub static REGISTRY: OnceCell<Registry> = OnceCell::new();
+pub static REGISTRY2: OnceCell<vk_parse::Registry> = OnceCell::new();
 
 fn expect_gd() -> &'static GlobalData<'static> {
     GLOBAL_DATA.get().expect("error: GLOBAL_DATA not set")
@@ -138,6 +141,14 @@ pub fn is_size_field(context: &str, field: &Field) -> bool {
     expect_gd().size_fields.contains_key(&(context, utils::field_name_expected(field)))
 }
 
+pub fn is_optional_size(context: &str, size: &str) -> bool {
+    expect_gd().optional_size.contains_key(&(context, size))
+}
+
+pub fn is_noautovalid(context: &str, field: &Field) -> bool {
+    expect_gd().noautovalid.contains_key(&(context, utils::field_name_expected(field)))
+}
+
 // the first pass of the registry is for collecting information about the kinds of basetypes
 // and other things that can be collected and used to make other decisions in a second pass
 //
@@ -147,7 +158,7 @@ pub fn is_size_field(context: &str, field: &Field) -> bool {
 //
 // we should be able to collect all information we need from only 2 passes
 
-pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Registry) {
+pub fn generate(registry: &'static vkxml::Registry, registry2: &'static vk_parse::Registry) {
 
     let mut global_data = GlobalData::default();
 
@@ -232,6 +243,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
                                         .or_insert(());
                                 }
                             }
+                            let mut optional_fields = Vec::new();
                             for field in stct.elements.iter().filter_map(variant!(StructElement::Member)) {
                                 if stct.name.as_str() == "VkBaseOutStructure" || stct.name.as_str() == "VkBaseInStructure" {
                                     continue;
@@ -247,6 +259,13 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
 
                                 if let Some(size) = field.size.as_ref() {
                                     global_data.size_fields.insert((name, size.as_str()), ());
+                                    if optional_fields.contains(&size.as_str()) {
+                                        global_data.optional_size.insert((name, size.as_str()), ());
+                                    }
+                                }
+
+                                if field.optional.as_ref().map(|opt|opt.split(',').next() == Some("true")).unwrap_or(false) {
+                                    optional_fields.push(utils::field_name_expected(field));
                                 }
                             }
                         }
@@ -482,6 +501,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &vk_parse::Regist
     for item in registry2.0.iter() {
         match item {
             vk_parse::RegistryChild::Feature(feature) => get_feature_enums_from_vk_parse_reg(feature, &mut global_data),
+            vk_parse::RegistryChild::Types(ty) => get_no_auto_valid(ty, &mut global_data),
             _ => {},
         }
     };
@@ -591,4 +611,44 @@ pub fn get_feature_enums_from_vk_parse_reg(feature: &vk_parse::Feature, global_d
                     _ => {},
                 }
             }
+}
+
+fn get_no_auto_valid(types_child: &'static vk_parse::CommentedChildren<vk_parse::TypesChild>, global_data: &mut GlobalData) {
+    'child: for ty in types_child.children.iter() {
+        match ty {
+            vk_parse::TypesChild::Type(ty) => {
+                if ty.category.as_ref().map(String::as_str) != Some("struct") {
+                    continue 'child;
+                }
+                match &ty.spec {
+                    vk_parse::TypeSpec::Members(members) => {
+                        for member in members.iter() {
+                            match member {
+                                vk_parse::TypeMember::Definition(member) => {
+                                    if member.len.is_some() {
+                                        if let Some(_av) = member.noautovalidity.as_ref(){
+                                            let get_field_name = || {
+                                                for m in member.markup.iter() {
+                                                    match m {
+                                                        vk_parse::TypeMemberMarkup::Name(name) => return name.as_str(),
+                                                        _ => {}
+                                                    }
+                                                }
+                                                panic!("no name for filed of struct")
+                                            };
+                                            let field_name = get_field_name();
+                                            global_data.noautovalid.insert((ty.name.as_ref().unwrap().as_str(), field_name), ());
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
 }

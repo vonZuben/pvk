@@ -144,6 +144,10 @@ pub fn generate(vk_xml_path: &str) -> String {
     // but it does include the aliases
     let (registry2, _) = vk_parse::parse_file(&vk_xml_path).expect("failed to parse vk.xml");
 
+    assert!(global_data::REGISTRY2.set(registry2).is_ok());
+
+    let registry2 = global_data::REGISTRY2.get().unwrap();
+
     let cmd_alias_iter = registry2.0.iter()
         .filter_map(
             |elem| match elem
@@ -1139,6 +1143,15 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
         }
 
+        impl<T> Len for Option<& ArrayArray<T>> {
+            fn len(&self) -> usize {
+                match self {
+                    Some(a) => a.len(),
+                    None => 0,
+                }
+            }
+        }
+
         #[derive(Clone, Copy)]
         #[repr(transparent)]
         // & c_char here is a reference to the fits character of a c style stirng
@@ -1565,6 +1578,15 @@ pub fn generate(vk_xml_path: &str) -> String {
                     }
                 }
             }
+
+            impl<'a, H> ConvertToC<Array<'a, H>> for Option<&'a [MutHandle<H>]> {
+                fn to_c(self) -> Array<'a, H> {
+                    match self {
+                        Some(a) => a.to_c(),
+                        None => Array::from_ptr(ptr::null()),
+                    }
+                }
+            }
         }
 
         #[derive(Debug)]
@@ -1895,6 +1917,15 @@ pub fn generate(vk_xml_path: &str) -> String {
         impl<'a> ConvertToC<Array<'a, *const c_char>> for &'a ArrayArray<MyStr<'_>> {
             fn to_c(self) -> Array<'a, *const c_char> {
                 unsafe { Array::from_ptr( ::std::mem::transmute::<*const MyStr, *const *const c_char>(self.0.as_ptr()) ) }
+            }
+        }
+
+        impl<'a> ConvertToC<Array<'a, *const c_char>> for Option<&'a ArrayArray<MyStr<'_>>> {
+            fn to_c(self) -> Array<'a, *const c_char> {
+                match self {
+                    Some(a) => a.to_c(),
+                    None => Array::from_ptr(ptr::null()),
+                }
             }
         }
 

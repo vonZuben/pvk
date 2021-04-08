@@ -743,6 +743,12 @@ pub fn is_optional(context: &str, field: &vkxml::Field) -> bool {
         return true;
     }
 
+    if let Some(size) = field.size.as_ref() {
+        if global_data::is_optional_size(context, size) {
+            return true;
+        }
+    }
+
     // optional is a comma seperated list of booleans
     // if the first boolean is true, then is_optional returns true
     if field.optional.as_ref()
@@ -751,7 +757,8 @@ pub fn is_optional(context: &str, field: &vkxml::Field) -> bool {
         }
     // if a type is a pointer and has noautovalidity, then we assume the pointer can be NULL
     // and is_optional is true
-    else if field.auto_validity == false && matches!(field.reference, Some(vkxml::ReferenceType::Pointer)) {
+    //else if field.auto_validity == false && matches!(field.reference, Some(vkxml::ReferenceType::Pointer)) {
+    else if global_data::is_noautovalid(context, field) { // right now, is_noautovalid stores fileds that have noautovalidity=true, AND are arrays
         true
     }
     else {
