@@ -234,7 +234,7 @@ pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
 
     quote!{
 
-        struct InstanceCommands {
+        pub struct InstanceCommands {
             #( #instance_command_params ),*
         }
         impl InstanceCommands {
@@ -250,7 +250,7 @@ pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
             }
         }
 
-        struct DeviceCommands {
+        pub struct DeviceCommands {
             #( #device_command_params ),*
         }
         impl DeviceCommands {

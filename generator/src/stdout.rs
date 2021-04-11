@@ -47,7 +47,7 @@ fn append_main(code: String) -> String {
             let mut instance = InstanceCreator::new()
                 .enabled_extensions(&[KHR_get_physical_device_properties2])
                 .app_name("heyo")
-                .create()
+                .create(VERSION_1_0)
                 .unwrap();
 
             //let mut phd: PhysicalDevice = std::ptr::null();
@@ -93,7 +93,7 @@ fn append_main(code: String) -> String {
 
             let pd1 = &pd[0];
 
-            let device = unsafe { pd1.device_creator(&queue_info).create().unwrap() };
+            let device = unsafe { pd1.device_creator(&queue_info).create(VERSION_1_0).unwrap() };
             println!("{:?}", device);
 
             let mut ma = MemoryAllocateInfo! {

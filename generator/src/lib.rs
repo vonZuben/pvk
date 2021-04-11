@@ -300,10 +300,6 @@ pub fn generate(vk_xml_path: &str) -> String {
             app_version: VkVersion,
             engine_name: CString,
             engine_version: VkVersion,
-            // Vulkan spec: The patch version number specified in apiVersion is ignored when creating an instance object.
-            // Only the major and minor versions of the instance must match those requested in apiVersion
-            // therefore, I will only accept the custom Feature typs that I generate
-            api_version: Option<Box<dyn Feature>>,
             enabled_layers: Vec<&'a dyn VkLayerName>,
             enabled_extensions: Vec<InstanceExtension>,
         }
@@ -333,11 +329,6 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self
             }
 
-            pub fn api_version(mut self, api_version: impl Into<FeatureWrapper>) -> Self {
-                self.api_version = Some(api_version.into().0);
-                self
-            }
-
             pub fn enabled_layers<L>(mut self, enabled_layers: impl IntoIterator<Item = L>) -> Self
                 where L: Into<LayerWrapper<'a>>
             {
@@ -356,25 +347,10 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self
             }
 
-            pub fn create(&self) -> VkResult<InstanceOwner<'static, Owned>> {
+            pub fn create<V: Feature>(&self, api_version: V) -> VkResult<InstanceOwner<'static, Owned>> {
                 let app_name: MyStr = (&self.app_name).into();
                 let engine_name: MyStr = (&self.engine_name).into();
 
-                let api_version: Box<dyn Feature> = self.api_version
-                    .as_ref()
-                    .map(|boxed_ver| boxed_ver.clone())
-                    .unwrap_or(Box::new(VERSION_1_0));
-
-                // let app_info = crate::ApplicationInfo! {
-                //     p_application_name: Some(app_name),
-                //     application_version: self.app_version.make(),
-                //     p_engine_name: Some(engine_name),
-                //     engine_version: self.engine_version.make(),
-                //     api_version: api_version.version(),
-                // };
-
-                // cannot use the exported macros internally due to
-                // #[deny(macro-expanded-macro-exports-accessed-by-absolute-paths)]
                 let app_info = ApplicationInfo {
                     s_type: StructureType::APPLICATION_INFO,
                     p_next: Pnext::new(),
@@ -389,12 +365,6 @@ pub fn generate(vk_xml_path: &str) -> String {
                                                 .map( |layer| layer.layer_name().into() ).collect());
                 let enabled_extensions: ArrayArray<MyStr> = ArrayArray(self.enabled_extensions.iter()
                                                 .map( |extension| extension.0.extension_name().into() ).collect());
-
-                // let create_info = crate::InstanceCreateInfo!{
-                //     p_application_info: Some(&app_info),
-                //     pp_enabled_layer_names: &enabled_layers,
-                //     pp_enabled_extension_names: &enabled_extensions,
-                // };
 
                 let create_info = InstanceCreateInfo {
                     s_type: StructureType::INSTANCE_CREATE_INFO,
@@ -432,8 +402,6 @@ pub fn generate(vk_xml_path: &str) -> String {
                         unsafe { extension.0.load_instance_commands(instance.handle, &instance.commands); }
                     }
 
-                    instance.feature_version = api_version;
-
                     vk_result.success(instance)
                 }
             }
@@ -469,20 +437,12 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self.enabled_features = enabled_features.into();
                 self
             }
-            pub unsafe fn create(&self) -> VkResult<DeviceOwner<'public, Owned>> {
+            pub unsafe fn create<V: Feature>(&self, api_version: V) -> VkResult<DeviceOwner<'public, Owned>> {
 
                 let enabled_layers: ArrayArray<MyStr> = ArrayArray(self.enabled_layers.iter()
                                                 .map( |layer| layer.layer_name().into() ).collect());
                 let enabled_extensions: ArrayArray<MyStr> = ArrayArray(self.enabled_extensions.iter()
                                                 .map( |extension| extension.0.extension_name().into() ).collect());
-
-                // let create_info = crate::DeviceCreateInfo!{
-                //     flags: DeviceCreateFlags::empty(),
-                //     p_queue_create_infos: self.queue_create_info,
-                //     pp_enabled_layer_names: &enabled_layers,
-                //     pp_enabled_extension_names: &enabled_extensions,
-                //     p_enabled_features: self.enabled_features,
-                // };
 
                 let create_info = DeviceCreateInfo {
                     s_type: StructureType::DEVICE_CREATE_INFO,
@@ -517,9 +477,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
                     let device: DeviceOwner<'public, Owned> = DeviceOwner::new(device, self.physical_device.dispatch_parent);
 
-                    self.physical_device.dispatch_parent
-                        .feature_version
-                        .load_device_commands(device.handle, &device.commands);
+                    api_version.load_device_commands(device.handle, &device.commands);
                     for extension in &self.enabled_extensions {
                         extension.0.load_device_commands(device.handle, &device.commands);
                         extension.0.load_instance_commands(self.physical_device.dispatch_parent.handle,
@@ -640,21 +598,17 @@ pub fn generate(vk_xml_path: &str) -> String {
         #[derive(Debug, Default)]
         pub struct Borrowed;
 
-        pub struct FeatureWrapper(Box<dyn Feature>);
+        mod feature_private {
+            use super::*;
 
-        trait Feature : FeatureCore + Send + Sync + 'static {}
-        impl<T> Feature for T where T: FeatureCore + Send + Sync + 'static {}
+            pub trait Feature : FeatureCore + Send + Sync + 'static {}
+            impl<T> Feature for T where T: FeatureCore + Send + Sync + 'static {}
 
-        trait FeatureCore {
-            unsafe fn load_instance_commands(&self, instance: Instance, inst_cmds: &InstanceCommands);
-            unsafe fn load_device_commands(&self, device: Device, dev_cmds: &DeviceCommands);
-            fn version(&self) -> u32;
-            fn clone_feature(&self) -> Box<dyn Feature>;
-        }
-
-        impl Clone for Box<dyn Feature> {
-            fn clone(&self) -> Self {
-                self.clone_feature()
+            pub trait FeatureCore {
+                unsafe fn load_instance_commands(&self, instance: Instance, inst_cmds: &InstanceCommands);
+                unsafe fn load_device_commands(&self, device: Device, dev_cmds: &DeviceCommands);
+                fn version(&self) -> u32;
+                fn clone_feature(&self) -> Box<dyn Feature>;
             }
         }
 
@@ -2162,6 +2116,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
         pub use handles::*;
         use private_struct_interface::*;
+        use feature_private::*;
 
         #util_code
         #platform_specific_types

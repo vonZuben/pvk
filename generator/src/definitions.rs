@@ -623,7 +623,6 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                 let owner_members = match handle.name.as_str() {
                     "VkInstance" => quote!{
                         commands: InstanceCommands,
-                        feature_version: Box<dyn Feature>,
                         _parent: std::marker::PhantomData<&'parent ()>,
                     },
                     "VkDevice" => quote!{
@@ -646,7 +645,6 @@ pub fn post_process_handles(parse_state: &ParseState) -> TokenStream {
                                 #owner_name {
                                     handle,
                                     commands: InstanceCommands::new(),
-                                    feature_version: Box::new(VERSION_1_0),
                                     _parent: PhantomData,
                                     _is_owned: PhantomData,
                                 }
