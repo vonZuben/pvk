@@ -10,31 +10,43 @@ ComputePipelineCreateInfo needs base_pipeline_index set which isn't needed unles
 
 MyStr in public api is weird, should probably just take &CStr
 
+ShaderModuleCreateInfo::new asks for code_size (shoudn't)
+
+providing some kind of shader module loading helper would be nice (awkward going between raw u8 buffer to u32 buffer manually)
+
+NOT freeing "DeviceMemory" is actually a validation layer, so not automatically dropping it is actually a problem
+
 */
 
 
 use std::{ffi::CString, io::Read};
 use std::fs::File;
 
-use vk::{self, ComputePipelineCreateInfo, DeviceQueueCreateInfo, MemoryPropertyFlags, PhysicalDeviceType, PipelineLayoutCreateInfo, PipelineShaderStageCreateInfo, QueueFlags, ShaderModuleCreateInfo, ShaderStageFlags};
+use vk::{self, BufferCreateInfo, BufferUsageFlags, CommandBufferAllocateInfo, CommandBufferBeginInfo, CommandBufferLevel, CommandPoolCreateInfo, ComputePipelineCreateInfo, DescriptorBufferInfo, DescriptorPoolCreateInfo, DescriptorPoolSize, DescriptorSetAllocateInfo, DescriptorSetLayoutBinding, DescriptorSetLayoutCreateInfo, DescriptorType, DeviceQueueCreateInfo, MemoryAllocateInfo, MemoryPropertyFlags, PhysicalDeviceType, PipelineBindPoint, PipelineLayoutCreateInfo, PipelineShaderStageCreateInfo, QueueFlags, ShaderModuleCreateInfo, ShaderStageFlags, SharingMode, WriteDescriptorSet};
 use vk::HandleOwner;
 
 fn main() {
-    let instance = vk::InstanceCreator::new().create().unwrap();
+    let version = vk::enumerate_instance_version().unwrap();
+    println!("{:?}", vk::VkVersion::from_raw(version));
+    let instance = vk::InstanceCreator::new() //.api_version(vk::VERSION_1_1)
+        .create(vk::VERSION_1_0).unwrap();
 
     let physical_devices = instance.enumerate_physical_devices().unwrap();
 
     let get_integrated_pd = || {
-        for pd in physical_devices {
+        for pd in physical_devices.iter() {
             let props = pd.get_physical_device_properties();
+            // println!("{:#?}", props);
             if props.device_type == PhysicalDeviceType::INTEGRATED_GPU {
-                return Some(pd);
+                return Ok(pd);
             }
         }
-        None
+        Err("Can't find requested type of device")
     };
 
     let selected_pd = get_integrated_pd().unwrap();
+
+    // panic!();
 
     let memory_props = selected_pd.get_physical_device_memory_properties();
 
@@ -53,7 +65,7 @@ fn main() {
 
     let get_compute_queue = || {
         for (i, p) in qp.iter().enumerate() {
-            println!("{:?}", p);
+            // println!("{:?}", p);
             if p.queue_flags.contains(QueueFlags::COMPUTE) {
                 return Some(i);
             }
@@ -64,32 +76,128 @@ fn main() {
     let compute_queue_index = get_compute_queue().unwrap() as _;
 
     let device = unsafe {
-        selected_pd.device_creator(&[DeviceQueueCreateInfo::new(compute_queue_index, &[1.0])])
-            .create().unwrap()
+
+        let device_create_info = DeviceQueueCreateInfo::new(compute_queue_index, &[1.0]);
+
+        selected_pd.device_creator(&[device_create_info])
+            .create(vk::VERSION_1_0).unwrap()
     };
 
+    let queue = device.get_device_queue(compute_queue_index, 0);
 
     // compute pipeline
-
-    let mut buf = Vec::new();
-    let code_size = File::open("shdr.spv").unwrap().read_to_end(&mut buf).unwrap();
+    const ASSUMED_BIG_ENOUGH: usize = 4096;
+    let mut buf: Vec<u32> = Vec::with_capacity(ASSUMED_BIG_ENOUGH);
+    let code_size = {
+        println!("DIR {:?}", std::env::current_dir().unwrap());
+        let buf = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, ASSUMED_BIG_ENOUGH * 4) };
+        File::open("vk/examples/comp.spv").unwrap().read(buf).unwrap()
+    };
     assert_eq!(code_size % 4, 0);
-    let buf = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u32, code_size) };
+    assert!(code_size < ASSUMED_BIG_ENOUGH);
 
-    let shader_info = ShaderModuleCreateInfo::new(code_size, buf);
+    unsafe { buf.set_len(code_size / 4); }
+
+    // println!("code_sice: {} -> buf: {:?}", code_size, buf);
+
+    let shader_info = ShaderModuleCreateInfo::new(code_size, &buf);
     let module = device.create_shader_module(&shader_info, None).unwrap();
+    eprintln!("shrd_module {:?}", module);
 
     let c_string = CString::new("main").unwrap();
     let stage = PipelineShaderStageCreateInfo::new(ShaderStageFlags::COMPUTE, module.handle(), (&c_string).into());
 
-    let pipe_layout_info = PipelineLayoutCreateInfo::new(&descriptor_layouts, &[]);
+    let b1 = DescriptorSetLayoutBinding::new(0, DescriptorType::STORAGE_BUFFER, ShaderStageFlags::COMPUTE)
+        .descriptor_count(1);
+    // println!("{:#?}", b1);
+    // println!("{:#?}", DescriptorSetLayoutBinding::uninit());
+    let bindings = [b1];
+    let dsl_info = DescriptorSetLayoutCreateInfo::new().p_bindings(Some(&bindings));
+    let ds_layout = device.create_descriptor_set_layout(&dsl_info, None).unwrap();
+    eprintln!("ds_layout {:?}", ds_layout);
+    let descriptor_layouts = [ds_layout.handle()];
+    let pipe_layout_info = PipelineLayoutCreateInfo::new().p_set_layouts(Some(&descriptor_layouts));
     let layout = device.create_pipeline_layout(&pipe_layout_info, None).unwrap();
+    eprintln!("layout {:?}", layout);
 
     // WEIRD: the need to include base_pipeline_index here
-    let cp_ci = ComputePipelineCreateInfo::new(stage, layout.handle(), 0);
+    let cp_ci = ComputePipelineCreateInfo::new(stage, layout.handle(), -1);
 
-    let cp = device.create_compute_pipelines(None, &[cp_ci], None).unwrap().pop().unwrap();
+    let cpipeline = device.create_compute_pipelines(None, &[cp_ci], None).unwrap().pop().unwrap();
+    eprintln!("cpipeline {:?}", cpipeline);
+
+    // buffer
+
+    const NUM_ELEMENTS: usize = 64;
+
+    let indicies = [compute_queue_index];
+    let buff_info = BufferCreateInfo::new(std::mem::size_of::<f32>() as u64 * NUM_ELEMENTS as u64,
+        BufferUsageFlags::STORAGE_BUFFER, SharingMode::EXCLUSIVE).p_queue_family_indices(Some(&indicies));
+    let mut buffer = device.create_buffer(&buff_info, None).unwrap();
+    eprintln!("buffer {:?}", buffer);
+
+    let mem_req = device.get_buffer_memory_requirements(buffer.handle());
+    assert!((mem_req.memory_type_bits & 1 << selected_memory_type) != 0);
+    let mem_info = MemoryAllocateInfo::new(mem_req.size, selected_memory_type as _);
+    let mut memory = device.allocate_memory(&mem_info, None).unwrap();
+    eprintln!("memory {:?}", memory);
+
+    device.bind_buffer_memory(buffer.mut_handle(), memory.handle(), 0);
+
+    // descriptor set
+
+    let pool_size = DescriptorPoolSize::new(DescriptorType::STORAGE_BUFFER, 1);
+    let pool_sizes = &[pool_size];
+    let ds_pool_info = DescriptorPoolCreateInfo::new(1, pool_sizes);
+    let ds_pool = device.create_descriptor_pool(&ds_pool_info, None).unwrap();
+    eprintln!("ds_pool {:?}", ds_pool);
+
+    let layouts = &[ds_layout.handle()];
+    let ds_alloc_info = DescriptorSetAllocateInfo::new(ds_pool.handle(), layouts);
+    let ds = device.allocate_descriptor_sets(&ds_alloc_info).unwrap().pop().unwrap();
+
+    let buffer_write_info = DescriptorBufferInfo::new(buffer.handle(), 0, vk::WHOLE_SIZE);
+    let buffer_writes = [buffer_write_info];
+    let write = WriteDescriptorSet::new(ds.handle(), 0, 0, DescriptorType::STORAGE_BUFFER)
+        .p_buffer_info(Some(&buffer_writes));
+    device.update_descriptor_sets(&[write], &[]);
+
+    // command buffer
+
+    let cmd_pool_info = CommandPoolCreateInfo::new(compute_queue_index);
+    let cmd_pool = device.create_command_pool(&cmd_pool_info, None).unwrap();
+    eprintln!("cmd_pool {:?}", cmd_pool);
+
+    let cmd_alloc_info = CommandBufferAllocateInfo::new(cmd_pool.handle(), CommandBufferLevel::PRIMARY, 1);
+    let mut cmd_buffer = device.allocate_command_buffers(&cmd_alloc_info).unwrap().pop().unwrap();
 
 
-    println!("{:?}", device);
+    let begin_info = CommandBufferBeginInfo::new();//.flags(CommandBufferUsageFlags::ONE_TIME_SUBMIT);
+    cmd_buffer.begin_command_buffer(&begin_info);
+
+    cmd_buffer.bind_pipeline(PipelineBindPoint::COMPUTE, cpipeline.handle());
+    cmd_buffer.bind_descriptor_sets(PipelineBindPoint::COMPUTE, layout.handle(),
+        0, &[ds.handle()], &[]);
+
+    cmd_buffer.dispatch(1, 1, 1);
+
+    cmd_buffer.end_command_buffer();
+
+    let cmd_buffers = &[cmd_buffer.handle()];
+    let submit = vk::SubmitInfo::new().p_command_buffers(Some(cmd_buffers));
+    let submits = [submit];
+    queue.queue_submit(&submits, None);
+
+    queue.queue_wait_idle();
+
+    let ptr = device.map_memory(memory.mut_handle(), 0, vk::WHOLE_SIZE, None).unwrap();
+    let buf = unsafe { std::slice::from_raw_parts(ptr as *const f32, NUM_ELEMENTS) };
+    for f in buf.iter() {
+        println!("{}", f);
+    }
+
+    // device.unmap_memory(memory.mut_handle());
+
+    // I should not need to call this manually
+    device.free_memory(memory, None);
 }
