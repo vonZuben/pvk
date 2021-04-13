@@ -221,7 +221,7 @@ pub fn generate(vk_xml_path: &str) -> String {
             pub fn from_raw(ver: u32) -> Self {
                 let major = ver >> 22;
                 let minor = (ver >> 12) & 0x3FF;
-                let patch = ver & 0x7FF;
+                let patch = ver & 0xFFF;
                 Self(major, minor, patch)
             }
         }
