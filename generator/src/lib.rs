@@ -351,6 +351,10 @@ pub fn generate(vk_xml_path: &str) -> String {
                 let app_name: MyStr = (&self.app_name).into();
                 let engine_name: MyStr = (&self.engine_name).into();
 
+                if api_version.version() > enumerate_instance_version().result().expect("error: cannont enumerate_instance_version") {
+                    return VkResultRaw::ERROR_INCOMPATIBLE_DRIVER.err();
+                }
+
                 let app_info = ApplicationInfo {
                     s_type: StructureType::APPLICATION_INFO,
                     p_next: Pnext::new(),
@@ -439,6 +443,10 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
             pub unsafe fn create<V: Feature>(&self, api_version: V) -> VkResult<DeviceOwner<'public, Owned>> {
 
+                if api_version.version() > self.physical_device.get_physical_device_properties().api_version {
+                    return VkResultRaw::ERROR_INCOMPATIBLE_DRIVER.err();
+                }
+
                 let enabled_layers: ArrayArray<MyStr> = ArrayArray(self.enabled_layers.iter()
                                                 .map( |layer| layer.layer_name().into() ).collect());
                 let enabled_extensions: ArrayArray<MyStr> = ArrayArray(self.enabled_extensions.iter()
@@ -508,10 +516,11 @@ pub fn generate(vk_xml_path: &str) -> String {
         }
 
         impl<T> VkResult<T> {
+            #[track_caller]
             pub fn unwrap(self) -> T {
-                self.to_std_result().unwrap()
+                self.result().unwrap()
             }
-            pub fn to_std_result(self) -> Result<T, VkResultRaw> {
+            pub fn result(self) -> Result<T, VkResultRaw> {
                 if self.result_code.is_err() {
                     Err(self.result_code)
                 }
