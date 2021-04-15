@@ -43,7 +43,7 @@ fn append_main(code: String) -> String {
 
     let main = quote!{
         fn main(){
-
+            println!("supported instance version: {:?}", VkVersion::from_raw(enumerate_instance_version().unwrap()));
             let mut instance = InstanceCreator::new()
                 .enabled_extensions(&[KHR_get_physical_device_properties2])
                 .app_name("heyo")

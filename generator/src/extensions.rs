@@ -143,6 +143,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     CommandCategory::Entry => panic!(
                         format!("error: extension command is for Entry command: {}", command_ref_name)
                     ),
+                    CommandCategory::DoNotGenerate => panic!(
+                        format!("error: extension command is for DoNotGenerate command: {}", command_ref_name)
+                    ),
                 }
             });
 
@@ -161,6 +164,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     ),
                     CommandCategory::Entry => panic!(
                         format!("error: extension command is for Entry command: {}", command_ref_name)
+                    ),
+                    CommandCategory::DoNotGenerate => panic!(
+                        format!("error: extension command is for DoNotGenerate command: {}", command_ref_name)
                     ),
                 }
             });

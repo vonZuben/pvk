@@ -38,11 +38,13 @@ pub enum CommandCategory {
     Instance,
     Static,
     Entry,
+    DoNotGenerate,
 }
 
 pub fn command_category(cmd: &Command) -> CommandCategory {
     match cmd.name.as_str() {
         "vkGetInstanceProcAddr" | "vkGetDeviceProcAddr" => CommandCategory::Static,
+        "vkEnumerateInstanceVersion" => CommandCategory::DoNotGenerate, // this function is manually created in lib.rs in order to support VK 1.0
         _ =>
             match cmd.param[0].basetype.as_str() {
                 "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandCategory::Device,

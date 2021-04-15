@@ -2103,6 +2103,70 @@ pub fn generate(vk_xml_path: &str) -> String {
         }
     });
 
+    let enumerate_instance_version = quote!{
+        #[allow(non_camel_case_types)]
+        pub type PFN_vkEnumerateInstanceVersion =
+            extern "system" fn(p_api_version: RefMut<'_, u32>) -> VkResultRaw;
+        struct PFN_Loader_vkEnumerateInstanceVersion(Option<PFN_vkEnumerateInstanceVersion>);
+        impl PFN_Loader_vkEnumerateInstanceVersion {
+            fn load<F>(mut f: F) -> Self
+            where
+                F: FnMut(&::std::ffi::CStr) -> PFN_vkVoidFunction,
+            {
+                let cname = ::std::ffi::CString::new("vkEnumerateInstanceVersion").unwrap();
+                let function_pointer = f(&cname).take();
+                if let Some(fptr) = function_pointer {
+                    Self(
+                        Some(
+                            unsafe { ::std::mem::transmute(fptr) }
+                        )
+                    )
+                } else {
+                    Self(None)
+                }
+            }
+            fn call(&self) -> Option<PFN_vkEnumerateInstanceVersion> {
+                self.0
+            }
+        }
+        struct EnumerateInstanceVersion;
+        impl EnumerateInstanceVersion {
+            fn call() -> Option<PFN_vkEnumerateInstanceVersion> {
+                use std::sync::Once;
+                static LOAD: Once = Once::new();
+                static mut PFN: MaybeUninit<PFN_Loader_vkEnumerateInstanceVersion> = MaybeUninit::uninit();
+                unsafe {
+                    LOAD.call_once(|| {
+                        let loader = |raw_cmd_name: &CStr| unsafe {
+                            GetInstanceProcAddr(Default::default(), raw_cmd_name.to_c())
+                        };
+                        let pfn = PFN_Loader_vkEnumerateInstanceVersion::load(loader);
+                        PFN.as_mut_ptr().write(pfn)
+                    });
+                    PFN.as_ptr().read().call()
+                }
+            }
+        }
+        pub fn enumerate_instance_version() -> VkResult<(u32)> {
+            let f = EnumerateInstanceVersion::call();
+            if f.is_none() {
+                return VkResult {
+                    val: MaybeUninit::new(vk_make_version(1, 0, 0)),
+                    result_code: VkResultRaw::SUCCESS,
+                };
+            }
+            let f = f.unwrap();
+            let mut p_api_version = MaybeUninit::uninit();
+            let vk_result = f((&mut p_api_version).to_c());
+            if vk_result.is_err() {
+                return vk_result.err();
+            }
+            let p_api_version = unsafe { p_api_version.assume_init() };
+            let ret = (p_api_version);
+            vk_result.success((ret, &()).ret())
+        }
+    };
+
     let mut q = quote!{
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
@@ -2120,6 +2184,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
         #util_code
         #platform_specific_types
+        #enumerate_instance_version
         #(#tokens)*
         #(#feature_enums)*
         #(#aliases)*
