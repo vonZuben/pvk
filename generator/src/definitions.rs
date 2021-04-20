@@ -432,7 +432,7 @@ pub fn handle_definitions<'a>(definitions: &'a Definitions, parse_state: &mut Pa
             },
             DefinitionsElement::Union(uni) => {
                 let name = uni.name.as_code();
-                let params = uni.elements.iter().map(|field|c_field(field, WithLifetime::Yes("'handle"), FieldContext::Member));
+                let params = uni.elements.iter().map(|field|c_field(field, WithLifetime::Yes("'handle"), FieldContext::Member).public());
 
                 let possible_value = uni.elements.iter().map(|field| {
                     case::camel_to_snake(utils::field_name_expected(field)).as_code()
