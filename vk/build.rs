@@ -55,6 +55,7 @@ fn main() {
 
 }
 
+#[cfg(target_os = "windows")]
 fn first_option<T, E>(options: &[Result<T, E>]) -> Option<&T> {
     for opt in options {
         match opt {
