@@ -2,7 +2,6 @@ use vk::{self, HandleOwner};
 
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Write, BufWriter};
-use std::convert::TryInto;
 
 fn main() {
     let instance = vk::InstanceCreator::new().create(vk::VERSION_1_0).unwrap();
