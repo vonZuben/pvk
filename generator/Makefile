@@ -1,18 +1,34 @@
+.PHONY: c rd run dbg dbg-fmt
 
 default:
 	cargo check
 
-/tmp/test_build.sh:
-	cp test_build.sh /tmp
-	chmod +x /tmp/test_build.sh
+vk.xml:
+	echo "Please put a valid xk.xml file in the root of the generator"
+	false
 
-run: /tmp/test_build.sh
+/tmp/tmp.rs: vk.xml
 	cargo run --bin vk_stdout vk.xml > /tmp/tmp.rs
 	rustfmt /tmp/tmp.rs
+
+rd: /tmp/tmp.rs
 	vim /tmp/tmp.rs
+
+/tmp/tmp: /tmp/tmp.rs
+	rustc /tmp/tmp.rs 2> /tmp/out.txt --out-dir /tmp
+
+run: /tmp/tmp
+	/tmp/tmp
 
 dbg:
 	cargo run 2>&1 | less
 
 dbg-fmt:
 	rustfmt /tmp/tmp.rs 2>&1 | less
+
+err:
+	vim /tmp/out.txt
+
+c:
+	rm -f /tmp/tmp
+	rm -f /tmp/tmp.rs
