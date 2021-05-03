@@ -141,16 +141,9 @@ fn main() {
         0,
         std::mem::size_of::<u32>(),
     )];
-    let data = [number_of_elements];
-    let data = unsafe {
-        std::slice::from_raw_parts(
-            data.as_ptr() as *const std::os::raw::c_void,
-            data.len() * std::mem::size_of::<u32>(),
-        )
-    };
     let special = vk::SpecializationInfo::new()
         .p_map_entries(Some(&map))
-        .p_data(Some(data));
+        .p_data(Some(vk::OpaqueData::from(&number_of_elements)));
     println!("{:#?}", special);
     let c_string = CString::new("main").unwrap();
     let stage = PipelineShaderStageCreateInfo::new(

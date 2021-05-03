@@ -1121,6 +1121,15 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
         }
 
+        impl Len for Option<OpaqueData<'_>> {
+            fn len(&self) -> usize {
+                match self {
+                    Some(a) => a.len(),
+                    None => 0,
+                }
+            }
+        }
+
         #[derive(Clone, Copy)]
         #[repr(transparent)]
         // & c_char here is a reference to the fits character of a c style stirng
@@ -1558,6 +1567,43 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
         }
 
+        #[derive(Debug, Copy, Clone)]
+        #[repr(transparent)]
+        pub struct OpaquePtr<'a>(*const c_void, PhantomData<&'a ()>);
+
+        impl<'a> OpaquePtr<'a> {
+            fn new<T>(p: &'a T) -> Self {
+                Self(p as *const T as *const c_void, PhantomData)
+            }
+            unsafe fn from_ptr<T>(p: *const T) -> Self {
+                Self(p as *const c_void, PhantomData)
+            }
+        }
+
+        impl<'a> ConvertToC<OpaquePtr<'a>> for OpaqueData<'a> {
+            fn to_c(self) -> OpaquePtr<'a> {
+                unsafe { OpaquePtr::from_ptr(self.ptr) }
+            }
+        }
+
+        impl<'a> ConvertToC<OpaquePtr<'a>> for Option<OpaqueData<'a>> {
+            fn to_c(self) -> OpaquePtr<'a> {
+                match self {
+                    Some(o) => unsafe { OpaquePtr::from_ptr(o.ptr) },
+                    None => unsafe { OpaquePtr::from_ptr(::std::ptr::null::<()>()) },
+                }
+            }
+        }
+
+        impl<'a> ConvertToC<OpaquePtr<'a>> for Option<OpaquePtr<'a>> {
+            fn to_c(self) -> OpaquePtr<'a> {
+                match self {
+                    Some(o) => o,
+                    None => unsafe { OpaquePtr::from_ptr(::std::ptr::null::<()>()) },
+                }
+            }
+        }
+
         #[derive(Debug)]
         #[repr(transparent)]
         pub struct OpaqueMutPtr<'a>(*mut c_void, PhantomData<&'a mut ()>);
@@ -1568,18 +1614,18 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
             unsafe fn from_ptr<T>(p: *mut T) -> Self {
                 Self(p as *mut c_void, PhantomData)
-        }
-        }
-
-        impl<'a> ConvertToC<OpaqueMutPtr<'a>> for &'a mut [u8] {
-            fn to_c(self) -> OpaqueMutPtr<'a> {
-                unsafe { OpaqueMutPtr::from_ptr(self.as_mut_ptr()) }
             }
         }
 
         impl<'a> ConvertToC<OpaqueMutPtr<'a>> for &'a mut Vec<u8> {
             fn to_c(self) -> OpaqueMutPtr<'a> {
                 unsafe { OpaqueMutPtr::from_ptr(self.as_mut_ptr()) }
+            }
+        }
+
+        impl<'a> ConvertToC<OpaqueMutPtr<'a>> for OpaqueBuffer<'a> {
+            fn to_c(self) -> OpaqueMutPtr<'a> {
+                unsafe { OpaqueMutPtr::from_ptr(self.ptr) }
             }
         }
 
@@ -2176,6 +2222,68 @@ pub fn generate(vk_xml_path: &str) -> String {
         }
     };
 
+    let void_type = quote! {
+        #[derive(Debug)]
+        pub struct OpaqueBuffer<'a> {
+            ptr: *mut c_void,
+            size: usize,
+            _p: PhantomData<&'a ()>,
+        }
+        impl OpaqueBuffer<'_> {
+            fn len(&self) -> usize {
+                self.size
+            }
+        }
+        impl<'a, T> From<&'a mut T> for OpaqueBuffer<'a> {
+            fn from(t: &'a mut T) -> Self {
+                Self {
+                    ptr: t as *mut _ as *mut c_void,
+                    size: std::mem::size_of::<T>(),
+                    _p: PhantomData,
+                }
+            }
+        }
+        impl<'a, T> From<&'a mut [T]> for OpaqueBuffer<'a> {
+            fn from(t: &'a mut [T]) -> Self {
+                Self {
+                    ptr: t.as_mut_ptr() as *mut c_void,
+                    size: t.len() * std::mem::size_of::<T>(),
+                    _p: PhantomData,
+                }
+            }
+        }
+
+        #[derive(Debug)]
+        pub struct OpaqueData<'a> {
+            ptr: *const c_void,
+            size: usize,
+            _p: PhantomData<&'a ()>,
+        }
+        impl OpaqueData<'_> {
+            fn len(&self) -> usize {
+                self.size
+            }
+        }
+        impl<'a, T> From<&'a T> for OpaqueData<'a> {
+            fn from(t: &'a T) -> Self {
+                Self {
+                    ptr: t as *const _ as *const c_void,
+                    size: std::mem::size_of::<T>(),
+                    _p: PhantomData,
+                }
+            }
+        }
+        impl<'a, T> From<&'a [T]> for OpaqueData<'a> {
+            fn from(t: &'a [T]) -> Self {
+                Self {
+                    ptr: t.as_ptr() as *const c_void,
+                    size: t.len() * std::mem::size_of::<T>(),
+                    _p: PhantomData,
+                }
+            }
+        }
+    };
+
     let mut q = quote!{
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
@@ -2192,6 +2300,7 @@ pub fn generate(vk_xml_path: &str) -> String {
         use feature_private::*;
 
         #util_code
+        #void_type
         #platform_specific_types
         #enumerate_instance_version
         #(#tokens)*

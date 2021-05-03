@@ -281,14 +281,19 @@ impl<'a> CType<'a> {
                     Some(r) => match r {
                         vkxml::ReferenceType::Pointer => {
                             if field.is_const {
-                                Ty::new().basetype("Array")
-                                    .lifetime_param(private_lifetime)
-                                    .type_param(ty)
+                                if field.basetype == "void" {
+                                    Ty::new().basetype("OpaquePtr")
+                                        .lifetime_param(private_lifetime)
+                                }
+                                else {
+                                    Ty::new().basetype("Array")
+                                        .lifetime_param(private_lifetime)
+                                        .type_param(ty)
+                                }
                             } else {
                                 if field.basetype == "void" {
-                                    // assumeing that void pointers to a dynamically sized buffer are always mutable
-                                    assert!(!field.is_const);
                                     Ty::new().basetype("OpaqueMutPtr")
+                                        .lifetime_param(private_lifetime)
                                 }
                                 else {
                                     Ty::new().basetype("ArrayMut")
@@ -498,6 +503,11 @@ impl<'a> Rtype<'a> {
                                     ty.basetype("MyStr")
                                         .lifetime_param(lifetime())
                                 }
+                                else if basetype_str == "void" {
+                                    Ty::new()
+                                        .basetype("OpaqueData")
+                                        .lifetime_param(private_lifetime)
+                                }
                                 else if for_freeing {
                                     Ty::new()
                                         .basetype("HandleVec")
@@ -511,10 +521,8 @@ impl<'a> Rtype<'a> {
                             } else {
                                 if basetype_str == "void" {
                                     Ty::new()
-                                        .basetype("u8")
-                                        .to_array(ArrayType::Slice)
-                                        .reference(lifetime())
-                                        .mutable(true)
+                                        .basetype("OpaqueBuffer")
+                                        .lifetime_param(private_lifetime)
                                 }
                                 else {
                                     ty.to_array(ArrayType::Slice)
