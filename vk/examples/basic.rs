@@ -37,6 +37,10 @@ use vk::{
 };
 
 fn main() {
+    unsafe { do_the_thing() }
+}
+
+unsafe fn do_the_thing() {
     let version = vk::enumerate_instance_version().unwrap();
     println!("{:?}", vk::VkVersion::from_raw(version));
     let instance = vk::InstanceCreator::new() //.api_version(vk::VERSION_1_1)
@@ -94,14 +98,11 @@ fn main() {
 
     let compute_queue_index = get_compute_queue().unwrap() as _;
 
-    let device = unsafe {
-        let device_create_info = DeviceQueueCreateInfo::new(compute_queue_index, &[1.0]);
-
-        selected_pd
+    let device_create_info = DeviceQueueCreateInfo::new(compute_queue_index, &[1.0]);
+    let device = selected_pd
             .device_creator(&[device_create_info])
             .create(vk::VERSION_1_0)
-            .unwrap()
-    };
+            .unwrap();
 
     let queue = device.get_device_queue(compute_queue_index, 0);
 
@@ -110,9 +111,7 @@ fn main() {
     let mut buf: Vec<u32> = Vec::with_capacity(ASSUMED_BIG_ENOUGH);
     let code_size = {
         println!("DIR {:?}", std::env::current_dir().unwrap());
-        let buf = unsafe {
-            std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, ASSUMED_BIG_ENOUGH * 4)
-        };
+        let buf = std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, ASSUMED_BIG_ENOUGH * 4);
         File::open("vk/examples/comp.spv")
             .unwrap()
             .read(buf)
@@ -121,10 +120,7 @@ fn main() {
     assert_eq!(code_size % 4, 0);
     assert!(code_size < ASSUMED_BIG_ENOUGH);
 
-    unsafe {
-        buf.set_len(code_size / 4);
-    }
-
+    buf.set_len(code_size / 4);
     // println!("code_sice: {} -> buf: {:?}", code_size, buf);
 
     let shader_info = ShaderModuleCreateInfo::new(code_size, &buf);
@@ -264,7 +260,7 @@ fn main() {
     let ptr = device
         .map_memory(memory.mut_handle(), 0, vk::WHOLE_SIZE, None)
         .unwrap();
-    let buf = unsafe { std::slice::from_raw_parts(ptr as *const f32, number_of_elements as _) };
+    let buf = std::slice::from_raw_parts(ptr as *const f32, number_of_elements as _);
     println!("there were {} invocations", number_of_elements);
     for f in buf.iter() {
         print!("{}, ", f);

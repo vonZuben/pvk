@@ -4,6 +4,10 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Write, BufWriter};
 
 fn main() {
+    unsafe { do_the_thing() }
+}
+
+unsafe fn do_the_thing() {
     let instance = vk::InstanceCreator::new().create(vk::VERSION_1_0).unwrap();
 
     let selected_pd = instance
@@ -27,14 +31,11 @@ fn main() {
 
     let render_queue_index = get_render_queue().unwrap() as _;
 
-    let device = unsafe {
-        let device_create_info = vk::DeviceQueueCreateInfo::new(render_queue_index, &[1.0]);
-
-        selected_pd
+    let device_create_info = vk::DeviceQueueCreateInfo::new(render_queue_index, &[1.0]);
+    let device = selected_pd
             .device_creator(&[device_create_info])
             .create(vk::VERSION_1_0)
-            .unwrap()
-    };
+            .unwrap();
 
     let vert_module = create_module(&device, "vk/examples/vert.spv");
     let frag_module = create_module(&device, "vk/examples/frag.spv");
@@ -278,7 +279,7 @@ fn main() {
     let ptr = device
         .map_memory(bmem.mut_handle(), 0, vk::WHOLE_SIZE, None)
         .unwrap();
-    let buf = unsafe { std::slice::from_raw_parts(ptr as *const RGBApix, 500 * 500) };
+    let buf = std::slice::from_raw_parts(ptr as *const RGBApix, 500 * 500);
     // let buf = unsafe { std::slice::from_raw_parts(ptr as *const u8, 4 * 500 * 500) };
     // let buf2 = unsafe { std::slice::from_raw_parts(ptr as *const u32, 500 * 500) };
     // for f in buf.iter() {
@@ -344,7 +345,7 @@ fn main() {
     device.free_memory(bmem, None);
 }
 
-fn create_module<'device>(
+unsafe fn create_module<'device>(
     device: &'device vk::DeviceOwner,
     file: &str,
 ) -> vk::ShaderModuleOwner<'device, vk::Owned> {
@@ -353,18 +354,13 @@ fn create_module<'device>(
     let mut buf: Vec<u32> = Vec::with_capacity(ASSUMED_BIG_ENOUGH);
     let code_size = {
         println!("DIR {:?}", std::env::current_dir().unwrap());
-        let buf = unsafe {
-            std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, ASSUMED_BIG_ENOUGH * 4)
-        };
+        let buf = std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, ASSUMED_BIG_ENOUGH * 4);
         File::open(file).unwrap().read(buf).unwrap()
     };
     assert_eq!(code_size % 4, 0);
     assert!(code_size < ASSUMED_BIG_ENOUGH);
 
-    unsafe {
-        buf.set_len(code_size / 4);
-    }
-
+    buf.set_len(code_size / 4);
     // println!("code_sice: {} -> buf: {:?}", code_size, buf);
 
     let shader_info = vk::ShaderModuleCreateInfo::new(code_size, &buf);
