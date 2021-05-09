@@ -439,6 +439,11 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
 
             let mut fn_generics = ty::Generics::default();
 
+            let safty = match cmd_cat {
+                CommandCategory::Entry => None,
+                _ => Some(quote!(unsafe)),
+            };
+
             match method_verb {
                 "create" | "allocate" | "enumerate" | "get" => {
                     lifetime_defs = quote!();
@@ -789,7 +794,7 @@ fn make_owner_method(cmd: &Command) -> TokenStream {
             };
 
             let method = quote!{
-                pub fn #method_name #fn_generics ( #this #( #fields_outer ),* ) -> #result {
+                pub #safty fn #method_name #fn_generics ( #this #( #fields_outer ),* ) -> #result {
                     #( #size_vars )*
                     #size_query
                     #( #return_vars )*

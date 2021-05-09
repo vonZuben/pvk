@@ -43,133 +43,138 @@ fn append_main(code: String) -> String {
 
     let main = quote!{
         fn main(){
-            println!("supported instance version: {:?}", VkVersion::from_raw(enumerate_instance_version().unwrap()));
-            let mut instance = InstanceCreator::new()
-                .enabled_extensions(&[KHR_get_physical_device_properties2])
-                .app_name("heyo")
-                .create(VERSION_1_0)
-                .unwrap();
 
-            //let mut phd: PhysicalDevice = std::ptr::null();
-            //let mut phd_count: u32 = 0;
-            //instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
-            let pd = instance.enumerate_physical_devices().unwrap();
-            //println!("{:?}", inst);
-            println!("{:?}", instance);
-            for pd in &pd {
-                println!("{:?}", pd);
-                println!("{:?}", pd.get_physical_device_properties());
-            }
-            println!("num physical devices: {}", pd.len());
+            unsafe {
 
-            // test Flags printing
-            let flags: QueueFlags = QueueFlags::GRAPHICS | QueueFlags::COMPUTE;
-            println!("{}", flags);
-            println!("{:?}", flags);
-            let flags: ShaderStageFlags = ShaderStageFlags::ALL;
-            println!("{}", flags);
-            println!("{:?}", flags);
-            let flags: ShaderStageFlags = ShaderStageFlags::VERTEX
-                | ShaderStageFlags::FRAGMENT | ShaderStageFlags::TESSELLATION_CONTROL;
-            println!("{}", flags);
-            println!("{:?}", flags);
-            let flags: ShaderStageFlags = ShaderStageFlags::ALL_GRAPHICS;
-            println!("{}", flags);
-            println!("{:?}", flags);
+                println!("supported instance version: {:?}", VkVersion::from_raw(enumerate_instance_version().unwrap()));
+                let mut instance = InstanceCreator::new()
+                    .enabled_extensions(&[KHR_get_physical_device_properties2])
+                    .app_name("heyo")
+                    .create(VERSION_1_0)
+                    .unwrap();
 
-            let u = ClearColorValue { int_32: [1, 1, 1, 1]};
-            let i = ClearValue { color: u };
-            println!("{:?}", i);
-
-
-            // test DeviceCreator
-
-            let queue_info = [
-                DeviceQueueCreateInfo!{
-                    queue_family_index: 0,
-                    p_queue_priorities: &[1f32],
+                //let mut phd: PhysicalDevice = std::ptr::null();
+                //let mut phd_count: u32 = 0;
+                //instance_commands.EnumeratePhysicalDevices.0(inst, &mut phd_count as *mut u32, std::ptr::null_mut());
+                let pd = instance.enumerate_physical_devices().unwrap();
+                //println!("{:?}", inst);
+                println!("{:?}", instance);
+                for pd in &pd {
+                    println!("{:?}", pd);
+                    println!("{:?}", pd.get_physical_device_properties());
                 }
-            ];
+                println!("num physical devices: {}", pd.len());
 
-            let pd1 = &pd[0];
+                // test Flags printing
+                let flags: QueueFlags = QueueFlags::GRAPHICS | QueueFlags::COMPUTE;
+                println!("{}", flags);
+                println!("{:?}", flags);
+                let flags: ShaderStageFlags = ShaderStageFlags::ALL;
+                println!("{}", flags);
+                println!("{:?}", flags);
+                let flags: ShaderStageFlags = ShaderStageFlags::VERTEX
+                    | ShaderStageFlags::FRAGMENT | ShaderStageFlags::TESSELLATION_CONTROL;
+                println!("{}", flags);
+                println!("{:?}", flags);
+                let flags: ShaderStageFlags = ShaderStageFlags::ALL_GRAPHICS;
+                println!("{}", flags);
+                println!("{:?}", flags);
 
-            let device = unsafe { pd1.device_creator(&queue_info).create(VERSION_1_0).unwrap() };
-            println!("{:?}", device);
+                let u = ClearColorValue { int_32: [1, 1, 1, 1]};
+                let i = ClearValue { color: u };
+                println!("{:?}", i);
 
-            let mut ma = MemoryAllocateInfo! {
-                allocation_size: 1000u64,
-                memory_type_index: 0u32,
-            };
 
-            let mut di = DedicatedAllocationMemoryAllocateInfoNV! {
+                // test DeviceCreator
 
-            };
+                let queue_info = [
+                    DeviceQueueCreateInfo!{
+                        queue_family_index: 0,
+                        p_queue_priorities: &[1f32],
+                    }
+                ];
 
-            ma.extend(&mut di);
+                let pd1 = &pd[0];
 
-            println!("{:?}", ma);
+                let device = unsafe { pd1.device_creator(&queue_info).create(VERSION_1_0).unwrap() };
+                println!("{:?}", device);
 
-            let props = pd[0].get_physical_device_features_2::<(PhysicalDeviceVariablePointerFeatures, PhysicalDevice16BitStorageFeatures)>();
-            println!("{:?}", props);
-            println!("{:?}", props.pn().0);
+                let mut ma = MemoryAllocateInfo! {
+                    allocation_size: 1000u64,
+                    memory_type_index: 0u32,
+                };
 
-            // #[derive(Copy, Clone)]
-            // struct A<'owner>(PhantomData<&'owner ()>);
-            // impl A<'_> {
-            //     fn new() -> Self {
-            //         Self(PhantomData)
-            //     }
-            // }
-            // impl Handle for A<'_> {
-            //     // type Owner = Own<'parent>;
-            // }
+                let mut di = DedicatedAllocationMemoryAllocateInfoNV! {
 
-            // struct Own<'parent> {
-            //     handle: A<'static>,
-            //     parent: &'parent InstanceOwner<'parent>,
-            // }
+                };
 
-            // impl<'parent> CreateOwner<'parent> for Own<'parent> {
-            //     type Handle = A<'static>;
-            //     type DispatchParent = InstanceOwner<'parent>;
-            //     fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
-            //         Self {
-            //             handle: handle,
-            //             parent: dispatch_parent,
-            //         }
-            //     }
-            // }
+                ma.extend(&mut di);
 
-            // impl InstanceOwner<'_> {
-            //     pub fn owner<'parent>(
-            //         &'parent self,
-            //     ) -> (Handles<'parent, Own<'parent>, Vec<A>>) {
-            //         let v = vec![A::new(), A::new(), A::new(), A::new()];
+                println!("{:?}", ma);
 
-            //         todo!()
-            //         // ((v), self).ret()
-            //     }
-            // }
+                let props = pd[0].get_physical_device_features_2::<(PhysicalDeviceVariablePointerFeatures, PhysicalDevice16BitStorageFeatures)>();
+                println!("{:?}", props);
+                println!("{:?}", props.pn().0);
 
-            // let o = instance.owner();
+                // #[derive(Copy, Clone)]
+                // struct A<'owner>(PhantomData<&'owner ()>);
+                // impl A<'_> {
+                //     fn new() -> Self {
+                //         Self(PhantomData)
+                //     }
+                // }
+                // impl Handle for A<'_> {
+                //     // type Owner = Own<'parent>;
+                // }
 
-            // let mb = handle_slice![instance, instance];
+                // struct Own<'parent> {
+                //     handle: A<'static>,
+                //     parent: &'parent InstanceOwner<'parent>,
+                // }
 
-            // for i in &mb {
-            //     println!("{:?}", i);
-            // }
+                // impl<'parent> CreateOwner<'parent> for Own<'parent> {
+                //     type Handle = A<'static>;
+                //     type DispatchParent = InstanceOwner<'parent>;
+                //     fn new(handle: Self::Handle, dispatch_parent: &'parent Self::DispatchParent) -> Self {
+                //         Self {
+                //             handle: handle,
+                //             parent: dispatch_parent,
+                //         }
+                //     }
+                // }
 
-            // let mb = mut_handle_slice![instance];
+                // impl InstanceOwner<'_> {
+                //     pub fn owner<'parent>(
+                //         &'parent self,
+                //     ) -> (Handles<'parent, Own<'parent>, Vec<A>>) {
+                //         let v = vec![A::new(), A::new(), A::new(), A::new()];
 
-            // for i in &mb {
-            //     println!("{:?}", i);
-            // }
+                //         todo!()
+                //         // ((v), self).ret()
+                //     }
+                // }
 
-            //test 1_1 feature command ?
-            //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();
-            //let mut phd_count: u32 = 0;
-            //instance_commands.EnumeratePhysicalDevices.0(inst, (&mut phd_count).into(), None.into());
-            //println!("{}", phd_count);
+                // let o = instance.owner();
+
+                // let mb = handle_slice![instance, instance];
+
+                // for i in &mb {
+                //     println!("{:?}", i);
+                // }
+
+                // let mb = mut_handle_slice![instance];
+
+                // for i in &mb {
+                //     println!("{:?}", i);
+                // }
+
+                //test 1_1 feature command ?
+                //let mut phd: MaybeUninit<PhysicalDevice> = MaybeUninit::uninit();
+                //let mut phd_count: u32 = 0;
+                //instance_commands.EnumeratePhysicalDevices.0(inst, (&mut phd_count).into(), None.into());
+                //println!("{}", phd_count);
+
+            }
         }
     };
 
