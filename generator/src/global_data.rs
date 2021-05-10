@@ -64,6 +64,7 @@ pub struct GlobalData<'a> {
     pub size_fields: GenericDictionary<(&'a str, &'a str)>,
     pub optional_size: GenericDictionary<(&'a str, &'a str)>,
     pub noautovalid: GenericDictionary<(&'a str, &'a str)>,
+    pub versions: Vec<&'a vkxml::Features>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -147,6 +148,11 @@ pub fn is_optional_size(context: &str, size: &str) -> bool {
 
 pub fn is_noautovalid(context: &str, field: &Field) -> bool {
     expect_gd().noautovalid.contains_key(&(context, utils::field_name_expected(field)))
+}
+
+#[allow(unused)]
+pub fn versions() -> impl Iterator<Item=&'static vkxml::Feature> {
+    expect_gd().versions.iter().map(|f| f.elements.iter()).flatten()
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -338,7 +344,8 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &'static vk_parse
                     }
                 }
             }
-            RegistryElement::Features(_features) => {
+            RegistryElement::Features(features) => {
+                global_data.versions.push(features);
             }
             RegistryElement::Extensions(extensions) => {
                 for extension in extensions.elements.iter() {
