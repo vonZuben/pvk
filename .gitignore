@@ -5,3 +5,4 @@ vk.xml
 *.spv
 out.ppm
 validation.sh
+.cargo
