@@ -182,8 +182,8 @@ pub fn generate(vk_xml_path: &str) -> String {
     for alias_tuple in cmd_alias_iter {
         // insert a mapping for     alias -> cmd
         // and for                  cmd -> alias
-        assert!(parse_state.command_alias_cache.insert(alias_tuple.0, alias_tuple.1).is_none(), true);
-        assert!(parse_state.command_alias_cache.insert(alias_tuple.1, alias_tuple.0).is_none(), true);
+        assert!(parse_state.command_alias_cache.insert(alias_tuple.0, alias_tuple.1).is_none());
+        assert!(parse_state.command_alias_cache.insert(alias_tuple.1, alias_tuple.0).is_none());
     }
 
     let tokens = registry.elements.iter().map(|relem| vkxml_registry_token_stream(relem, &mut parse_state));

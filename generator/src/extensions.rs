@@ -137,15 +137,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     CommandCategory::Device => {
                         None
                     }
-                    CommandCategory::Static => panic!(
-                        format!("error: extension command is for static command: {}", command_ref_name)
-                    ),
-                    CommandCategory::Entry => panic!(
-                        format!("error: extension command is for Entry command: {}", command_ref_name)
-                    ),
-                    CommandCategory::DoNotGenerate => panic!(
-                        format!("error: extension command is for DoNotGenerate command: {}", command_ref_name)
-                    ),
+                    CommandCategory::Static => panic!("error: extension command is for static command: {}", command_ref_name),
+                    CommandCategory::Entry => panic!("error: extension command is for Entry command: {}", command_ref_name),
+                    CommandCategory::DoNotGenerate => panic!("error: extension command is for DoNotGenerate command: {}", command_ref_name),
                 }
             });
 
@@ -159,15 +153,9 @@ pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate
                     CommandCategory::Device => {
                         Some( quote!( #name_code ) )
                     }
-                    CommandCategory::Static => panic!(
-                        format!("error: extension command is for static command: {}", command_ref_name)
-                    ),
-                    CommandCategory::Entry => panic!(
-                        format!("error: extension command is for Entry command: {}", command_ref_name)
-                    ),
-                    CommandCategory::DoNotGenerate => panic!(
-                        format!("error: extension command is for DoNotGenerate command: {}", command_ref_name)
-                    ),
+                    CommandCategory::Static => panic!("error: extension command is for static command: {}", command_ref_name),
+                    CommandCategory::Entry => panic!("error: extension command is for Entry command: {}", command_ref_name),
+                    CommandCategory::DoNotGenerate => panic!("error: extension command is for DoNotGenerate command: {}", command_ref_name),
                 }
             });
 
@@ -234,14 +222,11 @@ impl ConstExtExt for vkxml::ExtensionConstant {
 
             &self.number , |_| quote!(usize) ;
 
-            &self.hex , |_| panic!(
-                format!("error: trying to get hex type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.hex , |_| panic!("error: trying to get hex type not implemented for ConstExtExt -> {}", self.name);
 
-            &self.bitpos , |_| panic!(
-                format!("error: trying to get bitpos type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.bitpos , |_| panic!("error: trying to get bitpos type not implemented for ConstExtExt -> {}", self.name);
 
-            &self.c_expression , |_expr: &str| panic!(
-                format!("error: trying to get c_expression type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.c_expression , |_expr: &str| panic!("error: trying to get c_expression type not implemented for ConstExtExt -> {}", self.name);
 
         }
 
@@ -255,14 +240,11 @@ impl ConstExtExt for vkxml::ExtensionConstant {
 
             &self.number , |num: &i32| { num.to_string().as_code() } ;
 
-            &self.hex , |_| panic!(
-                format!("error: trying to get hex type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.hex , |_| panic!("error: trying to get hex type not implemented for ConstExtExt -> {}", self.name);
 
-            &self.bitpos , |_| panic!(
-                format!("error: trying to get bitpos type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.bitpos , |_| panic!("error: trying to get bitpos type not implemented for ConstExtExt -> {}", self.name);
 
-            &self.c_expression , |_expr: &str| panic!(
-                format!("error: trying to get c_expression type not implemented for ConstExtExt -> {}", self.name)) ;
+            &self.c_expression , |_expr: &str| panic!("error: trying to get c_expression type not implemented for ConstExtExt -> {}", self.name);
 
         }
     }
@@ -322,8 +304,7 @@ impl EnumExtExt for ExtensionEnum {
                     EnumVal{ val: *num, bitpos: false }
                 } ;
 
-            &self.hex , |_hex| panic!(
-                format!("not expecting hex in enum extension definition: {}", self.name)) ;
+            &self.hex , |_hex| panic!("not expecting hex in enum extension definition: {}", self.name);
 
             // shouldn't have negative bit positions
             &self.bitpos , |bitpos: &u32| EnumVal{ val: 1i32 << bitpos, bitpos: true } ;

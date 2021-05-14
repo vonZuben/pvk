@@ -213,9 +213,8 @@ impl<'a> CType<'a> {
 
         if field.basetype == "void" {
             assert!(field.reference.is_some() || is_return_type,
-                format!("error raw void type in non return position: {}",
-                    field.name.as_ref().map(AsRef::<str>::as_ref)
-                    .unwrap_or("(probably unlabled return type, use CType.is_return_type(true))"))
+                "error raw void type in non return position: {}",
+                    field.name.as_ref().map(AsRef::<str>::as_ref).unwrap_or("(probably unlabled return type, use CType.is_return_type(true))")
             );
             // if field.reference.is_none() && !is_return_type {
             //     println!("error void not ref");

@@ -90,7 +90,7 @@ pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
                 }
             }
         }
-    };
+    }
 
     let instance_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Instance));
     let device_commands = commands.elements.iter().filter(filter_varients!(CommandCategory::Device));

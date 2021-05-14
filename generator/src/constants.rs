@@ -38,7 +38,7 @@ impl ConstExt for vkxml::Constant {
 
                 &self.hex , |_| quote!(usize) ;
 
-                &self.bitpos , |_| panic!(format!("error: trying to get bitpos type not implemented -> {}", self.name)) ;
+                &self.bitpos , |_| panic!("error: trying to get bitpos type not implemented -> {}", self.name) ;
 
                 &self.c_expression , |expr: &str| {
                     match &expr {
