@@ -2284,6 +2284,45 @@ pub fn generate(vk_xml_path: &str) -> String {
         }
     };
 
+    let names: Vec<_> = global_data::versions().map(|version| {
+        let name = version.name.replace("VERSION_", "V").as_code();
+        quote!(#name)
+    }).collect();
+
+    let features: Vec<_> = global_data::versions().map(|version| {
+        let feature = version.name.as_code();
+        quote!(#feature)
+    }).collect();
+
+    let versions = quote! {
+        pub enum Version {
+            #(#names,)*
+        }
+
+        impl FeatureCore for Version {
+            unsafe fn load_instance_commands(&self, instance: Instance, inst_cmds: &InstanceCommands) {
+                match self {
+                    #( Self::#names => #features.load_instance_commands(instance, inst_cmds), )*
+                }
+            }
+            unsafe fn load_device_commands(&self, device: Device, dev_cmds: &DeviceCommands) {
+                match self {
+                    #( Self::#names => #features.load_device_commands(device, dev_cmds), )*
+                }
+            }
+            fn version(&self) -> u32 {
+                match self {
+                    #( Self::#names => #features.version(), )*
+                }
+            }
+            fn clone_feature(&self) -> Box<dyn Feature> {
+                match self {
+                    #( Self::#names => #features.clone_feature(), )*
+                }
+            }
+        }
+    };
+
     let mut q = quote!{
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
@@ -2301,6 +2340,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
         #util_code
         #void_type
+        #versions
         #platform_specific_types
         #enumerate_instance_version
         #(#tokens)*
