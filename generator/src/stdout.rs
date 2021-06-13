@@ -47,11 +47,11 @@ fn append_main(code: String) -> String {
             unsafe {
 
                 println!("supported instance version: {:?}", VkVersion::from_raw(enumerate_instance_version().unwrap()));
-                let mut instance = InstanceCreator::new()
-                    .enabled_extensions(&[KHR_get_physical_device_properties2])
-                    .app_name("heyo")
-                    .create(VERSION_1_0)
-                    .unwrap();
+                let  entry = unsafe { ONE.take() }
+                    .enabled_instance_extensions(ex![KHR_get_physical_device_properties2])
+                    .app_name("heyo");
+
+                let instance = entry.create_instance(VERSION_1_0).unwrap();
 
                 //let mut phd: PhysicalDevice = std::ptr::null();
                 //let mut phd_count: u32 = 0;
@@ -96,7 +96,7 @@ fn append_main(code: String) -> String {
 
                 let pd1 = &pd[0];
 
-                let device = unsafe { pd1.device_creator(&queue_info).create(VERSION_1_0).unwrap() };
+                let device = unsafe { entry.make_device(&pd1, &queue_info).create_device(VERSION_1_0).unwrap() };
                 println!("{:?}", device);
 
                 let mut ma = MemoryAllocateInfo! {

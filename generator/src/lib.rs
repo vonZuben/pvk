@@ -258,18 +258,18 @@ pub fn generate(vk_xml_path: &str) -> String {
     // }).collect();
     // let result_err = result_err.as_slice();
 
-    let ext_c_names = global_data::extension_maps().iter()
-        .map(|(c_name, _name)| {
-            // dbg!(c_name.as_bytes());
-            let c_name = c_name.as_code();
-            quote!( #c_name )
-        });
+    // let ext_c_names = global_data::extension_maps().iter()
+    //     .map(|(c_name, _name)| {
+    //         // dbg!(c_name.as_bytes());
+    //         let c_name = c_name.as_code();
+    //         quote!( #c_name )
+    //     });
 
-    let ext_loader_names = global_data::extension_maps().iter()
-        .map(|(_c_name, name)| {
-            let name = utils::extension_loader_name(name).as_code();
-            quote!( #name )
-        });
+    // let ext_loader_names = global_data::extension_maps().iter()
+    //     .map(|(_c_name, name)| {
+    //         let name = utils::extension_loader_name(name).as_code();
+    //         quote!( #name )
+    //     });
 
     let struct_names: Vec<_> = global_data::structure_types().iter().map(|x|x.name.as_code()).collect();
     let struct_st_names: Vec<_> = global_data::structure_types().iter().map(|x|x.st_name.as_code()).collect();
@@ -294,23 +294,47 @@ pub fn generate(vk_xml_path: &str) -> String {
         //    }
         //}
 
-        #[derive(Default)]
-        pub struct InstanceCreator<'a> {
-            app_name: CString,
+        // TODO: should make a single type that creates both instance and devices
+        // there should only be one instanec of this type to make it easier to ensure that the instance and devices
+        // are created with the same parameters (e.g. enable extensions)
+        struct One<'a> {
+            entry: Option<Entry<'a, End>>,
+        }
+        impl One<'_> {
+            fn take(&mut self) -> Entry<End> {
+                let p = std::mem::replace(&mut self.entry, None);
+                p.unwrap()
+            }
+        }
+        static mut ONE: One = One {
+            entry: Some(Entry::new()),
+        };
+
+        pub struct Entry<'a, Ix> {
+            app_name: Option<CString>,
             app_version: VkVersion,
-            engine_name: CString,
+            engine_name: Option<CString>,
             engine_version: VkVersion,
-            enabled_layers: Vec<&'a dyn VkLayerName>,
-            enabled_extensions: Vec<InstanceExtension>,
+            enabled_layers: Option<&'a [Layer<'a>]>,
+            enabled_instance_extensions: Ix,
         }
 
-        impl<'a> InstanceCreator<'a> {
-            pub fn new() -> Self {
-                Self::default()
+        impl Entry<'_, End> {
+            const fn new() -> Self {
+                Self {
+                    app_name: None,
+                    app_version: VkVersion(0, 0, 0),
+                    engine_name: None,
+                    engine_version: VkVersion(0, 0, 0),
+                    enabled_layers: None,
+                    enabled_instance_extensions: End,
+                }
             }
+        }
 
+        impl<'a, Ix> Entry<'a, Ix> {
             pub fn app_name(mut self, app_name: &str) -> Self {
-                self.app_name = CString::new(app_name).expect("str should not have internal null, and thus CString::new should never fail");
+                self.app_name = Some(CString::new(app_name).expect("str should not have internal null, and thus CString::new should never fail"));
                 self
             }
 
@@ -320,7 +344,7 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
 
             pub fn engine_name(mut self, engine_name: &str) -> Self {
-                self.engine_name = CString::new(engine_name).expect("str should not have internal null, and thus CString::new should never fail");
+                self.engine_name = Some(CString::new(engine_name).expect("str should not have internal null, and thus CString::new should never fail"));
                 self
             }
 
@@ -329,25 +353,29 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self
             }
 
-            pub fn enabled_layers<L>(mut self, enabled_layers: impl IntoIterator<Item = L>) -> Self
-                where L: Into<LayerWrapper<'a>>
-            {
-                self.enabled_layers = enabled_layers.into_iter()
-                    .map( |l| l.into().0 )
-                    .collect();
+            pub fn enabled_layers(mut self, enabled_layers: &'a [Layer<'a>]) -> Self {
+                self.enabled_layers = Some(enabled_layers);
                 self
             }
 
-            pub fn enabled_extensions<E>(mut self, enabled_extensions: impl IntoIterator<Item = E>) -> Self
-                where E: Into<InstanceExtension> + 'a
+            pub fn enabled_instance_extensions<IxNew, V, I, L>(mut self, enabled_instance_extensions: IxNew) -> Entry<'a, IxNew>
+            where
+                IxNew: InstanceExtensionList<V, I, L>,
             {
-                self.enabled_extensions = enabled_extensions.into_iter()
-                    .map( |e| e.into() )
-                    .collect();
-                self
+                Entry {
+                    app_name: self.app_name,
+                    app_version: self.app_version,
+                    engine_name: self.engine_name,
+                    engine_version: self.engine_version,
+                    enabled_layers: self.enabled_layers,
+                    enabled_instance_extensions,
+                }
             }
 
-            pub fn create<V: Feature>(&self, api_version: V) -> VkResult<InstanceOwner<'static, Owned>> {
+            pub fn create_instance<'entry, F: Feature, V, I, L>(&'entry self, api_version: F) -> VkResult<InstanceOwner<'entry, Owned>>
+            where
+                Ix: InstanceExtensionList<V, I, L>,
+            {
                 let app_name: MyStr = (&self.app_name).into();
                 let engine_name: MyStr = (&self.engine_name).into();
 
@@ -365,20 +393,15 @@ pub fn generate(vk_xml_path: &str) -> String {
                     api_version: api_version.version(),
                 };
 
-                let enabled_layers: ArrayArray<MyStr> = ArrayArray(self.enabled_layers.iter()
-                                                .map( |layer| layer.layer_name().into() ).collect());
-                let enabled_extensions: ArrayArray<MyStr> = ArrayArray(self.enabled_extensions.iter()
-                                                .map( |extension| extension.0.extension_name().into() ).collect());
-
                 let create_info = InstanceCreateInfo {
                     s_type: StructureType::INSTANCE_CREATE_INFO,
                     p_next: Pnext::new(),
                     flags: Default::default(),
                     p_application_info: (&app_info).to_c(),
-                    enabled_layer_count: enabled_layers.len() as _,
-                    pp_enabled_layer_names: (&enabled_layers).to_c(),
-                    enabled_extension_count: enabled_extensions.len() as _,
-                    pp_enabled_extension_names: (&enabled_extensions).to_c(),
+                    enabled_layer_count: self.enabled_layers.len() as _,
+                    pp_enabled_layer_names: self.enabled_layers.to_c(),
+                    enabled_extension_count: self.enabled_instance_extensions.instance_len() as _,
+                    pp_enabled_extension_names: self.enabled_instance_extensions.ptr(),
                 };
 
                 let mut inst: MaybeUninit<Instance> = MaybeUninit::uninit();
@@ -399,58 +422,73 @@ pub fn generate(vk_xml_path: &str) -> String {
 
                     let mut instance: InstanceOwner<'static, Owned> = InstanceOwner::new(inst, &());
 
-                    // loading commands when creating an instance is guaranteed safe since it
-                    // is impossible to be aliased
-                    unsafe { api_version.load_instance_commands(instance.handle, &instance.commands); }
-                    for extension in &self.enabled_extensions {
-                        unsafe { extension.0.load_instance_commands(instance.handle, &instance.commands); }
-                    }
+                    api_version.load_instance_commands(instance.handle, &mut instance.commands);
+                    self.enabled_instance_extensions.load_instance_commands(instance.handle, &mut instance.commands, &api_version);
 
                     vk_result.success(instance)
                 }
             }
+
+            pub fn make_device<'public, 'private>
+                (
+                    &'private self,
+                    pd: &'private PhysicalDeviceOwner<'public>,
+                    queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>]
+                ) -> DeviceCreator<'public, 'private, Ix, End>  {
+                    DeviceCreator {
+                        physical_device: pd,
+                        queue_create_info: queue_create_info,
+                        enabled_layers: None,
+                        enabled_device_extensions: End,
+                        enabled_features: Default::default(),
+                        _instance_extensions: PhantomData,
+                        _instance: PhantomData,
+                    }
+            }
         }
 
-        pub struct DeviceCreator<'public, 'private> {
+        pub struct DeviceCreator<'public, 'private, Ix, Ex> {
             physical_device: &'private PhysicalDeviceOwner<'public>,
             queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>],
-            enabled_layers: Vec<&'private dyn VkLayerName>,
-            enabled_extensions: Vec<DeviceExtension>,
+            enabled_layers: Option<&'private [Layer<'private>]>,
+            enabled_device_extensions: Ex,
             enabled_features: Option<&'private PhysicalDeviceFeatures>,
+            _instance_extensions: PhantomData<Ix>,
+            _instance: PhantomData<&'public InstanceOwner<'public>>,
         }
 
-        impl<'public, 'private> DeviceCreator<'public, 'private> {
-            pub fn enabled_layers<L>(mut self, enabled_layers: impl IntoIterator<Item = L>) -> Self
-                where L: Into<LayerWrapper<'private>>
-            {
-                self.enabled_layers = enabled_layers.into_iter()
-                    .map( |l| l.into().0 )
-                    .collect();
+        impl<'public, 'private, Ix, Ex> DeviceCreator<'public, 'private, Ix, Ex> {
+            pub fn enabled_layers(mut self, enabled_layers: &'private [Layer<'private>]) -> Self {
+                self.enabled_layers = Some(enabled_layers);
                 self
             }
 
-            pub fn enabled_extensions<E>(mut self, enabled_extensions: impl IntoIterator<Item = E>) -> Self
-                where E: Into<DeviceExtension> + 'private
+            pub fn enabled_extensions<ExNew, V1, V2, D>(mut self, enabled_extensions: ExNew) -> DeviceCreator<'public, 'private, Ix, ExNew>
+            where
+                ExNew: DeviceExtensionList<Ix, V1, V2, D>
             {
-                self.enabled_extensions = enabled_extensions.into_iter()
-                    .map( |e| e.into() )
-                    .collect();
-                self
+                DeviceCreator {
+                    physical_device: self.physical_device,
+                    queue_create_info: self.queue_create_info,
+                    enabled_layers: self.enabled_layers,
+                    enabled_device_extensions: enabled_extensions,
+                    enabled_features: self.enabled_features,
+                    _instance_extensions: self._instance_extensions,
+                    _instance: self._instance,
+                }
             }
             pub fn enabled_features(mut self, enabled_features: &'private PhysicalDeviceFeatures) -> Self {
                 self.enabled_features = enabled_features.into();
                 self
             }
-            pub unsafe fn create<V: Feature>(&self, api_version: V) -> VkResult<DeviceOwner<'public, Owned>> {
+            pub fn create_device<F: Feature, V1, V2, D>(self, api_version: F) -> VkResult<DeviceOwner<'public, Owned>>
+            where
+                Ex: DeviceExtensionList<Ix, V1, V2, D>
+            {
 
-                if api_version.version() > self.physical_device.get_physical_device_properties().api_version {
+                if api_version.version() > unsafe { self.physical_device.get_physical_device_properties().api_version } {
                     return VkResultRaw::ERROR_INCOMPATIBLE_DRIVER.err();
                 }
-
-                let enabled_layers: ArrayArray<MyStr> = ArrayArray(self.enabled_layers.iter()
-                                                .map( |layer| layer.layer_name().into() ).collect());
-                let enabled_extensions: ArrayArray<MyStr> = ArrayArray(self.enabled_extensions.iter()
-                                                .map( |extension| extension.0.extension_name().into() ).collect());
 
                 let create_info = DeviceCreateInfo {
                     s_type: StructureType::DEVICE_CREATE_INFO,
@@ -458,10 +496,10 @@ pub fn generate(vk_xml_path: &str) -> String {
                     flags: Default::default(),
                     queue_create_info_count: self.queue_create_info.len() as _,
                     p_queue_create_infos: self.queue_create_info.to_c(),
-                    enabled_layer_count: enabled_layers.len() as _,
-                    pp_enabled_layer_names: (&enabled_layers).to_c(),
-                    enabled_extension_count: enabled_extensions.len() as _,
-                    pp_enabled_extension_names: (&enabled_extensions).to_c(),
+                    enabled_layer_count: self.enabled_layers.len() as _,
+                    pp_enabled_layer_names: self.enabled_layers.to_c(),
+                    enabled_extension_count: self.enabled_device_extensions.len() as _,
+                    pp_enabled_extension_names: self.enabled_device_extensions.ptr(),
                     p_enabled_features: self.enabled_features.to_c(),
                 };
 
@@ -483,30 +521,14 @@ pub fn generate(vk_xml_path: &str) -> String {
                 else {
                     let device = unsafe { device.assume_init() };
 
-                    let device: DeviceOwner<'public, Owned> = DeviceOwner::new(device, self.physical_device.dispatch_parent);
+                    let mut device: DeviceOwner<'public, Owned> = DeviceOwner::new(device, self.physical_device.dispatch_parent);
 
-                    api_version.load_device_commands(device.handle, &device.commands);
-                    for extension in &self.enabled_extensions {
-                        extension.0.load_device_commands(device.handle, &device.commands);
-                        extension.0.load_instance_commands(self.physical_device.dispatch_parent.handle,
-                                                         &self.physical_device.dispatch_parent.commands);
-                    }
+                    api_version.load_device_commands(device.handle, &mut device.commands);
+                    self.enabled_device_extensions.load_device_commands(device.handle, &mut device.commands, &api_version);
 
                     vk_result.success(device)
                 }
 
-            }
-        }
-
-        impl<'public> PhysicalDeviceOwner<'public> {
-            pub fn device_creator<'private>(&'private self, queue_create_info: &'private [DeviceQueueCreateInfo<'public, 'private>]) -> DeviceCreator<'public, 'private> {
-                DeviceCreator {
-                    physical_device: self,
-                    queue_create_info: queue_create_info,
-                    enabled_layers: Default::default(),
-                    enabled_extensions: Default::default(),
-                    enabled_features: Default::default(),
-                }
             }
         }
 
@@ -614,8 +636,8 @@ pub fn generate(vk_xml_path: &str) -> String {
             impl<T> Feature for T where T: FeatureCore + Send + Sync + 'static {}
 
             pub trait FeatureCore {
-                unsafe fn load_instance_commands(&self, instance: Instance, inst_cmds: &InstanceCommands);
-                unsafe fn load_device_commands(&self, device: Device, dev_cmds: &DeviceCommands);
+                fn load_instance_commands(&self, instance: Instance, inst_cmds: &mut InstanceCommands);
+                fn load_device_commands(&self, device: Device, dev_cmds: &mut DeviceCommands);
                 fn version(&self) -> u32;
                 fn clone_feature(&self) -> Box<dyn Feature>;
             }
@@ -627,110 +649,12 @@ pub fn generate(vk_xml_path: &str) -> String {
             };
         }
 
-        trait InstanceExtensionMarker: VkExtensionLoader + Debug {}
-        type InsEx = &'static dyn InstanceExtensionMarker;
+        #[repr(transparent)]
+        pub struct Layer<'a>(*const c_char, PhantomData<&'a [c_char]>);
 
-        trait DeviceExtensionMarker: VkExtensionLoader + Debug {}
-        type DevEx = &'static dyn DeviceExtensionMarker;
-
-        trait VkExtension {
-            fn extension_name(&self) -> &CStr;
-        }
-
-        trait VkExtensionLoader : VkExtension {
-            unsafe fn load_instance_commands(&self, instance: Instance, commands: &InstanceCommands) {
-                noop!();
-            }
-            unsafe fn load_device_commands(&self, device: Device, commands: &DeviceCommands) {
-                noop!();
-            }
-        }
-
-        enum Ext {
-            Instance(InsEx),
-            Device(DevEx),
-        }
-
-        impl From<InsEx> for Ext {
-            fn from(ex: InsEx) -> Self {
-                Ext::Instance(ex)
-            }
-        }
-
-        impl From<DevEx> for Ext {
-            fn from(ex: DevEx) -> Self {
-                Ext::Device(ex)
-            }
-        }
-
-        impl From<Ext> for InsEx {
-            fn from(ex: Ext) -> Self {
-                match ex {
-                    Ext::Instance(ex) => ex,
-                    Ext::Device(ex) => panic!("{:?} is not an Instance Extension", ex.extension_name()),
-                }
-            }
-        }
-
-        impl From<Ext> for DevEx {
-            fn from(ex: Ext) -> Self {
-                match ex {
-                    Ext::Device(ex) => ex,
-                    Ext::Instance(ex) => panic!("{:?} is not an Device Extension", ex.extension_name()),
-                }
-            }
-        }
-
-        #[derive(Clone, Copy)]
-        pub struct InstanceExtension(InsEx);
-
-        impl<E> From<E> for InstanceExtension where E: AsRef<str> {
-            fn from(e: E) -> Self {
-                Self(str_to_extension_loader(e.as_ref()).into())
-            }
-        }
-
-        impl From<&InstanceExtension> for InstanceExtension {
-            fn from(e: &InstanceExtension) -> Self {
-                *e
-            }
-        }
-
-        #[derive(Clone, Copy)]
-        pub struct DeviceExtension(DevEx);
-
-        impl<E> From<E> for DeviceExtension where E: AsRef<str> {
-            fn from(e: E) -> Self {
-                Self(str_to_extension_loader(e.as_ref()).into())
-            }
-        }
-
-        impl From<&DeviceExtension> for DeviceExtension {
-            fn from(e: &DeviceExtension) -> Self {
-                *e
-            }
-        }
-
-        impl AsRef<str> for ExtensionProperties {
-            fn as_ref(&self) -> &str {
-                // self.extention_name should always be a valid c string
-                // unless the vulkan implementation (driver) is wrong
-                // do I need to guard against bad drivers?
-                // hmmm?
-                // or it is fine since this will only be used internally to
-                // pass the string straigth back to the vulkan driver via
-                // extension loading
-                unsafe { CStr::from_ptr(self.extension_name.as_ptr()).to_str().unwrap() }
-            }
-        }
-
-        //fn ex_name_to_extension_loader(e: &impl VkExtension) -> &'static dyn VkExtensionLoader {
-        fn str_to_extension_loader(e: &str) -> Ext {
-            match e.as_bytes() {
-                #( #ext_c_names => #ext_loader_names.as_trait_obj().into(), )*
-                _ => panic!("unrecognized extension name {:?}. Possibly unsupported by current version of vk.rs?",
-                        e
-                    )
+        impl LayerProperties {
+            fn name(&self) -> Layer {
+                Layer(self.layer_name.as_ptr(), PhantomData)
             }
         }
 
@@ -1134,27 +1058,34 @@ pub fn generate(vk_xml_path: &str) -> String {
         #[repr(transparent)]
         // & c_char here is a reference to the fits character of a c style stirng
         // use & for non-nullable pointer Option<MyStr> (for same ABI as MyStr)
-        pub struct MyStr<'a>(&'a c_char);
-
-        impl<'a, C: AsRef<CStr>> From<&'a C> for MyStr<'a> {
-            fn from(c: &'a C) -> Self {
-                // safe because CStr.as_ptr() should never return null-ptr unless improperly (and unsafely) created
-                // also we borrow the owner of the CStr content so it should remain valid
-                Self(unsafe { ::std::mem::transmute(c.as_ref().as_ptr()) } )
-            }
-        }
+        pub struct MyStr<'a>(Option<&'a c_char>);
 
         impl<'a> From<&'a CStr> for MyStr<'a> {
             fn from(c: &'a CStr) -> Self {
                 // safe because CStr.as_ptr() should never return null-ptr unless improperly (and unsafely) created
                 // also we borrow the owner of the CStr content so it should remain valid
-                Self(unsafe { ::std::mem::transmute(c.as_ptr()) } )
+                Self(Some(unsafe { ::std::mem::transmute(c.as_ptr()) }) )
+            }
+        }
+
+        impl<'a> From<&'a Option<CString>> for MyStr<'a> {
+            fn from(o: &'a Option<CString>) -> Self {
+                match o {
+                    Some(s) => s.as_c_str().into(),
+                    None => MyStr(None),
+                }
             }
         }
 
         #[repr(transparent)]
         #[derive(Clone, Copy)]
         pub struct ArrayString<A: AsRef<[c_char]>>(A);
+
+        impl<A: AsRef<[c_char]>> ArrayString<A> {
+            fn as_ptr(&self) -> *const c_char {
+                self.0.as_ref().as_ptr()
+            }
+        }
 
         impl<A: AsRef<[c_char]>> ::std::fmt::Debug for ArrayString<A> {
             fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -1735,6 +1666,12 @@ pub fn generate(vk_xml_path: &str) -> String {
             }
         }
 
+        impl<'a> ConvertToC<Array<'a, *const c_char>> for Option<&'a [Layer<'a>]> {
+            fn to_c(self) -> Array<'a, *const c_char> {
+                unsafe { Array::from_ptr(self.as_ptr().cast()) }
+            }
+        }
+
         impl<'a, T> ConvertToC<ArrayMut<'a, T>> for &'a mut [T] {
             fn to_c(self) -> ArrayMut<'a, T> {
                 unsafe { ArrayMut::from_ptr(self.as_mut_ptr()) }
@@ -1761,7 +1698,7 @@ pub fn generate(vk_xml_path: &str) -> String {
 
         impl<'a> ConvertToC<Array<'a, c_char>> for MyStr<'a> {
             fn to_c(self) -> Array<'a, c_char> {
-                unsafe { Array::from_ptr(self.0) }
+                unsafe { Array::from_ptr(self.0.as_ptr()) }
             }
         }
 
@@ -2300,12 +2237,12 @@ pub fn generate(vk_xml_path: &str) -> String {
         }
 
         impl FeatureCore for Version {
-            unsafe fn load_instance_commands(&self, instance: Instance, inst_cmds: &InstanceCommands) {
+            fn load_instance_commands(&self, instance: Instance, inst_cmds: &mut InstanceCommands) {
                 match self {
                     #( Self::#names => #features.load_instance_commands(instance, inst_cmds), )*
                 }
             }
-            unsafe fn load_device_commands(&self, device: Device, dev_cmds: &DeviceCommands) {
+            fn load_device_commands(&self, device: Device, dev_cmds: &mut DeviceCommands) {
                 match self {
                     #( Self::#names => #features.load_device_commands(device, dev_cmds), )*
                 }
@@ -2323,6 +2260,10 @@ pub fn generate(vk_xml_path: &str) -> String {
         }
     };
 
+    let extensions_static = extensions::static_extension_code();
+
+    let extensions_def = extensions::extension_definitions();
+
     let mut q = quote!{
         use std::mem::MaybeUninit;
         use std::marker::PhantomData;
@@ -2333,12 +2274,33 @@ pub fn generate(vk_xml_path: &str) -> String {
         use std::fmt::Debug;
         use std::fmt;
         use std::ptr;
+        use std::mem::transmute;
 
         pub use handles::*;
         use private_struct_interface::*;
         use feature_private::*;
+        use extension_private::*;
+
+        macro_rules! impl_verify_instance {
+            ( $name:ident => $($generics:ident),* ; $($requierments:tt)* ) => {
+                impl<List $(, $generics)*> VerifyAddInstance<List, ($($generics),*)> for $crate::extensions::$name
+                where
+                    List: Hlist $($requierments)*,
+                {}
+            };
+        }
+
+        macro_rules! impl_verify_device {
+            ( $name:ident => $($generics:ident),* ; $($requierments:tt)* ) => {
+                impl<List $(, $generics)*> VerifyAddDevice<List, ($($generics),*)> for $crate::extensions::$name
+                where
+                    List: Hlist $($requierments)*,
+                {}
+            };
+        }
 
         #util_code
+        #extensions_static
         #void_type
         #versions
         #platform_specific_types
@@ -2346,6 +2308,7 @@ pub fn generate(vk_xml_path: &str) -> String {
         #(#tokens)*
         #(#feature_enums)*
         #(#aliases)*
+        #extensions_def
     };
 
     let mut sorted_enums: Vec<_> = global_data::all_enums().iter().collect();

@@ -844,6 +844,7 @@ pub fn is_extension_name(name: &str) -> bool {
     name.ends_with("_EXTENSION_NAME") || name.ends_with("_NAME")
 }
 
+#[allow(unused)]
 pub fn extension_loader_name(extension_name: &str) -> String {
     format!("{}_loader", extension_name)
 }

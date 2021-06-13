@@ -63,6 +63,19 @@
         -- OLD -- Need to provide api that cat take user provided destination, and return the destination initialized
         Solution: made fuctions whcih return to p_next chains generic over the types that can be in the p_next chain
 
+- [x] Some extensions should only be supported if the Vulkan feature level is supported
+        need to prevent loading extension commands that are unsupported by requested feature level
+
+- [x] Some device extensions also load some instance level commands - this should be split to simplify safty
+        In order to avoid issues with loading instance commands along with device level extensions when the instance might be shared
+        we should just force the user to also load the device level extention when creating the instance and device seperatly
+
+- [ ] Add anti duplicate code to the ExtensionList traits
+        The trait such as Contains, uses an index generic type, which is only implemented with unameable types
+        if there are duplicates in the list, the index generic type must be manutally specified, but this is not possible
+        due to the "unabmablility" of the index types, and because the Contains trait is also unamable.
+        Thus, the user can only ever provide a list with no duplicates since they can never make the compiler happy if there are
+        suplicates
 
 ========= LONG TERM GOALS (not blocking for MVP) ==================
 

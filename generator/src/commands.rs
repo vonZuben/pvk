@@ -143,7 +143,7 @@ pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
                             unsafe {
                                 LOAD.call_once(||{
                                     let loader = |raw_cmd_name: &CStr| unsafe { GetInstanceProcAddr(Default::default(), raw_cmd_name.to_c()) };
-                                    let pfn = #pfn_loader_name::new();
+                                    let mut pfn = #pfn_loader_name::new();
                                     pfn.load(loader);
                                     PFN.as_mut_ptr().write(pfn)
                                 });
@@ -164,13 +164,13 @@ pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
                 #( #params ),*
             ) -> #return_type;
 
-            struct #pfn_loader_name(UnsafeCell<#pfn_name>);
+            struct #pfn_loader_name(#pfn_name);
             impl #pfn_loader_name {
                 fn new() -> Self {
                     extern "system" fn default_function( #( #params ),* ) -> #return_type {
                         panic!(concat!(#raw_name, " is not loaded. Make sure the correct feature/extension is enabled"))
                     }
-                    Self(UnsafeCell::new(default_function))
+                    Self(default_function)
                 }
                 // this function is unsafe since the caller (in general) must ensure that the command loader is
                 // not aliased
@@ -184,18 +184,18 @@ pub fn handle_commands<'a>(commands: &'a Commands) -> TokenStream {
                 // but if you are confident that your platform writes/reads function pointers
                 // atomically, then there is no real issue here, and synchronization should be safe
                 // to ignore
-                unsafe fn load<F>(&self, mut f: F) where F: FnMut(&::std::ffi::CStr) -> PFN_vkVoidFunction {
+                fn load<F>(&mut self, mut f: F) where F: FnMut(&::std::ffi::CStr) -> PFN_vkVoidFunction {
                     let cname = ::std::ffi::CString::new(#raw_name).unwrap();
                     let function_pointer = f(&cname).take();
                     if let Some(fptr) = function_pointer {
-                        self.0.get().write(::std::mem::transmute(fptr));
+                        self.0 = unsafe { ::std::mem::transmute(fptr) };
                     }
                     else{
                         panic!(concat!("error: couldn't load ", #raw_name));
                     }
                 }
                 fn call(&self) -> #pfn_name {
-                    unsafe { self.0.get().read() }
+                    self.0
                 }
             }
             //impl std::fmt::Debug for #pfn_loader_name {

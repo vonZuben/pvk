@@ -65,6 +65,9 @@ pub struct GlobalData<'a> {
     pub optional_size: GenericDictionary<(&'a str, &'a str)>,
     pub noautovalid: GenericDictionary<(&'a str, &'a str)>,
     pub versions: Vec<&'a vkxml::Features>,
+    pub extension_feature_levels: HashMap<(&'a str, &'a str), &'a str>,
+    pub extensions: &'a [vkxml::Extension],
+    pub extension_types: HashMap<&'a str, &'a vkxml::ExtensionType>,
 }
 
 pub static GLOBAL_DATA: OnceCell<GlobalData<'static>> = OnceCell::new();
@@ -80,6 +83,7 @@ pub fn all_enums() -> &'static EnumDictionary<'static> {
     &expect_gd().all_enums
 }
 
+#[allow(unused)]
 pub fn extension_maps() -> &'static Vec<ExtensionMap<'static>> {
     &expect_gd().extension_maps
 }
@@ -153,6 +157,18 @@ pub fn is_noautovalid(context: &str, field: &Field) -> bool {
 #[allow(unused)]
 pub fn versions() -> impl Iterator<Item=&'static vkxml::Feature> {
     expect_gd().versions.iter().map(|f| f.elements.iter()).flatten()
+}
+
+pub fn extension_feature_level(ex_name: &str, cmd_name: &str) -> Option<&'static str> {
+    expect_gd().extension_feature_levels.get(&(ex_name, cmd_name)).map(|s| *s)
+}
+
+pub fn extensions() -> &'static [vkxml::Extension] {
+    expect_gd().extensions
+}
+
+pub fn extention_type(name: &str) -> &'static vkxml::ExtensionType {
+    expect_gd().extension_types.get(name).expect("error: no such extension")
 }
 
 // the first pass of the registry is for collecting information about the kinds of basetypes
@@ -348,12 +364,15 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &'static vk_parse
                 global_data.versions.push(features);
             }
             RegistryElement::Extensions(extensions) => {
+                global_data.extensions = &extensions.elements;
                 for extension in extensions.elements.iter() {
                     // some extensions are just placeholders and do not have a type
                     // thus, we should not generate any code for them since they have no function
                     if extension.ty.is_none() {
                         continue;
                     }
+
+                    global_data.extension_types.insert(extension.name.as_str(), extension.ty.as_ref().expect("already confirmed is_some()"));
 
                     // TODO: check vkxml::DefinitionReference variant
 
@@ -509,6 +528,7 @@ pub fn generate(registry: &'static vkxml::Registry, registry2: &'static vk_parse
         match item {
             vk_parse::RegistryChild::Feature(feature) => get_feature_enums_from_vk_parse_reg(feature, &mut global_data),
             vk_parse::RegistryChild::Types(ty) => get_no_auto_valid(ty, &mut global_data),
+            vk_parse::RegistryChild::Extensions(ex) => get_requiered_feature_levels(ex, &mut global_data),
             _ => {},
         }
     };
@@ -656,6 +676,29 @@ fn get_no_auto_valid(types_child: &'static vk_parse::CommentedChildren<vk_parse:
                 }
             }
             _ => {}
+        }
+    }
+}
+
+fn get_requiered_feature_levels(extensions: &'static vk_parse::CommentedChildren<vk_parse::Extension>, global_data: &mut GlobalData) {
+    use vk_parse::*;
+    for ex in extensions.children.iter() {
+        for ec in ex.children.iter() {
+            match ec {
+                ExtensionChild::Require{ feature, items, .. } => {
+                    for item in items {
+                        if let Some(feature) = feature.as_ref().map(String::as_str) {
+                            match item {
+                                InterfaceItem::Command{ name, ..} => {
+                                    assert!(global_data.extension_feature_levels.insert((ex.name.as_str(), name.as_str()), feature).is_none());
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }
