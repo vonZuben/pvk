@@ -586,6 +586,15 @@ pub fn static_extension_code() -> TokenStream {
             where
                 Tail: Contains<FromTail, TailIndex> {}
 
+            pub trait NoDup<List, Index> {}
+
+            impl<E, Tail, Cindex, Tindex, List> NoDup<List, (Cindex, Tindex)> for Hnode<E, Tail>
+            where
+                List: Contains<E, Cindex>,
+                Tail: NoDup<List, Tindex>,
+            {}
+
+            impl<List> NoDup<List, End> for End {}
 
             // Instance/Device---------------------------------
             pub struct Pure;
@@ -751,15 +760,15 @@ pub fn static_extension_code() -> TokenStream {
                 }
             }
 
-            pub trait InstanceExtensionList<V, I, L>: VerifyAddInstance<End, V> + InstanceLevel<I> + InstanceLen<L> + VkExtension + ExPtr {}
-            impl<V, I, L, T> InstanceExtensionList<V, I, L> for T
+            pub trait InstanceExtensionList<V, I, L, Nd>: VerifyAddInstance<End, V> + InstanceLevel<I> + InstanceLen<L> + VkExtension + ExPtr + NoDup<Self, Nd> + Sized {}
+            impl<V, I, L, Nd, T> InstanceExtensionList<V, I, L, Nd> for T
             where
-                T: VerifyAddInstance<End, V> + InstanceLevel<I> + InstanceLen<L> + VkExtension + ExPtr  {}
+                T: VerifyAddInstance<End, V> + InstanceLevel<I> + InstanceLen<L> + VkExtension + ExPtr + NoDup<Self, Nd> + Sized {}
 
-            pub trait DeviceExtensionList<Ix, V1, V2, D>:  VerifyAddInstance<Ix, V1> + VerifyAddDevice<End, V2> + DeviceLevel<D> + Len + VkExtension + ExPtr  {}
-            impl<Ix, V1, V2, D, T> DeviceExtensionList<Ix, V1, V2, D> for T
+            pub trait DeviceExtensionList<Ix, V1, V2, D, Nd>:  VerifyAddInstance<Ix, V1> + VerifyAddDevice<End, V2> + DeviceLevel<D> + Len + VkExtension + ExPtr + NoDup<Self, Nd> + Sized {}
+            impl<Ix, V1, V2, D, Nd, T> DeviceExtensionList<Ix, V1, V2, D, Nd> for T
             where
-                T: VerifyAddInstance<Ix, V1> + VerifyAddDevice<End, V2> + DeviceLevel<D> + Len + VkExtension + ExPtr  {}
+                T: VerifyAddInstance<Ix, V1> + VerifyAddDevice<End, V2> + DeviceLevel<D> + Len + VkExtension + ExPtr + NoDup<Self, Nd> + Sized  {}
 
             pub trait VkExtension {
                 fn load_instance_commands(&self, instance: Instance, commands: &mut InstanceCommands, api: &dyn Feature) {

@@ -70,12 +70,15 @@
         In order to avoid issues with loading instance commands along with device level extensions when the instance might be shared
         we should just force the user to also load the device level extention when creating the instance and device seperatly
 
-- [ ] Add anti duplicate code to the ExtensionList traits
+- [x] Add anti duplicate code to the ExtensionList traits
         The trait such as Contains, uses an index generic type, which is only implemented with unameable types
         if there are duplicates in the list, the index generic type must be manutally specified, but this is not possible
         due to the "unabmablility" of the index types, and because the Contains trait is also unamable.
         Thus, the user can only ever provide a list with no duplicates since they can never make the compiler happy if there are
         suplicates
+
+- [ ] Add documentation for the extension traits because they are very weird
+        Note: really everything shuld get some documentation, but this is a priority
 
 ========= LONG TERM GOALS (not blocking for MVP) ==================
 

@@ -358,9 +358,9 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self
             }
 
-            pub fn enabled_instance_extensions<IxNew, V, I, L>(mut self, enabled_instance_extensions: IxNew) -> Entry<'a, IxNew>
+            pub fn enabled_instance_extensions<IxNew, V, I, L, Nd>(mut self, enabled_instance_extensions: IxNew) -> Entry<'a, IxNew>
             where
-                IxNew: InstanceExtensionList<V, I, L>,
+                IxNew: InstanceExtensionList<V, I, L, Nd>,
             {
                 Entry {
                     app_name: self.app_name,
@@ -372,9 +372,9 @@ pub fn generate(vk_xml_path: &str) -> String {
                 }
             }
 
-            pub fn create_instance<'entry, F: Feature, V, I, L>(&'entry self, api_version: F) -> VkResult<InstanceOwner<'entry, Owned>>
+            pub fn create_instance<'entry, F: Feature, V, I, L, Nd>(&'entry self, api_version: F) -> VkResult<InstanceOwner<'entry, Owned>>
             where
-                Ix: InstanceExtensionList<V, I, L>,
+                Ix: InstanceExtensionList<V, I, L, Nd>,
             {
                 let app_name: MyStr = (&self.app_name).into();
                 let engine_name: MyStr = (&self.engine_name).into();
@@ -463,9 +463,9 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self
             }
 
-            pub fn enabled_extensions<ExNew, V1, V2, D>(mut self, enabled_extensions: ExNew) -> DeviceCreator<'public, 'private, Ix, ExNew>
+            pub fn enabled_extensions<ExNew, V1, V2, D, Nd>(mut self, enabled_extensions: ExNew) -> DeviceCreator<'public, 'private, Ix, ExNew>
             where
-                ExNew: DeviceExtensionList<Ix, V1, V2, D>
+                ExNew: DeviceExtensionList<Ix, V1, V2, D, Nd>
             {
                 DeviceCreator {
                     physical_device: self.physical_device,
@@ -481,9 +481,9 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self.enabled_features = enabled_features.into();
                 self
             }
-            pub fn create_device<F: Feature, V1, V2, D>(self, api_version: F) -> VkResult<DeviceOwner<'public, Owned>>
+            pub fn create_device<F: Feature, V1, V2, D, Nd>(self, api_version: F) -> VkResult<DeviceOwner<'public, Owned>>
             where
-                Ex: DeviceExtensionList<Ix, V1, V2, D>
+                Ex: DeviceExtensionList<Ix, V1, V2, D, Nd>
             {
 
                 if api_version.version() > unsafe { self.physical_device.get_physical_device_properties().api_version } {
