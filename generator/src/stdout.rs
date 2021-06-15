@@ -96,7 +96,7 @@ fn append_main(code: String) -> String {
 
                 let pd1 = &pd[0];
 
-                let device = unsafe { entry.make_device(&pd1, &queue_info).create_device(VERSION_1_0).unwrap() };
+                let device = unsafe { entry.device_params(&pd1, &queue_info).create_device(VERSION_1_0).unwrap() };
                 println!("{:?}", device);
 
                 let mut ma = MemoryAllocateInfo! {

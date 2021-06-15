@@ -433,7 +433,7 @@ pub fn generate(vk_xml_path: &str) -> String {
                 }
             }
 
-            pub fn make_device<'public, 'private>
+            pub fn device_params<'public, 'private>
                 (
                     &'private self,
                     pd: &'private PhysicalDeviceOwner<'public>,
@@ -467,7 +467,7 @@ pub fn generate(vk_xml_path: &str) -> String {
                 self
             }
 
-            pub fn enabled_extensions<ExNew, V1, V2, D, Nd>(mut self, enabled_extensions: ExNew) -> DeviceCreator<'public, 'private, Ix, ExNew>
+            pub fn enabled_device_extensions<ExNew, V1, V2, D, Nd>(mut self, enabled_extensions: ExNew) -> DeviceCreator<'public, 'private, Ix, ExNew>
             where
                 ExNew: DeviceExtensionList<Ix, V1, V2, D, Nd>
             {
