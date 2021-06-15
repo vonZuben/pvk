@@ -25,6 +25,8 @@ also, if one of the members is not provided, there is no validation trigger, and
 use std::fs::File;
 use std::{ffi::CString, io::Read};
 
+use vk::ex;
+
 use vk::HandleOwner;
 use vk::{
     self, BufferCreateInfo, BufferUsageFlags, CommandBufferAllocateInfo, CommandBufferBeginInfo,
@@ -43,9 +45,9 @@ fn main() {
 unsafe fn do_the_thing() {
     let version = vk::enumerate_instance_version().unwrap();
     println!("{:?}", vk::VkVersion::from_raw(version));
-    let instance = vk::InstanceCreator::new() //.api_version(vk::VERSION_1_1)
-        .create(vk::VERSION_1_0)
-        .unwrap();
+    let entry = vk::entry() //.api_version(vk::VERSION_1_1)
+        .enabled_instance_extensions(ex![vk::KHR_surface, vk::KHR_swapchain]);
+    let instance = entry.create_instance(vk::VERSION_1_1).unwrap();
 
     let physical_devices = instance.enumerate_physical_devices().unwrap();
 
@@ -99,9 +101,8 @@ unsafe fn do_the_thing() {
     let compute_queue_index = get_compute_queue().unwrap() as _;
 
     let device_create_info = DeviceQueueCreateInfo::new(compute_queue_index, &[1.0]);
-    let device = selected_pd
-            .device_creator(&[device_create_info])
-            .create(vk::VERSION_1_0)
+    let device = entry.make_device(&selected_pd, &[device_create_info])
+            .create_device(vk::VERSION_1_0)
             .unwrap();
 
     let queue = device.get_device_queue(compute_queue_index, 0);
@@ -145,7 +146,7 @@ unsafe fn do_the_thing() {
     let stage = PipelineShaderStageCreateInfo::new(
         ShaderStageFlags::COMPUTE,
         module.handle(),
-        (&c_string).into(),
+        c_string.as_c_str().into(),
     )
     .p_specialization_info(Some(&special));
 

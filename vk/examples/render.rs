@@ -8,7 +8,8 @@ fn main() {
 }
 
 unsafe fn do_the_thing() {
-    let instance = vk::InstanceCreator::new().create(vk::VERSION_1_0).unwrap();
+    let entry = vk::entry();
+    let instance = entry.create_instance(vk::VERSION_1_0).unwrap();
 
     let selected_pd = instance
         .enumerate_physical_devices()
@@ -32,9 +33,8 @@ unsafe fn do_the_thing() {
     let render_queue_index = get_render_queue().unwrap() as _;
 
     let device_create_info = vk::DeviceQueueCreateInfo::new(render_queue_index, &[1.0]);
-    let device = selected_pd
-            .device_creator(&[device_create_info])
-            .create(vk::VERSION_1_0)
+    let device = entry.make_device(&&selected_pd, &[device_create_info])
+            .create_device(vk::VERSION_1_0)
             .unwrap();
 
     let vert_module = create_module(&device, "vk/examples/vert.spv");
@@ -44,12 +44,12 @@ unsafe fn do_the_thing() {
         vk::PipelineShaderStageCreateInfo::new(
             vk::ShaderStageFlags::VERTEX,
             vert_module.handle(),
-            entry.into(),
+            entry.as_c_str().into(),
         ),
         vk::PipelineShaderStageCreateInfo::new(
             vk::ShaderStageFlags::FRAGMENT,
             frag_module.handle(),
-            entry.into(),
+            entry.as_c_str().into(),
         ),
     ];
 
