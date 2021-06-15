@@ -75,10 +75,14 @@
         if there are duplicates in the list, the index generic type must be manutally specified, but this is not possible
         due to the "unabmablility" of the index types, and because the Contains trait is also unamable.
         Thus, the user can only ever provide a list with no duplicates since they can never make the compiler happy if there are
-        suplicates
+        duplicates
 
 - [ ] Add documentation for the extension traits because they are very weird
         Note: really everything shuld get some documentation, but this is a priority
+
+- [ ] Remove the Owned, Borrowed, and ManuallyManaged type parameters
+        This was really just dumb and lazy (and dosn't even make it easier). I should just check which handle owners have create a destroy or allocate and free functions
+        and then just generate the appropriate code rather than trying to make everything fit under one pattern
 
 ========= LONG TERM GOALS (not blocking for MVP) ==================
 
