@@ -310,6 +310,10 @@ pub fn generate(vk_xml_path: &str) -> String {
             entry: Some(Entry::new()),
         };
 
+        pub unsafe fn entry() -> Entry<'static, End> {
+            ONE.take()
+        }
+
         pub struct Entry<'a, Ix> {
             app_name: Option<CString>,
             app_version: VkVersion,

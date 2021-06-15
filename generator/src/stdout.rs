@@ -47,7 +47,7 @@ fn append_main(code: String) -> String {
             unsafe {
 
                 println!("supported instance version: {:?}", VkVersion::from_raw(enumerate_instance_version().unwrap()));
-                let  entry = unsafe { ONE.take() }
+                let  entry = entry()
                     .enabled_instance_extensions(ex![KHR_get_physical_device_properties2])
                     .app_name("heyo");
 
