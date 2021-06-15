@@ -33,7 +33,7 @@ unsafe fn do_the_thing() {
     let render_queue_index = get_render_queue().unwrap() as _;
 
     let device_create_info = vk::DeviceQueueCreateInfo::new(render_queue_index, &[1.0]);
-    let device = entry.make_device(&&selected_pd, &[device_create_info])
+    let device = entry.device_params(&&selected_pd, &[device_create_info])
             .create_device(vk::VERSION_1_0)
             .unwrap();
 
