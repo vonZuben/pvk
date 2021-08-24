@@ -16,6 +16,8 @@ mod features;
 mod extensions;
 mod ty;
 mod r#struct;
+mod cfield;
+mod ctype;
 // mod methods;
 
 use r#struct as stct;
