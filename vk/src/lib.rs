@@ -3,4 +3,20 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
-include!{concat!(env!("OUT_DIR"), "/vk.rs")}
+// trace_macros!(true);
+
+#[cfg(not(generate))]
+#[macro_use]
+mod generated;
+
+#[cfg(generate)]
+#[macro_use]
+#[path = concat!(env!("OUT_DIR"), "/mod.rs")]
+mod generated;
+
+mod utils;
+mod definitions;
+mod commands;
+
+
+// include!{concat!(env!("OUT_DIR"), "/vk.rs")}

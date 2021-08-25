@@ -1,5 +1,5 @@
 
-use quote::quote;
+use quote::{quote, ToTokens};
 
 use vkxml::*;
 
@@ -10,6 +10,25 @@ use crate::utils;
 use crate::ty;
 
 use std::collections::HashMap;
+
+pub struct Commands2<'a> {
+    function_pointers: Vec<crate::definitions::FunctionPointer<'a>>,
+}
+
+impl ToTokens for Commands2<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let function_pointers = &self.function_pointers;
+        let commands = self.function_pointers.iter().map(|fptr|fptr.name);
+        quote!(
+            #(#function_pointers)*
+            macro_rules! use_command_function_pointer_names {
+                ( $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#commands),* );
+                }
+            }
+        ).to_tokens(tokens);
+    }
+}
 
 pub fn make_pfn_name(cmd_name: &str) -> TokenStream {
     format!("PFN_{}", cmd_name).as_code()

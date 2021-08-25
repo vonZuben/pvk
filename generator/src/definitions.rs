@@ -152,7 +152,7 @@ impl ToTokens for Handle2<'_> {
 /// Funtion Pointers
 /// for defining Vulkan function pointer types
 pub struct FunctionPointer<'a> {
-    name: &'a str,
+    pub name: &'a str,
     fields: Vec<crate::cfield::Cfield<'a>>,
     return_type: crate::ctype::ReturnType<'a>,
 }
@@ -183,7 +183,7 @@ impl ToTokens for FunctionPointer<'_> {
 
         quote!(
             #[allow(non_camel_case_types)]
-            pub type #name = extern "system" fn(
+            pub type #name = unsafe extern "system" fn(
                 #( #fields ),*
             ) -> #return_type;
         ).to_tokens(tokens);

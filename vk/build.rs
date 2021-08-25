@@ -3,8 +3,6 @@ use std::{io::{Read, Write}, process::{Command, Stdio}};
 use std::fs::OpenOptions;
 use std::path::Path;
 
-use generator::generate;
-
 #[cfg(target_os = "windows")]
 fn target_env() {
     let vk_skd_path = std::env::var("VK_SDK_PATH");
@@ -27,6 +25,12 @@ fn set_env() {
 }
 
 fn main() {
+    if cfg!(generate) {
+        generate();
+    }
+}
+
+fn generate() {
     let fmt = Command::new("rustfmt")
         .args(&["--emit", "stdout"])
         .stdin(Stdio::piped())
@@ -34,7 +38,7 @@ fn main() {
         .spawn()
         .expect("Error: cannot run rustfmt");
 
-    fmt.stdin.expect("Error: can't get rustfmt stdin").write(generate("vk.xml").as_bytes()).expect("Error writting to rustfmt stdin");
+    fmt.stdin.expect("Error: can't get rustfmt stdin").write(generator::generate("vk.xml").as_bytes()).expect("Error writting to rustfmt stdin");
 
     let mut formatted_code = Vec::new();
     fmt.stdout.expect("Error: faild to get formatted code").read_to_end(&mut formatted_code).expect("can't read from formatted code stdout");
