@@ -1,10 +1,33 @@
 
-use quote::quote;
+use quote::{quote, ToTokens};
 use vkxml::*;
 use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 use crate::global_data;
+
+struct EnumVariants<'a> {
+    target: &'a str,
+    variants: Vec<crate::constants::Constant2<'a>>,
+}
+
+impl ToTokens for EnumVariants<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use crate::utils::StrAsCode;
+        let target = self.target.as_code();
+        let variants = &self.variants;
+        quote!(
+            impl #target {
+                #(#variants)*
+            }
+        ).to_tokens(tokens);
+    }
+}
+
+fn vkxml_enumeration_variant_expresion(vkxml_constant: &vkxml::Constant) -> crate::constants::Expresion<'static> {
+    use crate::constants;
+    constants::Expresion::CallExpresion("Self", constants::vkxml_constant_value_string(vkxml_constant))
+}
 
 pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
     let extension_tags = global_data::extension_tags();

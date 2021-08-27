@@ -149,6 +149,29 @@ impl ToTokens for Handle2<'_> {
 }
 
 // =================================================================
+/// Enumerations
+/// for defining Vulkan enum typs
+/// we represent Vulkan C enums as rust structs, and the variants will be associated constants
+/// should skip generating this for FlagBits definitions since we will define the actual bits
+/// as associated constants on the actual Bitmask type
+pub struct Enum2<'a> {
+    name: &'a str,
+}
+
+impl ToTokens for Enum2<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use crate::utils::StrAsCode;
+        let name = self.name.as_code();
+        quote!(
+            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            #[repr(transparent)]
+            pub struct #name(pub(crate) i32);
+        ).to_tokens(tokens);
+    }
+}
+
+
+// =================================================================
 /// Funtion Pointers
 /// for defining Vulkan function pointer types
 pub struct FunctionPointer<'a> {
