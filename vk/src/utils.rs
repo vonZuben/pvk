@@ -67,30 +67,41 @@ where
     }
 }
 
-#[macro_export]
-macro_rules! hlist {
-        () => {
-            $crate::End
-        };
-        ( $last:expr $(,)? ) => {
-            // $crate::Hnode { ex: $last , tail: $crate::End }
-            $crate::Hnode::new($last)
-        };
-        ( $first:expr , $($rest:expr),* $(,)? ) => {
-            // $crate::Hnode { ex: $first , tail: ex!($($rest),*) }
-            $crate::Hnode::new($first) + hlist!($($rest),*)
-        };
-    }
+// #[macro_export]
+// macro_rules! hlist {
+//         () => {
+//             $crate::End
+//         };
+//         ( $last:expr $(,)? ) => {
+//             // $crate::Hnode { ex: $last , tail: $crate::End }
+//             $crate::Hnode::new($last)
+//         };
+//         ( $first:expr , $($rest:expr),* $(,)? ) => {
+//             // $crate::Hnode { ex: $first , tail: ex!($($rest),*) }
+//             $crate::Hnode::new($first) + hlist!($($rest),*)
+//         };
+//     }
 
-#[macro_export]
+// #[macro_export]
 macro_rules! hlist_ty {
-        () => {
-            $crate::End
-        };
-        ( $last:path $(,)? ) => {
-            $crate::Hnode<$last, $crate::End>
-        };
-        ( $first:path , $($rest:path),* $(,)? ) => {
-            $crate::Hnode<$first , hlist_ty!($($rest),*)>
-        };
-    }
+    () => {
+        $crate::utils::End
+    };
+    ( $last:path $(,)? ) => {
+        $crate::utils::Hnode<$last, $crate::utils::End>
+    };
+    ( $first:path , $($rest:path),* $(,)? ) => {
+        $crate::utils::Hnode<$first , hlist_ty!($($rest),*)>
+    };
+}
+
+
+// used to make version and extension command list types
+macro_rules! make_commands_type {
+    ( $name:ident =>  ) => {};
+    ( $name:ident => $($command:ident),+ ) => {
+        pub type $name = hlist_ty!( $($crate::commands::loaders::$command),* );
+        $crate::impl_fptr_traits!($name => $($command),*);
+    };
+}
+

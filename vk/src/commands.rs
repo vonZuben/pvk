@@ -92,39 +92,18 @@ macro_rules! make_loaders {
     };
 }
 
-// TODO this is related to extensions and should probably be in a different file
-macro_rules! make_extention_implementor {
-    ( $m_name:ident => $($ex:ident),* ) => {
-        #[macro_export]
-        macro_rules! $m_name {
-            ( $name:ident ) => {
-                $crate::impl_fptr_traits!($name => $($ex),*);
-            };
-        }
-    };
-}
-
 #[macro_export]
 macro_rules! impl_fptr_traits {
     ( $name:ident => $($command:ident),* ) => {
         $(
-            impl $crate::$command for $name {
-                fn fptr(&self) -> $crate::generated::function_pointers::$command {
+            impl $crate::commands::$command for $name {
+                fn fptr(&self) -> $crate::generated::command_function_pointers::$command {
                     use $crate::utils::Get;
                     let loader: &$crate::commands::loaders::$command = self.get();
                     loader.fptr()
                 }
             }
         )*
-    };
-}
-
-// #[macro_export]
-// TODO this is related to features (e.g. VULKAN_1_0) and should probably be in a different file
-macro_rules! make_commands_type {
-    ( $name:ident => $($command:ident),* ) => {
-        pub type $name = hlist_ty!( $($crate::command::$command),* );
-        $crate::impl_fptr_traits!($name => $($command),*);
     };
 }
 

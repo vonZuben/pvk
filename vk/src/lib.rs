@@ -14,9 +14,12 @@ mod generated;
 #[path = concat!(env!("OUT_DIR"), "/mod.rs")]
 mod generated;
 
+#[macro_use]
 mod utils;
 mod definitions;
 mod commands;
+mod version;
+mod extension;
 
 
 // include!{concat!(env!("OUT_DIR"), "/vk.rs")}

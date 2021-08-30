@@ -1,5 +1,5 @@
 
-use quote::quote;
+use quote::{quote, ToTokens};
 
 use vkxml::*;
 
@@ -8,6 +8,55 @@ use proc_macro2::{TokenStream};
 use crate::utils::*;
 use crate::commands::*;
 use crate::global_data;
+
+// =================================================================
+/// Command Names for a given version
+/// intended to generate code within a instance/device command_names module
+pub struct FeatureCommands<'a> {
+    version: &'a str,
+    instance_command_names: Vec<&'a str>,
+    device_command_names: Vec<&'a str>,
+}
+
+impl ToTokens for FeatureCommands<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let version = self.version.as_code();
+        let instance_command_names = &self.instance_command_names;
+        let device_command_names = &self.device_command_names;
+        quote!(
+            macro_rules! #version {
+                ( @INSTANCE $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#instance_command_names),* );
+                };
+                ( @DEVICE $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#device_command_names),* );
+                };
+                ( @ALL $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* );
+                };
+            }
+        ).to_tokens(tokens);
+    }
+}
+
+// =================================================================
+/// list of all existing Vulkan versions
+pub struct VulkanVersionNames<'a> {
+    versions: Vec<&'a str>,
+}
+
+impl ToTokens for VulkanVersionNames<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let versions = &self.versions;
+        quote!(
+            macro_rules! use_all_vulkan_version_names {
+                ( $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#versions),* );
+                }
+            }
+        ).to_tokens(tokens);
+    }
+}
 
 fn parse_version(ver: &str) -> TokenStream {
 

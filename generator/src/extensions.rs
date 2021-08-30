@@ -11,6 +11,55 @@ use crate::utils;
 use crate::commands::*;
 use crate::global_data;
 
+// =================================================================
+/// Command Names for a given extension
+/// intended to generate code within a instance/device extension_names module
+pub struct ExtensionCommands<'a> {
+    extension: &'a str,
+    instance_command_names: Vec<&'a str>,
+    device_command_names: Vec<&'a str>,
+}
+
+impl ToTokens for ExtensionCommands<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let extension = self.extension.as_code();
+        let instance_command_names = &self.instance_command_names;
+        let device_command_names = &self.device_command_names;
+        quote!(
+            macro_rules! #extension {
+                ( @INSTANCE $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#instance_command_names),* );
+                };
+                ( @DEVICE $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#device_command_names),* );
+                };
+                ( @ALL $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* );
+                };
+            }
+        ).to_tokens(tokens);
+    }
+}
+
+// =================================================================
+/// list of all existing Vulkan extensions
+pub struct VulkanExtensionNames<'a> {
+    extensions: Vec<&'a str>,
+}
+
+impl ToTokens for VulkanExtensionNames<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let extensions = &self.extensions;
+        quote!(
+            macro_rules! use_all_vulkan_extension_names {
+                ( $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#extensions),* );
+                }
+            }
+        ).to_tokens(tokens);
+    }
+}
+
 pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate::ParseState<'a>) -> TokenStream {
 
     let q = extensions.elements.iter().map(|extension| {
