@@ -18,6 +18,7 @@ mod ty;
 mod r#struct;
 mod cfield;
 mod ctype;
+mod vkxml_visitor;
 // mod methods;
 
 use r#struct as stct;
