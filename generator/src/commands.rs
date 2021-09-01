@@ -11,8 +11,25 @@ use crate::ty;
 
 use std::collections::HashMap;
 
+use crate::definitions;
+
+#[derive(Default)]
 pub struct Commands2<'a> {
-    function_pointers: Vec<crate::definitions::FunctionPointer<'a>>,
+    function_pointers: Vec<definitions::FunctionPointer<'a>>,
+}
+
+// impl<'a, I: IntoIterator<Item=definitions::FunctionPointer<'a>>> From<I> for Commands2<'a> {
+//     fn from(i: I) -> Self {
+//         Self {
+//             function_pointers: i.into_iter().collect(),
+//         }
+//     }
+// }
+
+impl<'a> Commands2<'a> {
+    pub fn push(&mut self, function_pointer: definitions::FunctionPointer<'a>) {
+        self.function_pointers.push(function_pointer);
+    }
 }
 
 impl ToTokens for Commands2<'_> {

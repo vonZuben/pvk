@@ -19,6 +19,7 @@ mod r#struct;
 mod cfield;
 mod ctype;
 mod vkxml_visitor;
+mod code_generator;
 // mod methods;
 
 use r#struct as stct;

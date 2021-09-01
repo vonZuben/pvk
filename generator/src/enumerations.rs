@@ -6,9 +6,24 @@ use proc_macro2::{TokenStream};
 use crate::utils::*;
 use crate::global_data;
 
-struct EnumVariants<'a> {
+use crate::constants;
+
+pub struct EnumVariants<'a> {
     target: &'a str,
     variants: Vec<crate::constants::Constant2<'a>>,
+}
+
+impl<'a> EnumVariants<'a> {
+    pub fn new(target: &'a str) -> Self {
+        Self {
+            target,
+            variants: Default::default(),
+        }
+    }
+
+    pub fn extend_variants(&mut self, variants: impl IntoIterator<Item=constants::Constant2<'a>>) {
+        self.variants.extend(variants);
+    }
 }
 
 impl ToTokens for EnumVariants<'_> {
@@ -22,6 +37,13 @@ impl ToTokens for EnumVariants<'_> {
             }
         ).to_tokens(tokens);
     }
+}
+
+pub fn make_enumeration_variant_from_vkxml<'a>(vkxml_constant: &'a vkxml::Constant) -> constants::Constant2<'a> {
+    let name = &vkxml_constant.name;
+    let ty = constants::vkxml_constant_type(vkxml_constant);
+    let val = vkxml_enumeration_variant_expresion(vkxml_constant);
+    constants::Constant2::new(name, ty, val)
 }
 
 fn vkxml_enumeration_variant_expresion(vkxml_constant: &vkxml::Constant) -> crate::constants::Expresion<'static> {

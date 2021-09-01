@@ -24,7 +24,7 @@ pub struct TypeDef<'a> {
 }
 
 impl<'a> TypeDef<'a> {
-    fn new(name: &'a str, ty: &'a str) -> Self {
+    pub fn new(name: &'a str, ty: &'a str) -> Self {
         Self {
             name,
             ty,
@@ -49,7 +49,7 @@ pub struct Bitmask<'a> {
 }
 
 impl<'a> Bitmask<'a> {
-    fn new(name: &'a str, ty: &'a str) -> Self {
+    pub fn new(name: &'a str, ty: &'a str) -> Self {
         Self {
             name,
             ty,
@@ -78,6 +78,18 @@ pub struct Struct2<'a> {
     fields: Vec<crate::cfield::Cfield<'a>>,
 }
 
+impl<'a> Struct2<'a> {
+    pub fn new(name: &'a str) -> Self {
+        Self {
+            name,
+            fields: Default::default(),
+        }
+    }
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=crate::cfield::Cfield<'a>>) {
+        self.fields.extend(fields);
+    }
+}
+
 impl ToTokens for Struct2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
@@ -103,6 +115,18 @@ pub struct Union<'a> {
     fields: Vec<crate::cfield::Cfield<'a>>,
 }
 
+impl<'a> Union<'a> {
+    pub fn new(name: &'a str) -> Self {
+        Self {
+            name,
+            fields: Default::default(),
+        }
+    }
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=crate::cfield::Cfield<'a>>) {
+        self.fields.extend(fields);
+    }
+}
+
 impl ToTokens for Union<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
@@ -125,6 +149,14 @@ impl ToTokens for Union<'_> {
 /// for defining Vulkan Handle types
 pub struct Handle2<'a> {
     name: &'a str,
+}
+
+impl<'a> Handle2<'a> {
+    pub fn new(name: &'a str) -> Self {
+        Self {
+            name
+        }
+    }
 }
 
 impl ToTokens for Handle2<'_> {
@@ -156,6 +188,14 @@ impl ToTokens for Handle2<'_> {
 /// as associated constants on the actual Bitmask type
 pub struct Enum2<'a> {
     name: &'a str,
+}
+
+impl<'a> Enum2<'a> {
+    pub fn new(name: &'a str) -> Self {
+        Self {
+            name
+        }
+    }
 }
 
 impl ToTokens for Enum2<'_> {
@@ -223,6 +263,7 @@ pub struct Definitions2<'a> {
     pub structs: Vec<Struct2<'a>>,
     pub unions: Vec<Union<'a>>,
     pub handles: Vec<Handle2<'a>>,
+    pub enumerations: Vec<Enum2<'a>>,
     pub function_pointers: Vec<FunctionPointer<'a>>,
 }
 
@@ -254,6 +295,7 @@ impl ToTokens for Definitions2<'_> {
         let structs = &self.structs;
         let unions = &self.unions;
         let handles = &self.handles;
+        let enumerations = &self.enumerations;
         let function_pointers = &self.function_pointers;
 
         quote!(
@@ -262,6 +304,7 @@ impl ToTokens for Definitions2<'_> {
             #( #structs )*
             #( #unions )*
             #( #handles )*
+            #( #enumerations )*
             #( #function_pointers )*
         ).to_tokens(tokens);
     }

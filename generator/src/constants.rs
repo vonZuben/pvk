@@ -30,6 +30,16 @@ pub struct Constant2<'a> {
     val: Expresion<'a>,
 }
 
+impl<'a> Constant2<'a> {
+    pub fn new(name: &'a str, ty: crate::ctype::Ctype<'a>, val: Expresion<'a>) -> Self {
+        Self {
+            name,
+            ty,
+            val,
+        }
+    }
+}
+
 impl ToTokens for Constant2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
@@ -46,14 +56,10 @@ pub fn make_vulkan_const_from_vkxml<'a>(vkxml_constant: &'a vkxml::Constant) -> 
     let name = &vkxml_constant.name;
     let ty = vkxml_constant_type(vkxml_constant);
     let val = vkxml_constant_value_expresion(vkxml_constant);
-    Constant2 {
-        name,
-        ty,
-        val,
-    }
+    Constant2::new(name, ty, val)
 }
 
-fn vkxml_constant_type(vkxml_constant: &vkxml::Constant) -> crate::ctype::Ctype<'static> {
+pub fn vkxml_constant_type(vkxml_constant: &vkxml::Constant) -> crate::ctype::Ctype<'static> {
     use crate::ctype::Ctype;
 
     if let Some(_) = vkxml_constant.number {
