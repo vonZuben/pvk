@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::vkxml_visitor::VisitVkxml;
 
 use crate::cfield;
@@ -6,12 +8,43 @@ use crate::definitions;
 use crate::constants;
 use crate::enumerations;
 use crate::commands;
+use crate::features;
+use crate::extensions;
+
+#[derive(Copy, Clone)]
+enum CommandType {
+    Instance,
+    Device,
+    Static,
+    DoNotGenerate,
+    Entry,
+}
+
+fn command_type(command: &vkxml::Command) -> CommandType {
+    match command.name.as_str() {
+        "vkGetInstanceProcAddr" | "vkGetDeviceProcAddr" => CommandType::Static,
+        "vkEnumerateInstanceVersion" => CommandType::DoNotGenerate, // this function is manually created in lib.rs in order to support VK 1.0
+        _ =>
+            match command.param[0].basetype.as_str() {
+                "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandType::Device,
+                "VkInstance" | "VkPhysicalDevice" => CommandType::Instance,
+                _ => CommandType::Entry,
+            }
+    }
+}
 
 struct Generator<'a> {
+    // metadata
+    // when generating commands to load per feature, we use this to determine command_types
+    command_types: HashMap<&'a str, CommandType>,
+
+    // code generation
     definitions: definitions::Definitions2<'a>,
     constants: Vec<constants::Constant2<'a>>,
     enum_variants: Vec<enumerations::EnumVariants<'a>>,
     commands: commands::Commands2<'a>,
+    feature_commands: Vec<features::FeatureCommands<'a>>,
+    extension_commands: Vec<extensions::ExtensionCommands<'a>>,
 }
 
 impl<'a> VisitVkxml<'a> for Generator<'a> {
@@ -90,6 +123,10 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_command(&mut self, command: &'a vkxml::Command) {
+        // get CommandType metadata for feature code generation
+        self.command_types.insert(&command.name, command_type(command));
+
+        // generate command function_pointers
         let mut function_pointer = definitions::FunctionPointer::new(&command.name);
         let fields = command
             .param
@@ -100,8 +137,104 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
         self.commands.push(function_pointer);
     }
 
-    fn visit_feature(&mut self, feature: &'a vkxml::Feature) {}
-    fn visit_extension(&mut self, extension: &'a vkxml::Extension) {}
+    fn visit_feature(&mut self, feature: &'a vkxml::Feature) {
+        let mut fc = match self.feature_commands.last() {
+            Some(previous_feature) => previous_feature.as_new_version(&feature.name),
+            None => features::FeatureCommands::new(&feature.name),
+        };
+
+        for feature_element in feature.elements.iter() {
+            use vkxml::FeatureElement;
+            match feature_element {
+                FeatureElement::Notation(_) => {}
+                FeatureElement::Require(feature_spec) => {
+                    for feature_reference in feature_spec.elements.iter() {
+                        use vkxml::FeatureReference;
+                        match feature_reference {
+                            // nothing we need here
+                            FeatureReference::Notation(_) => {}
+                            // simply indicates definitions that should exist but we always
+                            // generate everything
+                            FeatureReference::DefinitionReference(_) => {}
+                            // should include some definitions of some Extension promoted enums
+                            // but vkxml does not include so we need to parse the more raw xml
+                            // from vk-parse to get these
+                            FeatureReference::EnumeratorReference(_) => {}
+                            // indicates the commands we should load for the specified version
+                            FeatureReference::CommandReference(cmd) => {
+                                match self.command_types.get(cmd.name.as_str()).expect("error: feature identifies unknown command") {
+                                    CommandType::Instance => fc.push_instance_command(&cmd.name),
+                                    CommandType::Device => fc.push_device_command(&cmd.name),
+                                    CommandType::Entry => fc.push_entry_command(&cmd.name),
+                                    CommandType::Static => {}
+                                    CommandType::DoNotGenerate => {}
+                                }
+                            }
+                        }
+                    }
+                }
+                FeatureElement::Remove(feature_spec) => {
+                    for feature_reference in feature_spec.elements.iter() {
+                        use vkxml::FeatureReference;
+                        match feature_reference {
+                            FeatureReference::Notation(_) => {}
+                            // simply indicates definitions that should *not* exist but we always
+                            // generate everything
+                            FeatureReference::DefinitionReference(_) => {}
+                            // similar to DefinitionReference but for enumerations
+                            FeatureReference::EnumeratorReference(_) => {}
+                            // indicates the commands we should *not* load for the specified version
+                            FeatureReference::CommandReference(cmd) => {
+                                fc.remove_command(&cmd.name);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        self.feature_commands.push(fc);
+    }
+
+    fn visit_extension(&mut self, extension: &'a vkxml::Extension) {
+        let mut ex = extensions::ExtensionCommands::new(&extension.name);
+
+        for extension_element in extension.elements.iter() {
+            use vkxml::ExtensionElement;
+            match extension_element {
+                ExtensionElement::Notation(_) => {}
+                ExtensionElement::Require(extension_spec) => {
+                    for ex_spec_element in extension_spec.elements.iter() {
+                        use vkxml::ExtensionSpecificationElement;
+                        match ex_spec_element {
+                            ExtensionSpecificationElement::Notation(_) => {}
+                            // simply indicates definitions that should exist but we always
+                            // generate everything
+                            ExtensionSpecificationElement::DefinitionReference(_) => {}
+                            ExtensionSpecificationElement::CommandReference(cmd) => {
+                                match self.command_types.get(cmd.name.as_str()).expect("error: feature identifies unknown command") {
+                                    CommandType::Instance => ex.push_instance_command(&cmd.name),
+                                    CommandType::Device => ex.push_device_command(&cmd.name),
+                                    CommandType::Entry => panic!("error: entry level command added by extension not handled"),
+                                    CommandType::Static => panic!("error: static level command added by extension not handled"),
+                                    CommandType::DoNotGenerate => {}
+                                }
+                            }
+                            // similar to DefinitionReference but for enumerations
+                            ExtensionSpecificationElement::EnumeratorReference(_) => {}
+                            ExtensionSpecificationElement::Constant(constant) => {
+                                self.constants.push(extensions::make_extention_constant_from_vkxmk(constant));
+                            }
+                            ExtensionSpecificationElement::Enum(enum_ex) => {}
+                        }
+                    }
+                }
+                ExtensionElement::Remove(_) => panic!("error: extension should not remove anything"),
+            }
+        }
+
+        self.extension_commands.push(ex);
+    }
 }
 
 enum FieldPurpose {

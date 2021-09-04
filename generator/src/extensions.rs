@@ -11,6 +11,8 @@ use crate::utils;
 use crate::commands::*;
 use crate::global_data;
 
+use crate::constants;
+
 // =================================================================
 /// Command Names for a given extension
 /// intended to generate code within a instance/device extension_names module
@@ -18,6 +20,22 @@ pub struct ExtensionCommands<'a> {
     extension: &'a str,
     instance_command_names: Vec<&'a str>,
     device_command_names: Vec<&'a str>,
+}
+
+impl<'a> ExtensionCommands<'a> {
+    pub fn new(extension: &'a str) -> Self {
+        Self {
+            extension,
+            instance_command_names: Default::default(),
+            device_command_names: Default::default(),
+        }
+    }
+    pub fn push_instance_command(&mut self, command: &'a str) {
+        self.instance_command_names.push(command);
+    }
+    pub fn push_device_command(&mut self, command: &'a str) {
+        self.device_command_names.push(command);
+    }
 }
 
 impl ToTokens for ExtensionCommands<'_> {
@@ -58,6 +76,88 @@ impl ToTokens for VulkanExtensionNames<'_> {
             }
         ).to_tokens(tokens);
     }
+}
+
+pub fn make_extention_constant_from_vkxmk<'a>(vkxml_ex_constant: &'a vkxml::ExtensionConstant) -> constants::Constant2<'a> {
+    let name = &vkxml_ex_constant.name;
+    let ty = vkxml_ex_constant_type(vkxml_ex_constant);
+    let val = vkxml_ex_constant_value_expresion(vkxml_ex_constant);
+    constants::Constant2::new(name, ty, val)
+}
+
+fn vkxml_ex_constant_value_expresion(vkxml_ex_constant: &vkxml::ExtensionConstant) -> constants::Expresion<'static> {
+    constants::Expresion::Literal(vkxml_ex_constant_value_string(vkxml_ex_constant))
+}
+
+fn vkxml_ex_constant_type(vkxml_ex_constant: &vkxml::ExtensionConstant) -> crate::ctype::Ctype<'static> {
+    use crate::ctype::Ctype;
+
+    if let Some(_) = vkxml_ex_constant.text {
+        return Ctype::new("&'static str");
+    }
+
+    if let Some(_) = vkxml_ex_constant.enumref {
+        return Ctype::new("usize");
+    }
+
+    if let Some(_) = vkxml_ex_constant.number {
+        return Ctype::new("usize");
+    }
+
+    if let Some(_) = vkxml_ex_constant.hex {
+        return Ctype::new("usize");
+    }
+
+    if let Some(_) = vkxml_ex_constant.bitpos {
+        // This only shows up for FlagBits (I think) which as a Flags type alias defined by Vulkan
+        return Ctype::new("Flags");
+    }
+
+    if let Some(ref expr) = vkxml_ex_constant.c_expression {
+        return match expr {
+            e if e.contains("ULL") => Ctype::new("u64"),
+            e if e.contains("U") => Ctype::new("u32"),
+            e if e.contains("f") => Ctype::new("f32"),
+            _ => Ctype::new("usize"),
+        };
+    }
+
+    panic!("improper vkxml_ex_constant does not have a value");
+}
+
+fn vkxml_ex_constant_value_string(vkxml_ex_constant: &vkxml::ExtensionConstant) -> String {
+    use crate::ctype::Ctype;
+
+    if let Some(ref text) = vkxml_ex_constant.text {
+        return text.to_string();
+    }
+
+    if let Some(ref enumref) = vkxml_ex_constant.enumref {
+        return enumref.to_string();
+    }
+
+    if let Some(num) = vkxml_ex_constant.number {
+        return num.to_string();
+    }
+
+    if let Some(ref hex_str) = vkxml_ex_constant.hex {
+        return format!("0x{:0>8}", hex_str);
+    }
+
+    if let Some(bitpos) = vkxml_ex_constant.bitpos {
+        // This only shows up for FlagBits (I think) which as a Flags type alias defined by Vulkan
+        return format!("0x{:0>8X}", (1u32 << bitpos));
+    }
+
+    if let Some(ref expr) = vkxml_ex_constant.c_expression {
+        return expr
+            .replace("ULL", "")
+            .replace("U", "")
+            .replace("~", "!")
+            .replace("f", "");
+    }
+
+    panic!("improper vkxml_ex_constant does not have a value");
 }
 
 pub fn handle_extensions<'a>(extensions: &'a Extensions, parse_state: &mut crate::ParseState<'a>) -> TokenStream {
