@@ -24,6 +24,10 @@ impl<'a> EnumVariants<'a> {
     pub fn extend_variants(&mut self, variants: impl IntoIterator<Item=constants::Constant2<'a>>) {
         self.variants.extend(variants);
     }
+
+    pub fn push_variant(&mut self, variant: constants::Constant2<'a>) {
+        self.variants.push(variant);
+    }
 }
 
 impl ToTokens for EnumVariants<'_> {
@@ -37,18 +41,6 @@ impl ToTokens for EnumVariants<'_> {
             }
         ).to_tokens(tokens);
     }
-}
-
-pub fn make_enumeration_variant_from_vkxml<'a>(vkxml_constant: &'a vkxml::Constant) -> constants::Constant2<'a> {
-    let name = &vkxml_constant.name;
-    let ty = constants::vkxml_constant_type(vkxml_constant);
-    let val = vkxml_enumeration_variant_expresion(vkxml_constant);
-    constants::Constant2::new(name, ty, val)
-}
-
-fn vkxml_enumeration_variant_expresion(vkxml_constant: &vkxml::Constant) -> crate::constants::Expresion<'static> {
-    use crate::constants;
-    constants::Expresion::CallExpresion("Self", constants::vkxml_constant_value_string(vkxml_constant))
 }
 
 pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {

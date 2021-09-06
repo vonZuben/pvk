@@ -7,6 +7,9 @@ use proc_macro2::{TokenStream};
 use crate::ty::*;
 use crate::global_data;
 
+use std::collections::HashMap;
+use std::hash::Hash;
+
 macro_rules! pipe {
 
     ( @EXPAND $val:ident => ) => {
@@ -113,6 +116,23 @@ impl<T> StrAsCode for T where T: AsRef<str> {
         let rstr = ctype_to_rtype(self.as_ref());
         rstr.parse()
             .expect(format!("error: can't parse {{{}}} as TokenStream", &rstr).as_ref())
+    }
+}
+
+#[derive(Default)]
+pub struct VecMap<K, V> {
+    vec: Vec<V>,
+    map: HashMap<K, usize>,
+}
+
+impl<K: Eq + Hash, V> VecMap<K, V> {
+    pub fn push(&mut self, key: K, val: V) {
+        assert!(self.map.insert(key, self.vec.len()).is_none());
+        self.vec.push(val);
+    }
+    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
+        let index = self.map.get(&key)?;
+        unsafe { Some(self.vec.get_unchecked_mut(*index)) }
     }
 }
 

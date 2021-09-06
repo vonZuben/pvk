@@ -70,3 +70,97 @@ pub fn visit_vkxml<'a>(registry: &'a vkxml::Registry, visitor: &mut impl VisitVk
         }
     }
 }
+
+pub trait VisitFeature<'a> {
+    fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {}
+    fn visit_remove_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {}
+}
+
+pub fn visit_feature<'a>(feature: &'a vkxml::Feature, visitor: &mut impl VisitFeature<'a>) {
+    for feature_element in feature.elements.iter() {
+        use vkxml::FeatureElement;
+        match feature_element {
+            FeatureElement::Notation(_) => {}
+            FeatureElement::Require(feature_spec) => {
+                for feature_reference in feature_spec.elements.iter() {
+                    use vkxml::FeatureReference;
+                    match feature_reference {
+                        // nothing we need here
+                        FeatureReference::Notation(_) => {}
+                        // simply indicates definitions that should exist but we always
+                        // generate everything
+                        FeatureReference::DefinitionReference(_) => {}
+                        // should include some definitions of some Extension promoted enums
+                        // but vkxml does not include so we need to parse the more raw xml
+                        // from vk-parse to get these
+                        FeatureReference::EnumeratorReference(_) => {}
+                        // indicates the commands we should load for the specified version
+                        FeatureReference::CommandReference(cmd) => {
+                            visitor.visit_require_command_ref(cmd);
+                        }
+                    }
+                }
+            }
+            FeatureElement::Remove(feature_spec) => {
+                for feature_reference in feature_spec.elements.iter() {
+                    use vkxml::FeatureReference;
+                    match feature_reference {
+                        FeatureReference::Notation(_) => {}
+                        // simply indicates definitions that should *not* exist but we always
+                        // generate everything
+                        FeatureReference::DefinitionReference(_) => {}
+                        // similar to DefinitionReference but for enumerations
+                        FeatureReference::EnumeratorReference(_) => {}
+                        // indicates the commands we should *not* load for the specified version
+                        FeatureReference::CommandReference(cmd) => {
+                            visitor.visit_remove_command_ref(cmd);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub struct VkxmlExtensionEnum<'a> {
+    pub enum_extension: &'a vkxml::ExtensionEnum,
+    pub number: i32,
+}
+
+pub trait VisitExtension<'a> {
+    fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {}
+    fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {}
+    fn visit_require_enum_variant(&mut self, enum_def: VkxmlExtensionEnum<'a>) {}
+}
+
+pub fn visit_extension<'a>(extension: &'a vkxml::Extension, visitor: &mut impl VisitExtension<'a>) {
+    for extension_element in extension.elements.iter() {
+        use vkxml::ExtensionElement;
+        match extension_element {
+            ExtensionElement::Notation(_) => {}
+            ExtensionElement::Require(extension_spec) => {
+                for ex_spec_element in extension_spec.elements.iter() {
+                    use vkxml::ExtensionSpecificationElement;
+                    match ex_spec_element {
+                        ExtensionSpecificationElement::Notation(_) => {}
+                        // simply indicates definitions that should exist but we always
+                        // generate everything
+                        ExtensionSpecificationElement::DefinitionReference(_) => {}
+                        ExtensionSpecificationElement::CommandReference(cmd) => {
+                            visitor.visit_require_command_ref(cmd);
+                        }
+                        // similar to DefinitionReference but for enumerations
+                        ExtensionSpecificationElement::EnumeratorReference(_) => {}
+                        ExtensionSpecificationElement::Constant(constant) => {
+                            visitor.visit_require_constant(constant);
+                        }
+                        ExtensionSpecificationElement::Enum(enum_def) => {
+                            visitor.visit_require_enum_variant(VkxmlExtensionEnum { enum_extension: enum_def, number: extension.number });
+                        }
+                    }
+                }
+            }
+            ExtensionElement::Remove(_) => panic!("error: extension should not remove anything"),
+        }
+    }
+}

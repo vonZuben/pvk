@@ -1,15 +1,18 @@
 use std::collections::HashMap;
 
-use crate::vkxml_visitor::VisitVkxml;
+use crate::vkxml_visitor;
+use crate::vkxml_visitor::{VisitExtension, VisitFeature, VisitVkxml};
+
+use crate::utils;
 
 use crate::cfield;
+use crate::commands;
+use crate::constants;
 use crate::ctype;
 use crate::definitions;
-use crate::constants;
 use crate::enumerations;
-use crate::commands;
-use crate::features;
 use crate::extensions;
+use crate::features;
 
 #[derive(Copy, Clone)]
 enum CommandType {
@@ -24,12 +27,11 @@ fn command_type(command: &vkxml::Command) -> CommandType {
     match command.name.as_str() {
         "vkGetInstanceProcAddr" | "vkGetDeviceProcAddr" => CommandType::Static,
         "vkEnumerateInstanceVersion" => CommandType::DoNotGenerate, // this function is manually created in lib.rs in order to support VK 1.0
-        _ =>
-            match command.param[0].basetype.as_str() {
-                "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandType::Device,
-                "VkInstance" | "VkPhysicalDevice" => CommandType::Instance,
-                _ => CommandType::Entry,
-            }
+        _ => match command.param[0].basetype.as_str() {
+            "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandType::Device,
+            "VkInstance" | "VkPhysicalDevice" => CommandType::Instance,
+            _ => CommandType::Entry,
+        },
     }
 }
 
@@ -41,7 +43,7 @@ struct Generator<'a> {
     // code generation
     definitions: definitions::Definitions2<'a>,
     constants: Vec<constants::Constant2<'a>>,
-    enum_variants: Vec<enumerations::EnumVariants<'a>>,
+    enum_variants: utils::VecMap<&'a str, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2<'a>,
     feature_commands: Vec<features::FeatureCommands<'a>>,
     extension_commands: Vec<extensions::ExtensionCommands<'a>>,
@@ -103,28 +105,36 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_constant(&mut self, constant: &'a vkxml::Constant) {
-        self.constants.push(constants::make_vulkan_const_from_vkxml(constant));
+        self.constants.push(constants::Constant2::new(
+            &constant.name,
+            constants::TypeValueExpresion::literal(constant),
+        ));
     }
 
     fn visit_enum_variants(&mut self, enumeration: &'a vkxml::Enumeration) {
         let mut enum_variant = enumerations::EnumVariants::new(&enumeration.name);
-        let variants = enumeration.elements.iter().filter_map(|enumeration_element| {
-            use vkxml::EnumerationElement;
-            match enumeration_element {
-                EnumerationElement::Notation(_) => None,
-                EnumerationElement::UnusedRange(_) => None,
-                EnumerationElement::Enum(constant) => {
-                    Some(enumerations::make_enumeration_variant_from_vkxml(constant))
+        let variants = enumeration
+            .elements
+            .iter()
+            .filter_map(|enumeration_element| {
+                use vkxml::EnumerationElement;
+                match enumeration_element {
+                    EnumerationElement::Notation(_) => None,
+                    EnumerationElement::UnusedRange(_) => None,
+                    EnumerationElement::Enum(constant) => Some(constants::Constant2::new(
+                        &constant.name,
+                        constants::TypeValueExpresion::simple_self(constant),
+                    )),
                 }
-            }
-        });
+            });
         enum_variant.extend_variants(variants);
-        self.enum_variants.push(enum_variant);
+        self.enum_variants.push(&enumeration.name, enum_variant);
     }
 
     fn visit_command(&mut self, command: &'a vkxml::Command) {
-        // get CommandType metadata for feature code generation
-        self.command_types.insert(&command.name, command_type(command));
+        // get CommandType metadata for feature and extension code generation
+        self.command_types
+            .insert(&command.name, command_type(command));
 
         // generate command function_pointers
         let mut function_pointer = definitions::FunctionPointer::new(&command.name);
@@ -142,98 +152,92 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
             Some(previous_feature) => previous_feature.as_new_version(&feature.name),
             None => features::FeatureCommands::new(&feature.name),
         };
-
-        for feature_element in feature.elements.iter() {
-            use vkxml::FeatureElement;
-            match feature_element {
-                FeatureElement::Notation(_) => {}
-                FeatureElement::Require(feature_spec) => {
-                    for feature_reference in feature_spec.elements.iter() {
-                        use vkxml::FeatureReference;
-                        match feature_reference {
-                            // nothing we need here
-                            FeatureReference::Notation(_) => {}
-                            // simply indicates definitions that should exist but we always
-                            // generate everything
-                            FeatureReference::DefinitionReference(_) => {}
-                            // should include some definitions of some Extension promoted enums
-                            // but vkxml does not include so we need to parse the more raw xml
-                            // from vk-parse to get these
-                            FeatureReference::EnumeratorReference(_) => {}
-                            // indicates the commands we should load for the specified version
-                            FeatureReference::CommandReference(cmd) => {
-                                match self.command_types.get(cmd.name.as_str()).expect("error: feature identifies unknown command") {
-                                    CommandType::Instance => fc.push_instance_command(&cmd.name),
-                                    CommandType::Device => fc.push_device_command(&cmd.name),
-                                    CommandType::Entry => fc.push_entry_command(&cmd.name),
-                                    CommandType::Static => {}
-                                    CommandType::DoNotGenerate => {}
-                                }
-                            }
-                        }
-                    }
-                }
-                FeatureElement::Remove(feature_spec) => {
-                    for feature_reference in feature_spec.elements.iter() {
-                        use vkxml::FeatureReference;
-                        match feature_reference {
-                            FeatureReference::Notation(_) => {}
-                            // simply indicates definitions that should *not* exist but we always
-                            // generate everything
-                            FeatureReference::DefinitionReference(_) => {}
-                            // similar to DefinitionReference but for enumerations
-                            FeatureReference::EnumeratorReference(_) => {}
-                            // indicates the commands we should *not* load for the specified version
-                            FeatureReference::CommandReference(cmd) => {
-                                fc.remove_command(&cmd.name);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         self.feature_commands.push(fc);
+        vkxml_visitor::visit_feature(feature, self);
     }
 
     fn visit_extension(&mut self, extension: &'a vkxml::Extension) {
         let mut ex = extensions::ExtensionCommands::new(&extension.name);
-
-        for extension_element in extension.elements.iter() {
-            use vkxml::ExtensionElement;
-            match extension_element {
-                ExtensionElement::Notation(_) => {}
-                ExtensionElement::Require(extension_spec) => {
-                    for ex_spec_element in extension_spec.elements.iter() {
-                        use vkxml::ExtensionSpecificationElement;
-                        match ex_spec_element {
-                            ExtensionSpecificationElement::Notation(_) => {}
-                            // simply indicates definitions that should exist but we always
-                            // generate everything
-                            ExtensionSpecificationElement::DefinitionReference(_) => {}
-                            ExtensionSpecificationElement::CommandReference(cmd) => {
-                                match self.command_types.get(cmd.name.as_str()).expect("error: feature identifies unknown command") {
-                                    CommandType::Instance => ex.push_instance_command(&cmd.name),
-                                    CommandType::Device => ex.push_device_command(&cmd.name),
-                                    CommandType::Entry => panic!("error: entry level command added by extension not handled"),
-                                    CommandType::Static => panic!("error: static level command added by extension not handled"),
-                                    CommandType::DoNotGenerate => {}
-                                }
-                            }
-                            // similar to DefinitionReference but for enumerations
-                            ExtensionSpecificationElement::EnumeratorReference(_) => {}
-                            ExtensionSpecificationElement::Constant(constant) => {
-                                self.constants.push(extensions::make_extention_constant_from_vkxmk(constant));
-                            }
-                            ExtensionSpecificationElement::Enum(enum_ex) => {}
-                        }
-                    }
-                }
-                ExtensionElement::Remove(_) => panic!("error: extension should not remove anything"),
-            }
-        }
-
         self.extension_commands.push(ex);
+        vkxml_visitor::visit_extension(extension, self);
+    }
+}
+
+// when visiting a Feature, the generator will modify the last FeatureCommands added
+// thus, you must add the FeatureCommands you want to modify as the last one
+impl<'a> VisitFeature<'a> for Generator<'a> {
+    fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
+        let cmd_name = command_ref.name.as_str();
+        let fc = self
+            .feature_commands
+            .last_mut()
+            .expect("error: no feature_command created");
+        match self
+            .command_types
+            .get(cmd_name)
+            .expect("error: feature identifies unknown command")
+        {
+            CommandType::Instance => fc.push_instance_command(cmd_name),
+            CommandType::Device => fc.push_device_command(cmd_name),
+            CommandType::Entry => fc.push_entry_command(cmd_name),
+            CommandType::Static => {}
+            CommandType::DoNotGenerate => {}
+        }
+    }
+
+    fn visit_remove_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
+        let cmd_name = command_ref.name.as_str();
+        let fc = self
+            .feature_commands
+            .last_mut()
+            .expect("error: no feature_command created");
+        fc.remove_command(cmd_name);
+    }
+}
+
+impl<'a> VisitExtension<'a> for Generator<'a> {
+    fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
+        let cmd_name = command_ref.name.as_str();
+        let ex = self
+            .extension_commands
+            .last_mut()
+            .expect("error: no extension_commands created");
+        match self
+            .command_types
+            .get(cmd_name)
+            .expect("error: feature identifies unknown command")
+        {
+            CommandType::Instance => ex.push_instance_command(cmd_name),
+            CommandType::Device => ex.push_device_command(cmd_name),
+            CommandType::Entry => {
+                panic!("error: entry level command added by extension not handled")
+            }
+            CommandType::Static => {
+                panic!("error: static level command added by extension not handled")
+            }
+            CommandType::DoNotGenerate => {}
+        }
+    }
+
+    fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {
+        self.constants.push(constants::Constant2::new(
+            &constant.name,
+            constants::TypeValueExpresion::literal(constant),
+        ));
+    }
+
+    fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
+        // TODO: I think some enums may exist, but not have any variants until the extension defined
+        // consider adding an "entry" like api
+        let mut enum_variants = self
+            .enum_variants
+            .get_mut(&enum_def.enum_extension.name)
+            .expect("error: extension extends an enum that dosn't exist");
+
+        enum_variants.push_variant(constants::Constant2::new(
+            &enum_def.enum_extension.name,
+            constants::TypeValueExpresion::simple_self(enum_def),
+        ));
     }
 }
 
@@ -261,17 +265,23 @@ fn make_cfield<'a>(field: &'a vkxml::Field, purpose: FieldPurpose) -> cfield::Cf
 fn make_return_ctype<'a>(field: &'a vkxml::Field) -> ctype::ReturnType<'a> {
     if field.basetype.as_str() == "void" && field.reference.is_none() {
         return Default::default();
-    }
-    else {
+    } else {
         let mut ctype = ctype::Ctype::new(&field.basetype);
         // for now, assuming return type cannot be a pointer to a static size array
-        assert!(!(matches!(field.reference, Some(_)) && matches!(field.array, Some(vkxml::ArrayType::Static))));
+        assert!(
+            !(matches!(field.reference, Some(_))
+                && matches!(field.array, Some(vkxml::ArrayType::Static)))
+        );
         set_ctype_pointer_or_array(field, FieldPurpose::FunctionParam, &mut ctype);
         ctype.into()
     }
 }
 
-fn set_ctype_pointer_or_array<'a>(field: &'a vkxml::Field, purpose: FieldPurpose, ctype: &mut ctype::Ctype<'a>) {
+fn set_ctype_pointer_or_array<'a>(
+    field: &'a vkxml::Field,
+    purpose: FieldPurpose,
+    ctype: &mut ctype::Ctype<'a>,
+) {
     use vkxml::ArrayType;
 
     match field.array {

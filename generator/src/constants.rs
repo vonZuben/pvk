@@ -1,42 +1,22 @@
-
 use quote::{quote, ToTokens};
 
 use vkxml::*;
 
-use proc_macro2::{TokenStream};
+use proc_macro2::TokenStream;
 
 use crate::utils::*;
 
-pub enum Expresion<'a> {
-    Literal(String),
-    CallExpresion(&'a str, String), // simplified call expression
-}
-
-impl ToTokens for Expresion<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        use Expresion::*;
-        match self {
-            Literal(lit) => quote!(#lit).to_tokens(tokens),
-            // only need to support simple 1 param call
-            // this is for initilizing single element tuple structs
-            CallExpresion(callee, param1) => quote!( #callee(#param1) ).to_tokens(tokens),
-        }
-    }
-}
+use crate::ctype;
+use crate::vkxml_visitor;
 
 pub struct Constant2<'a> {
     name: &'a str,
-    ty: crate::ctype::Ctype<'a>,
-    val: Expresion<'a>,
+    val: TypeValueExpresion<'a>,
 }
 
 impl<'a> Constant2<'a> {
-    pub fn new(name: &'a str, ty: crate::ctype::Ctype<'a>, val: Expresion<'a>) -> Self {
-        Self {
-            name,
-            ty,
-            val,
-        }
+    pub fn new(name: &'a str, val: TypeValueExpresion<'a>) -> Self {
+        Self { name, val }
     }
 }
 
@@ -44,83 +24,207 @@ impl ToTokens for Constant2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
         let name = self.name.as_code();
-        let ty = &self.ty;
-        let val = &self.val;
+        let ty = self.val.value_ctype();
+        let val = self.val.value_string().as_code();
         quote!(
             pub const #name: #ty = #val;
-        ).to_tokens(tokens);
+        )
+        .to_tokens(tokens);
     }
 }
 
-pub fn make_vulkan_const_from_vkxml<'a>(vkxml_constant: &'a vkxml::Constant) -> Constant2<'a> {
-    let name = &vkxml_constant.name;
-    let ty = vkxml_constant_type(vkxml_constant);
-    let val = vkxml_constant_value_expresion(vkxml_constant);
-    Constant2::new(name, ty, val)
+pub enum Negate {
+    True,
+    False,
 }
 
-pub fn vkxml_constant_type(vkxml_constant: &vkxml::Constant) -> crate::ctype::Ctype<'static> {
-    use crate::ctype::Ctype;
-
-    if let Some(_) = vkxml_constant.number {
-        return Ctype::new("usize");
+impl From<bool> for Negate {
+    fn from(b: bool) -> Self {
+        match b {
+            true => Negate::True,
+            false => Negate::False,
+        }
     }
-
-    if let Some(_) = vkxml_constant.hex {
-        return Ctype::new("usize");
-    }
-
-    if let Some(_) = vkxml_constant.bitpos {
-        // This only shows up for FlagBits (I think) which as a Flags type alias defined by Vulkan
-        return Ctype::new("Flags");
-    }
-
-    if let Some(ref expr) = vkxml_constant.c_expression {
-        return match expr {
-            e if e.contains("ULL") => Ctype::new("u64"),
-            e if e.contains("U") => Ctype::new("u32"),
-            e if e.contains("f") => Ctype::new("f32"),
-            _ => Ctype::new("usize"),
-        };
-    }
-
-    panic!("improper vkxml_constant does not have a value");
 }
 
-pub fn vkxml_constant_value_string(vkxml_constant: &vkxml::Constant) -> String {
-    use crate::ctype::Ctype;
-
-    if let Some(num) = vkxml_constant.number {
-        return num.to_string();
-    }
-
-    if let Some(ref hex_str) = vkxml_constant.hex {
-        return format!("0x{:0>8}", hex_str);
-    }
-
-    if let Some(bitpos) = vkxml_constant.bitpos {
-        // This only shows up for FlagBits (I think) which as a Flags type alias defined by Vulkan
-        return format!("0x{:0>8X}", (1u32 << bitpos));
-    }
-
-    if let Some(ref expr) = vkxml_constant.c_expression {
-        return expr
-            .replace("ULL", "")
-            .replace("U", "")
-            .replace("~", "!")
-            .replace("f", "");
-    }
-
-    panic!("improper vkxml_constant does not have a value");
+pub enum ConstValue<'a> {
+    Offset(usize, Negate),
+    Text(&'a str),
+    Enumref(&'a str),
+    Number(i32, Negate),
+    Hex(&'a str),
+    Bitpos(u32),
+    Cexpr(&'a str),
 }
 
-fn vkxml_constant_value_expresion(vkxml_constant: &vkxml::Constant) -> Expresion<'static> {
-    Expresion::Literal(vkxml_constant_value_string(vkxml_constant))
+impl ConstValue<'_> {
+    fn value_string(&self) -> String {
+        use ConstValue::*;
+        match self {
+            Offset(calcualted, negate) => match negate {
+                Negate::False => calcualted.to_string(),
+                Negate::True => format!("-{}", calcualted),
+            },
+            Text(text) => text.to_string(),
+            Enumref(enumref) => enumref.to_string(),
+            Number(num, negate) => match negate {
+                Negate::False => num.to_string(),
+                Negate::True => format!("-{}", num),
+            },
+            Hex(hex) => format!("0x{:0>8}", hex),
+            Bitpos(bitpos) => format!("0x{:0>8X}", (1u32 << bitpos)),
+            Cexpr(cexpr) => cexpr
+                .replace("ULL", "")
+                .replace("U", "")
+                .replace("~", "!")
+                .replace("f", ""),
+        }
+    }
+
+    fn value_ctype(&self) -> ctype::Ctype<'static> {
+        use ctype::Ctype;
+        use ConstValue::*;
+        match self {
+            Offset(_, _) => Ctype::new("usize"),
+            Text(_) => Ctype::new("&'static str"),
+            Enumref(enumref) => Ctype::new("usize"),
+            Number(_, _) => Ctype::new("usize"),
+            Hex(_) => Ctype::new("usize"),
+            Bitpos(bitpos) => Ctype::new("Flags"),
+            Cexpr(cexpr) => match cexpr {
+                e if e.contains("ULL") => Ctype::new("u64"),
+                e if e.contains("U") => Ctype::new("u32"),
+                e if e.contains("f") => Ctype::new("f32"),
+                _ => Ctype::new("usize"),
+            },
+        }
+    }
 }
 
+enum TypeValueExpresionKind {
+    Literal,
+    SimpleSelf, // simple Self(val) expression for use in associated const (vulkan enum emulation)
+}
+
+pub struct TypeValueExpresion<'a> {
+    val: ConstValue<'a>,
+    kind: TypeValueExpresionKind,
+}
+
+impl<'a> TypeValueExpresion<'a> {
+    pub fn literal(val: impl Into<ConstValue<'a>>) -> Self {
+        Self {
+            val: val.into(),
+            kind: TypeValueExpresionKind::Literal,
+        }
+    }
+    pub fn simple_self(val: impl Into<ConstValue<'a>>) -> Self {
+        Self {
+            val: val.into(),
+            kind: TypeValueExpresionKind::SimpleSelf,
+        }
+    }
+
+    fn value_ctype(&self) -> ctype::Ctype {
+        match self.kind {
+            TypeValueExpresionKind::Literal => self.val.value_ctype(),
+            TypeValueExpresionKind::SimpleSelf => ctype::Ctype::new("Self"),
+        }
+    }
+
+    fn value_string(&self) -> String {
+        match self.kind {
+            TypeValueExpresionKind::Literal => self.val.value_string(),
+            TypeValueExpresionKind::SimpleSelf => format!("Self({})", self.value_string()),
+        }
+    }
+}
+
+impl<'a> From<&'a vkxml::Constant> for ConstValue<'a> {
+    fn from(vkxml_constant: &'a vkxml::Constant) -> Self {
+        if let Some(number) = vkxml_constant.number {
+            return ConstValue::Number(number, Negate::False);
+        }
+
+        if let Some(ref hex) = vkxml_constant.hex {
+            return ConstValue::Hex(hex);
+        }
+
+        if let Some(bitpos) = vkxml_constant.bitpos {
+            return ConstValue::Bitpos(bitpos);
+        }
+
+        if let Some(ref expr) = vkxml_constant.c_expression {
+            return ConstValue::Cexpr(expr);
+        }
+
+        panic!("improper vkxml_constant does not have a value");
+    }
+}
+
+impl<'a> From<&'a vkxml::ExtensionConstant> for ConstValue<'a> {
+    fn from(vkxml_ex_constant: &'a vkxml::ExtensionConstant) -> Self {
+        if let Some(ref text) = vkxml_ex_constant.text {
+            return ConstValue::Text(text);
+        }
+
+        if let Some(ref enumref) = vkxml_ex_constant.enumref {
+            return ConstValue::Enumref(enumref);
+        }
+
+        if let Some(num) = vkxml_ex_constant.number {
+            return ConstValue::Number(num, Negate::False);
+        }
+
+        if let Some(ref hex_str) = vkxml_ex_constant.hex {
+            return ConstValue::Hex(hex_str);
+        }
+
+        if let Some(bitpos) = vkxml_ex_constant.bitpos {
+            return ConstValue::Bitpos(bitpos);
+        }
+
+        if let Some(ref expr) = vkxml_ex_constant.c_expression {
+            return ConstValue::Cexpr(expr);
+        }
+
+        panic!("improper vkxml_ex_constant does not have a value");
+    }
+}
+
+impl<'a> From<vkxml_visitor::VkxmlExtensionEnum<'a>> for ConstValue<'a> {
+    fn from(vkxml_ex_enum: vkxml_visitor::VkxmlExtensionEnum<'a>) -> Self {
+        if let Some(offset) = vkxml_ex_enum.enum_extension.offset {
+            use std::convert::TryInto;
+            let offset: i32 = offset.try_into().expect("error: offset cannot be i32");
+            let val = 1000000000 + (vkxml_ex_enum.number - 1) * 1000 + offset;
+            return ConstValue::Offset(
+                val.try_into().expect("error: i32 to usize cannot fail"),
+                vkxml_ex_enum.enum_extension.negate.into(),
+            );
+        }
+
+        if let Some(num) = vkxml_ex_enum.enum_extension.number {
+            return ConstValue::Number(num, vkxml_ex_enum.enum_extension.negate.into());
+        }
+
+        if let Some(ref hex_str) = vkxml_ex_enum.enum_extension.hex {
+            return ConstValue::Hex(hex_str);
+        }
+
+        if let Some(bitpos) = vkxml_ex_enum.enum_extension.bitpos {
+            return ConstValue::Bitpos(bitpos);
+        }
+
+        if let Some(ref expr) = vkxml_ex_enum.enum_extension.c_expression {
+            return ConstValue::Cexpr(expr);
+        }
+
+        panic!("improper vkxml_ex_constant does not have a value");
+    }
+}
 
 pub fn handle_constants(constants: &Constants) -> TokenStream {
-
     let q = constants.elements.iter().map(|constant| {
         let name = constant.name();
         let ty = constant.ty();
@@ -129,7 +233,6 @@ pub fn handle_constants(constants: &Constants) -> TokenStream {
     });
 
     quote!( #( #q )* )
-
 }
 
 trait ConstExt {
@@ -139,30 +242,28 @@ trait ConstExt {
 }
 
 impl ConstExt for vkxml::Constant {
-
     fn ty(&self) -> TokenStream {
         if self.name.contains("TRUE") || self.name.contains("FALSE") {
             return quote!(Bool32);
-        }
-        else { one_option!(
+        } else {
+            one_option!(
 
-                &self.number , |_| quote!(usize) ;
+            &self.number , |_| quote!(usize) ;
 
-                &self.hex , |_| quote!(usize) ;
+            &self.hex , |_| quote!(usize) ;
 
-                &self.bitpos , |_| panic!("error: trying to get bitpos type not implemented -> {}", self.name) ;
+            &self.bitpos , |_| panic!("error: trying to get bitpos type not implemented -> {}", self.name) ;
 
-                &self.c_expression , |expr: &str| {
-                    match &expr {
-                        e if e.contains("ULL") => quote!(u64),
-                        e if e.contains("U") => quote!(u32),
-                        e if e.contains("f") => quote!(f32),
-                        _ => quote!(usize),
-                    }
+            &self.c_expression , |expr: &str| {
+                match &expr {
+                    e if e.contains("ULL") => quote!(u64),
+                    e if e.contains("U") => quote!(u32),
+                    e if e.contains("f") => quote!(f32),
+                    _ => quote!(usize),
                 }
-                )
+            }
+            )
         }
-
     }
     fn val(&self) -> TokenStream {
         one_option!(
