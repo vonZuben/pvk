@@ -45,7 +45,9 @@ struct Generator<'a> {
     constants: Vec<constants::Constant2<'a>>,
     enum_variants: utils::VecMap<&'a str, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2<'a>,
+    vulkan_version_names: features::VulkanVersionNames<'a>,
     feature_commands: Vec<features::FeatureCommands<'a>>,
+    vulkan_extension_names: extensions::VulkanExtensionNames<'a>,
     extension_commands: Vec<extensions::ExtensionCommands<'a>>,
 }
 
@@ -148,6 +150,10 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_feature(&mut self, feature: &'a vkxml::Feature) {
+        // collect feature/version names
+        self.vulkan_version_names.push_version(&feature.name);
+
+        // collect commands per feature/version
         let mut fc = match self.feature_commands.last() {
             Some(previous_feature) => previous_feature.as_new_version(&feature.name),
             None => features::FeatureCommands::new(&feature.name),
@@ -157,6 +163,10 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_extension(&mut self, extension: &'a vkxml::Extension) {
+        // collect extension anmes
+        self.vulkan_extension_names.push_extension(&extension.name);
+
+        // collect command, constants, and eneum variants from extension
         let mut ex = extensions::ExtensionCommands::new(&extension.name);
         self.extension_commands.push(ex);
         vkxml_visitor::visit_extension(extension, self);

@@ -136,8 +136,15 @@ impl ToTokens for FeatureCommands<'_> {
 
 // =================================================================
 /// list of all existing Vulkan versions
+#[derive(Default)]
 pub struct VulkanVersionNames<'a> {
     versions: Vec<&'a str>,
+}
+
+impl<'a> VulkanVersionNames<'a> {
+    pub fn push_version(&mut self, version: &'a str) {
+        self.versions.push(version);
+    }
 }
 
 impl ToTokens for VulkanVersionNames<'_> {

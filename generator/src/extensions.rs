@@ -61,8 +61,15 @@ impl ToTokens for ExtensionCommands<'_> {
 
 // =================================================================
 /// list of all existing Vulkan extensions
+#[derive(Default)]
 pub struct VulkanExtensionNames<'a> {
     extensions: Vec<&'a str>,
+}
+
+impl<'a> VulkanExtensionNames<'a> {
+    pub fn push_extension(&mut self, extension: &'a str) {
+        self.extensions.push(extension);
+    }
 }
 
 impl ToTokens for VulkanExtensionNames<'_> {
