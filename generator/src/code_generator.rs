@@ -281,10 +281,10 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
     }
 
     fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
-        let enum_name = enum_def.enum_extension.name.as_str();
+        let target = enum_def.enum_extension.extends.as_str();
         let mut enum_variants = self
             .enum_variants
-            .get_mut_or_default(enum_name, enumerations::EnumVariants::new(enum_name));
+            .get_mut_or_default(target, enumerations::EnumVariants::new(target));
 
         enum_variants.push_variant(constants::Constant2::new(
             &enum_def.enum_extension.name,
