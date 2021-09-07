@@ -149,7 +149,7 @@ impl<'a> VulkanVersionNames<'a> {
 
 impl ToTokens for VulkanVersionNames<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let versions = &self.versions;
+        let versions = self.versions.iter().map(StrAsCode::as_code);
         quote!(
             macro_rules! use_all_vulkan_version_names {
                 ( $call:ident $($pass:tt)* ) => {
