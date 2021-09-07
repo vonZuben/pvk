@@ -25,7 +25,7 @@ impl ToTokens for Constant2<'_> {
         use crate::utils::StrAsCode;
         let name = self.name.as_code();
         let ty = self.val.value_ctype();
-        let val = self.val.value_string().as_code();
+        let val = &self.val;
         quote!(
             pub const #name: #ty = #val;
         )
@@ -58,29 +58,6 @@ pub enum ConstValue<'a> {
 }
 
 impl ConstValue<'_> {
-    fn value_string(&self) -> String {
-        use ConstValue::*;
-        match self {
-            Offset(calcualted, negate) => match negate {
-                Negate::False => calcualted.to_string(),
-                Negate::True => format!("-{}", calcualted),
-            },
-            Text(text) => text.to_string(),
-            Enumref(enumref) => enumref.to_string(),
-            Number(num, negate) => match negate {
-                Negate::False => num.to_string(),
-                Negate::True => format!("-{}", num),
-            },
-            Hex(hex) => format!("0x{:0>8}", hex),
-            Bitpos(bitpos) => format!("0x{:0>8X}", (1u32 << bitpos)),
-            Cexpr(cexpr) => cexpr
-                .replace("ULL", "")
-                .replace("U", "")
-                .replace("~", "!")
-                .replace("f", ""),
-        }
-    }
-
     fn value_ctype(&self) -> ctype::Ctype<'static> {
         use ctype::Ctype;
         use ConstValue::*;
@@ -97,6 +74,32 @@ impl ConstValue<'_> {
                 e if e.contains("f") => Ctype::new("f32"),
                 _ => Ctype::new("usize"),
             },
+        }
+    }
+}
+
+impl ToTokens for ConstValue<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use ConstValue::*;
+        match self {
+            Offset(calcualted, negate) => match negate {
+                Negate::False => calcualted.to_string().as_code().to_tokens(tokens),
+                Negate::True => format!("-{}", calcualted).as_code().to_tokens(tokens),
+            },
+            Text(text) => quote!(#text).to_tokens(tokens),
+            Enumref(enumref) => quote!(#enumref).to_tokens(tokens),
+            Number(num, negate) => match negate {
+                Negate::False => num.to_string().as_code().to_tokens(tokens),
+                Negate::True => format!("-{}", num).as_code().to_tokens(tokens),
+            },
+            Hex(hex) => format!("0x{:0>8}", hex).as_code().to_tokens(tokens),
+            Bitpos(bitpos) => format!("0x{:0>8X}", (1u32 << bitpos)).as_code().to_tokens(tokens),
+            Cexpr(cexpr) => cexpr
+                .replace("ULL", "")
+                .replace("U", "")
+                .replace("~", "!")
+                .replace("f", "")
+                .as_code().to_tokens(tokens),
         }
     }
 }
@@ -131,11 +134,16 @@ impl<'a> TypeValueExpresion<'a> {
             TypeValueExpresionKind::SimpleSelf => ctype::Ctype::new("Self"),
         }
     }
+}
 
-    fn value_string(&self) -> String {
+impl ToTokens for TypeValueExpresion<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
         match self.kind {
-            TypeValueExpresionKind::Literal => self.val.value_string(),
-            TypeValueExpresionKind::SimpleSelf => format!("Self({})", self.value_string()),
+            TypeValueExpresionKind::Literal => self.val.to_tokens(tokens),
+            TypeValueExpresionKind::SimpleSelf => {
+                let val = &self.val;
+                quote!(Self(#val)).to_tokens(tokens);
+            }
         }
     }
 }
