@@ -134,6 +134,9 @@ pub trait VisitExtension<'a> {
 }
 
 pub fn visit_extension<'a>(extension: &'a vkxml::Extension, visitor: &mut impl VisitExtension<'a>) {
+    if extension.disabled {
+        return;
+    }
     for extension_element in extension.elements.iter() {
         use vkxml::ExtensionElement;
         match extension_element {
