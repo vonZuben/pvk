@@ -34,8 +34,8 @@ impl<'a> TypeDef<'a> {
 
 impl ToTokens for TypeDef<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = self.name;
-        let ty = self.ty;
+        let name = self.name.as_code();
+        let ty = self.ty.as_code();
         quote!( pub type #name = #ty; ).to_tokens(tokens);
     }
 }
@@ -59,8 +59,8 @@ impl<'a> Bitmask<'a> {
 
 impl ToTokens for Bitmask<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = self.name;
-        let ty = self.ty;
+        let name = self.name.as_code();
+        let ty = self.ty.as_code();
         quote!(
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
