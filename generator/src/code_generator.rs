@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+use quote::{quote, ToTokens};
+use proc_macro2::TokenStream;
+
 use crate::vkxml_visitor;
 use crate::vkxml_visitor::{VisitExtension, VisitFeature, VisitVkxml};
 
@@ -35,7 +38,8 @@ fn command_type(command: &vkxml::Command) -> CommandType {
     }
 }
 
-struct Generator<'a> {
+#[derive(Default)]
+pub struct Generator<'a> {
     // metadata
     // when generating commands to load per feature, we use this to determine command_types
     command_types: HashMap<&'a str, CommandType>,
@@ -49,6 +53,30 @@ struct Generator<'a> {
     feature_commands: Vec<features::FeatureCommands<'a>>,
     vulkan_extension_names: extensions::VulkanExtensionNames<'a>,
     extension_commands: Vec<extensions::ExtensionCommands<'a>>,
+}
+
+impl ToTokens for Generator<'_> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let definitions = &self.definitions;
+        let constants = &self.constants;
+        let enum_variants = self.enum_variants.iter();
+        let commands = &self.commands;
+        let vulkan_version_names = &self.vulkan_version_names;
+        let feature_commands = &self.feature_commands;
+        let vulkan_extension_names = &self.vulkan_extension_names;
+        let extension_commands = &self.extension_commands;
+
+        quote!(
+            #definitions
+            #(#constants)*
+            #(#enum_variants)*
+            #commands
+            #vulkan_version_names
+            #(#feature_commands)*
+            vulkan_extension_names
+            #(#extension_commands)*
+        ).to_tokens(tokens);
+    }
 }
 
 impl<'a> VisitVkxml<'a> for Generator<'a> {
@@ -237,12 +265,10 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
     }
 
     fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
-        // TODO: I think some enums may exist, but not have any variants until the extension defined
-        // consider adding an "entry" like api
+        let enum_name = enum_def.enum_extension.name.as_str();
         let mut enum_variants = self
             .enum_variants
-            .get_mut(&enum_def.enum_extension.name)
-            .expect("error: extension extends an enum that dosn't exist");
+            .get_mut_or_default(enum_name, enumerations::EnumVariants::new(enum_name));
 
         enum_variants.push_variant(constants::Constant2::new(
             &enum_def.enum_extension.name,

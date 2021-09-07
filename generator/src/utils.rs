@@ -119,10 +119,18 @@ impl<T> StrAsCode for T where T: AsRef<str> {
     }
 }
 
-#[derive(Default)]
 pub struct VecMap<K, V> {
     vec: Vec<V>,
     map: HashMap<K, usize>,
+}
+
+impl<K, V> Default for VecMap<K, V> {
+    fn default() -> Self {
+        Self {
+            vec: Default::default(),
+            map: Default::default(),
+        }
+    }
 }
 
 impl<K: Eq + Hash, V> VecMap<K, V> {
@@ -130,9 +138,19 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
         assert!(self.map.insert(key, self.vec.len()).is_none());
         self.vec.push(val);
     }
-    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
-        let index = self.map.get(&key)?;
-        unsafe { Some(self.vec.get_unchecked_mut(*index)) }
+    pub fn get_mut_or_default(&mut self, key: K, default: V) -> &mut V {
+        match self.map.get(&key) {
+            Some(index) => {
+                unsafe { self.vec.get_unchecked_mut(*index) }
+            }
+            None => {
+                self.push(key, default);
+                self.vec.last_mut().unwrap() // unwrap since we know we just pushed a value
+            }
+        }
+    }
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item=&'a V> {
+        self.vec.iter()
     }
 }
 
