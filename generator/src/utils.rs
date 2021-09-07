@@ -138,6 +138,10 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
         assert!(self.map.insert(key, self.vec.len()).is_none());
         self.vec.push(val);
     }
+    pub fn get(&self, key: K) -> Option<&V> {
+        let index = self.map.get(&key)?;
+        unsafe { Some(self.vec.get_unchecked(*index)) }
+    }
     pub fn get_mut_or_default(&mut self, key: K, default: V) -> &mut V {
         match self.map.get(&key) {
             Some(index) => {

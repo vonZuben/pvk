@@ -6,6 +6,8 @@ use proc_macro2::TokenStream;
 use crate::vkxml_visitor;
 use crate::vkxml_visitor::{VisitExtension, VisitFeature, VisitVkxml};
 
+use crate::vk_parse_visitor::{VisitVkParse};
+
 use crate::utils;
 
 use crate::cfield;
@@ -53,6 +55,19 @@ pub struct Generator<'a> {
     feature_commands: Vec<features::FeatureCommands<'a>>,
     vulkan_extension_names: extensions::VulkanExtensionNames<'a>,
     extension_commands: Vec<extensions::ExtensionCommands<'a>>,
+    aliases: utils::VecMap<&'a str, definitions::TypeDef<'a>>,
+}
+
+impl Generator<'_> {
+    fn get_command_type(&self, cmd: &str) -> Option<CommandType> {
+        match self.command_types.get(cmd) {
+            Some(cmd_type) => Some(*cmd_type),
+            None => {
+                let alias_name = self.aliases.get(cmd)?.ty;
+                self.command_types.get(alias_name).map(|ct|*ct)
+            }
+        }
+    }
 }
 
 impl ToTokens for Generator<'_> {
@@ -79,6 +94,9 @@ impl ToTokens for Generator<'_> {
     }
 }
 
+// =================================================================
+// vkxml
+// =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
     fn visit_type_def(&mut self, type_def: &'a vkxml::Typedef) {
         let type_def = definitions::TypeDef::new(&type_def.name, &type_def.basetype);
@@ -236,15 +254,14 @@ impl<'a> VisitFeature<'a> for Generator<'a> {
 impl<'a> VisitExtension<'a> for Generator<'a> {
     fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
         let cmd_name = command_ref.name.as_str();
+        let cmd_type = self
+            .get_command_type(cmd_name)
+            .expect("error: feature identifies unknown command");
         let ex = self
             .extension_commands
             .last_mut()
             .expect("error: no extension_commands created");
-        match self
-            .command_types
-            .get(cmd_name)
-            .expect("error: feature identifies unknown command")
-        {
+        match cmd_type {
             CommandType::Instance => ex.push_instance_command(cmd_name),
             CommandType::Device => ex.push_device_command(cmd_name),
             CommandType::Entry => {
@@ -345,5 +362,15 @@ fn set_ctype_pointer_or_array<'a>(
         Some(ArrayType::Dynamic) | None => {
             ctype.set_pointer_from_vkxml(&field.reference, field.is_const);
         }
+    }
+}
+
+// =================================================================
+// vk_parse
+// =================================================================
+
+impl<'a> VisitVkParse<'a> for Generator<'a> {
+    fn visit_alias(&mut self, name: &'a str, alias: &'a str) {
+        self.aliases.push(name, definitions::TypeDef::new(name, alias));
     }
 }

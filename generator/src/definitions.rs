@@ -19,8 +19,8 @@ use crate::global_data;
 /// TypeDef
 /// for defining Vulkan type aliases
 pub struct TypeDef<'a> {
-    name: &'a str,
-    ty: &'a str,
+    pub name: &'a str,
+    pub ty: &'a str,
 }
 
 impl<'a> TypeDef<'a> {
