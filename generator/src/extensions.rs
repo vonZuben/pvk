@@ -41,8 +41,10 @@ impl<'a> ExtensionCommands<'a> {
 impl ToTokens for ExtensionCommands<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let extension = self.extension.as_code();
-        let instance_command_names = &self.instance_command_names;
-        let device_command_names = &self.device_command_names;
+        let instance_command_names: Vec<_> = self.instance_command_names.iter().map(StrAsCode::as_code).collect();
+        let instance_command_names = &instance_command_names;
+        let device_command_names: Vec<_> = self.device_command_names.iter().map(StrAsCode::as_code).collect();
+        let device_command_names = &device_command_names;
         quote!(
             macro_rules! #extension {
                 ( @INSTANCE $call:ident $($pass:tt)* ) => {
@@ -74,7 +76,7 @@ impl<'a> VulkanExtensionNames<'a> {
 
 impl ToTokens for VulkanExtensionNames<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let extensions = &self.extensions;
+        let extensions = self.extensions.iter().map(StrAsCode::as_code);
         quote!(
             macro_rules! use_all_vulkan_extension_names {
                 ( $call:ident $($pass:tt)* ) => {
