@@ -67,10 +67,8 @@ impl Generator<'_> {
             }
         }
     }
-}
 
-impl ToTokens for Generator<'_> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+    pub fn generate_output(&self) -> String {
         let definitions = &self.definitions;
         let constants = &self.constants;
         let enum_variants = self.enum_variants.iter();
@@ -79,19 +77,43 @@ impl ToTokens for Generator<'_> {
         let feature_commands = &self.feature_commands;
         let vulkan_extension_names = &self.vulkan_extension_names;
         let extension_commands = &self.extension_commands;
+        let aliaes = self.aliases.iter();
 
-        quote!(
-            #definitions
-            #(#constants)*
-            #(#enum_variants)*
-            #commands
-            #vulkan_version_names
-            #(#feature_commands)*
-            vulkan_extension_names
-            #(#extension_commands)*
-        ).to_tokens(tokens);
+        quote!(#definitions).to_string()
+        + &quote!(#(#constants)*).to_string()
+        + &quote!(#(#enum_variants)*).to_string()
+        + &quote!(#commands).to_string()
+        + &quote!(#vulkan_version_names).to_string()
+        + &quote!(#(#feature_commands)*).to_string()
+        + &quote!(#vulkan_extension_names).to_string()
+        + &quote!(#(#extension_commands)*).to_string()
+        + &quote!(#(#aliaes)*).to_string()
     }
 }
+
+// impl ToTokens for Generator<'_> {
+//     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+//         let definitions = &self.definitions;
+//         let constants = &self.constants;
+//         let enum_variants = self.enum_variants.iter();
+//         let commands = &self.commands;
+//         let vulkan_version_names = &self.vulkan_version_names;
+//         let feature_commands = &self.feature_commands;
+//         let vulkan_extension_names = &self.vulkan_extension_names;
+//         let extension_commands = &self.extension_commands;
+
+//         quote!(
+//             #definitions
+//             #(#constants)*
+//             #(#enum_variants)*
+//             #commands
+//             #vulkan_version_names
+//             #(#feature_commands)*
+//             vulkan_extension_names
+//             #(#extension_commands)*
+//         ).to_tokens(tokens);
+//     }
+// }
 
 // =================================================================
 // vkxml
