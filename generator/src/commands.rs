@@ -35,7 +35,7 @@ impl<'a> Commands2<'a> {
 impl ToTokens for Commands2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let function_pointers = &self.function_pointers;
-        let commands = self.function_pointers.iter().map(|fptr|fptr.name);
+        let commands = self.function_pointers.iter().map(|fptr|fptr.name.as_code());
         quote!(
             #(#function_pointers)*
             macro_rules! use_command_function_pointer_names {
