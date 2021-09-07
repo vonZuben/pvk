@@ -64,6 +64,9 @@ pub fn visit_vkxml<'a>(registry: &'a vkxml::Registry, visitor: &mut impl VisitVk
             }
             RegistryElement::Extensions(extensions) => {
                 for extension in extensions.elements.iter() {
+                    if extension.disabled {
+                        continue;
+                    }
                     visitor.visit_extension(extension);
                 }
             }
