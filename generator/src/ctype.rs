@@ -169,19 +169,14 @@ impl ToTokens for CtypeInner<'_> {
 }
 
 pub struct Ctype<'a> {
-    vis: Visability,
     inner: CtypeInner<'a>,
 }
 
 impl<'a> Ctype<'a> {
     pub fn new(basetype: &'a str) -> Self {
         Self {
-            vis: Default::default(),
             inner: CtypeInner::Basetype(Basetype::new(basetype)),
         }
-    }
-    pub fn set_public(&mut self) {
-        self.vis = Visability::Public;
     }
     pub fn set_array(&mut self, size: &'a str) {
         self.inner = self.inner.to_array(size);
@@ -196,9 +191,8 @@ impl<'a> Ctype<'a> {
 
 impl ToTokens for Ctype<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let vis = self.vis;
         let inner = &self.inner;
-        quote!( #vis #inner ).to_tokens(tokens);
+        quote!( #inner ).to_tokens(tokens);
     }
 }
 
@@ -225,5 +219,37 @@ impl ToTokens for ReturnType<'_> {
             ReturnType::None => quote!( () ).to_tokens(tokens),
             ReturnType::Some(ct) => quote!( #ct ).to_tokens(tokens),
         }
+    }
+}
+
+pub struct Cfield<'a> {
+    vis: Visability,
+    name: &'a str,
+    ty: Ctype<'a>,
+}
+
+impl<'a> Cfield<'a> {
+    pub fn new(name: &'a str, ty: Ctype<'a>) -> Self {
+        Self {
+            vis: Default::default(),
+            name,
+            ty,
+        }
+    }
+
+    pub fn set_public(&mut self) {
+        self.vis = Visability::Public;
+    }
+}
+
+impl ToTokens for Cfield<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use crate::utils::StrAsCode;
+
+        let vis = &self.vis;
+        let name = self.name.as_code();
+        let ty = &self.ty;
+
+        quote!( #vis #name : #ty ).to_tokens(tokens);
     }
 }

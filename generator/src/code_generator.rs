@@ -10,7 +10,6 @@ use crate::vk_parse_visitor::{VisitVkParse};
 
 use crate::utils;
 
-use crate::cfield;
 use crate::commands;
 use crate::constants;
 use crate::ctype;
@@ -294,25 +293,32 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
     }
 }
 
+#[derive(Copy, Clone)]
 enum FieldPurpose {
     StructField,
     FunctionParam,
 }
 
-fn make_cfield<'a>(field: &'a vkxml::Field, purpose: FieldPurpose) -> cfield::Cfield<'a> {
+fn make_cfield<'a>(field: &'a vkxml::Field, purpose: FieldPurpose) -> ctype::Cfield<'a> {
     let mut ctype = ctype::Ctype::new(&field.basetype);
-    ctype.set_public();
 
     set_ctype_pointer_or_array(field, purpose, &mut ctype);
 
-    cfield::Cfield::new(
+    let mut field = ctype::Cfield::new(
         field
             .name
             .as_ref()
             .expect("error: field in this position must have name")
             .as_str(),
         ctype,
-    )
+    );
+
+    match purpose {
+        FieldPurpose::FunctionParam => {}
+        FieldPurpose::StructField => field.set_public(),
+    }
+
+    field
 }
 
 fn make_return_ctype<'a>(field: &'a vkxml::Field) -> ctype::ReturnType<'a> {

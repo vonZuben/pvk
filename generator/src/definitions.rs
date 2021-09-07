@@ -15,6 +15,8 @@ use crate::ParseState;
 
 use crate::global_data;
 
+use crate::ctype;
+
 // =================================================================
 /// TypeDef
 /// for defining Vulkan type aliases
@@ -75,7 +77,7 @@ impl ToTokens for Bitmask<'_> {
 /// for defining Vulkan struct types
 pub struct Struct2<'a> {
     name: &'a str,
-    fields: Vec<crate::cfield::Cfield<'a>>,
+    fields: Vec<ctype::Cfield<'a>>,
 }
 
 impl<'a> Struct2<'a> {
@@ -85,7 +87,7 @@ impl<'a> Struct2<'a> {
             fields: Default::default(),
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=crate::cfield::Cfield<'a>>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
         self.fields.extend(fields);
     }
 }
@@ -112,7 +114,7 @@ impl ToTokens for Struct2<'_> {
 /// for defining Vulkan union types
 pub struct Union<'a> {
     name: &'a str,
-    fields: Vec<crate::cfield::Cfield<'a>>,
+    fields: Vec<ctype::Cfield<'a>>,
 }
 
 impl<'a> Union<'a> {
@@ -122,7 +124,7 @@ impl<'a> Union<'a> {
             fields: Default::default(),
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=crate::cfield::Cfield<'a>>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
         self.fields.extend(fields);
     }
 }
@@ -216,8 +218,8 @@ impl ToTokens for Enum2<'_> {
 /// for defining Vulkan function pointer types
 pub struct FunctionPointer<'a> {
     pub name: &'a str,
-    fields: Vec<crate::cfield::Cfield<'a>>,
-    return_type: crate::ctype::ReturnType<'a>,
+    fields: Vec<ctype::Cfield<'a>>,
+    return_type: ctype::ReturnType<'a>,
 }
 
 impl<'a> FunctionPointer<'a> {
@@ -228,10 +230,10 @@ impl<'a> FunctionPointer<'a> {
             return_type: Default::default(),
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=crate::cfield::Cfield<'a>>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
         self.fields.extend(fields);
     }
-    pub fn set_return_type(&mut self, return_type: impl Into<crate::ctype::ReturnType<'a>>) {
+    pub fn set_return_type(&mut self, return_type: impl Into<ctype::ReturnType<'a>>) {
         self.return_type = return_type.into();
     }
 }
