@@ -33,7 +33,12 @@ pub fn visit_vkxml<'a>(registry: &'a vkxml::Registry, visitor: &mut impl VisitVk
                         DefinitionsElement::Union(union_def) => visitor.visit_union(union_def),
                         DefinitionsElement::Define(_) => {}
                         DefinitionsElement::Handle(handle) => visitor.visit_handle(handle),
-                        DefinitionsElement::Enumeration(enum_def) => visitor.visit_enum_def(enum_def),
+                        DefinitionsElement::Enumeration(enum_def) => {
+                            if enum_def.name.contains("FlagBits") { // Glags and FlagBits are merged as one type in our rust code (F;ags)
+                                continue;
+                            }
+                            visitor.visit_enum_def(enum_def)
+                        }
                         DefinitionsElement::FuncPtr(function_pointer) => visitor.visit_function_pointer(function_pointer),
                     }
                 }
