@@ -181,7 +181,10 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_enum_variants(&mut self, enumeration: &'a vkxml::Enumeration) {
-        let mut enum_variant = enumerations::EnumVariants::new(&enumeration.name);
+        let target = enumeration.name.as_str();
+        let mut enum_variants = self
+            .enum_variants
+            .get_mut_or_default(target, enumerations::EnumVariants::new(target));
         let variants = enumeration
             .elements
             .iter()
@@ -196,8 +199,7 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
                     )),
                 }
             });
-        enum_variant.extend_variants(variants);
-        self.enum_variants.push(&enumeration.name, enum_variant);
+        enum_variants.extend_variants(variants);
     }
 
     fn visit_command(&mut self, command: &'a vkxml::Command) {
@@ -303,15 +305,18 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
     }
 
     fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
-        let target = enum_def.enum_extension.extends.as_str();
-        let mut enum_variants = self
-            .enum_variants
-            .get_mut_or_default(target, enumerations::EnumVariants::new(target));
 
-        enum_variants.push_variant(constants::Constant2::new(
-            &enum_def.enum_extension.name,
-            constants::TypeValueExpresion::simple_self(enum_def),
-        ));
+        // TODO testing only getting these from vk_parse
+
+        // let target = enum_def.enum_extension.extends.as_str();
+        // let mut enum_variants = self
+        //     .enum_variants
+        //     .get_mut_or_default(target, enumerations::EnumVariants::new(target));
+
+        // enum_variants.push_variant_once(constants::Constant2::new(
+        //     &enum_def.enum_extension.name,
+        //     constants::TypeValueExpresion::simple_self(enum_def),
+        // ));
     }
 }
 
@@ -400,5 +405,25 @@ fn set_ctype_pointer_or_array<'a>(
 impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {
         self.aliases.push(name, definitions::TypeDef::new(name, alias));
+    }
+    fn visit_ex_enum(&mut self, ex: crate::vk_parse_visitor::VkParseEnumConstantExtension<'a>) {
+        let number = ex.number;
+        let enm = ex.enm;
+        let target = ex.target;
+        let is_alias = ex.is_alias;
+
+        let mut enum_variants = self
+            .enum_variants
+            .get_mut_or_default(target, enumerations::EnumVariants::new(target));
+
+        let val = match is_alias {
+            true => constants::TypeValueExpresion::self_ref(ex),
+            false => constants::TypeValueExpresion::simple_self(ex),
+        };
+
+        enum_variants.push_variant_once(constants::Constant2::new(
+            &enm.name,
+            val,
+        ));
     }
 }

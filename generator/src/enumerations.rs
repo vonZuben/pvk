@@ -4,13 +4,14 @@ use vkxml::*;
 use proc_macro2::{TokenStream};
 
 use crate::utils::*;
+use crate::utils;
 use crate::global_data;
 
 use crate::constants;
 
 pub struct EnumVariants<'a> {
     target: &'a str,
-    variants: Vec<crate::constants::Constant2<'a>>,
+    variants: utils::VecMap<&'a str, crate::constants::Constant2<'a>>,
 }
 
 impl<'a> EnumVariants<'a> {
@@ -22,11 +23,19 @@ impl<'a> EnumVariants<'a> {
     }
 
     pub fn extend_variants(&mut self, variants: impl IntoIterator<Item=constants::Constant2<'a>>) {
-        self.variants.extend(variants);
+        for variant in variants.into_iter() {
+            self.push_variant_once(variant);
+        }
     }
 
-    pub fn push_variant(&mut self, variant: constants::Constant2<'a>) {
-        self.variants.push(variant);
+    pub fn push_variant_once(&mut self, variant: constants::Constant2<'a>) {
+        let name = variant.name;
+        match self.variants.get(name) {
+            // the vulkan spec includes redundant enum definitions
+            // we only want to generate one, but we should ensure they are all consistent
+            Some(already) => assert_eq!(*already, variant),
+            None => self.variants.push(name, variant),
+        }
     }
 }
 
@@ -34,7 +43,7 @@ impl ToTokens for EnumVariants<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
         let target = self.target.as_code();
-        let variants = &self.variants;
+        let variants = self.variants.iter();
         quote!(
             impl #target {
                 #(#variants)*

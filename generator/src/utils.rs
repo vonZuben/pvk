@@ -138,6 +138,11 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
         assert!(self.map.insert(key, self.vec.len()).is_none());
         self.vec.push(val);
     }
+    pub fn extend(&mut self, items: impl IntoIterator<Item=(K, V)>) {
+        for (key, value) in items.into_iter() {
+            self.push(key, value);
+        }
+    }
     pub fn get(&self, key: K) -> Option<&V> {
         let index = self.map.get(&key)?;
         unsafe { Some(self.vec.get_unchecked(*index)) }
