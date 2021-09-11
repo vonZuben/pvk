@@ -1,5 +1,6 @@
 pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {}
+    fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
     fn visit_ex_enum(&mut self, ex: VkParseEnumConstantExtension<'a>) {}
 }
 
@@ -22,6 +23,17 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     ty.name.as_ref().unwrap(),
                                     ty.alias.as_ref().unwrap(),
                                 );
+                            }
+                            else {
+                                match ty.category.as_ref().map(|s|s.as_str()) {
+                                    Some("enum") => {
+                                        if ty.name.as_ref().expect("error: enum with no name").contains("FlagBits") {
+                                            continue;
+                                        }
+                                        visitor.visit_enum(ty);
+                                    }
+                                    Some(_) | None => {}
+                                }
                             }
                         }
                     }

@@ -162,8 +162,8 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_enum_def(&mut self, enum_def: &'a vkxml::EnumerationDeclaration) {
-        let enum_def = definitions::Enum2::new(&enum_def.name);
-        self.definitions.enumerations.push(enum_def);
+        // let enum_def = definitions::Enum2::new(&enum_def.name);
+        // self.definitions.enumerations.push(enum_def);
     }
 
     fn visit_function_pointer(&mut self, function_pointer: &'a vkxml::FunctionPointer) {
@@ -409,6 +409,11 @@ fn set_ctype_pointer_or_array<'a>(
 impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {
         self.aliases.push(name, definitions::TypeDef::new(name, alias));
+    }
+    fn visit_enum(&mut self, enm: &'a vk_parse::Type) {
+        let enum_name = enm.name.as_ref().expect("error: enum with no name");
+        let enum_def = definitions::Enum2::new(&enum_name);
+        self.definitions.enumerations.push(enum_def);
     }
     fn visit_ex_enum(&mut self, ex: crate::vk_parse_visitor::VkParseEnumConstantExtension<'a>) {
         let number = ex.number;
