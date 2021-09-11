@@ -184,7 +184,7 @@ impl ToTokens for Handle2<'_> {
             pub struct #name {
                 pub handle: #ty,
             }
-            impl ::std::fmt::Debug for #name<'_> {
+            impl ::std::fmt::Debug for #name {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
                     write!(f, concat!(stringify!(#name), "({:?})"), self.handle)
                 }
