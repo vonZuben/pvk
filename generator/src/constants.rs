@@ -215,7 +215,7 @@ impl<'a> From<vk_parse_visitor::VkParseEnumConstantExtension<'a>> for ConstValue
                 ConstValue::Enumref(alias)
             }
             Offset { offset, extnumber, dir, .. } => {
-                let number = extnumber.unwrap_or(ex.number);
+                let number = extnumber.unwrap_or_else(||ex.number.expect("error: enum extension must have a number"));
                 let val = 1000000000 + (number - 1) * 1000 + offset;
                 let negate = match dir {
                     true => Negate::False,
