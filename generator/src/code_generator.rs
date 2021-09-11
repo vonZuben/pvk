@@ -153,7 +153,11 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_handle(&mut self, handle: &'a vkxml::Handle) {
-        let handle = definitions::Handle2::new(&handle.name);
+        let dispatch = match handle.ty {
+            vkxml::HandleType::Dispatch => true,
+            vkxml::HandleType::NoDispatch => false,
+        };
+        let handle = definitions::Handle2::new(&handle.name, dispatch);
         self.definitions.handles.push(handle);
     }
 

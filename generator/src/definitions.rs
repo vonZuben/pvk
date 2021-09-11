@@ -151,12 +151,14 @@ impl ToTokens for Union<'_> {
 /// for defining Vulkan Handle types
 pub struct Handle2<'a> {
     name: &'a str,
+    dispatch: bool,
 }
 
 impl<'a> Handle2<'a> {
-    pub fn new(name: &'a str) -> Self {
+    pub fn new(name: &'a str, dispatch: bool) -> Self {
         Self {
-            name
+            name,
+            dispatch,
         }
     }
 }
@@ -166,12 +168,20 @@ impl ToTokens for Handle2<'_> {
         use crate::utils::StrAsCode;
 
         let name = self.name.as_code();
+        let ty = match self.dispatch {
+            true => {
+                let mut ty = ctype::Ctype::new("c_void");
+                ty.set_pointer(ctype::Pointer::Const);
+                ty
+            }
+            false => ctype::Ctype::new("u64"),
+        };
 
         quote!(
             #[repr(transparent)]
             #[derive(Copy, Clone)]
             pub struct #name {
-                pub handle: raw::#name,
+                pub handle: #ty,
             }
             impl ::std::fmt::Debug for #name<'_> {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
