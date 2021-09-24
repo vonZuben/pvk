@@ -10,8 +10,6 @@ extern crate vk_parse;
 #[macro_use]
 mod utils;
 
-#[macro_use]
-mod quote2;
 mod constants;
 mod definitions;
 mod enumerations;
