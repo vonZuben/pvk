@@ -408,7 +408,12 @@ fn set_ctype_pointer_or_array<'a>(
 
 impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {
-        self.aliases.push(name, definitions::TypeDef::new(name, alias));
+        if name.contains("FlagBits") {
+            return;
+        }
+        else {
+            self.aliases.push(name, definitions::TypeDef::new(name, alias));
+        }
     }
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {
         let enum_name = enm.name.as_ref().expect("error: enum with no name");
