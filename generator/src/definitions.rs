@@ -14,7 +14,7 @@ use crate::ctype;
 // =================================================================
 /// TypeDef
 /// for defining Vulkan type aliases
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeDef<'a> {
     pub name: &'a str,
     pub ty: &'a str,

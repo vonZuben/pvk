@@ -20,6 +20,7 @@ mod ctype;
 mod vkxml_visitor;
 mod vk_parse_visitor;
 mod code_generator;
+mod aliases;
 // mod methods;
 
 //mod take_list;

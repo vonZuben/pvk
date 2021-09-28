@@ -8,13 +8,15 @@ use proc_macro2::{TokenStream};
 use crate::{utils::*};
 use crate::utils;
 
+use crate::utils::VecMap;
+
 use std::collections::HashMap;
 
 use crate::definitions;
 
 #[derive(Default)]
 pub struct Commands2<'a> {
-    function_pointers: Vec<definitions::FunctionPointer<'a>>,
+    function_pointers: VecMap<&'a str, definitions::FunctionPointer<'a>>,
 }
 
 // impl<'a, I: IntoIterator<Item=definitions::FunctionPointer<'a>>> From<I> for Commands2<'a> {
@@ -26,14 +28,17 @@ pub struct Commands2<'a> {
 // }
 
 impl<'a> Commands2<'a> {
-    pub fn push(&mut self, function_pointer: definitions::FunctionPointer<'a>) {
-        self.function_pointers.push(function_pointer);
+    pub fn push(&mut self, name: &'a str, function_pointer: definitions::FunctionPointer<'a>) {
+        self.function_pointers.push(name, function_pointer);
+    }
+    pub fn contains(&self, name: &str) -> bool {
+        self.function_pointers.get(name).is_some()
     }
 }
 
 impl ToTokens for Commands2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let function_pointers = &self.function_pointers;
+        let function_pointers = self.function_pointers.iter();
         let commands = self.function_pointers.iter().map(|fptr|fptr.name.as_code());
         quote!(
             #(#function_pointers)*

@@ -8,7 +8,7 @@ use crate::vkxml_visitor::{VisitExtension, VisitFeature, VisitVkxml};
 
 use crate::vk_parse_visitor::{VisitVkParse};
 
-use crate::utils;
+use crate::utils::{self, VecMap};
 
 use crate::commands;
 use crate::constants;
@@ -57,7 +57,7 @@ pub struct Generator<'a> {
     aliases: utils::VecMap<&'a str, definitions::TypeDef<'a>>,
 }
 
-impl Generator<'_> {
+impl<'a> Generator<'a> {
     fn get_command_type(&self, cmd: &str) -> Option<CommandType> {
         match self.command_types.get(cmd) {
             Some(cmd_type) => Some(*cmd_type),
@@ -68,7 +68,17 @@ impl Generator<'_> {
         }
     }
 
-    pub fn generate_output(&self) -> String {
+    // if there is an alias, return the alias, otherwise, return name
+    fn get_alias_or_name(&self, name: &'a str) -> &'a str {
+        match self.aliases.get(name) {
+            Some(td) => td.ty,
+            None => name,
+        }
+    }
+
+    pub fn generate_output_for_single_file(&self) -> String {
+        let static_code = crate::static_code::StaticCode;
+
         let definitions = &self.definitions;
         let constants = &self.constants;
         let enum_variants = self.enum_variants.iter();
@@ -79,15 +89,21 @@ impl Generator<'_> {
         let extension_commands = &self.extension_commands;
         let aliaes = self.aliases.iter();
 
-        quote!(#definitions).to_string()
+        let cmd_aliases = crate::aliases::CmdAliasNames::new(
+            aliaes.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
+        );
+
+        quote!(#static_code).to_string()
+        + &quote!(#definitions).to_string()
         + &quote!(#(#constants)*).to_string()
         + &quote!(#(#enum_variants)*).to_string()
         + &quote!(#commands).to_string()
+        + &quote!(#(#aliaes)*).to_string()
         + &quote!(#vulkan_version_names).to_string()
         + &quote!(#(#feature_commands)*).to_string()
         + &quote!(#vulkan_extension_names).to_string()
         + &quote!(#(#extension_commands)*).to_string()
-        + &quote!(#(#aliaes)*).to_string()
+        + &quote!(#cmd_aliases).to_string()
     }
 }
 
@@ -219,7 +235,7 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
             .map(|field| make_cfield(field, FieldPurpose::FunctionParam));
         function_pointer.extend_fields(fields);
         function_pointer.set_return_type(make_return_ctype(&command.return_type));
-        self.commands.push(function_pointer);
+        self.commands.push(&command.name, function_pointer);
     }
 
     fn visit_feature(&mut self, feature: &'a vkxml::Feature) {
@@ -281,6 +297,7 @@ impl<'a> VisitFeature<'a> for Generator<'a> {
 impl<'a> VisitExtension<'a> for Generator<'a> {
     fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
         let cmd_name = command_ref.name.as_str();
+        let cmd_name = self.get_alias_or_name(cmd_name);
         let cmd_type = self
             .get_command_type(cmd_name)
             .expect("error: feature identifies unknown command");
