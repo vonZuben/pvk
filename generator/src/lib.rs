@@ -20,6 +20,7 @@ mod ctype;
 mod vkxml_visitor;
 mod vk_parse_visitor;
 mod code_generator;
+mod static_code;
 mod aliases;
 // mod methods;
 
@@ -53,6 +54,6 @@ pub fn generate(vk_xml_path: &str) -> String {
     vk_parse_visitor::visit_vk_parse(&registry2, &mut generator);
     vkxml_visitor::visit_vkxml(&registry, &mut generator);
 
-    return generator.generate_output();
+    return generator.generate_output_for_single_file();
 }
 
