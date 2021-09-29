@@ -1,7 +1,10 @@
 pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {}
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
+    fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {}
     fn visit_ex_enum(&mut self, ex: VkParseEnumConstantExtension<'a>) {}
+    fn visit_ex_require_node(&mut self, parts: &VkParseExtensionParts<'a>) {}
+    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -45,7 +48,9 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                     use vk_parse::Command::*;
                     match command {
                         Alias { name, alias } => visitor.visit_alias(name, alias),
-                        Definition(_) => {}
+                        Definition(cmd_def) => {
+                            visitor.visit_command(cmd_def);
+                        }
                     }
                 }
             }
@@ -106,10 +111,23 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 api,
                                 profile,
                                 extension: required_extension,
-                                feature,
+                                feature: requiered_feature,
                                 comment,
                                 items,
                             } => {
+                                // assuming for now that feature and extension additions are exclusive
+                                let further_extended = match (requiered_feature, required_extension) {
+                                    (Some(feature), None) => Some(feature.as_str()),
+                                    (None, Some(extension)) => Some(extension.as_str()),
+                                    (None, None) => None,
+                                    _ => panic!("error: not expecting feature and exteions additions at the same time"),
+                                };
+                                let parts = VkParseExtensionParts {
+                                    extension_name: &extension.name,
+                                    further_extended,
+                                };
+                                visitor.visit_ex_require_node(&parts);
+
                                 for item in items.iter() {
                                     use vk_parse::InterfaceItem::*;
                                     match item {
@@ -130,7 +148,9 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 _ => {}
                                             }
                                         }
-                                        Command { name, comment } => {}
+                                        Command { name, comment } => {
+                                            visitor.visit_ex_cmd_ref(name, &parts);
+                                        }
                                     }
                                 }
                             }
@@ -181,4 +201,9 @@ pub struct VkParseEnumConstantExtension<'a> {
     pub enm: &'a vk_parse::Enum,
     pub target: &'a str,
     pub is_alias: bool,
+}
+
+pub struct VkParseExtensionParts<'a> {
+    pub extension_name: &'a str, 
+    pub further_extended: Option<&'a str>, 
 }

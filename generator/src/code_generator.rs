@@ -27,11 +27,12 @@ enum CommandType {
     Entry,
 }
 
-fn command_type(command: &vkxml::Command) -> CommandType {
-    match command.name.as_str() {
+fn command_type(command: &vk_parse::CommandDefinition) -> CommandType {
+    let name = command.proto.name.as_str();
+    match name {
         "vkGetInstanceProcAddr" | "vkGetDeviceProcAddr" => CommandType::Static,
         "vkEnumerateInstanceVersion" => CommandType::DoNotGenerate, // this function is manually created in lib.rs in order to support VK 1.0
-        _ => match command.param[0].basetype.as_str() {
+        _ => match command.params[0].definition.type_name.as_ref().expect("error: command param with no type").as_str() {
             "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandType::Device,
             "VkInstance" | "VkPhysicalDevice" => CommandType::Instance,
             _ => CommandType::Entry,
@@ -53,7 +54,7 @@ pub struct Generator<'a> {
     vulkan_version_names: features::VulkanVersionNames<'a>,
     feature_commands: Vec<features::FeatureCommands<'a>>,
     vulkan_extension_names: extensions::VulkanExtensionNames<'a>,
-    extension_commands: Vec<extensions::ExtensionCommands<'a>>,
+    extension_commands: VecMap<extensions::ExtensionCommandName<'a>, extensions::ExtensionCommands<'a>>,
     aliases: utils::VecMap<&'a str, definitions::TypeDef<'a>>,
 }
 
@@ -86,12 +87,14 @@ impl<'a> Generator<'a> {
         let vulkan_version_names = &self.vulkan_version_names;
         let feature_commands = &self.feature_commands;
         let vulkan_extension_names = &self.vulkan_extension_names;
-        let extension_commands = &self.extension_commands;
+        let extension_commands = self.extension_commands.iter();
         let aliaes = self.aliases.iter();
 
         let cmd_aliases = crate::aliases::CmdAliasNames::new(
             aliaes.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
         );
+
+        let vulkan_extension_names_extended = extensions::VulkanExtensionNamesExtended::new(extension_commands.clone());
 
         quote!(#static_code).to_string()
         + &quote!(#definitions).to_string()
@@ -104,6 +107,7 @@ impl<'a> Generator<'a> {
         + &quote!(#vulkan_extension_names).to_string()
         + &quote!(#(#extension_commands)*).to_string()
         + &quote!(#cmd_aliases).to_string()
+        + &quote!(#vulkan_extension_names_extended).to_string()
     }
 }
 
@@ -223,9 +227,9 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_command(&mut self, command: &'a vkxml::Command) {
-        // get CommandType metadata for feature and extension code generation
-        self.command_types
-            .insert(&command.name, command_type(command));
+        // // get CommandType metadata for feature and extension code generation
+        // self.command_types
+        //     .insert(&command.name, command_type(command));
 
         // generate command function_pointers
         let mut function_pointer = definitions::FunctionPointer::new(&command.name);
@@ -255,9 +259,10 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
         // collect extension anmes
         self.vulkan_extension_names.push_extension(&extension.name);
 
-        // collect command, constants, and eneum variants from extension
-        let mut ex = extensions::ExtensionCommands::new(&extension.name);
-        self.extension_commands.push(ex);
+        // ensure all extensions get a macro generated even if no commands are included, since it will be expected when crating user extension lists
+        let ex_name = extensions::ExtensionCommandName::new(&extension.name, None);
+        self.extension_commands.contains_or_default(ex_name, extensions::ExtensionCommands::new(ex_name));
+
         vkxml_visitor::visit_extension(extension, self);
     }
 }
@@ -296,26 +301,6 @@ impl<'a> VisitFeature<'a> for Generator<'a> {
 
 impl<'a> VisitExtension<'a> for Generator<'a> {
     fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
-        let cmd_name = command_ref.name.as_str();
-        let cmd_name = self.get_alias_or_name(cmd_name);
-        let cmd_type = self
-            .get_command_type(cmd_name)
-            .expect("error: feature identifies unknown command");
-        let ex = self
-            .extension_commands
-            .last_mut()
-            .expect("error: no extension_commands created");
-        match cmd_type {
-            CommandType::Instance => ex.push_instance_command(cmd_name),
-            CommandType::Device => ex.push_device_command(cmd_name),
-            CommandType::Entry => {
-                panic!("error: entry level command added by extension not handled")
-            }
-            CommandType::Static => {
-                panic!("error: static level command added by extension not handled")
-            }
-            CommandType::DoNotGenerate => {}
-        }
     }
 
     fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {
@@ -437,6 +422,12 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         let enum_def = definitions::Enum2::new(&enum_name);
         self.definitions.enumerations.push(enum_def);
     }
+    fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {
+        // get CommandType metadata for feature and extension code generation
+        let name = command.proto.name.as_str();
+        self.command_types
+            .insert(name, command_type(command));
+    }
     fn visit_ex_enum(&mut self, ex: crate::vk_parse_visitor::VkParseEnumConstantExtension<'a>) {
         let number = ex.number;
         let enm = ex.enm;
@@ -456,5 +447,30 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             &enm.name,
             val,
         ));
+    }
+    fn visit_ex_require_node(&mut self, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
+    }
+    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
+        let cmd_name = self.get_alias_or_name(cmd_name);
+        let cmd_type = self
+            .get_command_type(cmd_name)
+            .expect("error: feature identifies unknown command");
+
+        let ex_name = extensions::ExtensionCommandName::new(parts.extension_name, parts.further_extended);
+        let ex = self
+            .extension_commands
+            .get_mut_or_default(ex_name, extensions::ExtensionCommands::new(ex_name));
+        
+        match cmd_type {
+            CommandType::Instance => ex.push_instance_command(cmd_name),
+            CommandType::Device => ex.push_device_command(cmd_name),
+            CommandType::Entry => {
+                panic!("error: entry level command added by extension not handled")
+            }
+            CommandType::Static => {
+                panic!("error: static level command added by extension not handled")
+            }
+            CommandType::DoNotGenerate => {}
+        }
     }
 }
