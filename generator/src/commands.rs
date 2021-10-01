@@ -40,11 +40,12 @@ impl ToTokens for Commands2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let function_pointers = self.function_pointers.iter();
         let commands = self.function_pointers.iter().map(|fptr|fptr.name.as_code());
+        let command_names = self.function_pointers.iter().map(|fptr|fptr.name);
         quote!(
             #(#function_pointers)*
             macro_rules! use_command_function_pointer_names {
                 ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#commands),* );
+                    $call!( $($pass)* #(#commands -> #command_names);* );
                 }
             }
         ).to_tokens(tokens);
