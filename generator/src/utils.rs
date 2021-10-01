@@ -147,49 +147,6 @@ macro_rules! one_option {
 //     name.ends_with("_EXTENSION_NAME") || name.ends_with("_NAME")
 // }
 
-pub fn platform_specific_types() -> TokenStream {
-    quote! {
-        pub type RROutput = c_ulong;
-        pub type VisualID = c_uint;
-        pub type Display = *const c_void;
-        pub type Window = c_ulong;
-        #[allow(non_camel_case_types)]
-        pub type xcb_connection_t = *const c_void;
-        #[allow(non_camel_case_types)]
-        pub type xcb_window_t = u32;
-        #[allow(non_camel_case_types)]
-        pub type xcb_visualid_t = *const c_void;
-        pub type MirConnection = *const c_void;
-        pub type MirSurface = *const c_void;
-        pub type HINSTANCE = *const c_void;
-        pub type HWND = *const c_void;
-        #[allow(non_camel_case_types)]
-        pub type wl_display = c_void;
-        #[allow(non_camel_case_types)]
-        pub type wl_surface = c_void;
-        pub type HANDLE = *mut c_void;
-        pub type DWORD = c_ulong;
-        pub type LPCWSTR = *const u16;
-        #[allow(non_camel_case_types)]
-        pub type zx_handle_t = u32;
-
-        // FIXME: Platform specific types that should come from a library id:0
-        // typedefs are only here so that the code compiles for now
-        #[allow(non_camel_case_types)]
-        pub type SECURITY_ATTRIBUTES = ();
-        // Opage types
-        pub type ANativeWindow = c_void;
-        pub type AHardwareBuffer = c_void;
-
-        // NOTE These type are included only for compilation purposes
-        // These types should NOT be used because they are no necessarily
-        // the correct type definitions (i.e. just c_void by default)
-        pub type GgpStreamDescriptor = *const c_void;
-        pub type CAMetalLayer = *const c_void;
-        pub type GgpFrameToken = *const c_void;
-        pub type HMONITOR = *const c_void;
-    }
-}
 
 pub mod case {
 
