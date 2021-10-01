@@ -31,7 +31,7 @@ fn command_type(command: &vk_parse::CommandDefinition) -> CommandType {
     let name = command.proto.name.as_str();
     match name {
         "vkGetInstanceProcAddr" | "vkGetDeviceProcAddr" => CommandType::Static,
-        "vkEnumerateInstanceVersion" => CommandType::DoNotGenerate, // this function is manually created in lib.rs in order to support VK 1.0
+        // "vkEnumerateInstanceVersion" => CommandType::DoNotGenerate, // this function is manually created in lib.rs in order to support VK 1.0
         _ => match command.params[0].definition.type_name.as_ref().expect("error: command param with no type").as_str() {
             "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandType::Device,
             "VkInstance" | "VkPhysicalDevice" => CommandType::Instance,
