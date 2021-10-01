@@ -2,6 +2,8 @@
 use quote::{quote, ToTokens};
 use proc_macro2::TokenStream;
 
+use crate::utils::case;
+
 #[derive(Copy, Clone)]
 enum Visability {
     Private,
@@ -247,7 +249,7 @@ impl ToTokens for Cfield<'_> {
         use crate::utils::StrAsCode;
 
         let vis = &self.vis;
-        let name = self.name.as_code();
+        let name = case::camel_to_snake(self.name).as_code();
         let ty = &self.ty;
 
         quote!( #vis #name : #ty ).to_tokens(tokens);
