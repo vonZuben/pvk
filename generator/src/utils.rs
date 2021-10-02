@@ -7,26 +7,6 @@ use proc_macro2::{TokenStream};
 use std::collections::HashMap;
 use std::hash::Hash;
 
-// find the last index of an element matching a condition by searching in reverse
-pub trait ReverseIndexFind<T> {
-    fn my_rfind(&self, f: impl FnOnce(T) -> bool + Copy) -> Option<usize>;
-}
-
-// this is used to find tags by searching for the last lowercase letter and assuming that anything
-// after might be a tag since all tags are uppercase suffixes
-impl ReverseIndexFind<char> for &'_ str {
-    fn my_rfind(&self, f: impl FnOnce(char) -> bool + Copy) -> Option<usize> {
-        let mut index = self.len();
-        for c in self.chars().rev() {
-            if f(c) {
-                return Some(index - 1);
-            }
-            index -= 1;
-        }
-        None
-    }
-}
-
 pub trait StrAsCode {
     fn as_code(&self) -> TokenStream;
 }

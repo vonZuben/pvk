@@ -10,22 +10,75 @@ use crate::ctype;
 use crate::vkxml_visitor;
 use crate::vk_parse_visitor;
 
-#[derive(PartialEq, Eq, Debug)]
+use std::fmt;
+
+pub enum OptionMofifierFn<'a> {
+    Some(Box<dyn for<'s> Fn(&'s str) -> String + 'a>),
+    None,
+}
+
+impl<'a> OptionMofifierFn<'a> {
+    fn new<M: for<'s> Fn(&'s str) -> String + 'a>(modifier: M) -> Self {
+        Self::Some(Box::new(modifier))
+    }
+}
+
+impl PartialEq for OptionMofifierFn<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            OptionMofifierFn::Some(_) => false,
+            OptionMofifierFn::None => true,
+        }
+    }
+}
+
+impl Eq for OptionMofifierFn<'_> {}
+
+impl Clone for OptionMofifierFn<'_> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Some(ref f) => panic!("shouldn't clone OptionMofifierFn with modifer"),
+            Self::None => Self::None,
+        }
+    }
+}
+
+impl fmt::Debug for OptionMofifierFn<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OptionMofifierFn::Some(_) => write!(f, "with modifier"),
+            OptionMofifierFn::None => write!(f, "no modifier"),
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Constant2<'a> {
     pub name: &'a str,
     val: TypeValueExpresion<'a>,
+    name_modifier: OptionMofifierFn<'a>,
 }
 
 impl<'a> Constant2<'a> {
     pub fn new(name: &'a str, val: TypeValueExpresion<'a>) -> Self {
-        Self { name, val }
+        Self { name, val, name_modifier: OptionMofifierFn::None }
+    }
+    pub fn with_name_modifier<M: for<'s> Fn(&'s str) -> String + Copy + 'a>(&self, modifier: M) -> Self {
+        Self {
+            name: self.name,
+            val: self.val.with_name_modifier(modifier),
+            name_modifier: OptionMofifierFn::new(modifier),
+        }
     }
 }
 
 impl ToTokens for Constant2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
-        let name = self.name.as_code();
+        let name = match self.name_modifier {
+            OptionMofifierFn::Some(ref modifier) => modifier(self.name).as_code(),
+            OptionMofifierFn::None => self.name.as_code(),
+        };
         let ty = self.val.value_ctype();
         let val = &self.val;
         quote!(
@@ -35,31 +88,31 @@ impl ToTokens for Constant2<'_> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum Negate {
     True,
     False,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub enum ConstValue<'a> {
     Offset(i64, Negate),
     Text(&'a str),
-    Enumref(&'a str),
+    Enumref(&'a str, OptionMofifierFn<'a>),
     Number(i32),
     Hex(&'a str),
     Bitpos(u32),
     Cexpr(&'a str),
 }
 
-impl ConstValue<'_> {
+impl<'a> ConstValue<'a> {
     fn value_ctype(&self) -> ctype::Ctype<'static> {
         use ctype::Ctype;
         use ConstValue::*;
         match self {
             Offset(_, _) => Ctype::new("usize"),
             Text(_) => Ctype::new("&'static str"),
-            Enumref(enumref) => Ctype::new("usize"),
+            Enumref(enumref, _) => Ctype::new("usize"),
             Number(_) => Ctype::new("usize"),
             Hex(_) => Ctype::new("usize"),
             Bitpos(bitpos) => Ctype::new("Flags"),
@@ -69,6 +122,13 @@ impl ConstValue<'_> {
                 e if e.contains("f") => Ctype::new("f32"),
                 _ => Ctype::new("usize"),
             },
+        }
+    }
+
+    fn add_modified<M: for<'s> Fn(&'s str) -> String + 'a>(&mut self, modifier: M) {
+        match self {
+            Self::Enumref(_, ref mut opt_modifier) => *opt_modifier = OptionMofifierFn::new(modifier),
+            _ => {}
         }
     }
 }
@@ -82,7 +142,12 @@ impl ToTokens for ConstValue<'_> {
                 Negate::True => format!("-{}", calcualted).as_code().to_tokens(tokens),
             },
             Text(text) => quote!(#text).to_tokens(tokens),
-            Enumref(enumref) => enumref.to_string().as_code().to_tokens(tokens),
+            Enumref(enumref, modifier) => {
+                match modifier {
+                    OptionMofifierFn::Some(modifier) => modifier(enumref).as_code().to_tokens(tokens),
+                    OptionMofifierFn::None => enumref.as_code().to_tokens(tokens),
+                }
+            }
             Number(num) => num.to_string().as_code().to_tokens(tokens),
             Hex(hex) => format!("0x{:0>8}", hex).as_code().to_tokens(tokens),
             Bitpos(bitpos) => format!("0x{:0>8X}", (1u32 << bitpos)).as_code().to_tokens(tokens),
@@ -96,14 +161,14 @@ impl ToTokens for ConstValue<'_> {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 enum TypeValueExpresionKind {
     Literal,
     SimpleSelf, // simple Self(val) expression for use in associated const (vulkan enum emulation)
     SelfRef, // Self::...
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct TypeValueExpresion<'a> {
     val: ConstValue<'a>,
     kind: TypeValueExpresionKind,
@@ -135,6 +200,12 @@ impl<'a> TypeValueExpresion<'a> {
             Literal => self.val.value_ctype(),
             SimpleSelf | SelfRef => ctype::Ctype::new("Self"),
         }
+    }
+
+    fn with_name_modifier<M: for<'s> Fn(&'s str) -> String + 'a>(&self, modifier: M) -> Self {
+        let mut new = self.clone();
+        new.val.add_modified(modifier);
+        new
     }
 }
 
@@ -183,7 +254,7 @@ impl<'a> From<&'a vkxml::ExtensionConstant> for ConstValue<'a> {
         }
 
         if let Some(ref enumref) = vkxml_ex_constant.enumref {
-            return ConstValue::Enumref(enumref);
+            return ConstValue::Enumref(enumref, OptionMofifierFn::None);
         }
 
         if let Some(num) = vkxml_ex_constant.number {
@@ -212,7 +283,7 @@ impl<'a> From<vk_parse_visitor::VkParseEnumConstantExtension<'a>> for ConstValue
         use vk_parse::EnumSpec::*;
         match enm.spec {
             Alias { ref alias, .. } => {
-                ConstValue::Enumref(alias)
+                ConstValue::Enumref(alias, OptionMofifierFn::None)
             }
             Offset { offset, extnumber, dir, .. } => {
                 let number = extnumber.unwrap_or_else(||ex.number.expect("error: enum extension must have a number"));
