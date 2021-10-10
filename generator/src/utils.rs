@@ -64,6 +64,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     pub fn contains_or_default(&mut self, key: K, default: V) {
         let _ = self.get_mut_or_default(key, default);
     }
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item=&'a V> + Clone {
         self.vec.iter()
     }
 }
