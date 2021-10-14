@@ -39,6 +39,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 }
                             }
                         }
+                        _ => panic!("unexpected TypeChild"),
                     }
                 }
             }
@@ -51,6 +52,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                         Definition(cmd_def) => {
                             visitor.visit_command(cmd_def);
                         }
+                        _ => panic!("unexpected Command node"),
                     }
                 }
             }
@@ -87,6 +89,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         }
                                     }
                                     Command { name, comment } => {}
+                                    _ => panic!("unexpected InterfaceItem node"),
                                 }
                             }
                         }
@@ -96,6 +99,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                             comment,
                             items,
                         } => {}
+                        _ => panic!("unexpected Feature node"),
                     }
                 }
             }
@@ -151,6 +155,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         Command { name, comment } => {
                                             visitor.visit_ex_cmd_ref(name, &parts);
                                         }
+                                        _ => panic!("unexpected InterfaceChild node"),
                                     }
                                 }
                             }
@@ -160,10 +165,14 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 comment,
                                 items,
                             } => panic!("error: extension should not remove anything"),
+                            _ => panic!("unexpected ExtensionChild node"),
                         }
                     }
                 }
             }
+            SpirvExtensions(_) => {}
+            SpirvCapabilities(_) => {}
+            _ => panic!("unexpected node"),
         }
     }
 }
@@ -193,6 +202,7 @@ fn enumspec_kind<'a>(enum_spec: &'a vk_parse::EnumSpec) -> EnumSpecKind<'a> {
         Bitpos { ref extends, .. } => EnumSpecKind::from_extends(extends, false),
         Value { ref extends, .. } => EnumSpecKind::from_extends(extends, false),
         None => EnumSpecKind::EnumeratorRef,
+        _ => panic!("unexpected EnumSpec node"),
     }
 }
 

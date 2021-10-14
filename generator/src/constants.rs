@@ -311,6 +311,7 @@ impl<'a> From<vk_parse_visitor::VkParseEnumConstantExtension<'a>> for ConstValue
                 }
             }
             None => panic!("error: enum has no value, is this somhow an enumref?"),
+            _ => panic!("unexpecxted unknown value"),
         }
     }
 }
