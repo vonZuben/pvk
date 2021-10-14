@@ -153,6 +153,10 @@ impl<'a> Generator<'a> {
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
     fn visit_type_def(&mut self, type_def: &'a vkxml::Typedef) {
+        if type_def.basetype.as_str() == "" {
+            return; // some types are defined with no basetype. These should correspond to extern types which are hard coded into static_code.rs
+            // TODO: maybe some day we can use extern types?
+        }
         let type_def = definitions::TypeDef::new(&type_def.name, &type_def.basetype);
         self.definitions.type_defs.push(type_def);
     }

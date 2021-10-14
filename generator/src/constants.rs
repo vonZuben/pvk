@@ -150,7 +150,7 @@ impl ToTokens for ConstValue<'_> {
             }
             Number(num) => num.to_string().as_code().to_tokens(tokens),
             Hex(hex) => format!("0x{:0>8}", hex).as_code().to_tokens(tokens),
-            Bitpos(bitpos) => format!("0x{:0>8X}", (1u32 << bitpos)).as_code().to_tokens(tokens),
+            Bitpos(bitpos) => format!("0x{:0>8X}", (1u64 << bitpos)).as_code().to_tokens(tokens),
             Cexpr(cexpr) => cexpr
                 .replace("ULL", "")
                 .replace("U", "")
