@@ -96,18 +96,31 @@ impl<'a> Generator<'a> {
 
         let vulkan_extension_names_extended = extensions::VulkanExtensionNamesExtended::new(extension_commands.clone());
 
-        quote!(#static_code).to_string()
-        + &quote!(#definitions).to_string()
-        + &quote!(#(#constants)*).to_string()
-        + &quote!(#(#enum_variants)*).to_string()
-        + &quote!(#commands).to_string()
-        + &quote!(#(#aliaes)*).to_string()
-        + &quote!(#vulkan_version_names).to_string()
-        + &quote!(#(#feature_commands)*).to_string()
-        + &quote!(#vulkan_extension_names).to_string()
-        + &quote!(#(#extension_commands)*).to_string()
-        + &quote!(#cmd_aliases).to_string()
-        + &quote!(#vulkan_extension_names_extended).to_string()
+        let s1 = quote!(#static_code).to_string();
+        let s2 = quote!(#definitions).to_string();
+        let s3 = quote!(#(#constants)*).to_string();
+        let s4 = quote!(#(#enum_variants)*).to_string();
+        let s5 = quote!(#commands).to_string();
+        let s6 = quote!(#(#aliaes)*).to_string();
+        let s7 = quote!(#vulkan_version_names).to_string();
+        let s8 = quote!(#(#feature_commands)*).to_string();
+        let s9 = quote!(#vulkan_extension_names).to_string();
+        let s10 = quote!(#(#extension_commands)*).to_string();
+        let s11 = quote!(#cmd_aliases).to_string();
+        let s12 = quote!(#vulkan_extension_names_extended).to_string();
+
+        s1 
+        + &s2 
+        + &s3 
+        + &s4 
+        + &s5 
+        + &s6
+        + &s7
+        + &s8
+        + &s9
+        + &s10
+        + &s11
+        + &s12
     }
 }
 
