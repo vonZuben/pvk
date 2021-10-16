@@ -28,79 +28,67 @@ impl ToTokens for Visability {
 
 #[derive(Copy, Clone)]
 pub enum Pointer {
-    None,
     Const,
     Mut,
-    ConstToConst,
-    ConstToMut,
-    MutToConst,
-    MutToMut,
-}
-
-impl Default for Pointer {
-    fn default() -> Self {
-        Pointer::None
-    }
 }
 
 impl ToTokens for Pointer {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use Pointer::*;
         match self {
-            None => {}
             Const => quote!(*const).to_tokens(tokens),
             Mut => quote!(*mut).to_tokens(tokens),
-            ConstToConst => quote!(*const *const).to_tokens(tokens),
-            ConstToMut => quote!(*const *mut).to_tokens(tokens),
-            MutToConst => quote!(*mut *const).to_tokens(tokens),
-            MutToMut => quote!(*mut *mut).to_tokens(tokens),
         }
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 struct Basetype<'a> {
-    pointer: Pointer,
+    pointers: Vec::<Pointer>,
     name: &'a str,
 }
 
 impl<'a> Basetype<'a> {
     fn new(name: &'a str) -> Self {
         Self {
-            pointer: Default::default(),
+            pointers: Default::default(),
             name,
         }
     }
-    fn set_pointer(&mut self, pointer: Pointer) {
-        self.pointer = pointer;
+    fn push_pointer(&mut self, pointer: Pointer) {
+        self.pointers.push(pointer);
     }
     fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
         match ref_type {
             Some(vkxml::ReferenceType::Pointer) => {
                 if is_const {
-                    self.pointer = Pointer::Const;
+                    self.pointers.push(Pointer::Const);
                 }
                 else {
-                    self.pointer = Pointer::Mut;
+                    self.pointers.push(Pointer::Mut);
                 }
             }
             Some(vkxml::ReferenceType::PointerToPointer) => {
                 if is_const {
-                    self.pointer = Pointer::ConstToMut;
+                    self.pointers.push(Pointer::Const);
+                    self.pointers.push(Pointer::Mut);
                 }
                 else {
-                    self.pointer = Pointer::MutToMut;
+                    self.pointers.push(Pointer::Mut);
+                    self.pointers.push(Pointer::Mut);
                 }
             }
             Some(vkxml::ReferenceType::PointerToConstPointer) => {
                 if is_const {
-                    self.pointer = Pointer::ConstToConst;
+                    self.pointers.push(Pointer::Const);
+                    self.pointers.push(Pointer::Const);
                 }
                 else {
-                    self.pointer = Pointer::MutToConst;
+                    self.pointers.push(Pointer::Mut);
+                    self.pointers.push(Pointer::Const);
                 }
             }
-            None => self.pointer = Pointer::None,
+            None => {},
         }
     }
 }
@@ -109,11 +97,11 @@ impl ToTokens for Basetype<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
 
-        let pointer = self.pointer;
+        let pointers = &self.pointers;
         let name = self.name.as_code();
 
         quote!(
-            #pointer #name
+            #(#pointers)* #name
         ).to_tokens(tokens);
     }
 }
@@ -130,7 +118,7 @@ impl ToTokens for Size<'_> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 enum CtypeInner<'a> {
     Basetype(Basetype<'a>),
     Array(Basetype<'a>, Size<'a>),
@@ -144,11 +132,11 @@ impl<'a> CtypeInner<'a> {
             Array(bt, _) => CtypeInner::Array(bt, Size(size)),
         }
     }
-    fn set_pointer(&mut self, pointer: Pointer) {
+    fn push_pointer(&mut self, pointer: Pointer) {
         use CtypeInner::*;
         match self {
-            Basetype(ref mut bt) => bt.set_pointer(pointer),
-            Array(ref mut bt, _) => bt.set_pointer(pointer),
+            Basetype(ref mut bt) => bt.push_pointer(pointer),
+            Array(ref mut bt, _) => bt.push_pointer(pointer),
         }
     }
     fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
@@ -181,10 +169,10 @@ impl<'a> Ctype<'a> {
         }
     }
     pub fn set_array(&mut self, size: &'a str) {
-        self.inner = self.inner.to_array(size);
+        self.inner = self.inner.clone().to_array(size);
     }
-    pub fn set_pointer(&mut self, pointer: Pointer) {
-        self.inner.set_pointer(pointer);
+    pub fn push_pointer(&mut self, pointer: Pointer) {
+        self.inner.push_pointer(pointer);
     }
     pub fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
         self.inner.set_pointer_from_vkxml(ref_type, is_const);

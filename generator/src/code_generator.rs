@@ -409,8 +409,8 @@ fn set_ctype_pointer_or_array<'a>(
                     panic!("error: not sure yet how to handle static array with reference type");
                 } else {
                     match field.is_const {
-                        true => ctype.set_pointer(ctype::Pointer::Const),
-                        false => ctype.set_pointer(ctype::Pointer::Mut),
+                        true => ctype.push_pointer(ctype::Pointer::Const),
+                        false => ctype.push_pointer(ctype::Pointer::Mut),
                     }
                 }
             }

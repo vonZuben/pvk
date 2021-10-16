@@ -166,7 +166,7 @@ impl ToTokens for Handle2<'_> {
         let ty = match self.dispatch {
             true => {
                 let mut ty = ctype::Ctype::new("c_void");
-                ty.set_pointer(ctype::Pointer::Const);
+                ty.push_pointer(ctype::Pointer::Const);
                 ty
             }
             false => ctype::Ctype::new("u64"),
