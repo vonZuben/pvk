@@ -119,42 +119,34 @@ impl ToTokens for Size<'_> {
 }
 
 #[derive(Clone)]
-enum CtypeInner<'a> {
-    Basetype(Basetype<'a>),
-    Array(Basetype<'a>, Size<'a>),
+struct CtypeInner<'a> {
+    basetype: Basetype<'a>,
+    array: Vec<Size<'a>>
 }
 
 impl<'a> CtypeInner<'a> {
-    fn to_array(self, size: &'a str) -> Self {
-        use CtypeInner::*;
-        match self {
-            Basetype(bt) => CtypeInner::Array(bt, Size(size)),
-            Array(bt, _) => CtypeInner::Array(bt, Size(size)),
-        }
+    fn push_array(&mut self, size: &'a str) {
+        self.array.push(Size(size));
     }
     fn push_pointer(&mut self, pointer: Pointer) {
-        use CtypeInner::*;
-        match self {
-            Basetype(ref mut bt) => bt.push_pointer(pointer),
-            Array(ref mut bt, _) => bt.push_pointer(pointer),
-        }
+        self.basetype.push_pointer(pointer);
     }
     fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
-        use CtypeInner::*;
-        match self {
-            Basetype(ref mut bt) => bt.set_pointer_from_vkxml(ref_type, is_const),
-            Array(ref mut bt, _) => bt.set_pointer_from_vkxml(ref_type, is_const),
-        }
+        self.basetype.set_pointer_from_vkxml(ref_type, is_const);
     }
 }
 
 impl ToTokens for CtypeInner<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        use CtypeInner::*;
-        match self {
-            Basetype(bt) => quote!( #bt ).to_tokens(tokens),
-            Array(bt,size) => quote!( [ #bt ; #size ] ).to_tokens(tokens),
+        let bt = &self.basetype;
+        let array = &self.array;
+
+        let mut accumulate = quote!(#bt);
+        for size in array {
+            accumulate = quote!( [ #accumulate ; #size] );
         }
+
+        accumulate.to_tokens(tokens);
     }
 }
 
@@ -165,11 +157,14 @@ pub struct Ctype<'a> {
 impl<'a> Ctype<'a> {
     pub fn new(basetype: &'a str) -> Self {
         Self {
-            inner: CtypeInner::Basetype(Basetype::new(basetype)),
+            inner: CtypeInner {
+                basetype: Basetype::new(basetype),
+                array: Default::default(),
+            }
         }
     }
-    pub fn set_array(&mut self, size: &'a str) {
-        self.inner = self.inner.clone().to_array(size);
+    pub fn push_array(&mut self, size: &'a str) {
+        self.inner.push_array(size);
     }
     pub fn push_pointer(&mut self, pointer: Pointer) {
         self.inner.push_pointer(pointer);

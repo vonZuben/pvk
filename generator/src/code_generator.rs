@@ -401,7 +401,7 @@ fn set_ctype_pointer_or_array<'a>(
                     .as_ref()
                     .or_else(|| field.size_enumref.as_ref())
                     .expect("error: field is static size array with no size");
-                ctype.set_array(size);
+                ctype.push_array(size);
             }
             FieldPurpose::FunctionParam => {
                 if field.reference.is_some() {
