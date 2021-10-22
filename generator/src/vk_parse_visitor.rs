@@ -5,6 +5,7 @@ pub trait VisitVkParse<'a> {
     fn visit_ex_enum(&mut self, ex: VkParseEnumConstantExtension<'a>) {}
     fn visit_ex_require_node(&mut self, parts: &VkParseExtensionParts<'a>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
+    fn visit_struct_member(&mut self, member: StructMember<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -34,6 +35,32 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             continue;
                                         }
                                         visitor.visit_enum(ty);
+                                    }
+                                    Some("struct") => {
+                                        // print!("");
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref ty_code) => {
+                                                // eprintln!("TCODE: {:?}", ty_code);
+                                            }
+                                            vk_parse::TypeSpec::Members(ref members) => {
+                                                for member in members {
+                                                    match member {
+                                                        vk_parse::TypeMember::Comment(cmnt) => {
+                                                            // eprintln!("COMMENT: {}", cmnt);
+                                                        }
+                                                        vk_parse::TypeMember::Definition(def) => {
+                                                            visitor.visit_struct_member(StructMember {
+                                                                struct_name: ty.name.as_deref().expect("error: struct with no name"),
+                                                                code: &def.code,
+                                                            });
+                                                        }
+                                                        _ => panic!("error: unexpected TypeMember node"),
+                                                    }
+                                                }
+                                            }
+                                            vk_parse::TypeSpec::None => {}
+                                            _ => panic!("error: unhandled TypSpec node"),
+                                        }
                                     }
                                     Some(_) | None => {}
                                 }
@@ -216,4 +243,9 @@ pub struct VkParseEnumConstantExtension<'a> {
 pub struct VkParseExtensionParts<'a> {
     pub extension_name: &'a str, 
     pub further_extended: Option<&'a str>, 
+}
+
+pub struct StructMember<'a> {
+    pub struct_name: &'a str,
+    pub code: &'a str,
 }

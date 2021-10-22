@@ -167,16 +167,6 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_struct(&mut self, struct_def: &'a vkxml::Struct) {
-        let mut stct = definitions::Struct2::new(&struct_def.name);
-        let fields = struct_def.elements.iter().filter_map(|struct_element| {
-            use vkxml::StructElement;
-            match struct_element {
-                StructElement::Notation(_) => None,
-                StructElement::Member(field) => Some(make_cfield(field, FieldPurpose::StructField)),
-            }
-        });
-        stct.extend_fields(fields);
-        self.definitions.structs.push(stct);
     }
 
     fn visit_union(&mut self, union_def: &'a vkxml::Union) {
@@ -489,5 +479,68 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             }
             CommandType::DoNotGenerate => {}
         }
+    }
+    fn visit_struct_member(&mut self, member: crate::vk_parse_visitor::StructMember<'a>) {
+        let mut stct = self.definitions.structs.get_mut_or_default(member.struct_name, definitions::Struct2::new(member.struct_name));
+        let field = parse_field(crate::simple_parse::TokenIter::new(member.code))
+            .expect("error: faild to parse struct member code");
+        stct.push_field(field);
+    }
+
+}
+
+fn parse_field<'a>(tokens: impl Iterator<Item = &'a str> + Clone) -> Result<ctype::Cfield<'a>, ()> {
+    use crate::simple_parse::*;
+    
+    let input = tokens;
+    
+    let (input, c) = opt(tag("const"))(input)?;
+    let (input, _) = opt(tag("struct"))(input)?;
+    let (input, bt) = token()(input)?;
+    let (input, p) = opt(tag("*"))(input)?;
+
+    let mut ty = ctype::Ctype::new(bt);
+    
+    if p.is_some() && c.is_some() {
+        ty.push_pointer(ctype::Pointer::Const);
+    }
+    else if p.is_some() {
+        ty.push_pointer(ctype::Pointer::Mut);
+    }
+
+    let (input, _) = repeat(
+        input, 
+        followed(opt(tag("const")), tag("*")), 
+        |(c, _)| {
+            if c.is_some() {
+                ty.push_pointer(ctype::Pointer::Const);
+            }
+            else {
+                ty.push_pointer(ctype::Pointer::Mut);
+            }
+        }
+    )?;
+    
+    let (input, name) = token()(input)?;
+
+    let (input, bit_width) = opt(followed(tag(":"), token()))(input)?;
+
+    if let Some((_colon, bit_width)) = bit_width {
+        let bit_width: u8 = str::parse(bit_width).expect("error: can't parase bit_width");
+        ty.set_bit_width(bit_width);
+    }
+
+    let (mut input, _) = repeat(
+        input,
+        delimited(tag("["), token(), tag("]")),
+        |(_, size, _)| ty.push_array(size)
+    )?;
+    
+    // this is expected to consume all tokens
+    if input.next().is_some() {
+        Err(())
+    } 
+    else {
+        Ok(ctype::Cfield::new(name, ty))
     }
 }

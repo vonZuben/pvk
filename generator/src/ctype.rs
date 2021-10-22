@@ -152,6 +152,7 @@ impl ToTokens for CtypeInner<'_> {
 
 pub struct Ctype<'a> {
     inner: CtypeInner<'a>,
+    bit_width: Option<u8>,
 }
 
 impl<'a> Ctype<'a> {
@@ -160,7 +161,8 @@ impl<'a> Ctype<'a> {
             inner: CtypeInner {
                 basetype: Basetype::new(basetype),
                 array: Default::default(),
-            }
+            },
+            bit_width: Default::default(),
         }
     }
     pub fn push_array(&mut self, size: &'a str) {
@@ -171,6 +173,9 @@ impl<'a> Ctype<'a> {
     }
     pub fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
         self.inner.set_pointer_from_vkxml(ref_type, is_const);
+    }
+    pub fn set_bit_width(&mut self, bit_width: u8) {
+        self.bit_width = Some(bit_width);
     }
 }
 

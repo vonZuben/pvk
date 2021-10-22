@@ -119,8 +119,8 @@ impl<'a> ConstValue<'a> {
             Cexpr(cexpr) => match cexpr {
                 e if e.contains("ULL") => Ctype::new("u64"),
                 e if e.contains("U") => Ctype::new("u32"),
-                e if e.contains("f") => Ctype::new("f32"),
-                _ => Ctype::new("usize"),
+                e if e.contains("f") || e.contains("F") => Ctype::new("f32"),
+                _ => Ctype::new("u32"),
             },
         }
     }
@@ -156,6 +156,7 @@ impl ToTokens for ConstValue<'_> {
                 .replace("U", "")
                 .replace("~", "!")
                 .replace("f", "")
+                .replace("F", "")
                 .as_code().to_tokens(tokens),
         }
     }

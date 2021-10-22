@@ -10,7 +10,7 @@ extern crate vk_parse;
 #[macro_use]
 mod utils;
 
-mod token_iter;
+mod simple_parse;
 
 mod constants;
 mod definitions;

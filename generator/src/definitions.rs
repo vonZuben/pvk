@@ -85,6 +85,9 @@ impl<'a> Struct2<'a> {
     pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
         self.fields.extend(fields);
     }
+    pub fn push_field(&mut self, field: ctype::Cfield<'a>) {
+        self.fields.push(field);
+    }
 }
 
 impl ToTokens for Struct2<'_> {
@@ -267,7 +270,7 @@ impl ToTokens for FunctionPointer<'_> {
 pub struct Definitions2<'a> {
     pub type_defs: Vec<TypeDef<'a>>,
     pub bitmasks: Vec<Bitmask<'a>>,
-    pub structs: Vec<Struct2<'a>>,
+    pub structs: VecMap<&'a str, Struct2<'a>>,
     pub unions: Vec<Union<'a>>,
     pub handles: Vec<Handle2<'a>>,
     pub enumerations: Vec<Enum2<'a>>,
@@ -299,7 +302,7 @@ impl ToTokens for Definitions2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let type_defs = &self.type_defs;
         let bitmasks = &self.bitmasks;
-        let structs = &self.structs;
+        let structs = self.structs.iter();
         let unions = &self.unions;
         let handles = &self.handles;
         let enumerations = &self.enumerations;
