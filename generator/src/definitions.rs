@@ -64,7 +64,7 @@ impl ToTokens for Bitmask<'_> {
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub struct #name(pub(crate) #ty);
-            vk_bitflags_wrapped!(#name);
+            vk_bitflags_wrapped!(#name, #ty);
         ).to_tokens(tokens);
     }
 }

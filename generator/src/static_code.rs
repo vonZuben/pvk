@@ -8,7 +8,7 @@ impl ToTokens for StaticCode {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         quote!(
             macro_rules! vk_bitflags_wrapped {
-                ($name: ident) => {
+                ($name: ident, $ty_name: ty) => {
 
                     impl Default for $name{
                         fn default() -> $name {
@@ -29,10 +29,10 @@ impl ToTokens for StaticCode {
                         //}
 
                         #[inline]
-                        pub fn from_raw(x: Flags) -> Self { $name(x) }
+                        pub fn from_raw(x: $ty_name) -> Self { $name(x) }
 
                         #[inline]
-                        pub fn as_raw(self) -> Flags { self.0 }
+                        pub fn as_raw(self) -> $ty_name { self.0 }
 
                         #[inline]
                         pub fn is_empty(self) -> bool {
