@@ -484,6 +484,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         let mut stct = self.definitions.structs.get_mut_or_default(member.struct_name, definitions::Struct2::new(member.struct_name));
         let field = parse_field(crate::simple_parse::TokenIter::new(member.code))
             .expect("error: faild to parse struct member code");
+                field.set_public();
         stct.push_field(field);
     }
 
