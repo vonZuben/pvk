@@ -5,7 +5,7 @@ pub trait VisitVkParse<'a> {
     fn visit_ex_enum(&mut self, ex: VkParseEnumConstantExtension<'a>) {}
     fn visit_ex_require_node(&mut self, parts: &VkParseExtensionParts<'a>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
-    fn visit_struct_member(&mut self, member: StructMember<'a>) {}
+    fn visit_struct_member(&mut self, member: StructPart<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -46,12 +46,15 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 for member in members {
                                                     match member {
                                                         vk_parse::TypeMember::Comment(cmnt) => {
-                                                            // eprintln!("COMMENT: {}", cmnt);
+                                                            visitor.visit_struct_member(StructPart {
+                                                                struct_name: ty.name.as_deref().expect("error: struct with no name"),
+                                                                part: StructPartKind::Comment(cmnt.as_str()),
+                                                            });
                                                         }
                                                         vk_parse::TypeMember::Definition(def) => {
-                                                            visitor.visit_struct_member(StructMember {
+                                                            visitor.visit_struct_member(StructPart {
                                                                 struct_name: ty.name.as_deref().expect("error: struct with no name"),
-                                                                code: &def.code,
+                                                                part: StructPartKind::Code(def.code.as_str()),
                                                             });
                                                         }
                                                         _ => panic!("error: unexpected TypeMember node"),
@@ -245,7 +248,12 @@ pub struct VkParseExtensionParts<'a> {
     pub further_extended: Option<&'a str>, 
 }
 
-pub struct StructMember<'a> {
+pub struct StructPart<'a> {
     pub struct_name: &'a str,
-    pub code: &'a str,
+    pub part: StructPartKind<'a>,
+}
+
+pub enum StructPartKind<'a> {
+    Code(&'a str),
+    Comment(&'a str),
 }

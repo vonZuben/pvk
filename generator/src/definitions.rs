@@ -1,4 +1,6 @@
 
+use std::marker::PhantomData;
+
 use quote::{quote, ToTokens};
 
 use vkxml::*;
@@ -73,6 +75,7 @@ impl ToTokens for Bitmask<'_> {
 pub struct Struct2<'a> {
     name: &'a str,
     fields: Vec<ctype::Cfield<'a>>,
+    pub non_normative: bool,
 }
 
 impl<'a> Struct2<'a> {
@@ -80,6 +83,7 @@ impl<'a> Struct2<'a> {
         Self {
             name,
             fields: Default::default(),
+            non_normative: false,
         }
     }
     pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
@@ -88,6 +92,9 @@ impl<'a> Struct2<'a> {
     pub fn push_field(&mut self, field: ctype::Cfield<'a>) {
         self.fields.push(field);
     }
+    pub fn non_normative(&mut self) {
+        self.non_normative = true;
+    }
 }
 
 impl ToTokens for Struct2<'_> {
@@ -95,15 +102,88 @@ impl ToTokens for Struct2<'_> {
         use crate::utils::StrAsCode;
 
         let name = self.name.as_code();
-        let fields = &self.fields;
-
-        quote!(
-            #[repr(C)]
-            #[derive(Copy, Clone)]
-            pub struct #name {
-                #( #fields , )*
+        
+        match self.non_normative {
+            false => {
+                let fields = &self.fields;
+                quote!(
+                    #[repr(C)]
+                    #[derive(Copy, Clone)]
+                    pub struct #name {
+                        #( #fields , )*
+                    }
+                ).to_tokens(tokens);
             }
-        ).to_tokens(tokens);
+            true => {
+                let fields = BitFieldIter::new(self.fields.iter());
+                quote!(
+                    #[repr(C)]
+                    #[repr(packed)]
+                    #[derive(Copy, Clone)]
+                    pub struct #name {
+                        #( #fields , )*
+                    }
+                ).to_tokens(tokens);
+            }
+        }        
+    }
+}
+
+// in C, bitfields should be compiled to fit into the same space
+// this iterates over potential bitfields and emits one field for all bit fields that should fit within the one field
+// we assume that the vulkan spec only uses bit fields efficiently and tightly packs and uses all space
+struct BitFieldIter<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> {
+    fields: I,
+    _p: PhantomData<&'a I::Item>,
+}
+
+impl<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> BitFieldIter<'a, I> {
+    fn new(i: impl IntoIterator<IntoIter=I>) -> Self {
+        Self {
+            fields: i.into_iter(),
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> Iterator for BitFieldIter<'a, I> {
+    type Item = ctype::Cfield<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let field = self.fields.next()?;
+
+        // check if field is a bit_field
+        if let Some(mut bits) = field.ty.bit_width() {
+            // determine size of field
+            let basetype = field.ty.basetype();
+            let field_bit_size = match basetype {
+                x if x.contains("8") => 8,
+                x if x.contains("16") => 16,
+                x if x.contains("32") => 32,
+                x if x.contains("64") => 64,
+                _ => panic!("error: unknown field_bit_size"),
+            };
+
+            // check how many bit_fields fit wihtin one field
+            let mut name =  field.name.to_string();
+            while bits < field_bit_size {
+                let next_field = self.fields.next().expect("error: expected another field");
+                // assert_eq!(basetype, next_field.ty.basetype(), "error: expect that neighbor bitfields have same basetype");
+                assert_eq!(next_field.ty.is_array(), false, "error: expect non array type for bit fields");
+                assert_eq!(next_field.ty.is_pointer(), false, "error: expect non pointer type for bit fields");
+                bits += next_field.ty.bit_width().expect("error: expected next field to have bit_width");
+                name = format!("{}_and_{}", name, next_field.name);
+            }
+
+            assert_eq!(bits, field_bit_size, "error: expected total bits to be equal to field bit size");
+
+            let ty = field.ty.clone();
+            let field = ctype::Cfield::new(name, ty);
+
+            Some(field)
+        }
+        else {
+            Some(field.clone())
+        }
     }
 }
 

@@ -480,20 +480,30 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             CommandType::DoNotGenerate => {}
         }
     }
-    fn visit_struct_member(&mut self, member: crate::vk_parse_visitor::StructMember<'a>) {
-        let mut stct = self.definitions.structs.get_mut_or_default(member.struct_name, definitions::Struct2::new(member.struct_name));
-        let field = parse_field(crate::simple_parse::TokenIter::new(member.code))
-            .expect("error: faild to parse struct member code");
+    fn visit_struct_member(&mut self, part: crate::vk_parse_visitor::StructPart<'a>) {
+        use crate::vk_parse_visitor::StructPartKind;
+        let mut stct = self.definitions.structs.get_mut_or_default(part.struct_name, definitions::Struct2::new(part.struct_name));
+        match part.part {
+            StructPartKind::Code(code) => {
+                let mut field = parse_field(code)
+                    .expect("error: faild to parse struct member code");
                 field.set_public();
-        stct.push_field(field);
+                stct.push_field(field);
+            }
+            StructPartKind::Comment(commnet) => {
+                if commnet.contains("non-normative") {
+                    stct.non_normative();
+                }
+            }
+        }
     }
 
 }
 
-fn parse_field<'a>(tokens: impl Iterator<Item = &'a str> + Clone) -> Result<ctype::Cfield<'a>, ()> {
+fn parse_field<'a>(code: &'a str) -> Result<ctype::Cfield<'a>, ()> {
     use crate::simple_parse::*;
     
-    let input = tokens;
+    let input = crate::simple_parse::TokenIter::new(code);
     
     let (input, c) = opt(tag("const"))(input)?;
     let (input, _) = opt(tag("struct"))(input)?;

@@ -1,3 +1,4 @@
+use std::borrow::{Borrow, Cow};
 
 use quote::{quote, ToTokens};
 use proc_macro2::TokenStream;
@@ -150,6 +151,7 @@ impl ToTokens for CtypeInner<'_> {
     }
 }
 
+#[derive(Clone)]
 pub struct Ctype<'a> {
     inner: CtypeInner<'a>,
     bit_width: Option<u8>,
@@ -176,6 +178,18 @@ impl<'a> Ctype<'a> {
     }
     pub fn set_bit_width(&mut self, bit_width: u8) {
         self.bit_width = Some(bit_width);
+    }
+    pub fn basetype(&self) -> &str {
+        &self.inner.basetype.name
+    }
+    pub fn bit_width(&self) -> Option<u8> {
+        self.bit_width
+    }
+    pub fn is_array(&self) -> bool {
+        self.inner.array.len() > 0
+    }
+    pub fn is_pointer(&self) -> bool {
+        self.inner.basetype.pointers.len() > 0
     }
 }
 
@@ -212,21 +226,21 @@ impl ToTokens for ReturnType<'_> {
     }
 }
 
+#[derive(Clone)]
 pub struct Cfield<'a> {
     vis: Visability,
-    name: &'a str,
-    ty: Ctype<'a>,
+    pub name: Cow<'a, str>,
+    pub ty: Ctype<'a>,
 }
 
 impl<'a> Cfield<'a> {
-    pub fn new(name: &'a str, ty: Ctype<'a>) -> Self {
+    pub fn new(name: impl Into<Cow<'a, str>>, ty: Ctype<'a>) -> Self {
         Self {
             vis: Default::default(),
-            name,
+            name: name.into(),
             ty,
         }
     }
-
     pub fn set_public(&mut self) {
         self.vis = Visability::Public;
     }
@@ -237,7 +251,7 @@ impl ToTokens for Cfield<'_> {
         use crate::utils::StrAsCode;
 
         let vis = &self.vis;
-        let name = case::camel_to_snake(self.name).as_code();
+        let name = case::camel_to_snake(self.name.borrow()).as_code();
         let ty = &self.ty;
 
         quote!( #vis #name : #ty ).to_tokens(tokens);
