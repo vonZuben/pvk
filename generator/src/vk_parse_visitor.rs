@@ -2,7 +2,7 @@ pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {}
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
     fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {}
-    fn visit_ex_enum(&mut self, ex: VkParseEnumConstantExtension<'a>) {}
+    fn visit_ex_enum(&mut self, ex: VkParseEnumConstant<'a>) {}
     fn visit_ex_require_node(&mut self, parts: &VkParseExtensionParts<'a>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
     fn visit_struct_member(&mut self, member: StructPart<'a>) {}
@@ -104,19 +104,15 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     Comment(_) => {}
                                     Type { name, comment } => {}
                                     Enum(enm) => {
-                                        match enumspec_kind(&enm.spec) {
-                                            EnumSpecKind::ExEnum(target, is_alias) => {
-                                                visitor.visit_ex_enum(VkParseEnumConstantExtension {
+                                        let extends = enm.spec.extends();
+                                        if extends.is_some() {
+                                            visitor.visit_ex_enum(VkParseEnumConstant {
                                                     number: None,
                                                     enm,
-                                                    target,
-                                                    is_alias,
+                                                target: extends,
+                                                is_alias: enm.spec.is_alias(),
                                                 });
                                             }
-                                            EnumSpecKind::Constant => {}
-                                            EnumSpecKind::EnumeratorRef => {}
-                                            _ => {}
-                                        }
                                     }
                                     Command { name, comment } => {}
                                     _ => panic!("unexpected InterfaceItem node"),
@@ -168,19 +164,15 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         Comment(_) => {}
                                         Type { name, comment } => {}
                                         Enum(enm) => {
-                                            match enumspec_kind(&enm.spec) {
-                                                EnumSpecKind::ExEnum(target, is_alias) => {
-                                                    visitor.visit_ex_enum(VkParseEnumConstantExtension {
+                                            let extends = enm.spec.extends();
+                                            if extends.is_some() {
+                                                visitor.visit_ex_enum(VkParseEnumConstant {
                                                         number: extension.number,
                                                         enm,
-                                                        target,
-                                                        is_alias,
+                                                    target: extends,
+                                                    is_alias: enm.spec.is_alias(),
                                                     });
                                                 }
-                                                EnumSpecKind::Constant => {}
-                                                EnumSpecKind::EnumeratorRef => {}
-                                                _ => {}
-                                            }
                                         }
                                         Command { name, comment } => {
                                             visitor.visit_ex_cmd_ref(name, &parts);
@@ -207,39 +199,35 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
     }
 }
 
-enum EnumSpecKind<'a> {
-    ExEnum(&'a str, bool),
-    Constant,
-    EnumeratorRef,
+trait EnumSpecEx {
+    fn is_alias(&self) -> bool;
+    fn extends(&self) -> Option<&str>;
 }
 
-impl<'a> EnumSpecKind<'a> {
-    fn from_extends(extends: &'a Option<String>, is_alias: bool) -> Self {
-        match extends {
-            Some(target) => Self::ExEnum(target, is_alias),
-            None => Self::Constant,
+impl EnumSpecEx for vk_parse::EnumSpec {
+    fn is_alias(&self) -> bool {
+        matches!(self, Self::Alias { .. })
+        }
+    // when this is None, it is a sign that this defines a new constant
+    fn extends(&self) -> Option<&str> {
+        match self {
+            Self::Alias { extends, .. } => extends.as_deref(),
+            Self::Offset { extends, .. } => Some(extends),
+            Self::Bitpos { extends, .. } => extends.as_deref(),
+            Self::Value { extends, .. } => extends.as_deref(),
+            Self::None => None,
+        _ => panic!("unexpected EnumSpec node"),
         }
     }
 }
 
-fn enumspec_kind<'a>(enum_spec: &'a vk_parse::EnumSpec) -> EnumSpecKind<'a> {
-    use vk_parse::EnumSpec::*;
-    match enum_spec {
-        Alias { ref extends, .. } => EnumSpecKind::from_extends(extends, true),
-        Offset {
-            extends: target, ..
-        } => EnumSpecKind::ExEnum(target, false),
-        Bitpos { ref extends, .. } => EnumSpecKind::from_extends(extends, false),
-        Value { ref extends, .. } => EnumSpecKind::from_extends(extends, false),
-        None => EnumSpecKind::EnumeratorRef,
-        _ => panic!("unexpected EnumSpec node"),
-    }
-}
-
-pub struct VkParseEnumConstantExtension<'a> {
+// when defining enum value, target should be set
+// when defining a constant, no target
+// when defining an enum value from an extension, there needs to be a number
+pub struct VkParseEnumConstant<'a> {
     pub number: Option<i64>,
     pub enm: &'a vk_parse::Enum,
-    pub target: &'a str,
+    pub target: Option<&'a str>,
     pub is_alias: bool,
 }
 

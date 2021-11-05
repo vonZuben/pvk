@@ -278,8 +278,8 @@ impl<'a> From<&'a vkxml::ExtensionConstant> for ConstValue<'a> {
     }
 }
 
-impl<'a> From<vk_parse_visitor::VkParseEnumConstantExtension<'a>> for ConstValue<'a> {
-    fn from(ex: vk_parse_visitor::VkParseEnumConstantExtension<'a>) -> Self {
+impl<'a> From<vk_parse_visitor::VkParseEnumConstant<'a>> for ConstValue<'a> {
+    fn from(ex: vk_parse_visitor::VkParseEnumConstant<'a>) -> Self {
         let enm = ex.enm;
         use vk_parse::EnumSpec::*;
         match enm.spec {

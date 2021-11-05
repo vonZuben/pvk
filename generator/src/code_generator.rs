@@ -435,10 +435,10 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.command_types
             .insert(name, command_type(command));
     }
-    fn visit_ex_enum(&mut self, ex: crate::vk_parse_visitor::VkParseEnumConstantExtension<'a>) {
+    fn visit_ex_enum(&mut self, ex: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let number = ex.number;
         let enm = ex.enm;
-        let target = ex.target;
+        let target = ex.target.expect("error: enum with no target");
         let is_alias = ex.is_alias;
 
         let mut enum_variants = self
