@@ -107,12 +107,12 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         let extends = enm.spec.extends();
                                         if extends.is_some() {
                                             visitor.visit_ex_enum(VkParseEnumConstant {
-                                                    number: None,
-                                                    enm,
+                                                number: None,
+                                                enm,
                                                 target: extends,
                                                 is_alias: enm.spec.is_alias(),
-                                                });
-                                            }
+                                            });
+                                        }
                                     }
                                     Command { name, comment } => {}
                                     _ => panic!("unexpected InterfaceItem node"),
@@ -167,12 +167,12 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             let extends = enm.spec.extends();
                                             if extends.is_some() {
                                                 visitor.visit_ex_enum(VkParseEnumConstant {
-                                                        number: extension.number,
-                                                        enm,
+                                                    number: extension.number,
+                                                    enm,
                                                     target: extends,
                                                     is_alias: enm.spec.is_alias(),
-                                                    });
-                                                }
+                                                });
+                                            }
                                         }
                                         Command { name, comment } => {
                                             visitor.visit_ex_cmd_ref(name, &parts);
