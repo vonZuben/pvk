@@ -207,7 +207,7 @@ trait EnumSpecEx {
 impl EnumSpecEx for vk_parse::EnumSpec {
     fn is_alias(&self) -> bool {
         matches!(self, Self::Alias { .. })
-        }
+    }
     // when this is None, it is a sign that this defines a new constant
     fn extends(&self) -> Option<&str> {
         match self {
@@ -216,7 +216,7 @@ impl EnumSpecEx for vk_parse::EnumSpec {
             Self::Bitpos { extends, .. } => extends.as_deref(),
             Self::Value { extends, .. } => extends.as_deref(),
             Self::None => None,
-        _ => panic!("unexpected EnumSpec node"),
+            _ => panic!("unexpected EnumSpec node"),
         }
     }
 }
