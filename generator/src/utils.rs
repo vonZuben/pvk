@@ -92,6 +92,7 @@ pub fn ctype_to_rtype(type_name: &str) -> String {
         "void" => "c_void",
         "char" => "c_char",
         "float" => "f32",
+        "double" => "f64",
         "long" => "c_ulong",
         "type" => "ty",
         x if x.starts_with("Vk") => &type_name[2..],
