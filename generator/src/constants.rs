@@ -307,8 +307,10 @@ impl<'a> From<vk_parse_visitor::VkParseEnumConstant<'a>> for ConstValue<'a> {
                     ConstValue::Number(val)
                 } else if value.starts_with('"') && value.ends_with('"') { // TODO: in future, if I remove vkxml entierly, then this can just keep the quotes as part of the value rather than removing them
                     ConstValue::Text(&value[1..value.len()-1])
-                } else {
-                    panic!("error: vk_parse says enumref, but I did not expect it here")
+                } else if value.starts_with("0x") { // probably a hex value
+                    ConstValue::Hex(&value[2..])
+                } else { // assume Cexpr
+                    ConstValue::Cexpr(value)
                 }
             }
             None => panic!("error: enum has no value, is this somhow an enumref?"),

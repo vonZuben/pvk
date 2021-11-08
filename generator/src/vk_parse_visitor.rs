@@ -6,6 +6,7 @@ pub trait VisitVkParse<'a> {
     fn visit_ex_require_node(&mut self, parts: &VkParseExtensionParts<'a>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
     fn visit_struct_member(&mut self, member: StructPart<'a>) {}
+    fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -73,7 +74,47 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                     }
                 }
             }
-            Enums(_) => {}
+            Enums(enms) => {
+                match enms.kind.as_deref() {
+                    None => { // API Constant or the like
+                        for enum_child in enms.children.iter() {
+                            use vk_parse::EnumsChild;
+                            match enum_child {
+                                EnumsChild::Enum(ref enm) => {
+                                    visitor.visit_constant(VkParseEnumConstant {
+                                        number: None,
+                                        enm,
+                                        target: None,
+                                        is_alias: false,
+                                    });
+                                }
+                                EnumsChild::Comment(_) => {}
+                                EnumsChild::Unused(_) => {}
+                                _ => panic!("error: unexpected EnumsChild"),
+                            }
+                        }
+                    }
+                    Some("enum" | "bitmask") => { // enum variants
+                        for enum_child in enms.children.iter() {
+                            use vk_parse::EnumsChild;
+                            match enum_child {
+                                EnumsChild::Enum(ref enm) => {
+                                    visitor.visit_ex_enum(VkParseEnumConstant {
+                                        number: None,
+                                        enm,
+                                        target: enms.name.as_deref(),
+                                        is_alias: enm.spec.is_alias(),
+                                    });
+                                }
+                                EnumsChild::Comment(_) => {}
+                                EnumsChild::Unused(_) => {}
+                                _ => panic!("error: unexpected EnumsChild"),
+                            }
+                        }
+                    }
+                    Some(_x) => {}
+                }
+            }
             Commands(commands) => {
                 for command in commands.children.iter() {
                     use vk_parse::Command::*;

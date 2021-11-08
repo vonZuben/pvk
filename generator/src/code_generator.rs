@@ -204,34 +204,9 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
         self.definitions.function_pointers.push(fptr);
     }
 
-    fn visit_constant(&mut self, constant: &'a vkxml::Constant) {
-        self.constants.push(constants::Constant2::new(
-            &constant.name,
-            constants::TypeValueExpresion::literal(constant),
-        ));
-    }
+    fn visit_constant(&mut self, constant: &'a vkxml::Constant) {}
 
-    fn visit_enum_variants(&mut self, enumeration: &'a vkxml::Enumeration) {
-        let target = enumeration.name.as_str();
-        let mut enum_variants = self
-            .enum_variants
-            .get_mut_or_default(target, enumerations::EnumVariants::new(target));
-        let variants = enumeration
-            .elements
-            .iter()
-            .filter_map(|enumeration_element| {
-                use vkxml::EnumerationElement;
-                match enumeration_element {
-                    EnumerationElement::Notation(_) => None,
-                    EnumerationElement::UnusedRange(_) => None,
-                    EnumerationElement::Enum(constant) => Some(constants::Constant2::new(
-                        &constant.name,
-                        constants::TypeValueExpresion::simple_self(constant),
-                    )),
-                }
-            });
-        enum_variants.extend_variants(variants);
-    }
+    fn visit_enum_variants(&mut self, enumeration: &'a vkxml::Enumeration) {}
 
     fn visit_command(&mut self, command: &'a vkxml::Command) {
         // // get CommandType metadata for feature and extension code generation
@@ -497,7 +472,12 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             }
         }
     }
-
+    fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
+        self.constants.push(constants::Constant2::new(
+            spec.enm.name.as_str(),
+            constants::TypeValueExpresion::literal(spec),
+        ));
+    }
 }
 
 fn parse_field<'a>(code: &'a str) -> Result<ctype::Cfield<'a>, ()> {
