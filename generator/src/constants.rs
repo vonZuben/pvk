@@ -12,6 +12,181 @@ use crate::vk_parse_visitor;
 
 use std::fmt;
 
+// #[derive(Clone)]
+pub struct Constant3<'a> {
+    pub name: &'a str,
+    pub ty: ctype::Ctype<'a>,
+    pub val: ConstValue2<'a>,
+}
+
+impl<'a> Constant3<'a> {
+    pub fn new(name: &'a str, ty: ctype::Ctype<'a>, val: ConstValue2<'a>) -> Self {
+        Self { name, ty, val }
+    }
+}
+
+impl ToTokens for Constant3<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use crate::utils::StrAsCode;
+
+        let name = self.name.as_code();
+        let ty = &self.ty;
+        let val = &self.val;
+        
+        quote!(
+            pub const #name: #ty = #val;
+        )
+        .to_tokens(tokens);
+    }
+}
+
+// #[derive(PartialEq, Eq, Debug, Clone)]
+pub enum Negate2 {
+    True,
+    False,
+}
+
+pub enum ConstantContext {
+    GlobalConstant,
+    Enum,
+}
+
+// #[derive(PartialEq, Eq, Debug, Clone)]
+pub enum ConstValue2<'a> {
+    Offset(i64, Negate2),
+    Text(&'a str),
+    Enumref(&'a str, ConstantContext),
+    Number(i32),
+    Hex(&'a str),
+    Bitpos(u32),
+    Cexpr(&'a str),
+}
+
+impl<'a> ConstValue2<'a> {
+    pub fn type_of(&self, constant_ref_map: &VecMap<&str, Constant3<'a>>) -> ctype::Ctype<'a> {
+        use ctype::Ctype;
+        use ConstValue2::*;
+        match self {
+            Offset(_, _) => panic!("I think this never happens"),// Ctype::new("usize"),
+            Text(_) => Ctype::new("&'static str"),
+            Enumref(enumref, context) => {
+                match context {
+                    ConstantContext::Enum => Ctype::new("Self"),
+                    ConstantContext::GlobalConstant => {
+                        let cref = constant_ref_map.get(enumref).expect("error: enumref to constant that does not exist (yet?)");
+                        cref.ty.clone()
+                    }
+                }
+            }
+            Number(_) => Ctype::new("usize"),
+            Hex(_) => Ctype::new("usize"),
+            Bitpos(bitpos) => Ctype::new("Flags"),
+            Cexpr(cexpr) => match cexpr {
+                e if e.contains("ULL") => Ctype::new("u64"),
+                e if e.contains("U") => Ctype::new("u32"),
+                e if e.contains("f") || e.contains("F") => Ctype::new("f32"),
+                _ => Ctype::new("u32"),
+            },
+        }
+    }
+
+    pub fn from_vkxml(vkxml_ex_constant: &'a vkxml::ExtensionConstant, context: ConstantContext) -> Self {
+        if let Some(ref text) = vkxml_ex_constant.text {
+            return ConstValue2::Text(text);
+        }
+
+        if let Some(ref enumref) = vkxml_ex_constant.enumref {
+            return ConstValue2::Enumref(enumref, context);
+        }
+
+        if let Some(num) = vkxml_ex_constant.number {
+            return ConstValue2::Number(num);
+        }
+
+        if let Some(ref hex_str) = vkxml_ex_constant.hex {
+            return ConstValue2::Hex(hex_str);
+        }
+
+        if let Some(bitpos) = vkxml_ex_constant.bitpos {
+            return ConstValue2::Bitpos(bitpos);
+        }
+
+        if let Some(ref expr) = vkxml_ex_constant.c_expression {
+            return ConstValue2::Cexpr(expr);
+        }
+
+        panic!("improper vkxml_ex_constant does not have a value");
+    }
+
+    pub fn from_vk_parse(ex: vk_parse_visitor::VkParseEnumConstant<'a>, context: ConstantContext) -> Self {
+        let enm = ex.enm;
+        use vk_parse::EnumSpec::*;
+        match enm.spec {
+            Alias { ref alias, .. } => {
+                ConstValue2::Enumref(alias, context)
+            }
+            Offset { offset, extnumber, dir, .. } => {
+                let number = extnumber.unwrap_or_else(||ex.number.expect("error: enum extension must have a number"));
+                let val = 1000000000 + (number - 1) * 1000 + offset;
+                let negate = match dir {
+                    true => Negate2::False,
+                    false => Negate2::True,
+                };
+                return ConstValue2::Offset(
+                    val,
+                    negate,
+                );
+            }
+            Bitpos { bitpos, .. } => {
+                use std::convert::TryInto;
+                ConstValue2::Bitpos(bitpos.try_into().expect("error: expecting 32 bit number for Flags (is this not a Flags type?)"))
+            }
+            Value { ref value, .. } => {
+                if let Ok(val) = i32::from_str_radix(value, 10) {
+                    ConstValue2::Number(val)
+                } else if value.starts_with('"') && value.ends_with('"') { // TODO: in future, if I remove vkxml entierly, then this can just keep the quotes as part of the value rather than removing them
+                    ConstValue2::Text(&value[1..value.len()-1])
+                } else if value.starts_with("0x") { // probably a hex value
+                    ConstValue2::Hex(&value[2..])
+                } else { // assume Cexpr
+                    ConstValue2::Cexpr(value)
+                }
+            }
+            None => panic!("error: enum has no value, is this somhow an enumref?"),
+            _ => panic!("unexpecxted unknown value"),
+        }
+    }
+}
+
+impl ToTokens for ConstValue2<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        use ConstValue2::*;
+        match self {
+            Offset(calcualted, negate) => match negate {
+                Negate2::False => calcualted.to_string().as_code().to_tokens(tokens),
+                Negate2::True => format!("-{}", calcualted).as_code().to_tokens(tokens),
+            },
+            Text(text) => quote!(#text).to_tokens(tokens),
+            Enumref(enumref, ctx) => {
+                match ctx {
+                    ConstantContext::Enum => format!("Self::{}", enumref).as_code().to_tokens(tokens),
+                    ConstantContext::GlobalConstant => enumref.as_code().to_tokens(tokens),
+                }
+            }
+            Number(num) => num.to_string().as_code().to_tokens(tokens),
+            Hex(hex) => format!("0x{:0>8}", hex).as_code().to_tokens(tokens),
+            Bitpos(bitpos) => format!("0x{:0>8X}", (1u64 << bitpos)).as_code().to_tokens(tokens),
+            Cexpr(cexpr) => cexpr
+                .replace("ULL", "")
+                .replace("U", "")
+                .replace("~", "!")
+                .replace("f", "")
+                .replace("F", "")
+                .as_code().to_tokens(tokens),
+        }
+    }
+}
+
 pub enum OptionMofifierFn<'a> {
     Some(Box<dyn for<'s> Fn(&'s str) -> String + 'a>),
     None,

@@ -48,7 +48,7 @@ pub struct Generator<'a> {
 
     // code generation
     definitions: definitions::Definitions2<'a>,
-    constants: Vec<constants::Constant2<'a>>,
+    constants: VecMap<&'a str, constants::Constant3<'a>>,
     enum_variants: utils::VecMap<&'a str, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2<'a>,
     vulkan_version_names: features::VulkanVersionNames<'a>,
@@ -81,7 +81,7 @@ impl<'a> Generator<'a> {
         let static_code = crate::static_code::StaticCode;
 
         let definitions = &self.definitions;
-        let constants = &self.constants;
+        let constants = self.constants.iter();
         let enum_variants = self.enum_variants.iter();
         let commands = &self.commands;
         let vulkan_version_names = &self.vulkan_version_names;
@@ -286,10 +286,11 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
     }
 
     fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {
-        self.constants.push(constants::Constant2::new(
-            &constant.name,
-            constants::TypeValueExpresion::literal(constant),
-        ));
+        let name = constant.name.as_str();
+        let val = constants::ConstValue2::from_vkxml(constant, constants::ConstantContext::GlobalConstant);
+        let ty = val.type_of(&self.constants);
+
+        self.constants.push(name, constants::Constant3::new(name, ty, val));
     }
 
     fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
@@ -473,10 +474,11 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         }
     }
     fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
-        self.constants.push(constants::Constant2::new(
-            spec.enm.name.as_str(),
-            constants::TypeValueExpresion::literal(spec),
-        ));
+        let name = spec.enm.name.as_str();
+        let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::GlobalConstant);
+        let ty = val.type_of(&self.constants);
+
+        self.constants.push(name, constants::Constant3::new(name, ty, val));
     }
 }
 
