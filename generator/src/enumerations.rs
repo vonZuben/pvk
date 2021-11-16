@@ -9,7 +9,7 @@ use crate::constants;
 
 pub struct EnumVariants<'a> {
     target: &'a str,
-    variants: utils::VecMap<&'a str, crate::constants::Constant2<'a>>,
+    variants: utils::VecMap<&'a str, crate::constants::Constant3<'a>>,
 }
 
 impl<'a> EnumVariants<'a> {
@@ -22,14 +22,14 @@ impl<'a> EnumVariants<'a> {
 
     pub fn extend_variants(
         &mut self,
-        variants: impl IntoIterator<Item = constants::Constant2<'a>>,
+        variants: impl IntoIterator<Item = constants::Constant3<'a>>,
     ) {
         for variant in variants.into_iter() {
             self.push_variant_once(variant);
         }
     }
 
-    pub fn push_variant_once(&mut self, variant: constants::Constant2<'a>) {
+    pub fn push_variant_once(&mut self, variant: constants::Constant3<'a>) {
         let name = variant.name;
         match self.variants.get(name) {
             // the vulkan spec includes redundant enum definitions
@@ -46,8 +46,7 @@ impl ToTokens for EnumVariants<'_> {
         let target = self.target.as_code();
         let variants = self
             .variants
-            .iter()
-            .map(|const2| const2.with_name_modifier(|name| make_variant_name(self.target, name)));
+            .iter();
         quote!(
             impl #target {
                 #(#variants)*

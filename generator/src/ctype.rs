@@ -27,7 +27,7 @@ impl ToTokens for Visability {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Pointer {
     Const,
     Mut,
@@ -43,7 +43,7 @@ impl ToTokens for Pointer {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Basetype<'a> {
     pointers: Vec::<Pointer>,
     name: &'a str,
@@ -107,8 +107,21 @@ impl ToTokens for Basetype<'_> {
     }
 }
 
+impl PartialEq for Basetype<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        for (me, other) in self.pointers.iter().zip(other.pointers.iter()) {
+            if me != other {
+                return false;
+            }
+        }
+        self.name == other.name
+    }
+}
+
+impl Eq for Basetype<'_> {}
+
 // the size of an array is a String in vkxml
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct Size<'a>(&'a str);
 
 impl ToTokens for Size<'_> {
@@ -119,7 +132,7 @@ impl ToTokens for Size<'_> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CtypeInner<'a> {
     basetype: Basetype<'a>,
     array: Vec<Size<'a>>
@@ -151,7 +164,20 @@ impl ToTokens for CtypeInner<'_> {
     }
 }
 
-#[derive(Clone)]
+impl PartialEq for CtypeInner<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        for (me, other) in self.array.iter().zip(other.array.iter()) {
+            if me != other {
+                return false;
+            }
+        }
+        self.basetype == other.basetype
+    }
+}
+
+impl Eq for CtypeInner<'_> {}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Ctype<'a> {
     inner: CtypeInner<'a>,
     bit_width: Option<u8>,

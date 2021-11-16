@@ -287,10 +287,10 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
 
     fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {
         let name = constant.name.as_str();
-        let val = constants::ConstValue2::from_vkxml(constant, constants::ConstantContext::GlobalConstant);
+        let val = constants::ConstValue2::from_vkxml(constant, constants::ConstantContext::GlobalConstant, None);
         let ty = val.type_of(&self.constants);
 
-        self.constants.push(name, constants::Constant3::new(name, ty, val));
+        self.constants.push(name, constants::Constant3::new(name, ty, val, None));
     }
 
     fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
@@ -411,24 +411,25 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.command_types
             .insert(name, command_type(command));
     }
-    fn visit_ex_enum(&mut self, ex: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
-        let number = ex.number;
-        let enm = ex.enm;
-        let target = ex.target.expect("error: enum with no target");
-        let is_alias = ex.is_alias;
+    fn visit_ex_enum(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
+        let number = spec.number;
+        let enm = spec.enm;
+        let target = spec.target.expect("error: enum with no target");
+        let is_alias = spec.is_alias;
 
         let mut enum_variants = self
             .enum_variants
             .get_mut_or_default(target, enumerations::EnumVariants::new(target));
 
-        let val = match is_alias {
-            true => constants::TypeValueExpresion::self_ref(ex),
-            false => constants::TypeValueExpresion::simple_self(ex),
-        };
+        let name = enm.name.as_str();
+        let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::Enum, Some(target));
+        let ty = ctype::Ctype::new("Self");
 
-        enum_variants.push_variant_once(constants::Constant2::new(
-            &enm.name,
+        enum_variants.push_variant_once(constants::Constant3::new(
+            name,
+            ty,
             val,
+            Some(target),
         ));
     }
     fn visit_ex_require_node(&mut self, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
@@ -475,10 +476,10 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let name = spec.enm.name.as_str();
-        let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::GlobalConstant);
+        let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::GlobalConstant, None);
         let ty = val.type_of(&self.constants);
 
-        self.constants.push(name, constants::Constant3::new(name, ty, val));
+        self.constants.push(name, constants::Constant3::new(name, ty, val, None));
     }
 }
 

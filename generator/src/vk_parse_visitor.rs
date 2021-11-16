@@ -2,7 +2,7 @@ pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {}
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
     fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {}
-    fn visit_ex_enum(&mut self, ex: VkParseEnumConstant<'a>) {}
+    fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>) {}
     fn visit_ex_require_node(&mut self, parts: &VkParseExtensionParts<'a>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
     fn visit_struct_member(&mut self, member: StructPart<'a>) {}
