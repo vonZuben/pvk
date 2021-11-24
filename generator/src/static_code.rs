@@ -170,6 +170,28 @@ impl ToTokens for StaticCode {
             pub type CAMetalLayer = *const c_void;
             pub type GgpFrameToken = *const c_void;
             pub type HMONITOR = *const c_void;
+
+            // more types that shuld not be used but are only here so it can compile
+            pub type IDirectFB = *const c_void;
+            pub type IDirectFBSurface = *const c_void;
+            pub type _screen_context = *const c_void;
+            pub type StdVideoH264ProfileIdc = *const c_void;
+            pub type StdVideoH264SequenceParameterSet = *const c_void;
+            pub type StdVideoDecodeH264PictureInfo = *const c_void;
+            pub type StdVideoDecodeH264ReferenceInfo = *const c_void;
+            pub type StdVideoDecodeH264Mvc = *const c_void;
+            pub type StdVideoH265ProfileIdc = *const c_void;
+            pub type StdVideoH265SequenceParameterSet = *const c_void;
+            pub type StdVideoH265PictureParameterSet = *const c_void;
+            pub type StdVideoDecodeH265PictureInfo = *const c_void;
+            pub type StdVideoDecodeH265ReferenceInfo = *const c_void;
+            pub type StdVideoH264PictureParameterSet = *const c_void;
+            pub type StdVideoEncodeH264PictureInfo = *const c_void;
+            pub type StdVideoEncodeH264SliceHeader = *const c_void;
+            pub type _screen_window = *const c_void;
+
+
+
         ).to_tokens(tokens);
     }
 }
