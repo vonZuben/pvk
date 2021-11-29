@@ -100,7 +100,13 @@ macro_rules! hlist_ty {
 macro_rules! make_commands_type {
     ( $name:ident =>  ) => {};
     ( $name:ident => $($command:ident),+ ) => {
-        pub type $name = hlist_ty!( $($crate::commands::loaders::$command),* );
+        pub struct $name(hlist_ty!( $($crate::commands::loaders::$command),* ));
+        impl ::std::ops::Deref for $name {
+            type Target = hlist_ty!( $($crate::commands::loaders::$command),* );
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
         $crate::impl_fptr_traits!($name => $($command),*);
     };
 }
