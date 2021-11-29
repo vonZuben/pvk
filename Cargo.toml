@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "generator",
-    "vk",
+    "vk-safe-sys",
+    "vk-safe",
     ]

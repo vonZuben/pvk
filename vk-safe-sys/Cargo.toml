@@ -1,5 +1,5 @@
 [package]
-name = "vk"
+name = "vk-safe-sys"
 version = "0.1.0"
 authors = ["Chris von Zuben <chris.vonzuben@gmail.com>"]
 edition = "2018"
