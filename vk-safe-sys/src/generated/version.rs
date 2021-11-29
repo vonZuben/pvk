@@ -5,6 +5,9 @@ macro_rules! V10 {
     ( @DEVICE $call:ident $($pass:tt)* ) => {
         $call!( $($pass)* PLACEHOLDER2 );
     };
+    ( @ENTRY $call:ident $($pass:tt)* ) => {
+        $call!( $($pass)* );
+    };
     ( @ALL $call:ident $($pass:tt)* ) => {
         $call!( $($pass)* PLACEHOLDER ; PLACEHOLDER2 );
     };

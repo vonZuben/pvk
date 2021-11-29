@@ -21,3 +21,15 @@ pub mod device {
     use_all_vulkan_version_names!(use_device_feature_commands);
 
 }
+
+pub mod entry {
+
+    macro_rules! use_device_feature_commands {
+        ( $($version:ident),* ) => {
+            $( $version!( @ENTRY make_commands_type $version => ); )*
+        };
+    }
+
+    use_all_vulkan_version_names!(use_device_feature_commands);
+
+}
