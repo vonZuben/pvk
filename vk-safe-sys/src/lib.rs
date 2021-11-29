@@ -3,6 +3,8 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
+#![recursion_limit = "1000"]
+
 // trace_macros!(true);
 
 #[cfg(not(generate))]
@@ -18,8 +20,11 @@ mod generated;
 mod utils;
 mod definitions;
 mod commands;
-mod version;
-mod extension;
+pub mod version;
+pub mod extension;
 
+pub use generated::*;
+
+pub use commands::LoadCommands;
 
 // include!{concat!(env!("OUT_DIR"), "/vk.rs")}
