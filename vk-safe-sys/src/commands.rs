@@ -1,29 +1,35 @@
-use std::os::raw::{c_void, c_char};
-use crate::utils::{Hnode, End};
+use crate::utils::{End, Hnode};
+use std::os::raw::{c_char, c_void};
 
 pub trait FunctionPointer: Copy {
     const VK_NAME: *const c_char;
-    type Fptr;
-    unsafe fn new(ptr: *const c_void) -> Self;
+    type Fptr: Sized;
+    unsafe fn new(ptr: *const Self::Fptr) -> Self;
     fn fptr(&self) -> Self::Fptr;
 }
 
 #[derive(Copy, Clone, Hash)]
 pub struct Loader<Cmd>(Cmd);
 
-pub trait FunctionLoader: Fn(*const c_char) -> crate::generated::definitions::PFN_vkVoidFunction + Copy {}
-impl<F> FunctionLoader for F where F: Fn(*const c_char) -> crate::generated::definitions::PFN_vkVoidFunction + Copy {}
+pub type VkVoidFunction = crate::generated::PFN_vkVoidFunction;
+
+pub trait FunctionLoader:
+    Fn(*const c_char) -> Option<VkVoidFunction> + Copy
+{
+}
+impl<F> FunctionLoader for F where
+    F: Fn(*const c_char) -> Option<VkVoidFunction> + Copy
+{
+}
 
 impl<Cmd: FunctionPointer> Loader<Cmd> {
     fn load(f: impl FunctionLoader) -> Result<Self, &'static str> {
         let fptr = f(Cmd::VK_NAME);
-        if fptr.is_null() {
-            return Err("can't load fn"); // TODO should make better error type
-        }
-        else {
-            unsafe {
-                Ok( Self(Cmd::new(fptr)) )
-            }
+        match fptr {
+            Some(fptr) => Ok(Self(unsafe {
+                Cmd::new((&fptr as *const VkVoidFunction).cast())
+            })),
+            None => Err("can't load fn"),
         }
     }
     pub fn fptr(&self) -> Cmd::Fptr {
@@ -31,7 +37,7 @@ impl<Cmd: FunctionPointer> Loader<Cmd> {
     }
 }
 
-pub trait LoadCommands : Sized {
+pub trait LoadCommands: Sized {
     fn load(f: impl FunctionLoader) -> Result<Self, &'static str>;
 }
 
@@ -54,17 +60,17 @@ where
 }
 
 macro_rules! make_fptr_traits {
-    ( $($name:ident ),* $(,)? ) => {
+    ( $($name:ident -> $string:expr);* $(;)? ) => {
         $(
             pub trait $name {
-                fn fptr(&self) -> $crate::generated::command_function_pointers::$name;
+                fn fptr(&self) -> $crate::generated::$name;
             }
 
             impl FunctionPointer for $crate::commands::function_pointer_wrappers::$name {
-                const VK_NAME: *const c_char = unsafe { std::mem::transmute(concat!(stringify!($name), "/0").as_ptr()) };
-                type Fptr = $crate::generated::command_function_pointers::$name;
-                unsafe fn new(ptr: *const c_void) -> Self {
-                    Self(::std::mem::transmute(ptr))
+                const VK_NAME: *const c_char = concat!($string, "/0").as_ptr().cast();
+                type Fptr = $crate::generated::$name;
+                unsafe fn new(fptr: *const Self::Fptr) -> Self {
+                    Self(*fptr)
                 }
                 fn fptr(&self) -> Self::Fptr {
                     self.0
@@ -75,17 +81,17 @@ macro_rules! make_fptr_traits {
 }
 
 macro_rules! make_fptr_wrappers {
-    ( $($name:ident),* $(,)? ) => {
+    ( $($name:ident -> $string:expr);* $(;)? ) => {
         $(
             #[repr(transparent)]
             #[derive(Copy, Clone)]
-            pub struct $name(pub(crate) $crate::generated::command_function_pointers::$name);
+            pub struct $name(pub(crate) $crate::generated::$name);
         )*
     };
 }
 
 macro_rules! make_loaders {
-    ( $($name:ident),* $(,)? ) => {
+    ( $($name:ident -> $string:expr);* $(;)? ) => {
         $(
             pub type $name = Loader<function_pointer_wrappers::$name>;
         )*
@@ -97,7 +103,7 @@ macro_rules! impl_fptr_traits {
     ( $name:ident => $($command:ident),* ) => {
         $(
             impl $crate::commands::$command for $name {
-                fn fptr(&self) -> $crate::generated::command_function_pointers::$command {
+                fn fptr(&self) -> $crate::generated::$command {
                     use $crate::utils::Get;
                     let loader: &$crate::commands::loaders::$command = self.get();
                     loader.fptr()
@@ -105,6 +111,15 @@ macro_rules! impl_fptr_traits {
             }
         )*
     };
+}
+
+macro_rules! make_trait_aliases {
+    ( $( $name:ident = $alias:ident ),* ) => {
+        $(
+            pub trait $name : $alias {}
+            impl<T> $name for T where T: $alias {}
+        )*
+    }
 }
 
 use_command_function_pointer_names!(make_fptr_traits);
