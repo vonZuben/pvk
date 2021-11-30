@@ -148,29 +148,32 @@ impl<'a> VulkanVersionNames<'a> {
 
 impl ToTokens for VulkanVersionNames<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let versions = self.versions.iter().map(StrAsCode::as_code);
+        let versions = self.versions.iter()
+            .map(StrAsCode::as_code);
+        let version_tuple = self.versions.iter()
+            .map(|v| parse_version(v).as_code());
         quote!(
             macro_rules! use_all_vulkan_version_names {
                 ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#versions),* );
+                    $call!( $($pass)* #(#versions => #version_tuple),* );
                 }
             }
         ).to_tokens(tokens);
     }
 }
 
-fn parse_version(ver: &str) -> TokenStream {
+fn parse_version(ver: &str) -> String {
 
     let mut tokens = ver.split('_');
 
     // assert that first text is equal to VK and VERSION
     tokens.next().map(|version|assert_eq!(version, "VK")).expect("Error parsing version, no 'VK' ...");
     tokens.next().map(|version|assert_eq!(version, "VERSION")).expect("Error parsing version, no 'VERSION' ...");
-    let major = tokens.next().expect("error: parsing version can't get major number").as_code();
-    let minor = tokens.next().expect("error: parsing version can't get minor number").as_code();
+    let major = tokens.next().expect("error: parsing version can't get major number");
+    let minor = tokens.next().expect("error: parsing version can't get minor number");
 
     // Note: I am assuming that the major and minor that are parsed are integers
 
-    quote!( vk_make_version(#major, #minor, 0) )
+    format!("({}, {}, {})", major, minor, 0)
 
 }

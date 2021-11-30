@@ -11,6 +11,9 @@ impl VkVersion {
     pub fn parts(&self) -> (u32, u32, u32, u32) {
         (self.0 >> 29, (self.0 >> 22) & 0x7F, (self.0 >> 12) & 0x3FF, self.0 & 0xFFF)
     }
+    pub fn raw(&self) -> u32 {
+        self.0
+    }
 }
 
 impl fmt::Debug for VkVersion {
@@ -19,3 +22,10 @@ impl fmt::Debug for VkVersion {
         write!(f, "{}.{}.{}.{}", variant, major, minor, patch)
     }
 }
+
+impl From<(u32, u32, u32)> for VkVersion {
+    fn from((major, minor, patch): (u32, u32, u32)) -> Self {
+        Self::new(0, major, minor, patch)
+    }
+}
+
