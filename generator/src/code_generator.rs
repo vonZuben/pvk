@@ -432,7 +432,19 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             Some(target),
         ));
     }
-    fn visit_ex_require_node(&mut self, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
+    fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: crate::vk_parse_visitor::ExtensionInfo<'a, I>) {
+        let ex_name = extensions::ExtensionCommandName::new(info.name_parts.extension_name, info.name_parts.further_extended);
+
+        let mut extension_commands = extensions::ExtensionCommands::new(ex_name);
+
+        match info.required {
+            Some(req) => extension_commands.require(req),
+            None => {}
+        }
+
+        let ex = self
+            .extension_commands
+            .push(ex_name, extension_commands);
     }
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
         let cmd_name = self.get_alias_or_name(cmd_name);
@@ -443,7 +455,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         let ex_name = extensions::ExtensionCommandName::new(parts.extension_name, parts.further_extended);
         let ex = self
             .extension_commands
-            .get_mut_or_default(ex_name, extensions::ExtensionCommands::new(ex_name));
+            .get_mut(ex_name)
+            .expect("error: this should already exist from visiting the node");
         
         match cmd_type {
             CommandType::Instance => ex.push_instance_command(cmd_name),

@@ -3,7 +3,7 @@ pub trait VisitVkParse<'a> {
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
     fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {}
     fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>) {}
-    fn visit_ex_require_node(&mut self, parts: &VkParseExtensionParts<'a>) {}
+    fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: ExtensionInfo<'a, I>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
     fn visit_struct_member(&mut self, member: StructPart<'a>) {}
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>) {}
@@ -197,7 +197,10 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     extension_name: &extension.name,
                                     further_extended,
                                 };
-                                visitor.visit_ex_require_node(&parts);
+                                visitor.visit_ex_require_node(ExtensionInfo {
+                                    name_parts: parts,
+                                    required: extension.requires.as_ref().map(|req|req.split(',')),
+                                });
 
                                 for item in items.iter() {
                                     use vk_parse::InterfaceItem::*;
@@ -272,6 +275,7 @@ pub struct VkParseEnumConstant<'a> {
     pub is_alias: bool,
 }
 
+#[derive(Clone, Copy)]
 pub struct VkParseExtensionParts<'a> {
     pub extension_name: &'a str, 
     pub further_extended: Option<&'a str>, 
@@ -285,4 +289,9 @@ pub struct StructPart<'a> {
 pub enum StructPartKind<'a> {
     Code(&'a str),
     Comment(&'a str),
+}
+
+pub struct ExtensionInfo<'a, I> {
+    pub name_parts: VkParseExtensionParts<'a>,
+    pub required: Option<I>,
 }

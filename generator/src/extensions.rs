@@ -12,7 +12,6 @@ use crate::commands::*;
 use crate::constants;
 
 use std::borrow::Cow;
-use std::collections::binary_heap::Iter;
 
 // used to represent names of commands that are enabled by an extension and possible extra commands when other features/extensions are available
 // base: base extension
@@ -58,6 +57,7 @@ pub struct ExtensionCommands<'a> {
     extension: ExtensionCommandName<'a>,
     instance_command_names: Vec<&'a str>,
     device_command_names: Vec<&'a str>,
+    required: Vec<&'a str>,
 }
 
 impl<'a> ExtensionCommands<'a> {
@@ -66,6 +66,7 @@ impl<'a> ExtensionCommands<'a> {
             extension,
             instance_command_names: Default::default(),
             device_command_names: Default::default(),
+            required: Default::default(),
         }
     }
     pub fn push_instance_command(&mut self, command: &'a str) {
@@ -73,6 +74,9 @@ impl<'a> ExtensionCommands<'a> {
     }
     pub fn push_device_command(&mut self, command: &'a str) {
         self.device_command_names.push(command);
+    }
+    pub fn require(&mut self, require: impl Iterator<Item = &'a str>) {
+        self.required.extend(require);
     }
 }
 
@@ -83,6 +87,7 @@ impl ToTokens for ExtensionCommands<'_> {
         let instance_command_names = &instance_command_names;
         let device_command_names: Vec<_> = self.device_command_names.iter().map(StrAsCode::as_code).collect();
         let device_command_names = &device_command_names;
+        let required = self.required.iter().map(StrAsCode::as_code);
         quote!(
             macro_rules! #extension {
                 ( @INSTANCE $call:ident $($pass:tt)* ) => {
@@ -93,6 +98,9 @@ impl ToTokens for ExtensionCommands<'_> {
                 };
                 ( @ALL $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* );
+                };
+                ( @REQUIRE $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #(#required),* );
                 };
             }
         ).to_tokens(tokens);

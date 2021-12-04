@@ -50,6 +50,10 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
         let index = self.map.get(&key)?;
         unsafe { Some(self.vec.get_unchecked(*index)) }
     }
+    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
+        let index = self.map.get(&key)?;
+        unsafe { Some(self.vec.get_unchecked_mut(*index)) }
+    }
     pub fn get_mut_or_default(&mut self, key: K, default: V) -> &mut V {
         match self.map.get(&key) {
             Some(index) => {
