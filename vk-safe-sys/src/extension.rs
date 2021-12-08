@@ -2,7 +2,7 @@ pub mod instance {
 
     macro_rules! use_instance_extension_commands {
         ( $($version:ident),* ) => {
-            $( $version!( @INSTANCE make_commands_type $version => ); )*
+            $( $version!( @INSTANCE_COMMANDS make_commands_type $version => ); )*
         };
     }
 
@@ -14,7 +14,7 @@ pub mod device {
 
     macro_rules! use_device_extension_commands {
         ( $($version:ident),* ) => {
-            $( $version!( @DEVICE make_commands_type $version => ); )*
+            $( $version!( @DEVICE_COMMANDS make_commands_type $version => ); )*
         };
     }
 
@@ -26,10 +26,10 @@ macro_rules! make_extention_implementor {
     ( $m_name:ident => $($iex:ident),* ; $($dex:ident),* ) => {
         #[macro_export]
         macro_rules! $m_name {
-            ( @INSTANCE $name:ident ) => {
+            ( @INSTANCE_COMMANDS $name:ident ) => {
                 $crate::impl_fptr_traits!($name => $($iex),*);
             };
-            ( @DEVICE $name:ident ) => {
+            ( @DEVICE_COMMANDS $name:ident ) => {
                 $crate::impl_fptr_traits!($name => $($dex),*);
             };
         }
@@ -39,7 +39,7 @@ macro_rules! make_extention_implementor {
 macro_rules! use_instance_and_device_extension_commands {
     ( @EXTENSIONS $($extension:ident),* ) => {
         $(
-            $extension!( @ALL use_instance_and_device_extension_commands @INNER $extension => );
+            $extension!( @ALL_COMMANDS use_instance_and_device_extension_commands @INNER $extension => );
         )*
     };
     ( @INNER $extension:ident => $($iex:ident),* ; $($dex:ident),* ) => {

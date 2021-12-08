@@ -54,7 +54,7 @@ pub struct Generator<'a> {
     vulkan_version_names: features::VulkanVersionNames<'a>,
     feature_commands: Vec<features::FeatureCommands<'a>>,
     vulkan_extension_names: extensions::VulkanExtensionNames<'a>,
-    extension_commands: VecMap<extensions::ExtensionCommandName<'a>, extensions::ExtensionCommands<'a>>,
+    extension_infos: VecMap<extensions::ExtensionName<'a>, extensions::ExtensionInfo<'a>>,
     aliases: utils::VecMap<&'a str, definitions::TypeDef<'a>>,
 }
 
@@ -87,14 +87,12 @@ impl<'a> Generator<'a> {
         let vulkan_version_names = &self.vulkan_version_names;
         let feature_commands = &self.feature_commands;
         let vulkan_extension_names = &self.vulkan_extension_names;
-        let extension_commands = self.extension_commands.iter();
+        let extension_commands = self.extension_infos.iter();
         let aliaes = self.aliases.iter();
 
         let cmd_aliases = crate::aliases::CmdAliasNames::new(
             aliaes.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
         );
-
-        let vulkan_extension_names_extended = extensions::VulkanExtensionNamesExtended::new(extension_commands.clone());
 
         let s1 = quote!(#static_code).to_string();
         let s2 = quote!(#definitions).to_string();
@@ -107,7 +105,6 @@ impl<'a> Generator<'a> {
         let s9 = quote!(#vulkan_extension_names).to_string();
         let s10 = quote!(#(#extension_commands)*).to_string();
         let s11 = quote!(#cmd_aliases).to_string();
-        let s12 = quote!(#vulkan_extension_names_extended).to_string();
 
         s1 
         + &s2 
@@ -120,7 +117,6 @@ impl<'a> Generator<'a> {
         + &s9
         + &s10
         + &s11
-        + &s12
     }
 }
 
@@ -238,12 +234,10 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_extension(&mut self, extension: &'a vkxml::Extension) {
-        // collect extension anmes
-        self.vulkan_extension_names.push_extension(&extension.name);
-
+        // TODO - this code should be removed soon
         // ensure all extensions get a macro generated even if no commands are included, since it will be expected when crating user extension lists
-        let ex_name = extensions::ExtensionCommandName::new(&extension.name, None);
-        self.extension_commands.contains_or_default(ex_name, extensions::ExtensionCommands::new(ex_name));
+        let ex_name = extensions::ExtensionName::new(&extension.name, None);
+        self.extension_infos.contains_or_default(ex_name, extensions::ExtensionInfo::new(ex_name));
 
         vkxml_visitor::visit_extension(extension, self);
     }
@@ -433,9 +427,11 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         ));
     }
     fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: crate::vk_parse_visitor::ExtensionInfo<'a, I>) {
-        let ex_name = extensions::ExtensionCommandName::new(info.name_parts.extension_name, info.name_parts.further_extended);
+        let ex_name = extensions::ExtensionName::new(info.name_parts.extension_name, info.name_parts.further_extended);
 
-        let mut extension_commands = extensions::ExtensionCommands::new(ex_name);
+        self.vulkan_extension_names.push_extension(ex_name);
+
+        let mut extension_commands = extensions::ExtensionInfo::new(ex_name);
 
         match info.required {
             Some(req) => extension_commands.require(req),
@@ -443,7 +439,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         }
 
         let ex = self
-            .extension_commands
+            .extension_infos
             .push(ex_name, extension_commands);
     }
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
@@ -452,9 +448,9 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             .get_command_type(cmd_name)
             .expect("error: feature identifies unknown command");
 
-        let ex_name = extensions::ExtensionCommandName::new(parts.extension_name, parts.further_extended);
+        let ex_name = extensions::ExtensionName::new(parts.extension_name, parts.further_extended);
         let ex = self
-            .extension_commands
+            .extension_infos
             .get_mut(ex_name)
             .expect("error: this should already exist from visiting the node");
         

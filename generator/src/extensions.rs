@@ -17,32 +17,32 @@ use std::borrow::Cow;
 // base: base extension
 // extra: feature or extension that adds more commands
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExtensionCommandName<'a> {
+pub enum ExtensionName<'a> {
     Noraml(&'a str),
     Extended(&'a str, &'a str),
 }
 
-impl<'a> ExtensionCommandName<'a> {
+impl<'a> ExtensionName<'a> {
     pub fn new(base: &'a str, extra: Option<&'a str>) -> Self {
         match extra {
             Some(extra) => {
-                ExtensionCommandName::Extended(base, extra)
+                ExtensionName::Extended(base, extra)
             }
             None => {
-                ExtensionCommandName::Noraml(base)
+                ExtensionName::Noraml(base)
             }
         }
     }
 }
 
-impl ToTokens for ExtensionCommandName<'_> {
+impl ToTokens for ExtensionName<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ExtensionCommandName::Noraml(name) => {
+            ExtensionName::Noraml(name) => {
                 let name = name.as_code();
                 quote!(#name).to_tokens(tokens);
             }
-            ExtensionCommandName::Extended(base, extend) => {
+            ExtensionName::Extended(base, extend) => {
                 let name = format!("{}_WITH_{}", base, extend).as_code();
                 quote!(#name).to_tokens(tokens);
             }
@@ -53,17 +53,17 @@ impl ToTokens for ExtensionCommandName<'_> {
 // =================================================================
 /// Command Names for a given extension
 /// intended to generate code within a instance/device extension_names module
-pub struct ExtensionCommands<'a> {
-    extension: ExtensionCommandName<'a>,
+pub struct ExtensionInfo<'a> {
+    extension_name: ExtensionName<'a>,
     instance_command_names: Vec<&'a str>,
     device_command_names: Vec<&'a str>,
     required: Vec<&'a str>,
 }
 
-impl<'a> ExtensionCommands<'a> {
-    pub fn new(extension: ExtensionCommandName<'a>) -> Self {
+impl<'a> ExtensionInfo<'a> {
+    pub fn new(extension_name: ExtensionName<'a>) -> Self {
         Self {
-            extension,
+            extension_name,
             instance_command_names: Default::default(),
             device_command_names: Default::default(),
             required: Default::default(),
@@ -80,23 +80,23 @@ impl<'a> ExtensionCommands<'a> {
     }
 }
 
-impl ToTokens for ExtensionCommands<'_> {
+impl ToTokens for ExtensionInfo<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let extension = &self.extension;
+        let extension_name = &self.extension_name;
         let instance_command_names: Vec<_> = self.instance_command_names.iter().map(StrAsCode::as_code).collect();
         let instance_command_names = &instance_command_names;
         let device_command_names: Vec<_> = self.device_command_names.iter().map(StrAsCode::as_code).collect();
         let device_command_names = &device_command_names;
         let required = self.required.iter().map(StrAsCode::as_code);
         quote!(
-            macro_rules! #extension {
-                ( @INSTANCE $call:ident $($pass:tt)* ) => {
+            macro_rules! #extension_name {
+                ( @INSTANCE_COMMANDS $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* #(#instance_command_names),* );
                 };
-                ( @DEVICE $call:ident $($pass:tt)* ) => {
+                ( @DEVICE_COMMANDS $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* #(#device_command_names),* );
                 };
-                ( @ALL $call:ident $($pass:tt)* ) => {
+                ( @ALL_COMMANDS $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* );
                 };
                 ( @REQUIRE $call:ident $($pass:tt)* ) => {
@@ -111,48 +111,22 @@ impl ToTokens for ExtensionCommands<'_> {
 /// list of all existing Vulkan extensions
 #[derive(Default)]
 pub struct VulkanExtensionNames<'a> {
-    extensions: Vec<&'a str>,
+    extensions: Vec<ExtensionName<'a>>,
 }
 
 impl<'a> VulkanExtensionNames<'a> {
-    pub fn push_extension(&mut self, extension: &'a str) {
-        self.extensions.push(extension);
+    pub fn push_extension(&mut self, extension_name: ExtensionName<'a>) {
+        self.extensions.push(extension_name);
     }
 }
 
 impl ToTokens for VulkanExtensionNames<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let extensions = self.extensions.iter().map(StrAsCode::as_code);
+        let extension_names = &self.extensions;
         quote!(
             macro_rules! use_all_vulkan_extension_names {
                 ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#extensions),* );
-                }
-            }
-        ).to_tokens(tokens);
-    }
-}
-
-// generate macro to use all extensions with commands (cover cases of extension WITH feature/extension)
-pub struct VulkanExtensionNamesExtended<I> {
-    extensions: I,
-}
-
-impl<I> VulkanExtensionNamesExtended<I> {
-    pub fn new(extensions: I) -> Self {
-        Self {
-            extensions,
-        }
-    }
-}
-
-impl<'a, I: Iterator<Item = &'a ExtensionCommands<'a>> + Clone> ToTokens for VulkanExtensionNamesExtended<I> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let extensions = self.extensions.clone().map(|dc|dc.extension);
-        quote!(
-            macro_rules! use_all_vulkan_extension_names_extended {
-                ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#extensions),* );
+                    $call!( $($pass)* #(#extension_names),* );
                 }
             }
         ).to_tokens(tokens);
