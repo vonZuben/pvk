@@ -7,13 +7,13 @@
 
 // trace_macros!(true);
 
-#[cfg(not(generate))]
+#[cfg(not(feature = "generate"))]
 #[macro_use]
 mod generated;
 
-#[cfg(generate)]
+#[cfg(feature = "generate")]
 #[macro_use]
-#[path = concat!(env!("OUT_DIR"), "/mod.rs")]
+#[path = concat!(env!("OUT_DIR"), "/vk.rs")]
 mod generated;
 
 #[macro_use]

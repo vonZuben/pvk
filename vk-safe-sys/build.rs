@@ -25,7 +25,7 @@ fn set_env() {
 }
 
 fn main() {
-    if cfg!(generate) {
+    if cfg!(feature = "generate") {
         generate();
     }
 }
