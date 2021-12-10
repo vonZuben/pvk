@@ -1,8 +1,9 @@
 use std::marker::PhantomData;
+use std::ffi::CStr;
 
 use vk_safe_sys as vk;
 
-use crate::utils::{VkVersion, VkStr, OptionPtr};
+use crate::utils::{VkVersion, OptionPtr};
 
 /// Vulkan Instance handle
 /// this struct holds all the instance level commands for both the loaded Vulkan Version (Feature)
@@ -20,9 +21,9 @@ pub struct Instance<Version, Extensions> {
 pub struct InstanceCreator<'a, Version, Extensions> {
     version: PhantomData<Version>,
     extensions: PhantomData<Extensions>,
-    app_name: Option<VkStr<'a>>,
+    app_name: Option<&'a CStr>,
     app_version: VkVersion,
-    engine_name: Option<VkStr<'a>>,
+    engine_name: Option<&'a CStr>,
     engine_version: VkVersion,
 }
 

@@ -41,30 +41,30 @@ impl From<(u32, u32, u32)> for VkVersion {
 /// Option<VkStr> can be cheaply converted and even maybe used directly in the ffi interface
 /// 
 /// Also important, the string must never be mutated from this
-#[repr(transparent)]
-#[derive(Clone, Copy)]
-pub struct VkStr<'a> {
-    ptr: NonNull<c_char>,
-    _p: PhantomData<&'a c_char>,
-}
+// #[repr(transparent)]
+// #[derive(Clone, Copy)]
+// pub struct VkStr<'a> {
+//     ptr: NonNull<c_char>,
+//     _p: PhantomData<&'a c_char>,
+// }
 
-impl<'a> VkStr<'a> {
-    pub fn ptr(&self) -> *const c_char {
-        self.ptr.as_ptr()
-    }
-}
+// impl<'a> VkStr<'a> {
+//     pub fn ptr(&self) -> *const c_char {
+//         self.ptr.as_ptr()
+//     }
+// }
 
-impl<'a> From<&'a CStr> for VkStr<'a> {
-    fn from(from: &'a CStr) -> Self {
-        // CStr: "This type represents a borrowed reference to a nul-terminated array of bytes"
-        // thus, we should beable to make NonNull
-        // VkStr should not ever mutate the string, so taking the *mut should be fine
-        Self {
-            ptr: unsafe { NonNull::new_unchecked(from.as_ptr() as *mut c_char) },
-            _p: PhantomData,
-        }
-    }
-}
+// impl<'a> From<&'a CStr> for VkStr<'a> {
+//     fn from(from: &'a CStr) -> Self {
+//         // CStr: "This type represents a borrowed reference to a nul-terminated array of bytes"
+//         // thus, we should beable to make NonNull
+//         // VkStr should not ever mutate the string, so taking the *mut should be fine
+//         Self {
+//             ptr: unsafe { NonNull::new_unchecked(from.as_ptr() as *mut c_char) },
+//             _p: PhantomData,
+//         }
+//     }
+// }
 
 // =================OptionPtr===========================
 
@@ -75,10 +75,12 @@ pub trait OptionPtr {
     fn as_c_ptr(self) -> Self::Ptr;
 }
 
-impl<'a> OptionPtr for Option<VkStr<'a>> {
+impl<'a> OptionPtr for Option<&'a CStr> {
     type Ptr = *const c_char;
     fn as_c_ptr(self) -> Self::Ptr {
-        // Note: transmute already ensures that Self and Ptr are the same size
-        unsafe { std::mem::transmute(self) }
+        match self {
+            Some(cstr) => cstr.as_ptr(),
+            None => std::ptr::null(),
+        }
     }
 }
