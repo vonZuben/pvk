@@ -5,15 +5,7 @@
 
 #![recursion_limit = "1000"]
 
-// trace_macros!(true);
-
-#[cfg(not(feature = "generate"))]
 #[macro_use]
-mod generated;
-
-#[cfg(feature = "generate")]
-#[macro_use]
-#[path = concat!(env!("OUT_DIR"), "/vk.rs")]
 mod generated;
 
 #[macro_use]
