@@ -122,6 +122,21 @@ macro_rules! make_trait_aliases {
     }
 }
 
+// used to make version and extension command list types
+macro_rules! make_commands_type {
+    ( $name:ident =>  ) => {};
+    ( $name:ident => $($command:ident),+ ) => {
+        pub struct $name(hlist_ty!( $($crate::commands::loaders::$command),* ));
+        impl ::std::ops::Deref for $name {
+            type Target = hlist_ty!( $($crate::commands::loaders::$command),* );
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+        $crate::impl_fptr_traits!($name => $($command),*);
+    };
+}
+
 use_command_function_pointer_names!(make_fptr_traits);
 
 pub mod function_pointer_wrappers {

@@ -11,6 +11,8 @@ mod generated;
 #[macro_use]
 mod utils;
 mod definitions;
+
+#[macro_use]
 mod commands;
 pub mod version;
 pub mod extension;
