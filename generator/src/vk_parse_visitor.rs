@@ -200,6 +200,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 visitor.visit_ex_require_node(ExtensionInfo {
                                     name_parts: parts,
                                     required: extension.requires.as_ref().map(|req|req.split(',')),
+                                    kind: extension.ext_type.as_deref().expect("error: expected ex_type"),
                                 });
 
                                 for item in items.iter() {
@@ -294,4 +295,5 @@ pub enum StructPartKind<'a> {
 pub struct ExtensionInfo<'a, I> {
     pub name_parts: VkParseExtensionParts<'a>,
     pub required: Option<I>,
+    pub kind: &'a str,
 }

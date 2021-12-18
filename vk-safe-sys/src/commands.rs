@@ -124,8 +124,8 @@ macro_rules! make_trait_aliases {
 
 // used to make version and extension command list types
 macro_rules! make_commands_type {
-    ( $name:ident =>  ) => {};
-    ( $name:ident => $($command:ident),+ ) => {
+    // ( $name:ident =>  ) => {};
+    ( $name:ident => $($command:ident),* $(,)? ) => {
         pub struct $name(hlist_ty!( $($crate::commands::loaders::$command),* ));
         impl ::std::ops::Deref for $name {
             type Target = hlist_ty!( $($crate::commands::loaders::$command),* );

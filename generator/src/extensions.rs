@@ -51,21 +51,38 @@ impl ToTokens for ExtensionName<'_> {
 }
 
 // =================================================================
+#[derive(Clone, Copy)]
+pub enum ExtensionKind {
+    Instance,
+    Device,
+}
+
+impl ToTokens for ExtensionKind {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            Self::Instance => quote!(INSTANCE).to_tokens(tokens),
+            Self::Device => quote!(DEVICE).to_tokens(tokens),
+        }
+    }
+}
+
 /// Command Names for a given extension
 /// intended to generate code within a instance/device extension_names module
 pub struct ExtensionInfo<'a> {
     extension_name: ExtensionName<'a>,
     instance_command_names: Vec<&'a str>,
     device_command_names: Vec<&'a str>,
+    kind: ExtensionKind,
     required: Vec<&'a str>,
 }
 
 impl<'a> ExtensionInfo<'a> {
-    pub fn new(extension_name: ExtensionName<'a>) -> Self {
+    pub fn new(extension_name: ExtensionName<'a>, kind: ExtensionKind) -> Self {
         Self {
             extension_name,
             instance_command_names: Default::default(),
             device_command_names: Default::default(),
+            kind,
             required: Default::default(),
         }
     }
@@ -82,14 +99,23 @@ impl<'a> ExtensionInfo<'a> {
 
 impl ToTokens for ExtensionInfo<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
+        let kind = self.kind;
         let extension_name = &self.extension_name;
         let instance_command_names: Vec<_> = self.instance_command_names.iter().map(StrAsCode::as_code).collect();
         let instance_command_names = &instance_command_names;
         let device_command_names: Vec<_> = self.device_command_names.iter().map(StrAsCode::as_code).collect();
         let device_command_names = &device_command_names;
+        let all_commands_names = instance_command_names.iter().chain(device_command_names.iter());
         let required = self.required.iter().map(StrAsCode::as_code);
+        let load = match self.extension_name {
+            ExtensionName::Noraml(name) => Some(name),
+            ExtensionName::Extended(_, _) => None,
+        };
         quote!(
             macro_rules! #extension_name {
+                ( @KIND $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* #kind );
+                };
                 ( @INSTANCE_COMMANDS $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* #(#instance_command_names),* );
                 };
@@ -97,10 +123,10 @@ impl ToTokens for ExtensionInfo<'_> {
                     $call!( $($pass)* #(#device_command_names),* );
                 };
                 ( @ALL_COMMANDS $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* );
+                    $call!( $($pass)* #(#all_commands_names),* );
                 };
                 ( @REQUIRE $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#required),* );
+                    $call!( $($pass)* #load ; #(#required),* );
                 };
             }
         ).to_tokens(tokens);
