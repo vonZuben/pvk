@@ -106,10 +106,13 @@ impl ToTokens for ExtensionInfo<'_> {
         let device_command_names: Vec<_> = self.device_command_names.iter().map(StrAsCode::as_code).collect();
         let device_command_names = &device_command_names;
         let all_commands_names = instance_command_names.iter().chain(device_command_names.iter());
-        let required = self.required.iter().map(StrAsCode::as_code);
         let load = match self.extension_name {
             ExtensionName::Noraml(name) => Some(name),
             ExtensionName::Extended(_, _) => None,
+        };
+        let required: Vec<_> = match self.extension_name {
+            ExtensionName::Noraml(name) => self.required.iter().map(StrAsCode::as_code).collect(),
+            ExtensionName::Extended(base, _) => std::iter::once(base.as_code()).collect(),
         };
         quote!(
             macro_rules! #extension_name {
