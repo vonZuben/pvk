@@ -237,7 +237,13 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
         // TODO - this code should be removed soon
         // ensure all extensions get a macro generated even if no commands are included, since it will be expected when crating user extension lists
         let ex_name = extensions::ExtensionName::new(&extension.name, None);
-        self.extension_infos.contains_or_default(ex_name, extensions::ExtensionInfo::new(ex_name));
+
+        let kind = match extension.ty.as_ref().expect("error: expected extension type") {
+            vkxml::ExtensionType::Instance => extensions::ExtensionKind::Instance,
+            vkxml::ExtensionType::Device => extensions::ExtensionKind::Device,
+        };
+
+        self.extension_infos.contains_or_default(ex_name, extensions::ExtensionInfo::new(ex_name, kind));
 
         vkxml_visitor::visit_extension(extension, self);
     }
@@ -431,7 +437,13 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 
         self.vulkan_extension_names.push_extension(ex_name);
 
-        let mut extension_commands = extensions::ExtensionInfo::new(ex_name);
+        let kind = match info.kind {
+            "instance" => extensions::ExtensionKind::Instance,
+            "device" => extensions::ExtensionKind::Device,
+            _ => panic!("error: unexpected extension kind"),
+        };
+
+        let mut extension_commands = extensions::ExtensionInfo::new(ex_name, kind);
 
         match info.required {
             Some(req) => extension_commands.require(req),
