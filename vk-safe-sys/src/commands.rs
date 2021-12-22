@@ -22,14 +22,16 @@ impl<F> FunctionLoader for F where
 {
 }
 
+pub type LoadError = String;
+
 impl<Cmd: FunctionPointer> Loader<Cmd> {
-    fn load(f: impl FunctionLoader) -> Result<Self, &'static str> {
+    fn load(f: impl FunctionLoader) -> Result<Self, LoadError> {
         let fptr = f(Cmd::VK_NAME);
         match fptr {
             Some(fptr) => Ok(Self(unsafe {
                 Cmd::new((&fptr as *const VkVoidFunction).cast())
             })),
-            None => Err("can't load fn"),
+            None => Err(format!("can't load {:?}", unsafe {std::ffi::CStr::from_ptr(Cmd::VK_NAME)} )),
         }
     }
     pub fn fptr(&self) -> Cmd::Fptr {
@@ -38,11 +40,11 @@ impl<Cmd: FunctionPointer> Loader<Cmd> {
 }
 
 pub trait LoadCommands: Sized {
-    fn load(f: impl FunctionLoader) -> Result<Self, &'static str>;
+    fn load(f: impl FunctionLoader) -> Result<Self, LoadError>;
 }
 
 impl LoadCommands for End {
-    fn load(f: impl FunctionLoader) -> Result<Self, &'static str> {
+    fn load(f: impl FunctionLoader) -> Result<Self, LoadError> {
         Ok(Self)
     }
 }
@@ -51,7 +53,7 @@ impl<Cmd: FunctionPointer, Tail> LoadCommands for Hnode<Loader<Cmd>, Tail>
 where
     Tail: LoadCommands,
 {
-    fn load(f: impl FunctionLoader) -> Result<Self, &'static str> {
+    fn load(f: impl FunctionLoader) -> Result<Self, LoadError> {
         Ok(Self {
             head: Loader::<Cmd>::load(f)?,
             tail: Tail::load(f)?,
@@ -67,7 +69,7 @@ macro_rules! make_fptr_traits {
             }
 
             impl FunctionPointer for $crate::commands::function_pointer_wrappers::$name {
-                const VK_NAME: *const c_char = concat!($string, "/0").as_ptr().cast();
+                const VK_NAME: *const c_char = concat!($string, "\0").as_ptr().cast();
                 type Fptr = $crate::generated::$name;
                 unsafe fn new(fptr: *const Self::Fptr) -> Self {
                     Self(*fptr)
@@ -127,6 +129,11 @@ macro_rules! make_commands_type {
     // ( $name:ident =>  ) => {};
     ( $name:ident => $($command:ident),* $(,)? ) => {
         pub struct $name(hlist_ty!( $($crate::commands::loaders::$command),* ));
+        impl $name {
+            fn load(f: impl $crate::commands::FunctionLoader) -> Result<Self, $crate::commands::LoadError> {
+                Ok(Self ( $crate::commands::LoadCommands::load(f)? ) )
+            }
+        }
         impl ::std::ops::Deref for $name {
             type Target = hlist_ty!( $($crate::commands::loaders::$command),* );
             fn deref(&self) -> &Self::Target {

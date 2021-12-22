@@ -1,4 +1,4 @@
 use vk_safe_sys as vk;
 
 mod utils;
-mod entry;
+pub mod entry; // not finalized on if this should be pub

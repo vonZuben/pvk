@@ -5,6 +5,61 @@ use vk_safe_sys as vk;
 
 use crate::utils::{VkVersion, OptionPtr};
 
+/// Exntry point
+pub struct Entry<Version> {
+    commands: Version,
+}
+
+#[link(name = "vulkan")]
+extern "system" {
+    #[link_name = "vkGetInstanceProcAddr"]
+    fn GetInstanceProcAddr(instance: vk::Instance, p_name: *const std::os::raw::c_char)
+             -> Option<vk::PFN_vkVoidFunction>;
+}
+
+// for testing ONLY
+//======================================
+pub trait EnermateExtensions {
+    fn num_extensions(&self) -> u32;
+    fn extensions(&self) -> Vec<vk::ExtensionProperties>;
+}
+
+impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnermateExtensions for Entry<Version> {
+    fn num_extensions(&self) -> u32 {
+        let mut num = 0;
+
+        unsafe {self.commands.fptr()(std::ptr::null(), &mut num, std::ptr::null_mut());}
+
+        num
+    }
+    fn extensions(&self) -> Vec<vk::ExtensionProperties> {
+        let mut num = self.num_extensions();
+        let mut v = Vec::with_capacity(num as usize);
+
+        unsafe { 
+            let res = self.commands.fptr()(std::ptr::null(), &mut num, v.as_mut_ptr());
+            assert!(res == vk::generated::VkResultRaw::SUCCESS);
+            v.set_len(num as usize);
+        }
+
+        v
+    }
+}
+//======================================
+
+impl<Version: vk::version::Version> Entry<Version> {
+    pub fn new() -> Result<Self, String> {
+
+        let loader = |s| unsafe {
+            GetInstanceProcAddr(vk::Instance{handle:std::ptr::null()}, s)
+        };
+
+        Ok(Self {
+            commands: Version::load(loader)?
+        })
+    }
+}
+
 /// Vulkan Instance handle
 /// this struct holds all the instance level commands for both the loaded Vulkan Version (Feature)
 /// and the loaded extensions
