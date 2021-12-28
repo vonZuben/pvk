@@ -94,3 +94,13 @@ macro_rules! hlist_ty {
         $crate::utils::Hnode<$first , hlist_ty!($($rest),*)>
     };
 }
+
+// impl convenience functionality for VkResult
+impl crate::generated::Result {
+    pub fn is_err(&self) -> bool {
+        self.0 < 0
+    }
+    pub fn is_success(&self) -> bool {
+        self.0 >= 0
+    }
+}

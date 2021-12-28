@@ -5,11 +5,7 @@ use vk_safe_sys as vk;
 
 use crate::utils::{VkVersion, OptionPtr};
 
-/// Exntry point
-pub struct Entry<Version> {
-    commands: Version,
-}
-
+/// This is the very first point of entry that is internally used to load all ofther functions
 #[link(name = "vulkan")]
 extern "system" {
     #[link_name = "vkGetInstanceProcAddr"]
@@ -17,35 +13,12 @@ extern "system" {
              -> Option<vk::PFN_vkVoidFunction>;
 }
 
-// for testing ONLY
-//======================================
-pub trait EnermateExtensions {
-    fn num_extensions(&self) -> u32;
-    fn extensions(&self) -> Vec<vk::ExtensionProperties>;
+/// Entry
+/// 
+/// provides a means for accessing global vulkan commands
+pub struct Entry<Version> {
+    commands: Version,
 }
-
-impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnermateExtensions for Entry<Version> {
-    fn num_extensions(&self) -> u32 {
-        let mut num = 0;
-
-        unsafe {self.commands.fptr()(std::ptr::null(), &mut num, std::ptr::null_mut());}
-
-        num
-    }
-    fn extensions(&self) -> Vec<vk::ExtensionProperties> {
-        let mut num = self.num_extensions();
-        let mut v = Vec::with_capacity(num as usize);
-
-        unsafe { 
-            let res = self.commands.fptr()(std::ptr::null(), &mut num, v.as_mut_ptr());
-            assert!(res == vk::generated::VkResultRaw::SUCCESS);
-            v.set_len(num as usize);
-        }
-
-        v
-    }
-}
-//======================================
 
 impl<Version: vk::version::Version> Entry<Version> {
     pub fn new() -> Result<Self, String> {
@@ -59,6 +32,44 @@ impl<Version: vk::version::Version> Entry<Version> {
         })
     }
 }
+
+// safe interface for Vulkan entry level commands
+//======================================
+pub trait EnumerateInstanceExtensionProperties {
+    fn enumerate_instance_extension_properties_len(&self, layer_name: Option<&CStr>) -> Result<u32, vk_safe_sys::Result>;
+    fn enumerate_instance_extension_properties(&self, layer_name: Option<&CStr>) -> Result<Vec<vk::ExtensionProperties>, vk_safe_sys::Result>;
+    // fn enumerate_instance_extension_properties_user(&self, layer_name: Option<&CStr>) -> Result<_, vk_safe_sys::Result>;
+}
+
+impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnumerateInstanceExtensionProperties for Entry<Version> {
+    fn enumerate_instance_extension_properties_len(&self, layer_name: Option<&CStr>) -> Result<u32, vk_safe_sys::Result> {
+        let mut num = 0;
+        let res;
+        unsafe { 
+            res = self.commands.fptr()(layer_name.as_c_ptr(), &mut num, std::ptr::null_mut());
+            check_raw_err!(res);
+        }
+        Ok(num)
+    }
+    fn enumerate_instance_extension_properties(&self, layer_name: Option<&CStr>) -> Result<Vec<vk::ExtensionProperties>, vk_safe_sys::Result> {
+        let mut num = self.enumerate_instance_extension_properties_len(layer_name)?;
+        let mut v = Vec::with_capacity(num as usize); // u32 as usize should always be valid
+        let res;
+        unsafe { 
+            res = self.commands.fptr()(layer_name.as_c_ptr(), &mut num, v.as_mut_ptr());
+            check_raw_err!(res);
+            v.set_len(num as usize);
+        }
+        Ok(v)
+    }
+}
+//======================================
+
+
+
+
+
+
 
 /// Vulkan Instance handle
 /// this struct holds all the instance level commands for both the loaded Vulkan Version (Feature)

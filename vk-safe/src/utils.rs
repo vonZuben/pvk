@@ -4,6 +4,72 @@ use std::os::raw::c_char;
 use std::ffi::CStr;
 use std::ptr::NonNull;
 
+// // =================Custom Result=======================
+// // there is more than one success value in Vulkan, which is important to know for some APIs
+// // so we need to keep it along with any actual returend values
+// pub enum VkResult<T> {
+//     Ok(T, vk_safe_sys::Result),
+//     Err(vk_safe_sys::Result),
+// }
+
+// impl <T> VkResult<T> {
+//     pub(crate) fn new(t: T, code: vk_safe_sys::Result) -> Self {
+//         if code.is_err() {
+//             Self::Err(code)
+//         }
+//         else {
+//             Self::Ok(t, code)
+//         }
+//     }
+//     pub(crate) fn err<U>(self) -> VkResult<U> {
+//         match self {
+//             Self::Ok(_, _) => panic!("vk-safe internal error: converting VkResult that is not an error"),
+//             Self::Err(e) => VkResult::Err(e),
+//         }
+//     }
+//     pub(crate) fn val(self) -> T {
+//         match self {
+//             Self::Ok(t, _) => t,
+//             Self::Err(_) => panic!("vk-safe internal error: taking value of error"),
+//         }
+//     }
+//     pub(crate) fn is_err(&self) -> bool {
+//         match self {
+//             Self::Ok(_, _) => false,
+//             Self::Err(_) => true,
+//         }
+//     }
+//     pub fn result(self) -> Result<T, vk_safe_sys::Result> {
+//         match self {
+//             Self::Ok(t, _) => Ok(t),
+//             Self::Err(e) => Err(e),
+//         }
+//     }
+//     pub fn vk_result_code(&self) -> vk_safe_sys::Result {
+//         match self {
+//             Self::Err(e) => *e,
+//             Self::Ok(_, e) => *e,
+//         }
+//     }
+// }
+
+// macro_rules! check_err {
+//     ( $result:ident ) => {
+//         match $result {
+//             VkResult::Ok(t, _) => t,
+//             VkResult::Err(e) => return VkResult::Err(e),
+//         }
+//     };
+// }
+
+macro_rules! check_raw_err {
+    ( $result:ident ) => {
+        if $result.is_err() {
+            return Err($result);
+        }
+    };
+}
+
 // =================VkVersion===========================
 #[repr(transparent)]
 #[derive(Default)]
@@ -82,5 +148,43 @@ impl<'a> OptionPtr for Option<&'a CStr> {
             Some(cstr) => cstr.as_ptr(),
             None => std::ptr::null(),
         }
+    }
+}
+
+// =================Buffer type that people can use to pass their own allocated space===============
+// for som APIs, want to provide the option for the user to provide their own allocation to be filled in
+// However, this is kind of difficult to design, because I don't even know all possible reasons to want this (should I even be doing this????)
+//
+// Just keep this as a work in progress for now
+// we can use it later if usful
+pub trait BufferInner<T> : AsRef<[T]> + AsMut<[T]> {}
+impl<T, B> BufferInner<T> for B where B: AsRef<[T]> + AsMut<[T]> {}
+
+pub struct Buffer<B, T> {
+    buffer: B,
+    len: usize,
+    _p: PhantomData<[T]>,
+}
+
+impl<T, B: BufferInner<T>> Buffer<B, T> {
+    pub fn uninit(buffer: B) -> Self {
+        Self {
+            buffer,
+            len: 0,
+            _p: PhantomData,
+        }
+    }
+}
+
+impl<T, B: BufferInner<T>> From<B> for Buffer<B, T> {
+    fn from(buffer: B) -> Self {
+        Self::uninit(buffer)
+    }
+}
+
+impl<T, B: BufferInner<T>> std::ops::Deref for Buffer<B, T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        &self.buffer.as_ref()[..self.len]
     }
 }

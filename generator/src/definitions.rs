@@ -62,7 +62,7 @@ impl ToTokens for Bitmask<'_> {
         let ty = self.ty.as_code();
         quote!(
             #[repr(transparent)]
-            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
             pub struct #name(pub(crate) #ty);
             vk_bitflags_wrapped!(#name, #ty);
         ).to_tokens(tokens);
@@ -108,7 +108,7 @@ impl ToTokens for Struct2<'_> {
                 let fields = &self.fields;
                 quote!(
                     #[repr(C)]
-                    #[derive(Copy, Clone)]
+                    #[derive(Copy, Clone, Debug)]
                     pub struct #name {
                         #( #fields , )*
                     }
@@ -119,7 +119,7 @@ impl ToTokens for Struct2<'_> {
                 quote!(
                     #[repr(C)]
                     #[repr(packed)]
-                    #[derive(Copy, Clone)]
+                    #[derive(Copy, Clone, Debug)]
                     pub struct #name {
                         #( #fields , )*
                     }
@@ -213,12 +213,22 @@ impl ToTokens for Union<'_> {
 
         let name = self.name.as_code();
         let fields = &self.fields;
+        let field_names = fields.iter().map(|field| case::camel_to_snake(field.name.as_ref()).as_code());
 
         quote!(
             #[repr(C)]
             #[derive(Copy, Clone)]
             pub union #name {
                 #( #fields , )*
+            } 
+            impl std::fmt::Debug for #name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    unsafe {
+                        f.debug_struct(stringify!(#name))
+                            #( .field(stringify!(#field_names), &self.#field_names) )*
+                            .finish()
+                    }
+                }
             }
         ).to_tokens(tokens);
     }
@@ -293,7 +303,7 @@ impl ToTokens for Enum2<'_> {
         use crate::utils::StrAsCode;
         let name = self.name.as_code();
         quote!(
-            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
             #[repr(transparent)]
             pub struct #name(pub(crate) i32);
         ).to_tokens(tokens);
@@ -331,14 +341,33 @@ impl ToTokens for FunctionPointer<'_> {
         use crate::utils::StrAsCode;
 
         let name = self.name.as_code();
+        let name_inner = format!("{}_inner", self.name).as_code();
+
         let fields = &self.fields;
         let return_type = &self.return_type;
 
         quote!(
             #[allow(non_camel_case_types)]
-            pub type #name = unsafe extern "system" fn(
+            pub type #name_inner = unsafe extern "system" fn(
                 #( #fields ),*
             ) -> #return_type;
+
+            #[repr(transparent)]
+            #[derive(Copy, Clone)]
+            pub struct #name(#name_inner);
+
+            impl std::ops::Deref for #name {
+                type Target = #name_inner;
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl std::fmt::Debug for #name {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    write!(f, "{}", stringify!(#name))
+                }
+            }
         ).to_tokens(tokens);
     }
 }
