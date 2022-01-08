@@ -7,6 +7,8 @@ use proc_macro2::{TokenStream};
 use std::collections::HashMap;
 use std::hash::Hash;
 
+use crate::intern::{Interner, Istring};
+
 pub trait StrAsCode {
     fn as_code(&self) -> TokenStream;
 }
@@ -70,6 +72,66 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     }
     pub fn iter<'a>(&'a self) -> impl Iterator<Item=&'a V> + Clone {
         self.vec.iter()
+    }
+}
+
+// This is for ensureing all names are handled consistently
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub struct VkName {
+    name: Istring,
+}
+
+impl VkName {
+    pub fn new(name: &str) -> Self {
+        let name = match name {
+            x if x.starts_with("Vk") => &x[2..],
+            // x if x.starts_with("vk_cmd_") => &type_name[7..],
+            x if x.starts_with("vk_") => &x[3..],
+            x if x.starts_with("vk") => &x[2..],
+            x if x.starts_with("VK_") => &x[3..],
+            x => x,
+        };
+        
+        if name.contains("FlagBits") {
+            let name = name.replace("FlagBits", "Flags");
+            Self {
+                name: Interner::intern(name),
+            }
+        }
+        else {
+            Self {
+                name: Interner::intern(name),
+            }
+        }
+    }
+    pub fn as_code(&self) -> TokenStream {
+        let this = self;
+        quote!( #this )
+    }
+}
+
+impl ToTokens for VkName {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.name.get().as_code().to_tokens(tokens)
+    }
+}
+
+impl std::ops::Deref for VkName {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.name.get()
+    }
+}
+
+impl From<&str> for VkName {
+    fn from(name: &str) -> Self {
+        Self::new(name)
+    }
+}
+
+impl From<&String> for VkName {
+    fn from(name: &String) -> Self {
+        Self::new(name)
     }
 }
 

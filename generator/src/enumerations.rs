@@ -8,12 +8,13 @@ use crate::utils::*;
 use crate::constants;
 
 pub struct EnumVariants<'a> {
-    target: &'a str,
-    variants: utils::VecMap<&'a str, crate::constants::Constant3<'a>>,
+    target: VkName,
+    variants: utils::VecMap<VkName, crate::constants::Constant3<'a>>,
 }
 
 impl<'a> EnumVariants<'a> {
-    pub fn new(target: &'a str) -> Self {
+    pub fn new(target: impl Into<VkName>) -> Self {
+        let target = target.into();
         Self {
             target,
             variants: Default::default(),
@@ -50,6 +51,12 @@ impl ToTokens for EnumVariants<'_> {
         quote!(
             impl #target {
                 #(#variants)*
+            }
+            
+            impl std::fmt::Debug for #target {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    todo!()
+                }
             }
         )
         .to_tokens(tokens);

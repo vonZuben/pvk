@@ -48,8 +48,8 @@ pub struct Generator<'a> {
 
     // code generation
     definitions: definitions::Definitions2<'a>,
-    constants: VecMap<&'a str, constants::Constant3<'a>>,
-    enum_variants: utils::VecMap<&'a str, enumerations::EnumVariants<'a>>,
+    constants: VecMap<utils::VkName, constants::Constant3<'a>>,
+    enum_variants: utils::VecMap<utils::VkName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2<'a>,
     vulkan_version_names: features::VulkanVersionNames<'a>,
     feature_commands: Vec<features::FeatureCommands<'a>>,
@@ -158,6 +158,8 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_bitmask(&mut self, bitmask: &'a vkxml::Bitmask) {
+        let name = utils::VkName::new(bitmask.name.as_str());
+        self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name));
         let bitmask = definitions::Bitmask::new(&bitmask.name, &bitmask.basetype);
         self.definitions.bitmasks.push(bitmask);
     }
@@ -286,7 +288,7 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
     }
 
     fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {
-        let name = constant.name.as_str();
+        let name = utils::VkName::new(constant.name.as_str());
         let val = constants::ConstValue2::from_vkxml(constant, constants::ConstantContext::GlobalConstant, None);
         let ty = val.type_of(&self.constants);
 
@@ -414,7 +416,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_ex_enum(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let number = spec.number;
         let enm = spec.enm;
-        let target = spec.target.expect("error: enum with no target");
+        let target = utils::VkName::new(spec.target.expect("error: enum with no target"));
         let is_alias = spec.is_alias;
 
         let mut enum_variants = self
@@ -496,7 +498,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         }
     }
     fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
-        let name = spec.enm.name.as_str();
+        let name = utils::VkName::new(spec.enm.name.as_str());
         let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::GlobalConstant, None);
         let ty = val.type_of(&self.constants);
 

@@ -10,6 +10,8 @@ extern crate vk_parse;
 #[macro_use]
 mod utils;
 
+mod intern;
+
 mod simple_parse;
 
 mod constants;
@@ -43,8 +45,8 @@ use commands::*;
 use features::*;
 use extensions::*;
 
-
 pub fn generate(vk_xml_path: &str) -> String {
+    unsafe {intern::Interner::init();}
     // return "".to_string();
     let vk_xml_path = Path::new(vk_xml_path);
     // this it the easier to parse registry

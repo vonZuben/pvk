@@ -62,7 +62,7 @@ impl ToTokens for Bitmask<'_> {
         let ty = self.ty.as_code();
         quote!(
             #[repr(transparent)]
-            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub struct #name(pub(crate) #ty);
             vk_bitflags_wrapped!(#name, #ty);
         ).to_tokens(tokens);
@@ -303,7 +303,7 @@ impl ToTokens for Enum2<'_> {
         use crate::utils::StrAsCode;
         let name = self.name.as_code();
         quote!(
-            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
             pub struct #name(pub(crate) i32);
         ).to_tokens(tokens);
