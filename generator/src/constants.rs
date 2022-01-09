@@ -14,14 +14,14 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Constant3<'a> {
-    pub name: VkName,
+    pub name: VkTyName,
     pub ty: ctype::Ctype<'a>,
     pub val: ConstValue2<'a>,
-    target: Option<VkName>,
+    target: Option<VkTyName>,
 }
 
 impl<'a> Constant3<'a> {
-    pub fn new(name: impl Into<VkName>, ty: ctype::Ctype<'a>, val: ConstValue2<'a>, target: Option<VkName>) -> Self {
+    pub fn new(name: impl Into<VkTyName>, ty: ctype::Ctype<'a>, val: ConstValue2<'a>, target: Option<VkTyName>) -> Self {
         let name = name.into();
         Self { name, ty, val, target }
     }
@@ -74,7 +74,7 @@ pub struct ConstValue2<'a> {
 pub enum ValueKind<'a> {
     Offset(i64, Negate2),
     Text(&'a str),
-    Enumref(VkName, Option<VkName>),
+    Enumref(VkTyName, Option<VkTyName>),
     Number(i32),
     Hex(&'a str),
     Bitpos(u32),
@@ -82,7 +82,7 @@ pub enum ValueKind<'a> {
 }
 
 impl<'a> ConstValue2<'a> {
-    pub fn type_of(&self, constant_ref_map: &VecMap<VkName, Constant3<'a>>) -> ctype::Ctype<'a> {
+    pub fn type_of(&self, constant_ref_map: &VecMap<VkTyName, Constant3<'a>>) -> ctype::Ctype<'a> {
         use ctype::Ctype;
         use ValueKind::*;
         match self.value {
@@ -104,7 +104,7 @@ impl<'a> ConstValue2<'a> {
         }
     }
 
-    pub fn from_vkxml(vkxml_ex_constant: &'a vkxml::ExtensionConstant, context: ConstantContext, target: Option<VkName>) -> Self {
+    pub fn from_vkxml(vkxml_ex_constant: &'a vkxml::ExtensionConstant, context: ConstantContext, target: Option<VkTyName>) -> Self {
         if let Some(ref text) = vkxml_ex_constant.text {
             return ConstValue2{
                 value: ValueKind::Text(text),
@@ -150,7 +150,7 @@ impl<'a> ConstValue2<'a> {
         panic!("improper vkxml_ex_constant does not have a value");
     }
 
-    pub fn from_vk_parse(ex: vk_parse_visitor::VkParseEnumConstant<'a>, context: ConstantContext, target: Option<VkName>) -> Self {
+    pub fn from_vk_parse(ex: vk_parse_visitor::VkParseEnumConstant<'a>, context: ConstantContext, target: Option<VkTyName>) -> Self {
         let enm = ex.enm;
         use vk_parse::EnumSpec::*;
         match enm.spec {

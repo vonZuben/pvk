@@ -15,10 +15,10 @@ impl<I> CmdAliasNames<I> {
     }
 }
 
-impl<'a, I: Iterator<Item=TypeDef<'a>> + Clone> ToTokens for CmdAliasNames<I> {
+impl<'a, I: Iterator<Item=TypeDef> + Clone> ToTokens for CmdAliasNames<I> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let name = self.alias_defs.clone().map(|td|td.name.as_code());
-        let alias = self.alias_defs.clone().map(|td|td.ty.as_code());
+        let name = self.alias_defs.clone().map(|td|td.name);
+        let alias = self.alias_defs.clone().map(|td|td.ty);
 
         quote!(
             macro_rules! use_cmd_alias_pairs {

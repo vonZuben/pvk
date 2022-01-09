@@ -8,12 +8,12 @@ use crate::utils::*;
 use crate::constants;
 
 pub struct EnumVariants<'a> {
-    target: VkName,
-    variants: utils::VecMap<VkName, crate::constants::Constant3<'a>>,
+    target: VkTyName,
+    variants: utils::VecMap<VkTyName, crate::constants::Constant3<'a>>,
 }
 
 impl<'a> EnumVariants<'a> {
-    pub fn new(target: impl Into<VkName>) -> Self {
+    pub fn new(target: impl Into<VkTyName>) -> Self {
         let target = target.into();
         Self {
             target,

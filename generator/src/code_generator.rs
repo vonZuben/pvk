@@ -44,33 +44,34 @@ fn command_type(command: &vk_parse::CommandDefinition) -> CommandType {
 pub struct Generator<'a> {
     // metadata
     // when generating commands to load per feature, we use this to determine command_types
-    command_types: HashMap<&'a str, CommandType>,
+    command_types: HashMap<utils::VkTyName, CommandType>,
 
     // code generation
     definitions: definitions::Definitions2<'a>,
-    constants: VecMap<utils::VkName, constants::Constant3<'a>>,
-    enum_variants: utils::VecMap<utils::VkName, enumerations::EnumVariants<'a>>,
+    constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
+    enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2<'a>,
     vulkan_version_names: features::VulkanVersionNames<'a>,
-    feature_commands: Vec<features::FeatureCommands<'a>>,
-    vulkan_extension_names: extensions::VulkanExtensionNames<'a>,
-    extension_infos: VecMap<extensions::ExtensionName<'a>, extensions::ExtensionInfo<'a>>,
-    aliases: utils::VecMap<&'a str, definitions::TypeDef<'a>>,
+    feature_commands: Vec<features::FeatureCommands>,
+    vulkan_extension_names: extensions::VulkanExtensionNames,
+    extension_infos: VecMap<extensions::ExtensionName, extensions::ExtensionInfo>,
+    aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
 }
 
 impl<'a> Generator<'a> {
     fn get_command_type(&self, cmd: &str) -> Option<CommandType> {
-        match self.command_types.get(cmd) {
+        let cmd = utils::VkTyName::new(cmd);
+        match self.command_types.get(&cmd) {
             Some(cmd_type) => Some(*cmd_type),
             None => {
                 let alias_name = self.aliases.get(cmd)?.ty;
-                self.command_types.get(alias_name).map(|ct|*ct)
+                self.command_types.get(&alias_name).map(|ct|*ct)
             }
         }
     }
 
     // if there is an alias, return the alias, otherwise, return name
-    fn get_alias_or_name(&self, name: &'a str) -> &'a str {
+    fn get_alias_or_name(&self, name: utils::VkTyName) -> utils::VkTyName {
         match self.aliases.get(name) {
             Some(td) => td.ty,
             None => name,
@@ -91,7 +92,7 @@ impl<'a> Generator<'a> {
         let aliaes = self.aliases.iter();
 
         let cmd_aliases = crate::aliases::CmdAliasNames::new(
-            aliaes.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
+            aliaes.clone().filter(|td|commands.contains(&td.ty)).map(Clone::clone)
         );
 
         let s1 = quote!(#static_code).to_string();
@@ -158,7 +159,7 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
     }
 
     fn visit_bitmask(&mut self, bitmask: &'a vkxml::Bitmask) {
-        let name = utils::VkName::new(bitmask.name.as_str());
+        let name = utils::VkTyName::new(bitmask.name.as_str());
         self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name));
         let bitmask = definitions::Bitmask::new(&bitmask.name, &bitmask.basetype);
         self.definitions.bitmasks.push(bitmask);
@@ -255,14 +256,14 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
 // thus, you must add the FeatureCommands you want to modify as the last one
 impl<'a> VisitFeature<'a> for Generator<'a> {
     fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
-        let cmd_name = command_ref.name.as_str();
+        let cmd_name = utils::VkTyName::new(command_ref.name.as_str());
         let fc = self
             .feature_commands
             .last_mut()
             .expect("error: no feature_command created");
         match self
             .command_types
-            .get(cmd_name)
+            .get(&cmd_name)
             .expect("error: feature identifies unknown command")
         {
             CommandType::Instance => fc.push_instance_command(cmd_name),
@@ -288,7 +289,7 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
     }
 
     fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {
-        let name = utils::VkName::new(constant.name.as_str());
+        let name = utils::VkTyName::new(constant.name.as_str());
         let val = constants::ConstValue2::from_vkxml(constant, constants::ConstantContext::GlobalConstant, None);
         let ty = val.type_of(&self.constants);
 
@@ -399,6 +400,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             return;
         }
         else {
+            let name = utils::VkTyName::new(name);
             self.aliases.push(name, definitions::TypeDef::new(name, alias));
         }
     }
@@ -409,14 +411,14 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {
         // get CommandType metadata for feature and extension code generation
-        let name = command.proto.name.as_str();
+        let name = utils::VkTyName::new(command.proto.name.as_str());
         self.command_types
             .insert(name, command_type(command));
     }
     fn visit_ex_enum(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let number = spec.number;
         let enm = spec.enm;
-        let target = utils::VkName::new(spec.target.expect("error: enum with no target"));
+        let target = utils::VkTyName::new(spec.target.expect("error: enum with no target"));
         let is_alias = spec.is_alias;
 
         let mut enum_variants = self
@@ -457,9 +459,10 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             .push(ex_name, extension_commands);
     }
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
+        let cmd_name = utils::VkTyName::new(cmd_name);
         let cmd_name = self.get_alias_or_name(cmd_name);
         let cmd_type = self
-            .get_command_type(cmd_name)
+            .get_command_type(&cmd_name)
             .expect("error: feature identifies unknown command");
 
         let ex_name = extensions::ExtensionName::new(parts.extension_name, parts.further_extended);
@@ -498,7 +501,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         }
     }
     fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
-        let name = utils::VkName::new(spec.enm.name.as_str());
+        let name = utils::VkTyName::new(spec.enm.name.as_str());
         let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::GlobalConstant, None);
         let ty = val.type_of(&self.constants);
 

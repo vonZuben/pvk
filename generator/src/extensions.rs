@@ -17,15 +17,17 @@ use std::borrow::Cow;
 // base: base extension
 // extra: feature or extension that adds more commands
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ExtensionName<'a> {
-    Noraml(&'a str),
-    Extended(&'a str, &'a str),
+pub enum ExtensionName {
+    Noraml(VkTyName),
+    Extended(VkTyName, VkTyName),
 }
 
-impl<'a> ExtensionName<'a> {
-    pub fn new(base: &'a str, extra: Option<&'a str>) -> Self {
+impl ExtensionName {
+    pub fn new(base: &str, extra: Option<&str>) -> Self {
+        let base = VkTyName::new(base);
         match extra {
             Some(extra) => {
+                let extra = VkTyName::new(extra);
                 ExtensionName::Extended(base, extra)
             }
             None => {
@@ -35,11 +37,10 @@ impl<'a> ExtensionName<'a> {
     }
 }
 
-impl ToTokens for ExtensionName<'_> {
+impl ToTokens for ExtensionName {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             ExtensionName::Noraml(name) => {
-                let name = name.as_code();
                 quote!(#name).to_tokens(tokens);
             }
             ExtensionName::Extended(base, extend) => {
@@ -68,16 +69,16 @@ impl ToTokens for ExtensionKind {
 
 /// Command Names for a given extension
 /// intended to generate code within a instance/device extension_names module
-pub struct ExtensionInfo<'a> {
-    extension_name: ExtensionName<'a>,
-    instance_command_names: Vec<&'a str>,
-    device_command_names: Vec<&'a str>,
+pub struct ExtensionInfo {
+    extension_name: ExtensionName,
+    instance_command_names: Vec<VkTyName>,
+    device_command_names: Vec<VkTyName>,
     kind: ExtensionKind,
-    required: Vec<&'a str>,
+    required: Vec<VkTyName>,
 }
 
-impl<'a> ExtensionInfo<'a> {
-    pub fn new(extension_name: ExtensionName<'a>, kind: ExtensionKind) -> Self {
+impl ExtensionInfo {
+    pub fn new(extension_name: ExtensionName, kind: ExtensionKind) -> Self {
         Self {
             extension_name,
             instance_command_names: Default::default(),
@@ -86,33 +87,32 @@ impl<'a> ExtensionInfo<'a> {
             required: Default::default(),
         }
     }
-    pub fn push_instance_command(&mut self, command: &'a str) {
+    pub fn push_instance_command(&mut self, command: VkTyName) {
         self.instance_command_names.push(command);
     }
-    pub fn push_device_command(&mut self, command: &'a str) {
+    pub fn push_device_command(&mut self, command: VkTyName) {
         self.device_command_names.push(command);
     }
-    pub fn require(&mut self, require: impl Iterator<Item = &'a str>) {
+    pub fn require<'a>(&mut self, require: impl Iterator<Item = &'a str>) {
+        let require = require.map(|r|VkTyName::new(r));
         self.required.extend(require);
     }
 }
 
-impl ToTokens for ExtensionInfo<'_> {
+impl ToTokens for ExtensionInfo {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let kind = self.kind;
         let extension_name = &self.extension_name;
-        let instance_command_names: Vec<_> = self.instance_command_names.iter().map(StrAsCode::as_code).collect();
-        let instance_command_names = &instance_command_names;
-        let device_command_names: Vec<_> = self.device_command_names.iter().map(StrAsCode::as_code).collect();
-        let device_command_names = &device_command_names;
+        let instance_command_names = &self.instance_command_names;
+        let device_command_names = &self.device_command_names;
         let all_commands_names = instance_command_names.iter().chain(device_command_names.iter());
-        let load = match self.extension_name {
-            ExtensionName::Noraml(name) => Some(name),
+        let load = match &self.extension_name {
+            ExtensionName::Noraml(name) => Some(&**name),
             ExtensionName::Extended(_, _) => None,
         };
         let required: Vec<_> = match self.extension_name {
-            ExtensionName::Noraml(name) => self.required.iter().map(StrAsCode::as_code).collect(),
-            ExtensionName::Extended(base, _) => std::iter::once(base.as_code()).collect(),
+            ExtensionName::Noraml(name) => self.required.iter().copied().collect(),
+            ExtensionName::Extended(base, _) => std::iter::once(base).collect(),
         };
         quote!(
             macro_rules! #extension_name {
@@ -139,17 +139,17 @@ impl ToTokens for ExtensionInfo<'_> {
 // =================================================================
 /// list of all existing Vulkan extensions
 #[derive(Default)]
-pub struct VulkanExtensionNames<'a> {
-    extensions: Vec<ExtensionName<'a>>,
+pub struct VulkanExtensionNames {
+    extensions: Vec<ExtensionName>,
 }
 
-impl<'a> VulkanExtensionNames<'a> {
-    pub fn push_extension(&mut self, extension_name: ExtensionName<'a>) {
+impl VulkanExtensionNames {
+    pub fn push_extension(&mut self, extension_name: ExtensionName) {
         self.extensions.push(extension_name);
     }
 }
 
-impl ToTokens for VulkanExtensionNames<'_> {
+impl ToTokens for VulkanExtensionNames {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let extension_names = &self.extensions;
         quote!(

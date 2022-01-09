@@ -6,6 +6,7 @@ use proc_macro2::{TokenStream};
 
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::fmt;
 
 use crate::intern::{Interner, Istring};
 
@@ -77,21 +78,12 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
 
 // This is for ensureing all names are handled consistently
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct VkName {
+pub struct VkTyName {
     name: Istring,
 }
 
-impl VkName {
+impl VkTyName {
     pub fn new(name: &str) -> Self {
-        let name = match name {
-            x if x.starts_with("Vk") => &x[2..],
-            // x if x.starts_with("vk_cmd_") => &type_name[7..],
-            x if x.starts_with("vk_") => &x[3..],
-            x if x.starts_with("vk") => &x[2..],
-            x if x.starts_with("VK_") => &x[3..],
-            x => x,
-        };
-        
         if name.contains("FlagBits") {
             let name = name.replace("FlagBits", "Flags");
             Self {
@@ -108,28 +100,61 @@ impl VkName {
         let this = self;
         quote!( #this )
     }
-}
-
-impl ToTokens for VkName {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.name.get().as_code().to_tokens(tokens)
+    fn normalize(&self) -> &str {
+        match self.name.get() {
+            "uint8_t" => "u8",
+            "uint16_t" => "u16",
+            "uint32_t" => "u32",
+            "uint64_t" => "u64",
+            "int8_t" => "i8",
+            "int16_t" => "i16",
+            "int32_t" => "i32",
+            "int64_t" => "i64",
+            "size_t" => "usize",
+            "int" => "c_int",
+            "void" => "c_void",
+            "char" => "c_char",
+            "float" => "f32",
+            "double" => "f64",
+            "long" => "c_ulong",
+            "type" => "ty",
+            x if x.starts_with("Vk") => &x[2..],
+            // x if x.starts_with("vk_cmd_") => &type_name[7..],
+            x if x.starts_with("vk_") => &x[3..],
+            x if x.starts_with("vk") => &x[2..],
+            x if x.starts_with("VK_") => &x[3..],
+            x => x,
+        }
     }
 }
 
-impl std::ops::Deref for VkName {
+impl ToTokens for VkTyName {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let name = self.normalize();
+        name.as_code().to_tokens(tokens)
+    }
+}
+
+impl fmt::Display for VkTyName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.normalize())
+    }
+}
+
+impl std::ops::Deref for VkTyName {
     type Target = str;
     fn deref(&self) -> &Self::Target {
         self.name.get()
     }
 }
 
-impl From<&str> for VkName {
+impl From<&str> for VkTyName {
     fn from(name: &str) -> Self {
         Self::new(name)
     }
 }
 
-impl From<&String> for VkName {
+impl From<&String> for VkTyName {
     fn from(name: &String) -> Self {
         Self::new(name)
     }

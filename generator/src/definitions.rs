@@ -17,13 +17,15 @@ use crate::ctype;
 /// TypeDef
 /// for defining Vulkan type aliases
 #[derive(Debug, Clone)]
-pub struct TypeDef<'a> {
-    pub name: &'a str,
-    pub ty: &'a str,
+pub struct TypeDef {
+    pub name: VkTyName,
+    pub ty: VkTyName,
 }
 
-impl<'a> TypeDef<'a> {
-    pub fn new(name: &'a str, ty: &'a str) -> Self {
+impl TypeDef {
+    pub fn new(name: impl Into<VkTyName>, ty: impl Into<VkTyName>) -> Self {
+        let name = name.into();
+        let ty = ty.into();
         Self {
             name,
             ty,
@@ -31,7 +33,7 @@ impl<'a> TypeDef<'a> {
     }
 }
 
-impl ToTokens for TypeDef<'_> {
+impl ToTokens for TypeDef {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = self.name.as_code();
         let ty = self.ty.as_code();
@@ -377,7 +379,7 @@ impl ToTokens for FunctionPointer<'_> {
 /// collect all definitions together for outputting together
 #[derive(Default)]
 pub struct Definitions2<'a> {
-    pub type_defs: Vec<TypeDef<'a>>,
+    pub type_defs: Vec<TypeDef>,
     pub bitmasks: Vec<Bitmask<'a>>,
     pub structs: VecMap<&'a str, Struct2<'a>>,
     pub unions: Vec<Union<'a>>,
