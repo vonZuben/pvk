@@ -76,7 +76,7 @@ impl ToTokens for Bitmask<'_> {
 /// for defining Vulkan struct types
 pub struct Struct2<'a> {
     name: &'a str,
-    fields: Vec<ctype::Cfield<'a>>,
+    fields: Vec<ctype::Cfield>,
     pub non_normative: bool,
 }
 
@@ -88,10 +88,10 @@ impl<'a> Struct2<'a> {
             non_normative: false,
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield>) {
         self.fields.extend(fields);
     }
-    pub fn push_field(&mut self, field: ctype::Cfield<'a>) {
+    pub fn push_field(&mut self, field: ctype::Cfield) {
         self.fields.push(field);
     }
     pub fn non_normative(&mut self) {
@@ -134,12 +134,12 @@ impl ToTokens for Struct2<'_> {
 // in C, bitfields should be compiled to fit into the same space
 // this iterates over potential bitfields and emits one field for all bit fields that should fit within the one field
 // we assume that the vulkan spec only uses bit fields efficiently and tightly packs and uses all space
-struct BitFieldIter<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> {
+struct BitFieldIter<'a, I: Iterator<Item=&'a ctype::Cfield>> {
     fields: I,
     _p: PhantomData<&'a I::Item>,
 }
 
-impl<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> BitFieldIter<'a, I> {
+impl<'a, I: Iterator<Item=&'a ctype::Cfield>> BitFieldIter<'a, I> {
     fn new(i: impl IntoIterator<IntoIter=I>) -> Self {
         Self {
             fields: i.into_iter(),
@@ -148,8 +148,8 @@ impl<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> BitFieldIter<'a, I> {
     }
 }
 
-impl<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> Iterator for BitFieldIter<'a, I> {
-    type Item = ctype::Cfield<'a>;
+impl<'a, I: Iterator<Item=&'a ctype::Cfield>> Iterator for BitFieldIter<'a, I> {
+    type Item = ctype::Cfield;
     fn next(&mut self) -> Option<Self::Item> {
         let field = self.fields.next()?;
 
@@ -194,7 +194,7 @@ impl<'a, I: Iterator<Item=&'a ctype::Cfield<'a>>> Iterator for BitFieldIter<'a, 
 /// for defining Vulkan union types
 pub struct Union<'a> {
     name: &'a str,
-    fields: Vec<ctype::Cfield<'a>>,
+    fields: Vec<ctype::Cfield>,
 }
 
 impl<'a> Union<'a> {
@@ -204,7 +204,7 @@ impl<'a> Union<'a> {
             fields: Default::default(),
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield>) {
         self.fields.extend(fields);
     }
 }
@@ -318,8 +318,8 @@ impl ToTokens for Enum2<'_> {
 /// for defining Vulkan function pointer types
 pub struct FunctionPointer<'a> {
     pub name: &'a str,
-    fields: Vec<ctype::Cfield<'a>>,
-    return_type: ctype::ReturnType<'a>,
+    fields: Vec<ctype::Cfield>,
+    return_type: ctype::ReturnType,
 }
 
 impl<'a> FunctionPointer<'a> {
@@ -330,10 +330,10 @@ impl<'a> FunctionPointer<'a> {
             return_type: Default::default(),
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield<'a>>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield>) {
         self.fields.extend(fields);
     }
-    pub fn set_return_type(&mut self, return_type: impl Into<ctype::ReturnType<'a>>) {
+    pub fn set_return_type(&mut self, return_type: impl Into<ctype::ReturnType>) {
         self.return_type = return_type.into();
     }
 }

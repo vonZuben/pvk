@@ -83,7 +83,8 @@ pub struct VkTyName {
 }
 
 impl VkTyName {
-    pub fn new(name: &str) -> Self {
+    pub fn new<'a, C: Into<std::borrow::Cow<'a, str>>>(name: C) -> Self {
+        let name = name.into();
         if name.contains("FlagBits") {
             let name = name.replace("FlagBits", "Flags");
             Self {
@@ -148,14 +149,8 @@ impl std::ops::Deref for VkTyName {
     }
 }
 
-impl From<&str> for VkTyName {
-    fn from(name: &str) -> Self {
-        Self::new(name)
-    }
-}
-
-impl From<&String> for VkTyName {
-    fn from(name: &String) -> Self {
+impl<'a, C: Into<std::borrow::Cow<'a, str>>> From<C> for VkTyName {
+    fn from(name: C) -> Self {
         Self::new(name)
     }
 }

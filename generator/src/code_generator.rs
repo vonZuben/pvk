@@ -318,7 +318,7 @@ enum FieldPurpose {
     FunctionParam,
 }
 
-fn make_cfield<'a>(field: &'a vkxml::Field, purpose: FieldPurpose) -> ctype::Cfield<'a> {
+fn make_cfield(field: &vkxml::Field, purpose: FieldPurpose) -> ctype::Cfield {
     let mut ctype = ctype::Ctype::new(&field.basetype);
 
     set_ctype_pointer_or_array(field, purpose, &mut ctype);
@@ -340,7 +340,7 @@ fn make_cfield<'a>(field: &'a vkxml::Field, purpose: FieldPurpose) -> ctype::Cfi
     field
 }
 
-fn make_return_ctype<'a>(field: &'a vkxml::Field) -> ctype::ReturnType<'a> {
+fn make_return_ctype(field: &vkxml::Field) -> ctype::ReturnType {
     if field.basetype.as_str() == "void" && field.reference.is_none() {
         return Default::default();
     } else {
@@ -358,7 +358,7 @@ fn make_return_ctype<'a>(field: &'a vkxml::Field) -> ctype::ReturnType<'a> {
 fn set_ctype_pointer_or_array<'a>(
     field: &'a vkxml::Field,
     purpose: FieldPurpose,
-    ctype: &mut ctype::Ctype<'a>,
+    ctype: &mut ctype::Ctype,
 ) {
     use vkxml::ArrayType;
 
@@ -509,7 +509,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
 }
 
-fn parse_field<'a>(code: &'a str) -> Result<ctype::Cfield<'a>, ()> {
+fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
     use crate::simple_parse::*;
     
     let input = crate::simple_parse::TokenIter::new(code);

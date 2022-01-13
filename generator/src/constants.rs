@@ -15,13 +15,13 @@ use std::fmt;
 #[derive(PartialEq, Eq, Debug)]
 pub struct Constant3<'a> {
     pub name: VkTyName,
-    pub ty: ctype::Ctype<'a>,
+    pub ty: ctype::Ctype,
     pub val: ConstValue2<'a>,
     target: Option<VkTyName>,
 }
 
 impl<'a> Constant3<'a> {
-    pub fn new(name: impl Into<VkTyName>, ty: ctype::Ctype<'a>, val: ConstValue2<'a>, target: Option<VkTyName>) -> Self {
+    pub fn new(name: impl Into<VkTyName>, ty: ctype::Ctype, val: ConstValue2<'a>, target: Option<VkTyName>) -> Self {
         let name = name.into();
         Self { name, ty, val, target }
     }
@@ -82,7 +82,7 @@ pub enum ValueKind<'a> {
 }
 
 impl<'a> ConstValue2<'a> {
-    pub fn type_of(&self, constant_ref_map: &VecMap<VkTyName, Constant3<'a>>) -> ctype::Ctype<'a> {
+    pub fn type_of(&self, constant_ref_map: &VecMap<VkTyName, Constant3<'a>>) -> ctype::Ctype {
         use ctype::Ctype;
         use ValueKind::*;
         match self.value {

@@ -3,7 +3,7 @@ use std::borrow::{Borrow, Cow};
 use quote::{quote, ToTokens};
 use proc_macro2::TokenStream;
 
-use crate::utils::case;
+use crate::utils::{self, case};
 
 #[derive(Copy, Clone)]
 enum Visability {
@@ -44,13 +44,14 @@ impl ToTokens for Pointer {
 }
 
 #[derive(Clone, Debug)]
-struct Basetype<'a> {
+struct Basetype {
     pointers: Vec::<Pointer>,
-    name: &'a str,
+    name: utils::VkTyName,
 }
 
-impl<'a> Basetype<'a> {
-    fn new(name: &'a str) -> Self {
+impl Basetype {
+    fn new(name: impl Into<utils::VkTyName>) -> Self {
+        let name = name.into();
         Self {
             pointers: Default::default(),
             name,
@@ -94,12 +95,12 @@ impl<'a> Basetype<'a> {
     }
 }
 
-impl ToTokens for Basetype<'_> {
+impl ToTokens for Basetype {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
 
         let pointers = &self.pointers;
-        let name = self.name.as_code();
+        let name = self.name;
 
         quote!(
             #(#pointers)* #name
@@ -107,7 +108,7 @@ impl ToTokens for Basetype<'_> {
     }
 }
 
-impl PartialEq for Basetype<'_> {
+impl PartialEq for Basetype {
     fn eq(&self, other: &Self) -> bool {
         for (me, other) in self.pointers.iter().zip(other.pointers.iter()) {
             if me != other {
@@ -118,28 +119,29 @@ impl PartialEq for Basetype<'_> {
     }
 }
 
-impl Eq for Basetype<'_> {}
+impl Eq for Basetype {}
 
 // the size of an array is a String in vkxml
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-struct Size<'a>(&'a str);
+struct Size(utils::VkTyName);
 
-impl ToTokens for Size<'_> {
+impl ToTokens for Size {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
-        let s = self.0.as_code();
+        let s = self.0;
         quote!(#s).to_tokens(tokens);
     }
 }
 
 #[derive(Clone, Debug)]
-struct CtypeInner<'a> {
-    basetype: Basetype<'a>,
-    array: Vec<Size<'a>>
+struct CtypeInner {
+    basetype: Basetype,
+    array: Vec<Size>
 }
 
-impl<'a> CtypeInner<'a> {
-    fn push_array(&mut self, size: &'a str) {
+impl CtypeInner {
+    fn push_array(&mut self, size: impl Into<utils::VkTyName>) {
+        let size = size.into();
         self.array.push(Size(size));
     }
     fn push_pointer(&mut self, pointer: Pointer) {
@@ -150,7 +152,7 @@ impl<'a> CtypeInner<'a> {
     }
 }
 
-impl ToTokens for CtypeInner<'_> {
+impl ToTokens for CtypeInner {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let bt = &self.basetype;
         let array = &self.array;
@@ -164,7 +166,7 @@ impl ToTokens for CtypeInner<'_> {
     }
 }
 
-impl PartialEq for CtypeInner<'_> {
+impl PartialEq for CtypeInner {
     fn eq(&self, other: &Self) -> bool {
         for (me, other) in self.array.iter().zip(other.array.iter()) {
             if me != other {
@@ -175,16 +177,16 @@ impl PartialEq for CtypeInner<'_> {
     }
 }
 
-impl Eq for CtypeInner<'_> {}
+impl Eq for CtypeInner {}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Ctype<'a> {
-    inner: CtypeInner<'a>,
+pub struct Ctype {
+    inner: CtypeInner,
     bit_width: Option<u8>,
 }
 
-impl<'a> Ctype<'a> {
-    pub fn new(basetype: &'a str) -> Self {
+impl Ctype {
+    pub fn new(basetype: impl Into<utils::VkTyName>) -> Self {
         Self {
             inner: CtypeInner {
                 basetype: Basetype::new(basetype),
@@ -193,7 +195,7 @@ impl<'a> Ctype<'a> {
             bit_width: Default::default(),
         }
     }
-    pub fn push_array(&mut self, size: &'a str) {
+    pub fn push_array(&mut self, size: impl Into<utils::VkTyName>) {
         self.inner.push_array(size);
     }
     pub fn push_pointer(&mut self, pointer: Pointer) {
@@ -219,31 +221,31 @@ impl<'a> Ctype<'a> {
     }
 }
 
-impl ToTokens for Ctype<'_> {
+impl ToTokens for Ctype {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let inner = &self.inner;
         quote!( #inner ).to_tokens(tokens);
     }
 }
 
-pub enum ReturnType<'a> {
+pub enum ReturnType {
     None,
-    Some(Ctype<'a>),
+    Some(Ctype),
 }
 
-impl Default for ReturnType<'_> {
+impl Default for ReturnType {
     fn default() -> Self {
         ReturnType::None
     }
 }
 
-impl<'a> From<Ctype<'a>> for ReturnType<'a> {
-    fn from(ct: Ctype<'a>) -> Self {
+impl From<Ctype> for ReturnType {
+    fn from(ct: Ctype) -> Self {
         ReturnType::Some(ct)
     }
 }
 
-impl ToTokens for ReturnType<'_> {
+impl ToTokens for ReturnType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             ReturnType::None => quote!( () ).to_tokens(tokens),
@@ -253,17 +255,18 @@ impl ToTokens for ReturnType<'_> {
 }
 
 #[derive(Clone)]
-pub struct Cfield<'a> {
+pub struct Cfield {
     vis: Visability,
-    pub name: Cow<'a, str>,
-    pub ty: Ctype<'a>,
+    pub name: utils::VkTyName,
+    pub ty: Ctype,
 }
 
-impl<'a> Cfield<'a> {
-    pub fn new(name: impl Into<Cow<'a, str>>, ty: Ctype<'a>) -> Self {
+impl Cfield {
+    pub fn new(name: impl Into<utils::VkTyName>, ty: Ctype) -> Self {
+        let name = name.into();
         Self {
             vis: Default::default(),
-            name: name.into(),
+            name,
             ty,
         }
     }
@@ -272,7 +275,7 @@ impl<'a> Cfield<'a> {
     }
 }
 
-impl ToTokens for Cfield<'_> {
+impl ToTokens for Cfield {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
 
