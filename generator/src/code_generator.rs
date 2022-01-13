@@ -405,8 +405,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         }
     }
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {
-        let enum_name = enm.name.as_ref().expect("error: enum with no name");
-        let enum_def = definitions::Enum2::new(&enum_name);
+        let enum_name = enm.name.as_deref().expect("error: enum with no name");
+        let enum_def = definitions::Enum2::new(enum_name);
         self.definitions.enumerations.push(enum_def);
     }
     fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {

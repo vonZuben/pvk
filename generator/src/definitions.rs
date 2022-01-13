@@ -35,8 +35,8 @@ impl TypeDef {
 
 impl ToTokens for TypeDef {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = self.name.as_code();
-        let ty = self.ty.as_code();
+        let name = self.name;
+        let ty = self.ty;
         quote!( pub type #name = #ty; ).to_tokens(tokens);
     }
 }
@@ -44,13 +44,15 @@ impl ToTokens for TypeDef {
 // =================================================================
 /// Bitmask
 /// for defining Vulkan Flags types
-pub struct Bitmask<'a> {
-    name: &'a str,
-    ty: &'a str,
+pub struct Bitmask {
+    name: VkTyName,
+    ty: VkTyName,
 }
 
-impl<'a> Bitmask<'a> {
-    pub fn new(name: &'a str, ty: &'a str) -> Self {
+impl Bitmask {
+    pub fn new(name: impl Into<VkTyName>, ty: impl Into<VkTyName>) -> Self {
+        let name = name.into();
+        let ty = ty.into();
         Self {
             name,
             ty,
@@ -58,10 +60,10 @@ impl<'a> Bitmask<'a> {
     }
 }
 
-impl ToTokens for Bitmask<'_> {
+impl ToTokens for Bitmask {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = self.name.as_code();
-        let ty = self.ty.as_code();
+        let name = self.name;
+        let ty = self.ty;
         quote!(
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -74,14 +76,15 @@ impl ToTokens for Bitmask<'_> {
 // =================================================================
 /// Struct
 /// for defining Vulkan struct types
-pub struct Struct2<'a> {
-    name: &'a str,
+pub struct Struct2 {
+    name: VkTyName,
     fields: Vec<ctype::Cfield>,
     pub non_normative: bool,
 }
 
-impl<'a> Struct2<'a> {
-    pub fn new(name: &'a str) -> Self {
+impl Struct2 {
+    pub fn new(name: impl Into<VkTyName>) -> Self {
+        let name = name.into();
         Self {
             name,
             fields: Default::default(),
@@ -99,11 +102,11 @@ impl<'a> Struct2<'a> {
     }
 }
 
-impl ToTokens for Struct2<'_> {
+impl ToTokens for Struct2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
 
-        let name = self.name.as_code();
+        let name = self.name;
         
         match self.non_normative {
             false => {
@@ -192,13 +195,14 @@ impl<'a, I: Iterator<Item=&'a ctype::Cfield>> Iterator for BitFieldIter<'a, I> {
 // =================================================================
 /// Union
 /// for defining Vulkan union types
-pub struct Union<'a> {
-    name: &'a str,
+pub struct Union {
+    name: VkTyName,
     fields: Vec<ctype::Cfield>,
 }
 
-impl<'a> Union<'a> {
-    pub fn new(name: &'a str) -> Self {
+impl Union {
+    pub fn new(name: impl Into<VkTyName>) -> Self {
+        let name = name.into();
         Self {
             name,
             fields: Default::default(),
@@ -209,11 +213,11 @@ impl<'a> Union<'a> {
     }
 }
 
-impl ToTokens for Union<'_> {
+impl ToTokens for Union {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
 
-        let name = self.name.as_code();
+        let name = self.name;
         let fields = &self.fields;
         let field_names = fields.iter().map(|field| case::camel_to_snake(field.name.as_ref()).as_code());
 
@@ -239,13 +243,14 @@ impl ToTokens for Union<'_> {
 // =================================================================
 /// Handle
 /// for defining Vulkan Handle types
-pub struct Handle2<'a> {
-    name: &'a str,
+pub struct Handle2 {
+    name: VkTyName,
     dispatch: bool,
 }
 
-impl<'a> Handle2<'a> {
-    pub fn new(name: &'a str, dispatch: bool) -> Self {
+impl Handle2 {
+    pub fn new(name: impl Into<VkTyName>, dispatch: bool) -> Self {
+        let name = name.into();
         Self {
             name,
             dispatch,
@@ -253,11 +258,11 @@ impl<'a> Handle2<'a> {
     }
 }
 
-impl ToTokens for Handle2<'_> {
+impl ToTokens for Handle2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
 
-        let name = self.name.as_code();
+        let name = self.name;
         let ty = match self.dispatch {
             true => {
                 let mut ty = ctype::Ctype::new("c_void");
@@ -288,22 +293,23 @@ impl ToTokens for Handle2<'_> {
 /// we represent Vulkan C enums as rust structs, and the variants will be associated constants
 /// should skip generating this for FlagBits definitions since we will define the actual bits
 /// as associated constants on the actual Bitmask type
-pub struct Enum2<'a> {
-    name: &'a str,
+pub struct Enum2 {
+    name: VkTyName,
 }
 
-impl<'a> Enum2<'a> {
-    pub fn new(name: &'a str) -> Self {
+impl Enum2 {
+    pub fn new(name: impl Into<VkTyName>) -> Self {
+        let name = name.into();
         Self {
             name
         }
     }
 }
 
-impl ToTokens for Enum2<'_> {
+impl ToTokens for Enum2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
-        let name = self.name.as_code();
+        let name = self.name;
         quote!(
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
@@ -316,14 +322,15 @@ impl ToTokens for Enum2<'_> {
 // =================================================================
 /// Funtion Pointers
 /// for defining Vulkan function pointer types
-pub struct FunctionPointer<'a> {
-    pub name: &'a str,
+pub struct FunctionPointer {
+    pub name: VkTyName,
     fields: Vec<ctype::Cfield>,
     return_type: ctype::ReturnType,
 }
 
-impl<'a> FunctionPointer<'a> {
-    pub fn new(name: &'a str) -> Self {
+impl FunctionPointer {
+    pub fn new(name: impl Into<VkTyName>) -> Self {
+        let name = name.into();
         Self {
             name,
             fields: Default::default(),
@@ -338,11 +345,11 @@ impl<'a> FunctionPointer<'a> {
     }
 }
 
-impl ToTokens for FunctionPointer<'_> {
+impl ToTokens for FunctionPointer {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
 
-        let name = self.name.as_code();
+        let name = self.name;
         let name_inner = format!("{}_inner", self.name).as_code();
 
         let fields = &self.fields;
@@ -380,12 +387,12 @@ impl ToTokens for FunctionPointer<'_> {
 #[derive(Default)]
 pub struct Definitions2<'a> {
     pub type_defs: Vec<TypeDef>,
-    pub bitmasks: Vec<Bitmask<'a>>,
-    pub structs: VecMap<&'a str, Struct2<'a>>,
-    pub unions: Vec<Union<'a>>,
-    pub handles: Vec<Handle2<'a>>,
-    pub enumerations: Vec<Enum2<'a>>,
-    pub function_pointers: Vec<FunctionPointer<'a>>,
+    pub bitmasks: Vec<Bitmask>,
+    pub structs: VecMap<&'a str, Struct2>,
+    pub unions: Vec<Union>,
+    pub handles: Vec<Handle2>,
+    pub enumerations: Vec<Enum2>,
+    pub function_pointers: Vec<FunctionPointer>,
 }
 
 //impl<'a> Definitions2<'a> {

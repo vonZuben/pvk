@@ -97,6 +97,9 @@ impl VkTyName {
             }
         }
     }
+    pub fn as_str(&self) -> &str {
+        self
+    }
     pub fn as_code(&self) -> TokenStream {
         let this = self;
         quote!( #this )

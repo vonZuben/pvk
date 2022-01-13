@@ -16,7 +16,7 @@ use crate::definitions;
 
 #[derive(Default)]
 pub struct Commands2<'a> {
-    function_pointers: VecMap<&'a str, definitions::FunctionPointer<'a>>,
+    function_pointers: VecMap<&'a str, definitions::FunctionPointer>,
 }
 
 // impl<'a, I: IntoIterator<Item=definitions::FunctionPointer<'a>>> From<I> for Commands2<'a> {
@@ -28,7 +28,7 @@ pub struct Commands2<'a> {
 // }
 
 impl<'a> Commands2<'a> {
-    pub fn push(&mut self, name: &'a str, function_pointer: definitions::FunctionPointer<'a>) {
+    pub fn push(&mut self, name: &'a str, function_pointer: definitions::FunctionPointer) {
         self.function_pointers.push(name, function_pointer);
     }
     pub fn contains(&self, name: &str) -> bool {
@@ -39,8 +39,8 @@ impl<'a> Commands2<'a> {
 impl ToTokens for Commands2<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let function_pointers = self.function_pointers.iter();
-        let commands = self.function_pointers.iter().map(|fptr|fptr.name.as_code());
-        let command_names = self.function_pointers.iter().map(|fptr|fptr.name);
+        let commands = self.function_pointers.iter().map(|fptr|fptr.name);
+        let command_names = self.function_pointers.iter().map(|fptr|fptr.name.as_str());
         quote!(
             #(#function_pointers)*
             macro_rules! use_command_function_pointer_names {
