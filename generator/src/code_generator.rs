@@ -50,7 +50,7 @@ pub struct Generator<'a> {
     definitions: definitions::Definitions2,
     constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
     enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
-    commands: commands::Commands2<'a>,
+    commands: commands::Commands2,
     vulkan_version_names: features::VulkanVersionNames<'a>,
     feature_commands: Vec<features::FeatureCommands>,
     vulkan_extension_names: extensions::VulkanExtensionNames,
@@ -92,7 +92,7 @@ impl<'a> Generator<'a> {
         let aliaes = self.aliases.iter();
 
         let cmd_aliases = crate::aliases::CmdAliasNames::new(
-            aliaes.clone().filter(|td|commands.contains(&td.ty)).map(Clone::clone)
+            aliaes.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
         );
 
         let s1 = quote!(#static_code).to_string();

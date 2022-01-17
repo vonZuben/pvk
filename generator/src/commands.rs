@@ -15,28 +15,21 @@ use std::collections::HashMap;
 use crate::definitions;
 
 #[derive(Default)]
-pub struct Commands2<'a> {
-    function_pointers: VecMap<&'a str, definitions::FunctionPointer>,
+pub struct Commands2 {
+    function_pointers: VecMap<VkTyName, definitions::FunctionPointer>,
 }
 
-// impl<'a, I: IntoIterator<Item=definitions::FunctionPointer<'a>>> From<I> for Commands2<'a> {
-//     fn from(i: I) -> Self {
-//         Self {
-//             function_pointers: i.into_iter().collect(),
-//         }
-//     }
-// }
-
-impl<'a> Commands2<'a> {
-    pub fn push(&mut self, name: &'a str, function_pointer: definitions::FunctionPointer) {
+impl Commands2 {
+    pub fn push(&mut self, name: impl Into<VkTyName>, function_pointer: definitions::FunctionPointer) {
+        let name = name.into();
         self.function_pointers.push(name, function_pointer);
     }
-    pub fn contains(&self, name: &str) -> bool {
+    pub fn contains(&self, name: VkTyName) -> bool {
         self.function_pointers.get(name).is_some()
     }
 }
 
-impl ToTokens for Commands2<'_> {
+impl ToTokens for Commands2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let function_pointers = self.function_pointers.iter();
         let commands = self.function_pointers.iter().map(|fptr|fptr.name);
