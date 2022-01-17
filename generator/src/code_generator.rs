@@ -47,7 +47,7 @@ pub struct Generator<'a> {
     command_types: HashMap<utils::VkTyName, CommandType>,
 
     // code generation
-    definitions: definitions::Definitions2<'a>,
+    definitions: definitions::Definitions2,
     constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
     enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2<'a>,
@@ -485,7 +485,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_struct_member(&mut self, part: crate::vk_parse_visitor::StructPart<'a>) {
         use crate::vk_parse_visitor::StructPartKind;
-        let mut stct = self.definitions.structs.get_mut_or_default(part.struct_name, definitions::Struct2::new(part.struct_name));
+        let struct_name = utils::VkTyName::new(part.struct_name);
+        let mut stct = self.definitions.structs.get_mut_or_default(struct_name, definitions::Struct2::new(part.struct_name));
         match part.part {
             StructPartKind::Code(code) => {
                 let mut field = parse_field(code)

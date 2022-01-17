@@ -385,10 +385,10 @@ impl ToTokens for FunctionPointer {
 /// Definitions
 /// collect all definitions together for outputting together
 #[derive(Default)]
-pub struct Definitions2<'a> {
+pub struct Definitions2 {
     pub type_defs: Vec<TypeDef>,
     pub bitmasks: Vec<Bitmask>,
-    pub structs: VecMap<&'a str, Struct2>,
+    pub structs: VecMap<VkTyName, Struct2>,
     pub unions: Vec<Union>,
     pub handles: Vec<Handle2>,
     pub enumerations: Vec<Enum2>,
@@ -416,7 +416,7 @@ pub struct Definitions2<'a> {
 //    }
 //}
 
-impl ToTokens for Definitions2<'_> {
+impl ToTokens for Definitions2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let type_defs = &self.type_defs;
         let bitmasks = &self.bitmasks;

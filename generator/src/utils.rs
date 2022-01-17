@@ -105,37 +105,16 @@ impl VkTyName {
         quote!( #this )
     }
     fn normalize(&self) -> &str {
-        match self.name.get() {
-            "uint8_t" => "u8",
-            "uint16_t" => "u16",
-            "uint32_t" => "u32",
-            "uint64_t" => "u64",
-            "int8_t" => "i8",
-            "int16_t" => "i16",
-            "int32_t" => "i32",
-            "int64_t" => "i64",
-            "size_t" => "usize",
-            "int" => "c_int",
-            "void" => "c_void",
-            "char" => "c_char",
-            "float" => "f32",
-            "double" => "f64",
-            "long" => "c_ulong",
-            "type" => "ty",
-            x if x.starts_with("Vk") => &x[2..],
-            // x if x.starts_with("vk_cmd_") => &type_name[7..],
-            x if x.starts_with("vk_") => &x[3..],
-            x if x.starts_with("vk") => &x[2..],
-            x if x.starts_with("VK_") => &x[3..],
-            x => x,
-        }
+        ctype_to_rtype(self.name.get())
     }
 }
 
 impl ToTokens for VkTyName {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = self.normalize();
-        name.as_code().to_tokens(tokens)
+        name.parse::<TokenStream>()
+            .expect(format!("error: can't parse {{{}}} as TokenStream", name).as_ref())
+            .to_tokens(tokens)
     }
 }
 
@@ -163,7 +142,7 @@ impl<'a, C: Into<std::borrow::Cow<'a, str>>> From<C> for VkTyName {
 //     &raw_stype[18..] // cut off the "VK_STRUCTURE_TYPE_" from the begining
 // }
 
-pub fn ctype_to_rtype(type_name: &str) -> String {
+pub fn ctype_to_rtype(type_name: &str) -> &str {
     match type_name {
         "uint8_t" => "u8",
         "uint16_t" => "u16",
@@ -182,12 +161,11 @@ pub fn ctype_to_rtype(type_name: &str) -> String {
         "long" => "c_ulong",
         "type" => "ty",
         x if x.starts_with("Vk") => &type_name[2..],
-        // x if x.starts_with("vk_cmd_") => &type_name[7..],
         x if x.starts_with("vk_") => &type_name[3..],
         x if x.starts_with("vk") => &type_name[2..],
         x if x.starts_with("VK_") => &type_name[3..],
-        _ => type_name,
-    }.replace("FlagBits", "Flags")
+        x => x,
+    }
 }
 
 macro_rules! one_option {
