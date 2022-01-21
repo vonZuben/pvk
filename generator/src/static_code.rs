@@ -7,6 +7,15 @@ pub struct StaticCode;
 impl ToTokens for StaticCode {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         quote!(
+
+            struct DbgStringAsDisplay<'a>(&'a str);
+
+            impl std::fmt::Debug for DbgStringAsDisplay<'_> {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    <str as std::fmt::Display>::fmt(&self.0, f)
+                }
+            }
+
             macro_rules! vk_bitflags_wrapped {
                 ($name: ident, $ty_name: ty) => {
 
@@ -20,6 +29,22 @@ impl ToTokens for StaticCode {
                         #[inline]
                         pub fn empty() -> $name {
                             $name(0)
+                        }
+
+                        // this is for supporteing taking each bit one at a time
+                        // can use for iterating over each bit
+                        // creates a copy of the bit field with only the lowest active bit
+                        // and unsets the same bit in the origin
+                        // or returns None if no bits set
+                        fn take_lowest_bit(&mut self) -> Option<$name> {
+                            let lowest_bit = self.0 & self.0.wrapping_neg();
+                            if lowest_bit == 0 {
+                                None
+                            }
+                            else {
+                                self.0 ^= lowest_bit;
+                                Some($name(lowest_bit))
+                            }
                         }
 
                         // TODO fix $all

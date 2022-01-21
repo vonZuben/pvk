@@ -160,7 +160,8 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
 
     fn visit_bitmask(&mut self, bitmask: &'a vkxml::Bitmask) {
         let name = utils::VkTyName::new(bitmask.name.as_str());
-        self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name));
+        assert!(bitmask.name.as_str().contains("Flags"));
+        self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags));
         let bitmask = definitions::Bitmask::new(&bitmask.name, &bitmask.basetype);
         self.definitions.bitmasks.push(bitmask);
     }
@@ -421,9 +422,17 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         let target = utils::VkTyName::new(spec.target.expect("error: enum with no target"));
         let is_alias = spec.is_alias;
 
+        let kind;
+        if spec.target.unwrap().contains("FlagBits") {
+            kind = enumerations::EnumKind::BitFlags;
+        }
+        else {
+            kind = enumerations::EnumKind::Normal;
+        }
+
         let mut enum_variants = self
             .enum_variants
-            .get_mut_or_default(target, enumerations::EnumVariants::new(target));
+            .get_mut_or_default(target, enumerations::EnumVariants::new(target, kind));
 
         let name = enm.name.as_str();
         let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::Enum, Some(target));

@@ -7,16 +7,23 @@ use crate::utils::*;
 
 use crate::constants;
 
+pub enum EnumKind {
+    Normal,
+    BitFlags,
+}
+
 pub struct EnumVariants<'a> {
     target: VkTyName,
+    kind: EnumKind,
     variants: utils::VecMap<VkTyName, crate::constants::Constant3<'a>>,
 }
 
 impl<'a> EnumVariants<'a> {
-    pub fn new(target: impl Into<VkTyName>) -> Self {
+    pub fn new(target: impl Into<VkTyName>, kind: EnumKind) -> Self {
         let target = target.into();
         Self {
             target,
+            kind,
             variants: Default::default(),
         }
     }
@@ -44,10 +51,55 @@ impl<'a> EnumVariants<'a> {
 impl ToTokens for EnumVariants<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         use crate::utils::StrAsCode;
-        let target = self.target.as_code();
-        let variants = self
+        let target = self.target;
+        let target_string = ctype_to_rtype(self.target.as_str());
+        let variants: Vec<_> = self
             .variants
-            .iter();
+            .iter().collect();
+
+        let make_proper_name = |name| make_variant_name(target_string, ctype_to_rtype(name));
+
+        let variant_names = variants.iter()
+            .map(|c| {
+                make_proper_name(c.name.as_str()).as_code()
+            });
+        let variant_name_strings = variants.iter()
+            .map(|c| {
+                make_proper_name(c.name.as_str())
+            });
+
+        let printer;
+        match self.kind {
+            EnumKind::Normal => {
+                printer = quote!(
+                    let to_print = match *self {
+                        #(Self::#variant_names => #variant_name_strings,)*
+                        _ => "Unknown Variant",
+                    };
+                    f.debug_tuple(#target_string)
+                        .field(&to_print)
+                        .finish()
+                );
+            }
+            EnumKind::BitFlags => {
+                printer = quote!(
+                    let mut self_copy = *self;
+                    let to_print = std::iter::from_fn(|| self_copy.take_lowest_bit())
+                        .map(|bit| {
+                            match bit {
+                                #(Self::#variant_names => #variant_name_strings,)*
+                                _ => "Unknown Bit",
+                            }
+                        })
+                        .map(|s| DbgStringAsDisplay(s));
+                    write!(f, "{}", #target_string)?;
+                    f.debug_list()
+                        .entries(to_print)
+                        .finish()
+                );
+            }
+        }
+
         quote!(
             impl #target {
                 #(#variants)*
@@ -55,7 +107,7 @@ impl ToTokens for EnumVariants<'_> {
             
             impl std::fmt::Debug for #target {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    todo!()
+                    #printer
                 }
             }
         )
