@@ -27,7 +27,7 @@ macro_rules! impl_extension {
         impl super::Extension for $name {
             type Require = hlist_ty!($($require),*);
             type Load = super::Load;
-            const LoadThis: Self::Load = super::Load(concat!($load, "/0").as_ptr().cast());
+            const LoadThis: Self::Load = super::Load(concat!($load, "\0").as_ptr().cast());
         }
     }
 }
