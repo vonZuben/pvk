@@ -19,5 +19,13 @@ fn main() {
         println!("{}", e.extension_name.as_str());
     }
 
+    let mut props: [vk_safe_sys::ExtensionProperties; 3] = unsafe { std::mem::MaybeUninit::zeroed().assume_init() };
+
+    let res = _x.enumerate_instance_extension_properties_user(None, &mut props);
+
+    println!("{:?}", res);
+
+    println!("{:?}", props);
+
     print!("SUCCESS!!!!");
 }

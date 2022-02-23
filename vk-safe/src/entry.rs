@@ -36,13 +36,13 @@ impl<Version: vk::version::Version> Entry<Version> {
 // safe interface for Vulkan entry level commands
 //======================================
 pub trait EnumerateInstanceExtensionProperties {
-    fn enumerate_instance_extension_properties_len(&self, layer_name: Option<&CStr>) -> Result<u32, vk_safe_sys::Result>;
-    fn enumerate_instance_extension_properties(&self, layer_name: Option<&CStr>) -> Result<Vec<vk::ExtensionProperties>, vk_safe_sys::Result>;
-    // fn enumerate_instance_extension_properties_user(&self, layer_name: Option<&CStr>) -> Result<_, vk_safe_sys::Result>;
+    fn enumerate_instance_extension_properties_len(&self, layer_name: Option<&CStr>) -> Result<u32, vk::Result>;
+    fn enumerate_instance_extension_properties(&self, layer_name: Option<&CStr>) -> Result<Vec<vk::ExtensionProperties>, vk::Result>;
+    fn enumerate_instance_extension_properties_user(&self, layer_name: Option<&CStr>, extensions_properties: &mut [vk::ExtensionProperties]) -> Result<(u32, vk::Result), vk::Result>;
 }
 
 impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnumerateInstanceExtensionProperties for Entry<Version> {
-    fn enumerate_instance_extension_properties_len(&self, layer_name: Option<&CStr>) -> Result<u32, vk_safe_sys::Result> {
+    fn enumerate_instance_extension_properties_len(&self, layer_name: Option<&CStr>) -> Result<u32, vk::Result> {
         let mut num = 0;
         let res;
         unsafe { 
@@ -51,7 +51,7 @@ impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnumerateInsta
         }
         Ok(num)
     }
-    fn enumerate_instance_extension_properties(&self, layer_name: Option<&CStr>) -> Result<Vec<vk::ExtensionProperties>, vk_safe_sys::Result> {
+    fn enumerate_instance_extension_properties(&self, layer_name: Option<&CStr>) -> Result<Vec<vk::ExtensionProperties>, vk::Result> {
         let mut num = self.enumerate_instance_extension_properties_len(layer_name)?;
         let mut v = Vec::with_capacity(num as usize); // u32 as usize should always be valid
         let res;
@@ -61,6 +61,15 @@ impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnumerateInsta
             v.set_len(num as usize);
         }
         Ok(v)
+    }
+    fn enumerate_instance_extension_properties_user(&self, layer_name: Option<&CStr>, extensions_properties: &mut [vk::ExtensionProperties]) -> Result<(u32, vk::Result), vk::Result> {
+        let mut num = extensions_properties.len() as _;
+        let res;
+        unsafe {
+            res = self.commands.fptr()(layer_name.as_c_ptr(), &mut num, extensions_properties.as_mut_ptr());
+            check_raw_err!(res);
+        }
+        Ok((num, res))
     }
 }
 //======================================
