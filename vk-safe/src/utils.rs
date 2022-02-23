@@ -136,18 +136,23 @@ impl From<(u32, u32, u32)> for VkVersion {
 
 /// This trait is intended to be implemented on Options wrapping ref/ptr like types
 /// which can be converted (hopfully cheaply) to c ptr types
-pub trait OptionPtr {
-    type Ptr;
-    fn as_c_ptr(self) -> Self::Ptr;
+pub trait OptionPtr<P> {
+    fn as_c_ptr(self) -> *const P;
 }
 
-impl<'a> OptionPtr for Option<&'a CStr> {
-    type Ptr = *const c_char;
-    fn as_c_ptr(self) -> Self::Ptr {
+impl<'a> OptionPtr<c_char> for Option<&'a CStr> {
+    fn as_c_ptr(self) -> *const c_char {
         match self {
             Some(cstr) => cstr.as_ptr(),
             None => std::ptr::null(),
         }
+    }
+}
+
+impl<'a, P> OptionPtr<P> for Option<&'a P> {
+    fn as_c_ptr(self) -> *const P {
+        // Option<&P> should be same as &P
+        unsafe { std::mem::transmute(self) }
     }
 }
 

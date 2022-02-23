@@ -1,5 +1,6 @@
 use std::marker::PhantomData;
 use std::ffi::CStr;
+use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
@@ -14,7 +15,7 @@ extern "system" {
 }
 
 /// Entry
-/// 
+///
 /// provides a means for accessing global vulkan commands
 pub struct Entry<Version> {
     commands: Version,
@@ -45,7 +46,7 @@ impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnumerateInsta
     fn enumerate_instance_extension_properties_len(&self, layer_name: Option<&CStr>) -> Result<u32, vk::Result> {
         let mut num = 0;
         let res;
-        unsafe { 
+        unsafe {
             res = self.commands.fptr()(layer_name.as_c_ptr(), &mut num, std::ptr::null_mut());
             check_raw_err!(res);
         }
@@ -55,7 +56,7 @@ impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnumerateInsta
         let mut num = self.enumerate_instance_extension_properties_len(layer_name)?;
         let mut v = Vec::with_capacity(num as usize); // u32 as usize should always be valid
         let res;
-        unsafe { 
+        unsafe {
             res = self.commands.fptr()(layer_name.as_c_ptr(), &mut num, v.as_mut_ptr());
             check_raw_err!(res);
             v.set_len(num as usize);
@@ -72,6 +73,22 @@ impl<Version: vk::commands::EnumerateInstanceExtensionProperties> EnumerateInsta
         Ok((num, res))
     }
 }
+
+pub trait CreateInstance {
+    fn create_instance(&self, create_info: &vk::InstanceCreateInfo) -> Result<vk::Instance, vk::Result>;
+}
+
+impl<Version: vk::commands::CreateInstance> CreateInstance for Entry<Version> {
+    fn create_instance(&self, create_info: &vk::InstanceCreateInfo) -> Result<vk::Instance, vk::Result> {
+        let mut instance = MaybeUninit::uninit();
+        unsafe {
+            let res = self.commands.fptr()(create_info, None.as_c_ptr(), instance.as_mut_ptr());
+            check_raw_err!(res);
+            Ok(instance.assume_init())
+        }
+    }
+}
+
 //======================================
 
 

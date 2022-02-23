@@ -1,4 +1,4 @@
-use vk_safe::entry::EnumerateInstanceExtensionProperties;
+use vk_safe::entry::{EnumerateInstanceExtensionProperties, CreateInstance};
 
 trait AsStr {
     fn as_str(&self) -> &str;
@@ -26,6 +26,11 @@ fn main() {
     println!("{:?}", res);
 
     println!("{:?}", props);
+
+    let info: vk_safe_sys::InstanceCreateInfo = unsafe { std::mem::MaybeUninit::zeroed().assume_init() };
+    let instance = _x.create_instance(&info).unwrap();
+
+    println!("instance: {:?}", instance);
 
     print!("SUCCESS!!!!");
 }
