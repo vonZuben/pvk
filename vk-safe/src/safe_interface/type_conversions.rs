@@ -19,3 +19,10 @@ impl ToC<*const c_char> for Option<&CStr> {
         }
     }
 }
+
+impl<'a, P> ToC<*const P> for Option<&'a P> {
+    fn to_c(self) -> *const P {
+        // Option<&P> should be same as &P
+        unsafe { std::mem::transmute(self) }
+    }
+}

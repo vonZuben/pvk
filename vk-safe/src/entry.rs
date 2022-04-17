@@ -9,7 +9,7 @@ use crate::safe_interface::{self, Result, enumerator_storage::EnumeratorStorage,
 
 use vk::{commands, version::Version};
 
-use crate::utils::{VkVersion, OptionPtr};
+use crate::utils::{VkVersion};
 
 /// This is the very first point of entry that is internally used to load all other functions
 #[link(name = "vulkan")]
@@ -88,7 +88,7 @@ CreateInstance {
     fn create_instance(&self, create_info: &vk::InstanceCreateInfo) -> Result<vk::Instance> {
         let mut instance = MaybeUninit::uninit();
         unsafe {
-            let res = self.commands.fptr()(create_info, None.as_c_ptr(), instance.as_mut_ptr());
+            let res = self.commands.fptr()(create_info, None.to_c(), instance.as_mut_ptr());
             check_raw_err!(res);
             Ok(instance.assume_init())
         }
@@ -143,27 +143,27 @@ pub struct InstanceCreator<'a, Version, Extensions> {
     engine_version: VkVersion,
 }
 
-impl<Version, Extensions> InstanceCreator<'_, Version, Extensions>
-where
-    Version: vk::LoadCommands + vk::version::Version,
-    Extensions: vk::LoadCommands,
-{
-    pub fn create(&self) -> Instance<Version, Extensions> {
-        let api_version: VkVersion = Version::VersionTuple.into();
+// impl<Version, Extensions> InstanceCreator<'_, Version, Extensions>
+// where
+//     Version: vk::LoadCommands + vk::version::Version,
+//     Extensions: vk::LoadCommands,
+// {
+//     pub fn create(&self) -> Instance<Version, Extensions> {
+//         let api_version: VkVersion = Version::VersionTuple.into();
 
-        let app_info = vk::ApplicationInfo {
-            s_type: vk::StructureType::APPLICATION_INFO,
-            p_next: std::ptr::null(),
-            api_version: api_version.raw(),
-            p_application_name: self.app_name.as_c_ptr(),
-            application_version: self.app_version.raw(),
-            p_engine_name: self.engine_name.as_c_ptr(),
-            engine_version: self.engine_version.raw(),
-        };
+//         let app_info = vk::ApplicationInfo {
+//             s_type: vk::StructureType::APPLICATION_INFO,
+//             p_next: std::ptr::null(),
+//             api_version: api_version.raw(),
+//             p_application_name: self.app_name.as_c_ptr(),
+//             application_version: self.app_version.raw(),
+//             p_engine_name: self.engine_name.as_c_ptr(),
+//             engine_version: self.engine_version.raw(),
+//         };
 
-        todo!();
-    }
-}
+//         todo!();
+//     }
+// }
 
 // impl<Version, Extensions> Default for InstanceCreator<'_, Version, Extensions>
 // where

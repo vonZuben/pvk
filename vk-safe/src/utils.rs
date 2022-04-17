@@ -132,30 +132,6 @@ impl From<(u32, u32, u32)> for VkVersion {
 //     }
 // }
 
-// =================OptionPtr===========================
-
-/// This trait is intended to be implemented on Options wrapping ref/ptr like types
-/// which can be converted (hopfully cheaply) to c ptr types
-pub trait OptionPtr<P> {
-    fn as_c_ptr(self) -> *const P;
-}
-
-impl<'a> OptionPtr<c_char> for Option<&'a CStr> {
-    fn as_c_ptr(self) -> *const c_char {
-        match self {
-            Some(cstr) => cstr.as_ptr(),
-            None => std::ptr::null(),
-        }
-    }
-}
-
-impl<'a, P> OptionPtr<P> for Option<&'a P> {
-    fn as_c_ptr(self) -> *const P {
-        // Option<&P> should be same as &P
-        unsafe { std::mem::transmute(self) }
-    }
-}
-
 // =================Buffer type that people can use to pass their own allocated space===============
 // for som APIs, want to provide the option for the user to provide their own allocation to be filled in
 // However, this is kind of difficult to design, because I don't even know all possible reasons to want this (should I even be doing this????)
