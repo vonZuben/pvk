@@ -81,12 +81,23 @@ impl VkVersion {
     pub fn raw(&self) -> u32 {
         self.0
     }
+    pub unsafe fn from_raw(raw: u32) -> Self {
+        Self(raw)
+    }
 }
 
 impl fmt::Debug for VkVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let inner = self.0;
         let (variant, major, minor, patch) = self.parts();
-        write!(f, "{}.{}.{}.{}", variant, major, minor, patch)
+        write!(f, "VkVersion({inner}) -> {variant}.{major}.{minor}.{patch}")
+    }
+}
+
+impl fmt::Display for VkVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (variant, major, minor, patch) = self.parts();
+        write!(f, "{variant}.{major}.{minor}.{patch}")
     }
 }
 
