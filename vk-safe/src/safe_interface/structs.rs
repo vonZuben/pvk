@@ -29,6 +29,37 @@ macro_rules! struct_wrapper {
     };
 }
 
+fn str_len(s: &[std::os::raw::c_char]) -> usize {
+    s.iter()
+        .take_while(|&&c| c != 0)
+        .count()
+}
+
+macro_rules! get_str {
+    (
+        $name:ident
+    ) => {
+        pub fn $name(&self) -> &str {
+            let unchecked_utf8;
+            unsafe {
+                unchecked_utf8 = std::slice::from_raw_parts(self.inner.$name.as_ptr().cast(), str_len(&self.inner.$name));
+            }
+            let s = std::str::from_utf8(unchecked_utf8).expect("vk safe interface internal error: string from Vulkan implementation is not proper utf8");
+            let x = 0;
+            s
+        }
+    };
+}
+
 struct_wrapper!(ExtensionProperties);
 
+impl ExtensionProperties {
+    get_str!(extension_name);
+}
+
 struct_wrapper!(LayerProperties);
+
+impl LayerProperties {
+    get_str!(layer_name);
+    get_str!(description);
+}
