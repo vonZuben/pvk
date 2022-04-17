@@ -44,9 +44,7 @@ macro_rules! get_str {
             unsafe {
                 unchecked_utf8 = std::slice::from_raw_parts(self.inner.$name.as_ptr().cast(), str_len(&self.inner.$name));
             }
-            let s = std::str::from_utf8(unchecked_utf8).expect("vk safe interface internal error: string from Vulkan implementation is not proper utf8");
-            let x = 0;
-            s
+            std::str::from_utf8(unchecked_utf8).expect("vk safe interface internal error: string from Vulkan implementation is not proper utf8")
         }
     };
 }
