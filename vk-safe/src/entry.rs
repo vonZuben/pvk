@@ -5,9 +5,19 @@ use std::convert::TryInto;
 
 use vk_safe_sys as vk;
 
-use crate::safe_interface::{self, Result, enumerator_storage::EnumeratorStorage, enumerator_storage::VulkanLenType, type_conversions::ToC};
+use crate::safe_interface::{
+    self, 
+    Result, 
+    structs::*,
+    enumerator_storage::EnumeratorStorage, 
+    enumerator_storage::VulkanLenType, 
+    type_conversions::ToC
+};
 
-use vk::{commands, version::Version};
+use vk::{
+    commands, 
+    version::Version
+};
 
 use crate::utils::{VkVersion};
 
@@ -100,7 +110,7 @@ EnumerateInstanceExtensionProperties {
     enumerator_code!(
         enumerate_instance_extension_properties_len,
         enumerate_instance_extension_properties,
-        vk::ExtensionProperties =>
+        ExtensionProperties =>
         (layer_name: Option<&CStr>)
     );
 }}
@@ -110,7 +120,7 @@ EnumerateInstanceLayerProperties {
     enumerator_code!(
         enumerate_instance_layer_properties_len,
         enumerate_instance_layer_properties,
-        vk::LayerProperties =>
+        LayerProperties =>
         ()
     );
 }}

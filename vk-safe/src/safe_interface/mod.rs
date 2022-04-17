@@ -1,4 +1,5 @@
 mod commands;
+pub mod structs;
 
 pub mod type_conversions;
 pub mod enumerator_storage;
