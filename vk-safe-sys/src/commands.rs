@@ -129,7 +129,7 @@ macro_rules! make_commands_type {
     // ( $name:ident =>  ) => {};
     ( $name:ident => $($command:ident),* $(,)? ) => {
         pub struct $name(hlist_ty!( $($crate::commands::loaders::$command),* ));
-        impl $name {
+        impl $crate::commands::LoadCommands for $name {
             fn load(f: impl $crate::commands::FunctionLoader) -> Result<Self, $crate::commands::LoadError> {
                 Ok(Self ( $crate::commands::LoadCommands::load(f)? ) )
             }

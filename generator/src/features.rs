@@ -130,7 +130,7 @@ impl ToTokens for FeatureCommands {
                     $call!( $($pass)* #(#entry_command_names),* );
                 };
                 ( @ALL $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* );
+                    $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* ; #(#entry_command_names),* );
                 };
             }
         ).to_tokens(tokens);
