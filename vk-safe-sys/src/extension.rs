@@ -1,35 +1,59 @@
+use crate::commands;
 
 pub struct LoadNone;
 pub struct Load(*const std::os::raw::c_char);
 
-pub trait Extension {
-    /// This is intended to be an Hlist representing all other extension prerequisists for this extension
-    type Require;
+pub struct ExtensionTypeInstance;
+pub struct ExtensionTypeDevice;
 
+pub trait Extension {
+    /// This is intended to be an Hlist representing all other extension prerequisites for this extension
+    type Require;
     /// Represent if this extension needs to load (i.e. some implementors of this trait only represent additional optional commands which otherwise require a base extension)
     type Load;
-
-    /// What to load if any
     const LoadThis: Self::Load;
+    
+    type ExtensionType;
+
+    type Commands : commands::LoadCommands;
+    fn load_extension_commands(f: impl commands::FunctionLoader) -> Result<Self::Commands, commands::LoadError> {
+        <Self::Commands as commands::LoadCommands>::load(f)
+    }
 }
 
 macro_rules! impl_extension {
     // when has no load
-    ( $name:ident ; $($require:ident),* ) => {
+    ( $e_type:ty, $name:ident ; $($require:ident),* ) => {
         impl super::Extension for $name {
             type Require = hlist_ty!($($require),*);
             type Load = super::LoadNone;
             const LoadThis: Self::Load = super::LoadNone;
+            type ExtensionType = $e_type;
+            type Commands = super::ex_commands::$name;
         }
     };
-    // when has laod
-    ( $name:ident $load:literal ; $($require:ident),* ) => {
+    // when has load
+    ( $e_type:ty, $name:ident $load:literal ; $($require:ident),* ) => {
         impl super::Extension for $name {
             type Require = hlist_ty!($($require),*);
             type Load = super::Load;
             const LoadThis: Self::Load = super::Load(concat!($load, "\0").as_ptr().cast());
+            type ExtensionType = $e_type;
+            type Commands = super::ex_commands::$name;
         }
     }
+}
+
+mod ex_commands {
+
+    macro_rules! make_commands {
+        ( $($ex:ident),* ) => {
+            $( $ex!( @ALL_COMMANDS make_commands_type $ex => ); )*
+        };
+    }
+
+    use_all_vulkan_extension_names!(make_commands);
+
 }
 
 pub mod instance {
@@ -39,8 +63,9 @@ pub mod instance {
             $( $ex!( @KIND use_instance_extensions @INNER $ex ); )*
         };
         ( @INNER $ex:ident INSTANCE ) => {
-            $ex!( @ALL_COMMANDS make_commands_type $ex => );
-            $ex!( @REQUIRE impl_extension $ex );
+            // $ex!( @ALL_COMMANDS make_commands_type $ex => );
+            pub struct $ex;
+            $ex!( @REQUIRE impl_extension super::ExtensionTypeInstance, $ex );
         };
         ( @INNER $ex:ident DEVICE ) => {
         };
@@ -59,8 +84,9 @@ pub mod device {
             $( $ex!( @KIND use_device_extensions @INNER $ex ); )*
         };
         ( @INNER $ex:ident DEVICE ) => {
-            $ex!( @ALL_COMMANDS make_commands_type $ex => );
-            $ex!( @REQUIRE impl_extension $ex );
+            // $ex!( @ALL_COMMANDS make_commands_type $ex => );
+            pub struct $ex;
+            $ex!( @REQUIRE impl_extension super::ExtensionTypeDevice, $ex );
         };
         ( @INNER $ex:ident INSTANCE ) => {
         };
@@ -70,7 +96,7 @@ pub mod device {
 
 }
 
-macro_rules! make_extention_implementor {
+macro_rules! make_extension_implementor {
     ( $m_name:ident => $($command:ident),* ) => {
         #[macro_export]
         macro_rules! $m_name {
@@ -88,7 +114,7 @@ macro_rules! use_instance_and_device_extension_commands {
         )*
     };
     ( @INNER $extension:ident => $($command:ident),* ) => {
-        make_extention_implementor!( $extension => $($command),* );
+        make_extension_implementor!( $extension => $($command),* );
     };
     () => {
         use_all_vulkan_extension_names!(use_instance_and_device_extension_commands @EXTENSIONS);
