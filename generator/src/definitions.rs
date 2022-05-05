@@ -168,7 +168,7 @@ impl<'a, I: Iterator<Item=&'a ctype::Cfield>> Iterator for BitFieldIter<'a, I> {
                 _ => panic!("error: unknown field_bit_size"),
             };
 
-            // check how many bit_fields fit wihtin one field
+            // check how many bit_fields fit within one field
             let mut name =  field.name.to_string();
             while bits < field_bit_size {
                 let next_field = self.fields.next().expect("error: expected another field");
@@ -289,7 +289,7 @@ impl ToTokens for Handle2 {
 
 // =================================================================
 /// Enumerations
-/// for defining Vulkan enum typs
+/// for defining Vulkan enum types
 /// we represent Vulkan C enums as rust structs, and the variants will be associated constants
 /// should skip generating this for FlagBits definitions since we will define the actual bits
 /// as associated constants on the actual Bitmask type
@@ -320,7 +320,7 @@ impl ToTokens for Enum2 {
 
 
 // =================================================================
-/// Funtion Pointers
+/// Function Pointers
 /// for defining Vulkan function pointer types
 pub struct FunctionPointer {
     pub name: VkTyName,

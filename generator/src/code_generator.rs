@@ -89,10 +89,10 @@ impl<'a> Generator<'a> {
         let feature_commands = &self.feature_commands;
         let vulkan_extension_names = &self.vulkan_extension_names;
         let extension_commands = self.extension_infos.iter();
-        let aliaes = self.aliases.iter();
+        let aliases = self.aliases.iter();
 
         let cmd_aliases = crate::aliases::CmdAliasNames::new(
-            aliaes.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
+            aliases.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
         );
 
         let s1 = quote!(#static_code).to_string();
@@ -100,7 +100,7 @@ impl<'a> Generator<'a> {
         let s3 = quote!(#(#constants)*).to_string();
         let s4 = quote!(#(#enum_variants)*).to_string();
         let s5 = quote!(#commands).to_string();
-        let s6 = quote!(#(#aliaes)*).to_string();
+        let s6 = quote!(#(#aliases)*).to_string();
         let s7 = quote!(#vulkan_version_names).to_string();
         let s8 = quote!(#(#feature_commands)*).to_string();
         let s9 = quote!(#vulkan_extension_names).to_string();
@@ -299,17 +299,6 @@ impl<'a> VisitExtension<'a> for Generator<'a> {
 
     fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
 
-        // TODO testing only getting these from vk_parse
-
-        // let target = enum_def.enum_extension.extends.as_str();
-        // let mut enum_variants = self
-        //     .enum_variants
-        //     .get_mut_or_default(target, enumerations::EnumVariants::new(target));
-
-        // enum_variants.push_variant_once(constants::Constant2::new(
-        //     &enum_def.enum_extension.name,
-        //     constants::TypeValueExpresion::simple_self(enum_def),
-        // ));
     }
 }
 
@@ -499,12 +488,12 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         match part.part {
             StructPartKind::Code(code) => {
                 let mut field = parse_field(code)
-                    .expect("error: faild to parse struct member code");
+                    .expect("error: failed to parse struct member code");
                 field.set_public();
                 stct.push_field(field);
             }
-            StructPartKind::Comment(commnet) => {
-                if commnet.contains("non-normative") {
+            StructPartKind::Comment(comment) => {
+                if comment.contains("non-normative") {
                     stct.non_normative();
                 }
             }
@@ -556,7 +545,7 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
     let (input, bit_width) = opt(followed(tag(":"), token()))(input)?;
 
     if let Some((_colon, bit_width)) = bit_width {
-        let bit_width: u8 = str::parse(bit_width).expect("error: can't parase bit_width");
+        let bit_width: u8 = str::parse(bit_width).expect("error: can't parse bit_width");
         ty.set_bit_width(bit_width);
     }
 
