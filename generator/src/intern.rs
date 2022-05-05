@@ -21,10 +21,10 @@ impl Interner {
     pub unsafe fn init() {
         INTERNER = Some(Interner{ strings: HashSet::new() });
     }
-    // should only be called by one thread at a time, and should ensire init called before
+    // should only be called by one thread at a time, and should ensure init called before
     pub fn intern<'a>(s: impl Into<Cow<'a, str>>) -> Istring {
 
-        // This is useing some sketchy cheap method of ensuring only one thread is interning at a time
+        // This is using some sketchy cheap method of ensuring only one thread is interning at a time
         // panic if already being used
         // this is only intended to be used in single thread anyway, but better safe than sorry (who knows whats in future)
         unsafe { LOCKED.compare_exchange(false, true, atomic::Ordering::Acquire, atomic::Ordering::Acquire).unwrap(); }

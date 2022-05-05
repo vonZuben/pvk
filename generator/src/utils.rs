@@ -76,7 +76,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     }
 }
 
-// This is for ensureing all names are handled consistently
+// This is for ensuring all names are handled consistently
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct VkTyName {
     name: Istring,
@@ -137,11 +137,6 @@ impl<'a, C: Into<std::borrow::Cow<'a, str>>> From<C> for VkTyName {
     }
 }
 
-// pub fn structure_type_name<'a>(field: &'a vkxml::Field) -> &'a str {
-//     let raw_stype = field.type_enums.as_ref().expect("error: sType with no provided value, or not sType field");
-//     &raw_stype[18..] // cut off the "VK_STRUCTURE_TYPE_" from the begining
-// }
-
 pub fn ctype_to_rtype(type_name: &str) -> &str {
     match type_name {
         "uint8_t" => "u8",
@@ -186,18 +181,7 @@ macro_rules! one_option {
 
 }
 
-// pub fn is_extension_name(name: &str) -> bool {
-//     // extension names should end with _EXTENSION_NAME according to the vulkan spec style guide
-//     // also need to check for ends_with("_NAME") because of an ANDROID extension which failed to follow the proper naming convention
-//     //      (hopfully no extension defines a const that ends with _NAME other than the ANDROID extension name)
-//     name.ends_with("_EXTENSION_NAME") || name.ends_with("_NAME")
-// }
-
-
 pub mod case {
-
-    //fn peek_check<I: Iterator<Item=char>, P: std::iter::Peekable<I>>(p: &mut P) -> bool {
-    //}
 
     pub fn camel_to_snake(s: &str) -> String {
 
