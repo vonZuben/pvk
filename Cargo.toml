@@ -3,4 +3,5 @@ members = [
     "generator",
     "vk-safe-sys",
     "vk-safe",
+    "krs_hlist",
     ]
