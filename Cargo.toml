@@ -4,4 +4,5 @@ members = [
     "vk-safe-sys",
     "vk-safe",
     "krs_hlist",
+    "krs_quote",
     ]

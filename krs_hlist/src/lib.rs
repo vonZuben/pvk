@@ -27,8 +27,8 @@ pub trait Hlist {
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Cons<H, T> {
-    head: H,
-    tail: T,
+    pub head: H,
+    pub tail: T,
 }
 
 impl<H> Cons<H, End> {
@@ -105,6 +105,107 @@ impl<T, C, L: const_utils::Searchable<T, C>> Contains<T, C> for L {
 // trait Get<T, C> : Contains<T, C, HAS==true> {
 //     fn get(&self) -> &T;
 //     fn get_mut(&self) -> &mut T;
+// }
+
+impl<Head: Iterator, Tail: Iterator> Iterator for Cons<Head, Tail> {
+    type Item = Cons<Head::Item, Tail::Item>;
+    fn next(&mut self) -> Option<Self::Item> {
+        Cons { head: self.head.next()?, tail: self.tail.next()? }.into()
+    }
+}
+
+impl Iterator for End {
+    type Item = End;
+    fn next(&mut self) -> Option<Self::Item> {
+        End.into()
+    }
+}
+
+pub trait FuncMut<Input> {
+    type Output;
+    fn call_mut(&mut self, i: Input) -> Self::Output;
+}
+
+pub trait Apply<F> {
+    type Output;
+    fn apply(self, f: F) -> Self::Output;
+}
+
+pub trait Gat<'a> {
+    type Gat;
+}
+
+impl<'a, Item, F> Gat<'a> for F
+where
+    F: FnOnce(&'a ()) -> Item,
+{
+    type Gat = Item;
+}
+
+pub trait ApplyRef<F> {
+    type OutputTypeConstructor: ?Sized + for<'a> Gat<'a>;
+    fn apply_ref<'a>(&'a self, f: F) -> <Self::OutputTypeConstructor as Gat<'a>>::Gat;
+}
+
+// pub trait ApplyMut<'a, F> {
+//     type Output;
+//     fn apply_mut(&'a mut self, f: F) -> Self::Output;
+// }
+
+impl<F, Head, Tail> Apply<F> for Cons<Head, Tail> 
+where
+    F: FuncMut<Head>,
+    Tail: Apply<F>,
+{
+    type Output = Cons<F::Output, Tail::Output>;
+    fn apply(self, mut f: F) -> Self::Output {
+        Cons{ head: f.call_mut(self.head), tail: self.tail.apply(f) }
+    }
+}
+
+impl<F> Apply<F> for End {
+    type Output = End;
+    fn apply(self, _f: F) -> Self::Output {
+        End
+    }
+}
+
+impl<F, Head, Tail> ApplyRef<F> for Cons<Head, Tail> 
+where
+    F: for<'a> FuncMut<&'a Head>,
+    Tail: ApplyRef<F>,
+{
+    type OutputTypeConstructor = dyn for<'a> Gat<'a, Gat = Cons<<F as FuncMut<&'a Head>>::Output, <Tail::OutputTypeConstructor as Gat<'a>>::Gat> >;
+    // type OutputTypeConstructor = fn(&()) -> Cons<<F as FuncMut<&Head>>::Output, <Tail::OutputTypeConstructor as Gat>::Gat>;
+    fn apply_ref(&self, mut f: F) -> <Self::OutputTypeConstructor as Gat>::Gat {
+        Cons{ head: f.call_mut(&self.head), tail: self.tail.apply_ref(f) }
+    }
+}
+
+impl<F> ApplyRef<F> for End {
+    type OutputTypeConstructor = dyn for<'a> Gat<'a, Gat = End>;
+    fn apply_ref(&self, _f: F) -> End {
+        End
+    }
+}
+
+// impl<'a, F, Head: 'a, Tail> ApplyMut<'a, F> for Cons<Head, Tail> 
+// where
+//     F: FuncMut<&'a mut Head>,
+//     // F::Output: 'a,
+//     Tail: ApplyMut<'a, F>,
+// {
+//     type Output = Cons<F::Output, Tail::Output>;
+//     fn apply_mut(&'a mut self, mut f: F) -> Self::Output {
+//         Cons{ head: f.call_mut(&mut self.head), tail: self.tail.apply_mut(f) }
+//     }
+// }
+
+// impl<F> ApplyMut<'_, F> for End {
+//     type Output = End;
+//     fn apply_mut(&mut self, _f: F) -> Self::Output {
+//         End
+//     }
 // }
 
 #[cfg(test)]

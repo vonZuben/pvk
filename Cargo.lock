@@ -18,6 +18,13 @@ name = "krs_hlist"
 version = "0.1.0"
 
 [[package]]
+name = "krs_quote"
+version = "0.1.0"
+dependencies = [
+ "krs_hlist",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
