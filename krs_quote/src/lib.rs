@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use std::marker::PhantomData;
 
-pub use krs_hlist::{Cons, End, FuncMut, ApplyRef};
+pub use krs_hlist::{Cons, End, higher_order_prelude::* };
 
 #[derive(Clone)]
 pub struct Token(Rc<String>);
@@ -292,7 +292,7 @@ pub mod prepare_different_types {
 #[derive(Clone, Copy)]
 pub struct ApplyPrepareQuote;
 
-impl<P: PrepareQuote> krs_hlist::FuncMut<P> for ApplyPrepareQuote {
+impl<P: PrepareQuote> FuncMut<P> for ApplyPrepareQuote {
     type Output = P::Output;
     fn call_mut(&mut self, i: P) -> Self::Output {
         i.prepare_quote()
@@ -302,7 +302,7 @@ impl<P: PrepareQuote> krs_hlist::FuncMut<P> for ApplyPrepareQuote {
 
 pub struct Print;
 
-impl<P: std::fmt::Debug> krs_hlist::FuncMut<P> for Print {
+impl<P: std::fmt::Debug> FuncMut<P> for Print {
     type Output = ();
     fn call_mut(&mut self, i: P) -> Self::Output {
         println!("{i:?}");
@@ -459,16 +459,16 @@ impl<R> InnerRep<R> {
 
 impl<R> ToTokens for InnerRep<R> 
 where
-    R: krs_hlist::ApplyRef<ApplyPrepareQuote>,
+    R: ForEach<ApplyPrepareQuote>,
     // <R as krs_hlist::ApplyRef<ApplyPrepareQuote>>::Output: Iterator,
-    for<'a> <R::OutputTypeConstructor as krs_hlist::Gat<'a>>::Gat: Iterator,
-    for<'a, 't> <<R::OutputTypeConstructor as krs_hlist::Gat<'a>>::Gat as Iterator>::Item: krs_hlist::ApplyRef<ApplyToTokens<'t>>,
+    for<'a> <R::OutputTypeConstructor as Gat<'a>>::Gat: Iterator,
+    for<'a, 't> <<R::OutputTypeConstructor as Gat<'a>>::Gat as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let token_cons_iter = self.0.apply_ref(ApplyPrepareQuote);
+        let token_cons_iter = self.0.for_each(ApplyPrepareQuote);
         for token_cons in token_cons_iter {
             // use krs_hlist::ApplyRef;
-            token_cons.apply_ref(ApplyToTokens(tokens));
+            token_cons.for_each(ApplyToTokens(tokens));
         }
     }
 }
@@ -498,16 +498,16 @@ impl<R, T> InnerRepWithSeparator<R, T> {
 
 impl<R, T: ToTokens> ToTokens for InnerRepWithSeparator<R, T> 
 where
-    R: krs_hlist::ApplyRef<ApplyPrepareQuote>,
+    R: ForEach<ApplyPrepareQuote>,
     // <R as krs_hlist::ApplyRef<ApplyPrepareQuote>>::Output: Iterator,
-    for<'a> <R::OutputTypeConstructor as krs_hlist::Gat<'a>>::Gat: Iterator,
-    for<'a, 't> <<R::OutputTypeConstructor as krs_hlist::Gat<'a>>::Gat as Iterator>::Item: krs_hlist::ApplyRef<ApplyToTokens<'t>>,
+    for<'a> <R::OutputTypeConstructor as Gat<'a>>::Gat: Iterator,
+    for<'a, 't> <<R::OutputTypeConstructor as Gat<'a>>::Gat as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let mut token_cons_iter = self.0.apply_ref(ApplyPrepareQuote).peekable();
+        let mut token_cons_iter = self.0.for_each(ApplyPrepareQuote).peekable();
         while let Some(token_cons) = token_cons_iter.next() {
             // use krs_hlist::ApplyRef;
-            token_cons.apply_ref(ApplyToTokens(tokens));
+            token_cons.for_each(ApplyToTokens(tokens));
             if token_cons_iter.peek().is_some() {
                 self.1.to_tokens(tokens);
             }
@@ -531,10 +531,10 @@ impl<R, T> PrepareQuote for &InnerRepWithSeparator<R, T> {
 
 pub struct PrepareConsWrapper<C>(pub C);
 
-impl<'a, C: krs_hlist::ApplyRef<ApplyPrepareQuote>> PrepareQuote for &'a PrepareConsWrapper<C> {
-    type Output = <C::OutputTypeConstructor as krs_hlist::Gat<'a>>::Gat;
+impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a PrepareConsWrapper<C> {
+    type Output = <C::OutputTypeConstructor as Gat<'a>>::Gat;
     fn prepare_quote(self) -> Self::Output {
-        self.0.apply_ref(ApplyPrepareQuote)
+        self.0.for_each(ApplyPrepareQuote)
     }
 }
 
@@ -551,14 +551,14 @@ impl<'a, C: krs_hlist::ApplyRef<ApplyPrepareQuote>> PrepareQuote for &'a Prepare
 #[macro_export]
 macro_rules! my_quote {
     ( $($tt:tt)* ) => {{
-        use $crate::ApplyRef;
+        use $crate::ForEach;
         use $crate::prepare_different_types::*;
         let mut ts = $crate::TokenStream::new();
         let to_tokens = $crate::End;
         $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
-        let mut ti = to_tokens.apply_ref($crate::ApplyPrepareQuote);
+        let mut ti = to_tokens.for_each($crate::ApplyPrepareQuote);
         // ti.next().unwrap().apply_ref($crate::TmpOp);
-        ti.next().unwrap().apply_ref($crate::ApplyToTokens(&mut ts));
+        ti.next().unwrap().for_each($crate::ApplyToTokens(&mut ts));
         ts
     }}
 }

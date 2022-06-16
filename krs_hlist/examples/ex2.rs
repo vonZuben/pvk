@@ -1,5 +1,5 @@
 
-use krs_hlist::{ hlist, ApplyMut, FuncMut };
+use krs_hlist::{ hlist, higher_order_prelude::* };
 
 struct Add(i32);
 
@@ -16,7 +16,7 @@ where
 fn main() {
     let mut list = hlist!(1, 2, 3);
 
-    list.apply_mut(Add(10));
+    list.for_each_mut(Add(10));
 
     println!("{list:?}");
 }
