@@ -2,6 +2,8 @@ use crate::{ Cons, End };
 
 use super::FuncMut;
 
+pub type MapOut<S, F> = <S as Map<F>>::Output;
+
 pub trait Map<F> {
     type Output;
     fn map(self, f: F) -> Self::Output;

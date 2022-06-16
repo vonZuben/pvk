@@ -461,8 +461,8 @@ impl<R> ToTokens for InnerRep<R>
 where
     R: ForEach<ApplyPrepareQuote>,
     // <R as krs_hlist::ApplyRef<ApplyPrepareQuote>>::Output: Iterator,
-    for<'a> <R::OutputTypeConstructor as Gat<'a>>::Gat: Iterator,
-    for<'a, 't> <<R::OutputTypeConstructor as Gat<'a>>::Gat as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
+    for<'a> ForEachOut<'a, R, ApplyPrepareQuote>: Iterator,
+    for<'a, 't> <ForEachOut<'a, R, ApplyPrepareQuote> as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let token_cons_iter = self.0.for_each(ApplyPrepareQuote);
@@ -500,8 +500,8 @@ impl<R, T: ToTokens> ToTokens for InnerRepWithSeparator<R, T>
 where
     R: ForEach<ApplyPrepareQuote>,
     // <R as krs_hlist::ApplyRef<ApplyPrepareQuote>>::Output: Iterator,
-    for<'a> <R::OutputTypeConstructor as Gat<'a>>::Gat: Iterator,
-    for<'a, 't> <<R::OutputTypeConstructor as Gat<'a>>::Gat as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
+    for<'a> ForEachOut<'a, R, ApplyPrepareQuote>: Iterator,
+    for<'a, 't> <ForEachOut<'a, R, ApplyPrepareQuote> as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let mut token_cons_iter = self.0.for_each(ApplyPrepareQuote).peekable();
@@ -532,7 +532,7 @@ impl<R, T> PrepareQuote for &InnerRepWithSeparator<R, T> {
 pub struct PrepareConsWrapper<C>(pub C);
 
 impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a PrepareConsWrapper<C> {
-    type Output = <C::OutputTypeConstructor as Gat<'a>>::Gat;
+    type Output = ForEachOut<'a, C, ApplyPrepareQuote>;
     fn prepare_quote(self) -> Self::Output {
         self.0.for_each(ApplyPrepareQuote)
     }
