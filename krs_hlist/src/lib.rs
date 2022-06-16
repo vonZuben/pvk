@@ -85,7 +85,7 @@ pub trait Contains<T, C> {
     // TODO: At this time, I like to think that the Contains trait represents that a collection contains a type
     // but this is incorrect since as seen below, 'list' does not contain B which should be required for 'tst'.
     //
-    // Hopefully the feature "associated_const_equality" becomes stable. Afterward, the Contains trait can be used 
+    // Hopefully the feature "associated_const_equality" becomes stable. Afterward, the Contains trait can be used
     // as a question regarding if a collection contains a type, and another trait (which I plan to call Get), will
     // be implemented for types that *must* contain a specific type (e.g. Get<T> for L where L: Contains<T, OFFSET.is_some()>)
 impl<T, C, L: const_utils::Searchable<T, C>> Contains<T, C> for L {
@@ -147,12 +147,12 @@ pub trait ApplyRef<F> {
     fn apply_ref<'a>(&'a self, f: F) -> <Self::OutputTypeConstructor as Gat<'a>>::Gat;
 }
 
-// pub trait ApplyMut<'a, F> {
-//     type Output;
-//     fn apply_mut(&'a mut self, f: F) -> Self::Output;
-// }
+pub trait ApplyMut<F> {
+    type OutputTypeConstructor: ?Sized + for<'a> Gat<'a>;
+    fn apply_mut<'a>(&'a mut self, f: F) -> <Self::OutputTypeConstructor as Gat<'a>>::Gat;
+}
 
-impl<F, Head, Tail> Apply<F> for Cons<Head, Tail> 
+impl<F, Head, Tail> Apply<F> for Cons<Head, Tail>
 where
     F: FuncMut<Head>,
     Tail: Apply<F>,
@@ -170,13 +170,12 @@ impl<F> Apply<F> for End {
     }
 }
 
-impl<F, Head, Tail> ApplyRef<F> for Cons<Head, Tail> 
+impl<F, Head, Tail> ApplyRef<F> for Cons<Head, Tail>
 where
     F: for<'a> FuncMut<&'a Head>,
     Tail: ApplyRef<F>,
 {
     type OutputTypeConstructor = dyn for<'a> Gat<'a, Gat = Cons<<F as FuncMut<&'a Head>>::Output, <Tail::OutputTypeConstructor as Gat<'a>>::Gat> >;
-    // type OutputTypeConstructor = fn(&()) -> Cons<<F as FuncMut<&Head>>::Output, <Tail::OutputTypeConstructor as Gat>::Gat>;
     fn apply_ref(&self, mut f: F) -> <Self::OutputTypeConstructor as Gat>::Gat {
         Cons{ head: f.call_mut(&self.head), tail: self.tail.apply_ref(f) }
     }
@@ -184,29 +183,28 @@ where
 
 impl<F> ApplyRef<F> for End {
     type OutputTypeConstructor = dyn for<'a> Gat<'a, Gat = End>;
-    fn apply_ref(&self, _f: F) -> End {
+    fn apply_ref(&self, _f: F) -> <Self::OutputTypeConstructor as Gat>::Gat {
         End
     }
 }
 
-// impl<'a, F, Head: 'a, Tail> ApplyMut<'a, F> for Cons<Head, Tail> 
-// where
-//     F: FuncMut<&'a mut Head>,
-//     // F::Output: 'a,
-//     Tail: ApplyMut<'a, F>,
-// {
-//     type Output = Cons<F::Output, Tail::Output>;
-//     fn apply_mut(&'a mut self, mut f: F) -> Self::Output {
-//         Cons{ head: f.call_mut(&mut self.head), tail: self.tail.apply_mut(f) }
-//     }
-// }
+impl<F, Head, Tail> ApplyMut<F> for Cons<Head, Tail>
+where
+    F: for<'a> FuncMut<&'a mut Head>,
+    Tail: ApplyMut<F>,
+{
+    type OutputTypeConstructor = dyn for<'a> Gat<'a, Gat = Cons<<F as FuncMut<&'a mut Head>>::Output, <Tail::OutputTypeConstructor as Gat<'a>>::Gat> >;
+    fn apply_mut(&mut self, mut f: F) -> <Self::OutputTypeConstructor as Gat>::Gat {
+        Cons{ head: f.call_mut(&mut self.head), tail: self.tail.apply_mut(f) }
+    }
+}
 
-// impl<F> ApplyMut<'_, F> for End {
-//     type Output = End;
-//     fn apply_mut(&mut self, _f: F) -> Self::Output {
-//         End
-//     }
-// }
+impl<F> ApplyMut<F> for End {
+    type OutputTypeConstructor = dyn for<'a> Gat<'a, Gat = End>;
+    fn apply_mut(&mut self, _f: F) -> <Self::OutputTypeConstructor as Gat>::Gat {
+        End
+    }
+}
 
 #[cfg(test)]
 mod test {
