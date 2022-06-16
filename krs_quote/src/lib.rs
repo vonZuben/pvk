@@ -1,5 +1,4 @@
 use std::fmt;
-// use std::ops::{Add};
 use std::rc::Rc;
 
 use std::marker::PhantomData;
@@ -49,14 +48,6 @@ impl ToTokens for Token {
         tokens.push(self.clone())
     }
 }
-
-// TODO: should this be included
-// want to avoid since it is kind of expensive
-//impl ToTokens for TokenStream {
-//    fn to_tokens(&self, tokens: &mut TokenStream) {
-//        tokens.extend(self.0.iter().map(Clone::clone))
-//    }
-//}
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -129,35 +120,6 @@ impl<'a, 't, T: ToTokens> FuncMut<&'a T> for ApplyToTokens<'t> {
         i.to_tokens(self.0)
     }
 }
-
-//pub enum TokenTree {
-//    Token(Token),
-//    Stream(TokenStream),
-//}
-//
-//trait ToTokensTree {
-//}
-//
-//impl From<Token> for TokenTree {
-//    fn from(t: Token) -> Self {
-//        Self::Token(t)
-//    }
-//}
-//
-//impl From<TokenStream> for TokenTree {
-//    fn from(ts: TokenStream) -> Self {
-//        Self::Stream(ts)
-//    }
-//}
-//
-//impl fmt::Display for TokenTree {
-//    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//        match self {
-//            Self::Token(t) => t.fmt(f),
-//            Self::Stream(ts) => ts.fmt(f),
-//        }
-//    }
-//}
 
 pub struct TokenStream(Vec<Token>);
 
@@ -277,18 +239,6 @@ pub mod prepare_different_types {
     });
 }
 
-// type PreparedHead<'a, L> = <<L as Hlist>::Head as PrepareQuote<'a>>::Output;
-// type PreparedTail<'a, L> = <<L as Hlist>::Tail as PrepareQuote<'a>>::Output;
-
-// struct Local<T>(T);
-
-// impl<'a, P> krs_hlist::Gat<'a> for Local<P>
-// where
-//     P: PrepareQuote<'a>
-// {
-//     type Gat = P::Output;
-// }
-
 #[derive(Clone, Copy)]
 pub struct ApplyPrepareQuote;
 
@@ -308,58 +258,6 @@ impl<P: std::fmt::Debug> FuncMut<P> for Print {
         println!("{i:?}");
     }
 }
-
-// impl<'a, Head, Tail> PrepareQuote<'a> for Cons<Head, Tail>
-// where
-//     Head: PrepareQuote<'a>,
-//     Tail: PrepareQuote<'a>,
-// {
-//     type Output = Cons<Head::Output, Tail::Output>;
-//     fn prepare_quote(&'a self) -> Self::Output {
-//         Cons { head: self.head.prepare_quote(), tail: self.tail.prepare_quote() }
-//     }
-// }
-
-// impl PrepareQuote<'_> for End {
-//     type Output = End;
-//     fn prepare_quote(&'_ self) -> Self::Output {
-//         End
-//     }
-// }
-
-pub trait YieldToTokens {
-    type ToTokens;
-    fn yield_to_tokens(&mut self) -> Option<Self::ToTokens>;
-}
-
-impl<I, T> YieldToTokens for I
-where
-    I: Iterator<Item=T>,
-    T: ToTokens,
-{
-    type ToTokens = T;
-    fn yield_to_tokens(&mut self) -> Option<Self::ToTokens> {
-        self.next()
-    }
-}
-
-// impl<H, T> YieldToTokens for Cons<H, T>
-// where
-//     H: YieldToTokens,
-//     T: YieldToTokens,
-// {
-//     type ToTokens = Cons<H::ToTokens, T::ToTokens>;
-//     fn yield_to_tokens(&mut self) -> Option<Self::ToTokens> {
-//         Some(Cons(self.0.yield_to_tokens()?, self.1.yield_to_tokens()?))
-//     }
-// }
-
-// impl YieldToTokens for End {
-//     type ToTokens = End;
-//     fn yield_to_tokens(&mut self) -> Option<Self::ToTokens> {
-//         Some(End)
-//     }
-// }
 
 impl<H, T> ToTokens for Cons<H, T>
 where
@@ -384,54 +282,6 @@ impl ToTokens for () {
     }
 }
 
-// pub trait Hlist {
-//     const LEN: usize;
-// }
-
-// impl<H, T> Hlist for Cons<H, T>
-// where
-//     T: Hlist,
-// {
-//     const LEN: usize = 1 + T::LEN;
-// }
-
-// impl Hlist for End {
-//     const LEN: usize = 0;
-// }
-
-// #[derive(Clone)]
-// pub struct Cons<H, T>(H, T);
-
-// impl<H> Cons<H, End> {
-//     pub fn new(h: H) -> Self {
-//         Self(h, End)
-//     }
-// }
-
-// #[derive(Clone)]
-// pub struct End;
-
-// impl<H, T, RHS> Add<RHS> for Cons<H, T>
-// where
-//     T: Add<RHS>,
-//     RHS: Hlist,
-// {
-//     type Output = Cons<H, <T as Add<RHS>>::Output>;
-//     fn add(self, rhs: RHS) -> Self::Output {
-//         Cons(self.0, self.1 + rhs)
-//     }
-// }
-
-// impl<RHS> Add<RHS> for End
-// where
-//     RHS: Hlist
-// {
-//     type Output = RHS;
-//     fn add(self, rhs: RHS) -> RHS {
-//         rhs
-//     }
-// }
-
 #[derive(Copy, Clone, Debug)]
 pub struct InnerRep<R>(R);
 
@@ -440,24 +290,7 @@ impl<R> InnerRep<R> {
         Self(r)
     }
 }
-
-// trait RepeatableTokens : where Self: MapWith<PrepareQuoteMapper> {}
-
-// impl<'a, R: krs_hlist::ApplyRef<'a, ApplyPrepareQuote>> ToTokens for &'a InnerRep<R> 
-// where
-//     R::Output: Iterator,
-//     <R::Output as Iterator>::Item: for<'c, 't> krs_hlist::ApplyRef<'c, ApplyToTokens<'t>>,
-// {
-//     fn to_tokens(&self, tokens: &mut TokenStream) {
-//         let token_cons_iter = self.0.apply_ref(ApplyPrepareQuote);
-//         for token_cons in token_cons_iter {
-//             // use krs_hlist::ApplyRef;
-//             token_cons.apply_ref(ApplyToTokens(tokens));
-//         }
-//     }
-// }
-
-impl<R> ToTokens for InnerRep<R> 
+impl<R> ToTokens for InnerRep<R>
 where
     R: ForEach<ApplyPrepareQuote>,
     // <R as krs_hlist::ApplyRef<ApplyPrepareQuote>>::Output: Iterator,
@@ -472,13 +305,6 @@ where
         }
     }
 }
-
-// impl<'a, R: Map<PrepareQuoteMapper>> YieldToTokens for &'a InnerRep<R> {
-//     type ToTokens = Self;
-//     fn yield_to_tokens(&mut self) -> Option<Self::ToTokens> {
-//         Some(*self)
-//     }
-// }
 
 impl<R> PrepareQuote for &InnerRep<R> {
     type Output = std::iter::Repeat<Self>;
@@ -496,10 +322,9 @@ impl<R, T> InnerRepWithSeparator<R, T> {
     }
 }
 
-impl<R, T: ToTokens> ToTokens for InnerRepWithSeparator<R, T> 
+impl<R, T: ToTokens> ToTokens for InnerRepWithSeparator<R, T>
 where
     R: ForEach<ApplyPrepareQuote>,
-    // <R as krs_hlist::ApplyRef<ApplyPrepareQuote>>::Output: Iterator,
     for<'a> ForEachOut<'a, R, ApplyPrepareQuote>: Iterator,
     for<'a, 't> <ForEachOut<'a, R, ApplyPrepareQuote> as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
 {
@@ -514,13 +339,6 @@ where
         }
     }
 }
-
-// impl<'a, R: PrepareQuote<'a>, T: ToTokens> YieldToTokens for &'a InnerRepWithSeparator<R, T> {
-//     type ToTokens = Self;
-//     fn yield_to_tokens(&mut self) -> Option<Self::ToTokens> {
-//         Some(*self)
-//     }
-// }
 
 impl<R, T> PrepareQuote for &InnerRepWithSeparator<R, T> {
     type Output = std::iter::Repeat<Self>;
@@ -538,16 +356,6 @@ impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a PrepareConsWrapper<
     }
 }
 
-// pub struct TmpOp;
-
-// impl<I> FuncMut<I> for TmpOp {
-//     type Output = ();
-
-//     fn call_mut(&mut self, _i: I) -> Self::Output {
-//         println!("wfkjwejfoiwejf")
-//     }
-// }
-
 #[macro_export]
 macro_rules! my_quote {
     ( $($tt:tt)* ) => {{
@@ -557,7 +365,6 @@ macro_rules! my_quote {
         let to_tokens = $crate::End;
         $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
         let mut ti = to_tokens.for_each($crate::ApplyPrepareQuote);
-        // ti.next().unwrap().apply_ref($crate::TmpOp);
         ti.next().unwrap().for_each($crate::ApplyToTokens(&mut ts));
         ts
     }}
@@ -586,7 +393,6 @@ macro_rules! tokenizer {
 
     // expand token
     ( {@$item:ident} ) => {{
-        // MaybeIntoIter(&$item).into_iter()
         (&$item).as_to_prepare()
     }};
 
@@ -597,7 +403,6 @@ macro_rules! tokenizer {
         $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
         let to_tokens = to_tokens + $crate::Cons::new($crate::RightBrace.as_to_prepare());
         $crate::PrepareConsWrapper(to_tokens)
-        // to_tokens
     }};
 
     // extract parens
@@ -607,7 +412,6 @@ macro_rules! tokenizer {
         $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
         let to_tokens = to_tokens + $crate::Cons::new($crate::RawToken(")"));
         $crate::PrepareConsWrapper(to_tokens)
-        // to_tokens
     }};
 
     // extract bracket
@@ -617,7 +421,6 @@ macro_rules! tokenizer {
         $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
         let to_tokens = to_tokens + $crate::Cons::new($crate::RawToken("]"));
         $crate::PrepareConsWrapper(to_tokens)
-        // to_tokens
     }};
 
     // special case fo comma
@@ -641,8 +444,6 @@ macro_rules! tokenizer {
 mod my_quote_test {
 
     use super::Token;
-
-    // use krs_hlist::{ApplyRef, FuncMut};
 
     #[test]
     fn make_token() {
