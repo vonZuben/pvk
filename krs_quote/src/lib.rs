@@ -129,4 +129,26 @@ mod my_quote_test {
         let q = my_quote!({@,* {@name} });
         println!("{}", q);
     }
+
+    #[test]
+    fn with_slice() {
+        println!("=========with_slice============");
+        let v = vec![1, 2, 3];
+        //let s = v.as_slice();
+        let m = v.iter().map(|x|x);
+        //let q = my_quote!({@,* {@s} });
+
+        use super::*;
+        use crate::prepare_different_types::*;
+        let q = {
+            let mut ts = TokenStream::new();
+            let list = End;
+            let list = list + Cons::new(InnerRep::new(Cons::new((&m).as_to_prepare())));
+            //let _: i32 = list;
+            let mut ti = list.for_each(ApplyPrepareQuote);
+            ti.next().unwrap().for_each(ApplyToTokens(&mut ts));
+            ts
+        };
+        println!("{}", q);
+    }
 }
