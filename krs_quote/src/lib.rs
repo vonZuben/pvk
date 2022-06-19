@@ -131,11 +131,20 @@ mod my_quote_test {
     }
 
     #[test]
-    fn with_slice() {
+    fn with_map() {
         println!("=========with_map============");
         let v = vec![1, 2, 3];
         let m = v.iter().map(|x|x+1);
         let q = my_quote!({@,* {@m} });
+        println!("{}", q);
+    }
+
+    #[test]
+    fn with_slice() {
+        println!("=========with_slice============");
+        let v = vec![1, 2, 3];
+        let s = v.as_slice();
+        let q = my_quote!({@,* {@s} });
         println!("{}", q);
     }
 }
