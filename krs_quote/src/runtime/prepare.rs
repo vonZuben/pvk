@@ -25,19 +25,23 @@ impl<P: PrepareQuote + Copy> PrepareQuote for &P {
     }
 }
 
+pub trait RefLike : Copy {}
+
+impl<T> RefLike for &T {}
+
 #[derive(Debug)]
-pub struct ToPrepare<'a, T: ?Sized, KIND>(&'a T, PhantomData<KIND>);
+pub struct ToPrepare<R: RefLike, KIND>(R, PhantomData<KIND>);
 
-impl<'a, T: ?Sized, KIND> Copy for ToPrepare<'a, T, KIND> {}
+impl<R: RefLike, KIND> Copy for ToPrepare<R, KIND> {}
 
-impl<'a, T: ?Sized, KIND> Clone for ToPrepare<'a, T, KIND> {
+impl<R: RefLike, KIND> Clone for ToPrepare<R, KIND> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
 macro_rules! to_prepare_trait {
-    ( $trait_name:ident -> $kind:ident <$life:lifetime, $ty:tt> for $apply:ty { where $($applicable:tt)* } {
+    ( $trait_name:ident -> $kind:ident <$life:lifetime, $ty:tt> for $from:ty { where $($applicable:tt)* } {
         type Output = $out:ty;
         |$this:ident| $prepare:expr
     }) => {
@@ -45,17 +49,17 @@ macro_rules! to_prepare_trait {
         #[derive(Copy, Clone, Debug)]
         pub struct $kind;
 
-        pub trait $trait_name<$life, $ty: ?Sized> {
-            fn as_to_prepare(&$life self) -> ToPrepare<$life, $ty, $kind>;
+        pub trait $trait_name<R: RefLike> {
+            fn as_to_prepare(self) -> ToPrepare<R, $kind>;
         }
 
-        impl<$life, $ty: ?Sized> $trait_name<$life, $ty> for $apply where $($applicable)* {
-            fn as_to_prepare(&$life self) -> ToPrepare<$life, $ty, $kind> {
+        impl<$life, $ty> $trait_name<&$life $ty> for $from where $($applicable)* {
+            fn as_to_prepare(self) -> ToPrepare<&$life $ty, $kind> {
                 ToPrepare(self, PhantomData)
             }
         }
 
-        impl<$life, $ty: ?Sized> PrepareQuote for ToPrepare<$life, $ty, $kind> where $($applicable)* {
+        impl<$life, $ty> PrepareQuote for ToPrepare<&$life $ty, $kind> where $($applicable)* {
             type Output = $out;
             fn prepare_quote(self) -> Self::Output {
                 (|$this: Self| $prepare)(self)
@@ -66,17 +70,17 @@ macro_rules! to_prepare_trait {
 
 pub mod prepare_different_types {
     use super::*;
-    to_prepare_trait!(PrepareRef -> Ref <'a, T> for T { where T: ToTokens } {
+    to_prepare_trait!(PrepareRef -> Ref <'a, T> for &'a T { where T: ToTokens } {
         type Output = std::iter::Repeat<&'a T>;
         |this| std::iter::repeat(this.0)
     });
 
-    to_prepare_trait!(PrepareRefIntoIter -> RefIntoIter <'a, T> for T { where for<'t> &'t T: IntoIterator, for<'t> <&'t T as IntoIterator>::Item : ToTokens } {
+    to_prepare_trait!(PrepareRefIntoIter -> RefIntoIter <'a, T> for &'a T { where &'a T: IntoIterator, <&'a T as IntoIterator>::Item : ToTokens } {
         type Output = <&'a T as IntoIterator>::IntoIter;
         |this| this.0.into_iter()
     });
 
-    to_prepare_trait!(PrepareCloneIntoIter -> CloneIntoIter <'a, T> for &T { where T: Clone + IntoIterator, <T as IntoIterator>::Item : ToTokens } {
+    to_prepare_trait!(PrepareCloneIntoIter -> CloneIntoIter <'a, T> for &&'a T { where T: Clone + IntoIterator, <T as IntoIterator>::Item : ToTokens } {
         type Output = <T as IntoIterator>::IntoIter;
         |this| this.0.clone().into_iter()
     });
