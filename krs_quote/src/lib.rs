@@ -26,8 +26,10 @@ macro_rules! tokenizer {
 
     // expand repetition wth separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
+        use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
         let to_tokens = $crate::End;
         $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
+        let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         match stringify!($sep) {
             "," => $crate::InnerRepWithSeparator::new(to_tokens, $crate::Comma.into()),
             ";" => $crate::InnerRepWithSeparator::new(to_tokens, $crate::SemiColon.into()),
@@ -37,8 +39,10 @@ macro_rules! tokenizer {
 
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
+        use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
         let to_tokens = $crate::End;
         $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
+        let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         $crate::InnerRep::new(to_tokens)
     }};
 
@@ -86,7 +90,7 @@ macro_rules! tokenizer {
 
     // Regular token
     ( $tt:tt ) => {{
-        $crate::RawToken(stringify!($tt))
+        $crate::RawToken(stringify!($tt)).as_to_prepare()
     }};
 
 }
