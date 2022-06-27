@@ -1,3 +1,33 @@
+//! For working with heterogeneous collections
+//! 
+//! This crate has some similarity with [frunk](https://docs.rs/frunk/latest/frunk/), but makes different design decisions.
+//! 
+//! The main use is to create an hlist using [hlist!]. You can then operate on the contained types using the methods provided by 
+//! the traits in [higher_order], which provide higher order functionality like map and fold. Users can implement [higher_order_prelude::FuncMut] in 
+//! order to implement their own functions which are generic over the different types in the hlist.
+//! 
+//! ## Example
+//! 
+//! ```
+//! use krs_hlist::hlist;
+//! use krs_hlist::higher_order_prelude::*;
+//! 
+//! struct Print;
+//! 
+//! impl<D: std::fmt::Display> FuncMut<D> for Print {
+//!     type Output = ();
+//!     fn call_mut(&mut self, input: D) {
+//!         println!("{input}");
+//!     }
+//! }
+//! 
+//! fn main() {
+//!     let list = hlist!(1, "hello", true);
+//!     list.for_each(Print);
+//! }
+//! 
+//! ```
+
 use std::ops::Add;
 
 mod const_utils;
