@@ -1,3 +1,5 @@
+//! Run function for each element of hist, by moving each element
+
 use crate::{ Cons, End };
 
 use super::FuncMut;

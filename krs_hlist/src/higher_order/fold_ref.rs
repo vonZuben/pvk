@@ -1,3 +1,5 @@
+//! Fold each element of the hlist, by `&` of each element
+
 use crate::{ Cons, End };
 
 use super::{ FuncMut, FuncMutOut, Gat };

@@ -1,16 +1,21 @@
 //! For working with heterogeneous collections
 //! 
-//! This crate has some similarity with [frunk](https://docs.rs/frunk/latest/frunk/), but makes different design decisions.
+//! This crate has some similarity with [frunk](https://docs.rs/frunk/latest/frunk/), but makes different design decisions. Mainly, this
+//! crate tries to be more generic.
 //! 
 //! The main use is to create an hlist using [hlist!]. You can then operate on the contained types using the methods provided by 
-//! the traits in [higher_order], which provide higher order functionality like map and fold. Users can implement [higher_order_prelude::FuncMut] in 
+//! the traits in [higher_order], which provide higher order functionality like map and fold. Users can implement [higher_order::FuncMut] in 
 //! order to implement their own functions which are generic over the different types in the hlist.
+//! 
+//! An hlist is a chain of nested [Cons]. However, in this documentation, we will just call it by a fake type name `Hlist` to make it easier.
+//! e.g. Given an hlist of type `Cons<A, Cons<B, Cons<C, End>>>`, we will just refer to it as `Hlist[[A, B, C]]` (using double braces to 
+//! help point out that it is not standard syntax).
 //! 
 //! ## Example
 //! 
 //! ```
 //! use krs_hlist::hlist;
-//! use krs_hlist::higher_order_prelude::*;
+//! use krs_hlist::higher_order::prelude::*;
 //! 
 //! struct Print;
 //! 
@@ -23,6 +28,11 @@
 //! 
 //! fn main() {
 //!     let list = hlist!(1, "hello", true);
+//!     /* will print:
+//!         1
+//!         hello
+//!         true 
+//!     */ 
 //!     list.for_each(Print);
 //! }
 //! 
@@ -31,11 +41,9 @@
 use std::ops::Add;
 
 mod const_utils;
-mod higher_order;
+pub mod higher_order;
 
 pub use const_utils::Comparator;
-
-pub use higher_order::higher_order_prelude;
 
 #[macro_export]
 macro_rules! hlist {

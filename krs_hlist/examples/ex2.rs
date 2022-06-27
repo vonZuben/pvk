@@ -1,5 +1,5 @@
 
-use krs_hlist::{ hlist, higher_order_prelude::* };
+use krs_hlist::{ hlist, higher_order::prelude::* };
 
 struct Add(i32);
 

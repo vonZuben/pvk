@@ -1,3 +1,5 @@
+//! Run function for each element of hist, by `&` of each element
+
 use crate::{ Cons, End };
 
 use super::{ FuncMut, FuncMutOut, Gat };
