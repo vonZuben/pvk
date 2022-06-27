@@ -45,6 +45,9 @@ pub mod higher_order;
 
 pub use const_utils::Comparator;
 
+/// Create an `Hlist`
+/// 
+/// Creates an `Hlist` from a given list of expressions.
 #[macro_export]
 macro_rules! hlist {
     ( $( $val:expr ),* $(,)? ) => {{
@@ -56,7 +59,9 @@ macro_rules! hlist {
     }};
 }
 
-/// represent hlisty things
+/// Represents a a generic hlist
+///
+/// A properly constructed hlist (nested chain of [Cons] ending with [End]) will implement this trait automatically
 pub trait Hlist {
     type Head;
     type Tail: Hlist;
@@ -64,7 +69,12 @@ pub trait Hlist {
 }
 
 /// The main building block of hlist
-/// an hlist is a chain of this type
+/// 
+/// An hlist is a nested chain of this type, where the last `tail` is set to [End]. e.g. `Cons<A, Cons<B, Cons<C, End>>>`.
+/// Normally, you only build an hlist with [hlist!].
+///
+/// *Note* this type is repr(C) at this time in order to work soundly with the current implementation of [Contains], but it 
+/// is not clear if this will be maintained.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Cons<H, T> {
@@ -73,6 +83,9 @@ pub struct Cons<H, T> {
 }
 
 impl<H> Cons<H, End> {
+    /// Create an hlist with one node.
+    /// 
+    /// *Note* this mainly exists as an implementation details of [hlist!].
     pub fn new(head: H) -> Self {
         Cons { head, tail: End }
     }
@@ -85,6 +98,8 @@ impl<H, T: Hlist> Hlist for Cons<H, T> {
 }
 
 /// Mark the end of an hlist
+/// 
+/// The last `tail` in an hlist should be set with this
 #[derive(Debug, Clone, Copy)]
 pub struct End;
 
