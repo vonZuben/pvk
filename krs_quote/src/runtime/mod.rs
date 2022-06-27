@@ -1,4 +1,4 @@
-use krs_hlist::{ Cons, End, higher_order_prelude::* };
+use krs_hlist::{ Cons, End, higher_order::prelude::* };
 
 use crate::to_tokens::*;
 

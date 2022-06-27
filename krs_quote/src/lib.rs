@@ -1,4 +1,4 @@
-pub use krs_hlist::{ Cons, End, higher_order_prelude::* };
+pub use krs_hlist::{ Cons, End, higher_order::prelude::* };
 
 mod to_tokens;
 mod runtime;

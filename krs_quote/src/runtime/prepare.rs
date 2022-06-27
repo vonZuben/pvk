@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::BitOr;
 
-use krs_hlist::higher_order_prelude::*;
+use krs_hlist::higher_order::prelude::*;
 
 use crate::to_tokens::*;
 use super::ApplyPrepareQuote;
