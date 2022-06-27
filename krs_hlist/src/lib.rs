@@ -51,11 +51,7 @@ pub use const_utils::Comparator;
 #[macro_export]
 macro_rules! hlist {
     ( $( $val:expr ),* $(,)? ) => {{
-        let list = $crate::End;
-        $(
-            let list = list + $crate::Cons::new($val);
-        )*
-        list
+        $crate::End$(.append($val))*
     }};
 }
 
@@ -85,9 +81,19 @@ pub struct Cons<H, T> {
 impl<H> Cons<H, End> {
     /// Create an hlist with one node.
     /// 
-    /// *Note* this mainly exists as an implementation details of [hlist!].
+    /// *Note* this mainly exists as an onl implementation detail. Should be removed.
+    #[deprecated]
     pub fn new(head: H) -> Self {
         Cons { head, tail: End }
+    }
+}
+
+impl<H, T> Cons<H, T> {
+    /// Append an item to the hlist
+    /// 
+    /// The corresponding method on [End] is for adding items to an empty list.
+    pub fn append<I>(self, item: I) -> <Self as Add<Cons<I, End>>>::Output where Self: Add<Cons<I, End>> {
+        self + Cons { head: item, tail: End }
     }
 }
 
@@ -103,12 +109,24 @@ impl<H, T: Hlist> Hlist for Cons<H, T> {
 #[derive(Debug, Clone, Copy)]
 pub struct End;
 
+impl End {
+    /// Append an item to the hlist
+    /// 
+    /// The corresponding method on [Cons] is for adding items to a non-empty list.
+    pub fn append<I>(self, item: I) -> <Self as Add<Cons<I, End>>>::Output where Self: Add<Cons<I, End>> {
+        self + Cons { head: item, tail: End }
+    }
+}
+
 impl Hlist for End {
     type Head = End;
     type Tail = End;
     const LEN: usize = 0;
 }
 
+/// This allows adding different hlists together
+/// 
+/// If you want to add an individual item to a list, see [append](Cons::append).
 impl<H, T, RHS> Add<RHS> for Cons<H, T>
 where
     T: Add<RHS>,
@@ -123,6 +141,9 @@ where
     }
 }
 
+/// This allows adding different hlists together
+/// 
+/// If you want to add an individual item to a list, see [append](End::append).
 impl<RHS: Hlist> Add<RHS> for End {
     type Output = RHS;
     fn add(self, rhs: RHS) -> Self::Output {
