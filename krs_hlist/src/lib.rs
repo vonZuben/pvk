@@ -38,6 +38,8 @@
 //! 
 //! ```
 
+#![warn(missing_docs)]
+
 use std::ops::Add;
 
 mod const_utils;
