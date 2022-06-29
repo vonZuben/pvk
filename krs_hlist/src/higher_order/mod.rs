@@ -1,5 +1,5 @@
 //! Higher-order functionality for hlist
-//! 
+//!
 //! Top level module containing all the different higher-order functionality traits
 
 pub mod map;
@@ -32,15 +32,15 @@ pub mod prelude {
 }
 
 /// For custom higher order functionality
-/// 
+///
 /// The normal rust 'Fn' traits can't be generic over input types. This trait allows us to create types
 /// that represent functions that are generic over input types.
 pub trait FuncMut<Input> {
+    /// return type for calling the function with the given `Input` type
     type Output;
-
     /// Call the function
-    /// 
-    /// Takes &mut self so that it can be used like a closure with state which can be mutated if necessary. 
+    ///
+    /// Takes &mut self so that it can be used like a closure with state which can be mutated if necessary.
     fn call_mut(&mut self, i: Input) -> Self::Output;
 }
 

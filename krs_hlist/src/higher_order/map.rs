@@ -4,10 +4,20 @@ use crate::{ Cons, End };
 
 use super::FuncMut;
 
+/// Convenience alias to get the output from [map](Map::map)
 pub type MapOut<S, F> = <S as Map<F>>::Output;
 
+/// "Map" operation of items in an `Hlist`
+///
+/// `F` should be an implementor of [FuncMut], which should generically works for
+/// all types in the `Hlist`
+///
+/// maps an `Hlist[[A, B, C]]` to `Hlist[[D, E, D]]`.
 pub trait Map<F> {
+    /// Output hlist
     type Output;
+    /// call a generic function for each element of an hlist
+    /// similar to [Iterator::map], but not lazy
     fn map(self, f: F) -> Self::Output;
 }
 

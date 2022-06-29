@@ -1,41 +1,41 @@
 //! For working with heterogeneous collections
-//! 
+//!
 //! This crate has some similarity with [frunk](https://docs.rs/frunk/latest/frunk/), but makes different design decisions. Mainly, this
 //! crate tries to be more generic.
-//! 
-//! The main use is to create an hlist using [hlist!]. You can then operate on the contained types using the methods provided by 
-//! the traits in [higher_order], which provide higher order functionality like map and fold. Users can implement [higher_order::FuncMut] in 
+//!
+//! The main use is to create an hlist using [hlist!]. You can then operate on the contained types using the methods provided by
+//! the traits in [higher_order], which provide higher order functionality like map and fold. Users can implement [higher_order::FuncMut] in
 //! order to implement their own functions which are generic over the different types in the hlist.
-//! 
+//!
 //! An hlist is a chain of nested [Cons]. However, in this documentation, we will just call it by a fake type name `Hlist` to make it easier.
-//! e.g. Given an hlist of type `Cons<A, Cons<B, Cons<C, End>>>`, we will just refer to it as `Hlist[[A, B, C]]` (using double braces to 
+//! e.g. Given an hlist of type `Cons<A, Cons<B, Cons<C, End>>>`, we will just refer to it as `Hlist[[A, B, C]]` (using double braces to
 //! help point out that it is not standard syntax).
-//! 
+//!
 //! ## Example
-//! 
+//!
 //! ```
 //! use krs_hlist::hlist;
 //! use krs_hlist::higher_order::prelude::*;
-//! 
+//!
 //! struct Print;
-//! 
+//!
 //! impl<D: std::fmt::Display> FuncMut<D> for Print {
 //!     type Output = ();
 //!     fn call_mut(&mut self, input: D) {
 //!         println!("{input}");
 //!     }
 //! }
-//! 
+//!
 //! fn main() {
 //!     let list = hlist!(1, "hello", true);
 //!     /* will print:
 //!         1
 //!         hello
-//!         true 
-//!     */ 
+//!         true
+//!     */
 //!     list.for_each(Print);
 //! }
-//! 
+//!
 //! ```
 
 #![warn(missing_docs)]
@@ -48,7 +48,7 @@ pub mod higher_order;
 pub use const_utils::Comparator;
 
 /// Create an `Hlist`
-/// 
+///
 /// Creates an `Hlist` from a given list of expressions.
 #[macro_export]
 macro_rules! hlist {
@@ -61,17 +61,20 @@ macro_rules! hlist {
 ///
 /// A properly constructed hlist (nested chain of [Cons] ending with [End]) will implement this trait automatically
 pub trait Hlist {
+    /// Head of hlist
     type Head;
+    /// Tail of hlist, which itself must be a valid hlist
     type Tail: Hlist;
+    /// number of items in the hlist
     const LEN: usize;
 }
 
 /// The main building block of hlist
-/// 
+///
 /// An hlist is a nested chain of this type, where the last `tail` is set to [End]. e.g. `Cons<A, Cons<B, Cons<C, End>>>`.
 /// Normally, you only build an hlist with [hlist!].
 ///
-/// *Note* this type is repr(C) at this time in order to work soundly with the current implementation of [Contains], but it 
+/// *Note* this type is repr(C) at this time in order to work soundly with the current implementation of [Contains], but it
 /// is not clear if this will be maintained.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
@@ -82,7 +85,7 @@ pub struct Cons<H, T> {
 
 impl<H> Cons<H, End> {
     /// Create an hlist with one node.
-    /// 
+    ///
     /// *Note* this mainly exists as an onl implementation detail. Should be removed.
     #[deprecated]
     pub fn new(head: H) -> Self {
@@ -92,7 +95,7 @@ impl<H> Cons<H, End> {
 
 impl<H, T> Cons<H, T> {
     /// Append an item to the hlist
-    /// 
+    ///
     /// The corresponding method on [End] is for adding items to an empty list.
     pub fn append<I>(self, item: I) -> <Self as Add<Cons<I, End>>>::Output where Self: Add<Cons<I, End>> {
         self + Cons { head: item, tail: End }
@@ -106,14 +109,14 @@ impl<H, T: Hlist> Hlist for Cons<H, T> {
 }
 
 /// Mark the end of an hlist
-/// 
+///
 /// The last `tail` in an hlist should be set with this
 #[derive(Debug, Clone, Copy)]
 pub struct End;
 
 impl End {
     /// Append an item to the hlist
-    /// 
+    ///
     /// The corresponding method on [Cons] is for adding items to a non-empty list.
     pub fn append<I>(self, item: I) -> <Self as Add<Cons<I, End>>>::Output where Self: Add<Cons<I, End>> {
         self + Cons { head: item, tail: End }
@@ -127,7 +130,7 @@ impl Hlist for End {
 }
 
 /// This allows adding different hlists together
-/// 
+///
 /// If you want to add an individual item to a list, see [append](Cons::append).
 impl<H, T, RHS> Add<RHS> for Cons<H, T>
 where
@@ -144,7 +147,7 @@ where
 }
 
 /// This allows adding different hlists together
-/// 
+///
 /// If you want to add an individual item to a list, see [append](End::append).
 impl<RHS: Hlist> Add<RHS> for End {
     type Output = RHS;
