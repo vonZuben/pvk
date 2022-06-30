@@ -85,16 +85,6 @@ pub struct Cons<H, T> {
     pub tail: T,
 }
 
-impl<H> Cons<H, End> {
-    /// Create an hlist with one node.
-    ///
-    /// *Note* this mainly exists as an onl implementation detail. Should be removed.
-    #[deprecated]
-    pub fn new(head: H) -> Self {
-        Cons { head, tail: End }
-    }
-}
-
 impl<H, T> Cons<H, T> {
     /// Append an item to the hlist
     ///
