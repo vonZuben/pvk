@@ -79,7 +79,9 @@ pub trait Hlist {
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Cons<H, T> {
+    /// `pub` is depreciated
     pub head: H,
+    /// `pub` is depreciated
     pub tail: T,
 }
 
@@ -156,10 +158,21 @@ impl<RHS: Hlist> Add<RHS> for End {
     }
 }
 
+/// Represent if an `Hlist` contains a specific type
+///
+/// Looks in `Hlist` for `T` using comparator `C`
+///
+/// **NOTE** the plan is to change [OFFSET](Contains::OFFSET) to be an `Option<isize>`, where
+/// `Some(offset)` means that the type can be found at `offset` bytes.
+/// `None` means no type.
+/// the plan is to use it in conjunction with feature(associated_const_equality)
 pub trait Contains<T, C> {
+    /// offset in bytes from start of `Hlist` to where `T` can be found
     const OFFSET: isize;
     // const HAS: bool = Self::OFFSET.is_some();  // for use with "associated_const_equality", and OFFSET should be Option<isize>
+    /// get `&T` at [OFFSET]
     fn get(&self) -> &T;
+    /// get `&mut T` at [OFFSET]
     fn get_mut(&mut self) -> &mut T;
 }
 
