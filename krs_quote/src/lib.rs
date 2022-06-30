@@ -13,8 +13,7 @@ macro_rules! my_quote {
         use $crate::ForEach;
         use $crate::prepare_different_types::*;
         let mut ts = $crate::TokenStream::new();
-        let to_tokens = $crate::End;
-        $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
+        let to_tokens = $crate::End$(.append($crate::tokenizer!($tt)))*;
         let mut ti = to_tokens.for_each($crate::ApplyPrepareQuote);
         ti.next().unwrap().for_each($crate::ApplyToTokens(&mut ts));
         ts
@@ -27,8 +26,7 @@ macro_rules! tokenizer {
     // expand repetition wth separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
         use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
-        let to_tokens = $crate::End;
-        $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
+        let to_tokens = $crate::End$(.append($crate::tokenizer!($tt)))*;
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         match stringify!($sep) {
             "," => $crate::InnerRepWithSeparator::new(to_tokens, $crate::Comma.into()),
@@ -40,8 +38,7 @@ macro_rules! tokenizer {
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
         use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
-        let to_tokens = $crate::End;
-        $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
+        let to_tokens = $crate::End$(.append($crate::tokenizer!($tt)))*;
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         $crate::InnerRep::new(to_tokens)
     }};
@@ -53,28 +50,28 @@ macro_rules! tokenizer {
 
     // extract braces
     ( { $($tt:tt)* } ) => {{
-        let to_tokens = $crate::End;
-        let to_tokens = to_tokens + $crate::Cons::new($crate::LeftBrace.as_to_prepare());
-        $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
-        let to_tokens = to_tokens + $crate::Cons::new($crate::RightBrace.as_to_prepare());
+        let to_tokens = $crate::End
+            .append($crate::LeftBrace.as_to_prepare())
+            $(.append($crate::tokenizer!($tt)))*
+            .append($crate::RightBrace.as_to_prepare());
         $crate::PrepareConsWrapper(to_tokens)
     }};
 
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
-        let to_tokens = $crate::End;
-        let to_tokens = to_tokens + $crate::Cons::new($crate::RawToken("("));
-        $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
-        let to_tokens = to_tokens + $crate::Cons::new($crate::RawToken(")"));
+        let to_tokens = $crate::End
+            .append($crate::RawToken("("))
+            $(.append($crate::tokenizer!($tt)))*
+            .append($crate::RawToken(")"));
         $crate::PrepareConsWrapper(to_tokens)
     }};
 
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
-        let to_tokens = $crate::End;
-        let to_tokens = to_tokens + $crate::Cons::new($crate::RawToken("["));
-        $( let to_tokens = to_tokens + $crate::Cons::new($crate::tokenizer!($tt)); )*
-        let to_tokens = to_tokens + $crate::Cons::new($crate::RawToken("]"));
+        let to_tokens = $crate::End
+            .append($crate::RawToken("["))
+            $(.append($crate::tokenizer!($tt)))*
+            .append($crate::RawToken("]"));
         $crate::PrepareConsWrapper(to_tokens)
     }};
 
