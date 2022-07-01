@@ -137,7 +137,7 @@ impl<R, T> BitOr<&super::InnerRepWithSeparator<R, T>> for NoIter {
 
 pub struct FoldHasIter;
 
-impl<A, B> FuncMut<(A, B)> for FoldHasIter 
+impl<A, B> FuncMut<(A, B)> for FoldHasIter
 where
     A: BitOr<B>,
 {
@@ -148,9 +148,15 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct PrepareConsWrapper<C>(pub C);
+pub struct PrepareWrapper<C>(C);
 
-impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a PrepareConsWrapper<C> {
+impl<C> PrepareWrapper<C> {
+    pub fn new(cons: C) -> Self {
+        Self(cons)
+    }
+}
+
+impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a PrepareWrapper<C> {
     type Output = ForEachOut<'a, C, ApplyPrepareQuote>;
     fn prepare_quote(self) -> Self::Output {
         self.0.for_each(ApplyPrepareQuote)

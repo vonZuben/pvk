@@ -54,7 +54,7 @@ macro_rules! tokenizer {
             .append($crate::LeftBrace.as_to_prepare())
             $(.append($crate::tokenizer!($tt)))*
             .append($crate::RightBrace.as_to_prepare());
-        $crate::PrepareConsWrapper(to_tokens)
+        $crate::PrepareWrapper::new(to_tokens)
     }};
 
     // extract parens
@@ -63,7 +63,7 @@ macro_rules! tokenizer {
             .append($crate::RawToken("("))
             $(.append($crate::tokenizer!($tt)))*
             .append($crate::RawToken(")"));
-        $crate::PrepareConsWrapper(to_tokens)
+        $crate::PrepareWrapper::new(to_tokens)
     }};
 
     // extract bracket
@@ -72,7 +72,7 @@ macro_rules! tokenizer {
             .append($crate::RawToken("["))
             $(.append($crate::tokenizer!($tt)))*
             .append($crate::RawToken("]"));
-        $crate::PrepareConsWrapper(to_tokens)
+        $crate::PrepareWrapper::new(to_tokens)
     }};
 
     // special case fo comma
