@@ -6,6 +6,8 @@ mod prepare;
 
 pub use prepare::*;
 
+#[doc(hidden)]
+/// for use in higher order hlist functions
 pub struct ApplyToTokens<'t>(pub &'t mut TokenStream);
 
 impl<'t, T: ToTokens> FuncMut<&T> for ApplyToTokens<'t> {
@@ -15,6 +17,8 @@ impl<'t, T: ToTokens> FuncMut<&T> for ApplyToTokens<'t> {
     }
 }
 
+#[doc(hidden)]
+/// for use in higher order hlist functions
 pub struct ApplyPrepareQuote;
 
 impl<P: PrepareQuote> FuncMut<P> for ApplyPrepareQuote {
@@ -24,6 +28,8 @@ impl<P: PrepareQuote> FuncMut<P> for ApplyPrepareQuote {
     }
 }
 
+#[doc(hidden)]
+/// Repeats `R::to_tokens`
 #[derive(Copy, Clone, Debug)]
 pub struct InnerRep<R>(R);
 
@@ -55,6 +61,8 @@ impl<R> PrepareQuote for &InnerRep<R> {
     }
 }
 
+#[doc(hidden)]
+/// Repeats `R::to_tokens` with a separator
 #[derive(Copy, Clone, Debug)]
 pub struct InnerRepWithSeparator<R, T>(R, T);
 

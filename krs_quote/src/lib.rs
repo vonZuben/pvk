@@ -1,3 +1,19 @@
+//! Alternate quote macro (Not really intended for general use)
+//!
+//! This crate provides the [my_quote!] macro. It is a lot like [quote](https://docs.rs/quote/latest/quote/), but with different design decisions.
+//!
+//! 1) different syntax to allow much simpler `macro_rules!` implementation.
+//! 2) I was annoyed that I couldn't use [IntoIterator] types, so this crate lets you do that.
+//! 3) I only need to output to file, so this basically only generates a `String` stream.
+//!
+//! I also kind of only made it just for fun and to see what I could put together.
+//!
+//! Also, the string output inserts `\n` in specific places so that the output of any generated `macro_rules!` code looks nicer (since rustfmt can;t help there),
+//! otherwise, I was getting files with every long single line `macro_rules!`.
+
+#![warn(missing_docs)]
+
+#[doc(hidden)]
 pub use krs_hlist::{ Cons, End, higher_order::prelude::* };
 
 mod to_tokens;
@@ -6,7 +22,10 @@ mod runtime;
 pub use to_tokens::*;
 pub use runtime::*;
 
-
+/// The whole point!
+///
+/// Performs variable interpolation against the input and produces it as [TokenStream](to_tokens::TokenStream)
+/// (which is basically just a `Vec<String>` for now).
 #[macro_export]
 macro_rules! my_quote {
     ( $($tt:tt)* ) => {{
@@ -20,6 +39,7 @@ macro_rules! my_quote {
     }}
 }
 
+#[doc(hidden)]
 #[macro_export]
 macro_rules! tokenizer {
 

@@ -1,6 +1,8 @@
 use std::fmt;
 use std::rc::Rc;
 
+#[doc(hidden)]
+/// Single token
 #[derive(Clone)]
 pub struct Token(Rc<String>);
 
@@ -16,7 +18,22 @@ impl From<String> for Token {
     }
 }
 
+/// produce tokens
+///
+/// # Example
+/// ```
+/// use krs_quote::{ToTokens, TokenStream};
+///
+/// struct A;
+///
+/// impl ToTokens for A {
+///     fn to_tokens(&self, tokens: &mut TokenStream) {
+///         tokens.push("A".to_string());
+///     }
+/// }
+/// ```
 pub trait ToTokens {
+    /// produce tokens into a [TokenStream]
     fn to_tokens(&self, tokens: &mut TokenStream);
 }
 
@@ -80,6 +97,8 @@ impl_to_tokens_for_numbers!{
     f32, f64,
 }
 
+#[doc(hidden)]
+/// special tokens for specific situations
 pub trait SpecialToken {
     const TOKEN: RawToken;
 }
@@ -87,6 +106,7 @@ pub trait SpecialToken {
 macro_rules! make_special_token {
     ( $( $name:ident => $token:literal ),* $(,)? ) => {
         $(
+            #[doc(hidden)]
             pub struct $name;
             impl SpecialToken for $name {
                 const TOKEN: RawToken = RawToken($token);
@@ -107,13 +127,18 @@ make_special_token!{
     RightBrace => "\n}\n",
 }
 
+/// The output of [my_quote!]
 pub struct TokenStream(Vec<Token>);
 
 impl TokenStream {
+    /// Not really intended for use
+    ///
+    /// used automatically my [my_quote!]
     pub fn new() -> Self {
         Self(Vec::new())
     }
-    pub fn push(&mut self, t: impl Into<Token>) {
+
+    fn push(&mut self, t: impl Into<Token>) {
         self.0.push(t.into());
     }
 }
@@ -133,6 +158,7 @@ impl fmt::Display for TokenStream {
     }
 }
 
+#[doc(hidden)]
 #[derive(Copy, Clone, Debug)]
 pub struct RawToken(pub &'static str);
 

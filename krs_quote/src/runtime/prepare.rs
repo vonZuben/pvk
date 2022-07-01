@@ -6,6 +6,10 @@ use krs_hlist::higher_order::prelude::*;
 use crate::to_tokens::*;
 use super::{ApplyPrepareQuote, ApplyToTokens};
 
+#[doc(hidden)]
+/// Prepare for quoting
+///
+/// In general, things are prepared by crating an Iterator<Item: ToTokens>
 pub trait PrepareQuote {
     type Output;
     fn prepare_quote(self) -> Self::Output;
@@ -30,6 +34,10 @@ impl<P: PrepareQuote + Copy> PrepareQuote for &P {
 
 // impl<T: ?Sized> RefLike for &T {}
 
+#[doc(hidden)]
+/// Wrapper around variables interpolated from scope
+///
+/// used to allow different types to be prepared for quoting in different ways for performance reasons
 #[derive(Clone, Copy, Debug)]
 pub struct ToPrepare<R, KIND>(R, PhantomData<KIND>);
 
@@ -40,9 +48,11 @@ macro_rules! to_prepare_trait {
         $iter:ident
     }) => {
 
+        #[doc(hidden)]
         #[derive(Copy, Clone, Debug)]
         pub struct $kind;
 
+        #[doc(hidden)]
         pub trait $trait_name<R> {
             fn as_to_prepare(self) -> ToPrepare<R, $kind>;
         }
@@ -69,27 +79,44 @@ macro_rules! to_prepare_trait {
     }
 }
 
+#[doc(hidden)]
+/// implement different ways of preparing different types.
+/// We try to pick the most efficient implementation based on the input type.
+///
+/// Note that we use the autoref specialization trick to avoid issues with multiple implementations found
 pub mod prepare_different_types {
     use super::*;
 
+    // A single ToTokens type.
+    //
+    // We make a `Repeat` iterator since we need to be able to repeatedly quote it in repetitions
     to_prepare_trait!(PrepareRef -> Ref <'a, T> for &'a T => &'a T { where T: ToTokens } {
         type Output = std::iter::Repeat<&'a T>;
         |this| std::iter::repeat(this.0);
         NoIter
     });
 
+    // Optimization for slices/arrays
+    //
+    // otherwise, slices and arrays would go under PrepareCloneIntoIter
     to_prepare_trait!(PrepareSlice -> Slice <'a, T> for &&'a [T] => &'a [T] { where T: ToTokens } {
         type Output = <&'a [T] as IntoIterator>::IntoIter;
         |this| this.0.into_iter();
         HasIter
     });
 
+    // Optimization &IntoIterator types
+    //
+    // it is assumed that is &T: IntoIterator is cheaper than T: IntoIterator to Clone (since we need to clone to be able to use in repetitions)
     to_prepare_trait!(PrepareRefIntoIter -> RefIntoIter <'a, T> for &'a T => &'a T { where &'a T: IntoIterator, <&'a T as IntoIterator>::Item : ToTokens } {
         type Output = <&'a T as IntoIterator>::IntoIter;
         |this| this.0.into_iter();
         HasIter
     });
 
+    // hopefully last case scenario, should be avoided
+    //
+    // If clone is expensive, then try to avoid (e.g. collect the results of the iterator before hand, such as into a Vec, and pass that to my_quote)
     to_prepare_trait!(PrepareCloneIntoIter -> CloneIntoIter <'a, T> for &&'a T => &'a T { where T: Clone + IntoIterator, <T as IntoIterator>::Item : ToTokens } {
         type Output = <T as IntoIterator>::IntoIter;
         |this| this.0.clone().into_iter();
@@ -97,7 +124,12 @@ pub mod prepare_different_types {
     });
 }
 
+#[doc(hidden)]
+/// used to at least ensure that an iterator IntoIterator is provided when the repetitions syntax is used
 pub struct NoIter;
+
+#[doc(hidden)]
+/// used to at least ensure that an iterator IntoIterator is provided when the repetitions syntax is used
 pub struct HasIter;
 
 impl<R, KIND> BitOr<&ToPrepare<R, KIND>> for HasIter {
@@ -135,6 +167,9 @@ impl<R, T> BitOr<&super::InnerRepWithSeparator<R, T>> for NoIter {
     }
 }
 
+#[doc(hidden)]
+/// used to at least ensure that an iterator IntoIterator is provided when the repetitions syntax is used
+/// basically, fold over hlist to find at least one IntoIterator
 pub struct FoldHasIter;
 
 impl<A, B> FuncMut<(A, B)> for FoldHasIter
@@ -147,6 +182,8 @@ where
     }
 }
 
+#[doc(hidden)]
+/// New type pattern so we can implement traits onto of Hlist
 #[derive(Clone, Copy, Debug)]
 pub struct HlistWrapper<C>(C);
 
