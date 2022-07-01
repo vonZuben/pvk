@@ -4,7 +4,7 @@ use std::ops::BitOr;
 use krs_hlist::higher_order::prelude::*;
 
 use crate::to_tokens::*;
-use super::ApplyPrepareQuote;
+use super::{ApplyPrepareQuote, ApplyToTokens};
 
 pub trait PrepareQuote {
     type Output;
@@ -157,8 +157,30 @@ impl<C> PrepareWrapper<C> {
 }
 
 impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a PrepareWrapper<C> {
-    type Output = ForEachOut<'a, C, ApplyPrepareQuote>;
+    type Output = ToTokensWrapper<ForEachOut<'a, C, ApplyPrepareQuote>>;
     fn prepare_quote(self) -> Self::Output {
-        self.0.for_each(ApplyPrepareQuote)
+        ToTokensWrapper::new(self.0.for_each(ApplyPrepareQuote))
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ToTokensWrapper<C>(C);
+
+impl<C> ToTokensWrapper<C> {
+    pub fn new(cons: C) -> Self {
+        Self(cons)
+    }
+}
+
+impl<C: for<'t> ForEach<ApplyToTokens<'t>>> ToTokens for ToTokensWrapper<C> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.for_each(ApplyToTokens(tokens));
+    }
+}
+
+impl<C: Iterator> Iterator for ToTokensWrapper<C> {
+    type Item = ToTokensWrapper<C::Item>;
+    fn next(&mut self) -> Option<Self::Item> {
+        ToTokensWrapper::new(self.0.next()?).into()
     }
 }

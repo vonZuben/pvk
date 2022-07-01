@@ -1,4 +1,4 @@
-use krs_hlist::{ Cons, End, higher_order::prelude::* };
+use krs_hlist::higher_order::prelude::*;
 
 use crate::to_tokens::*;
 
@@ -21,29 +21,6 @@ impl<P: PrepareQuote> FuncMut<P> for ApplyPrepareQuote {
     type Output = P::Output;
     fn call_mut(&mut self, i: P) -> Self::Output {
         i.prepare_quote()
-    }
-}
-
-impl<H, T> ToTokens for Cons<H, T>
-where
-    H: ToTokens,
-    T: ToTokens,
-{
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.head.to_tokens(tokens);
-        self.tail.to_tokens(tokens);
-    }
-}
-
-impl ToTokens for End {
-    fn to_tokens(&self, _tokens: &mut TokenStream) {
-        // Nothing
-    }
-}
-
-impl ToTokens for () {
-    fn to_tokens(&self, _tokens: &mut TokenStream) {
-        // Nothing
     }
 }
 
