@@ -80,9 +80,9 @@ pub trait Hlist {
 #[repr(C)]
 pub struct Cons<H, T> {
     /// `pub` is depreciated
-    pub head: H,
+    head: H,
     /// `pub` is depreciated
-    pub tail: T,
+    tail: T,
 }
 
 impl<H, T> Cons<H, T> {
