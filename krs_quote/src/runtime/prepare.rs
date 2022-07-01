@@ -148,39 +148,30 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct PrepareWrapper<C>(C);
+pub struct HlistWrapper<C>(C);
 
-impl<C> PrepareWrapper<C> {
+impl<C> HlistWrapper<C> {
     pub fn new(cons: C) -> Self {
         Self(cons)
     }
 }
 
-impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a PrepareWrapper<C> {
-    type Output = ToTokensWrapper<ForEachOut<'a, C, ApplyPrepareQuote>>;
+impl<'a, C: ForEach<ApplyPrepareQuote>> PrepareQuote for &'a HlistWrapper<C> {
+    type Output = HlistWrapper<ForEachOut<'a, C, ApplyPrepareQuote>>;
     fn prepare_quote(self) -> Self::Output {
-        ToTokensWrapper::new(self.0.for_each(ApplyPrepareQuote))
+        HlistWrapper::new(self.0.for_each(ApplyPrepareQuote))
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct ToTokensWrapper<C>(C);
-
-impl<C> ToTokensWrapper<C> {
-    pub fn new(cons: C) -> Self {
-        Self(cons)
-    }
-}
-
-impl<C: for<'t> ForEach<ApplyToTokens<'t>>> ToTokens for ToTokensWrapper<C> {
+impl<C: for<'t> ForEach<ApplyToTokens<'t>>> ToTokens for HlistWrapper<C> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.0.for_each(ApplyToTokens(tokens));
     }
 }
 
-impl<C: Iterator> Iterator for ToTokensWrapper<C> {
-    type Item = ToTokensWrapper<C::Item>;
+impl<C: Iterator> Iterator for HlistWrapper<C> {
+    type Item = HlistWrapper<C::Item>;
     fn next(&mut self) -> Option<Self::Item> {
-        ToTokensWrapper::new(self.0.next()?).into()
+        HlistWrapper::new(self.0.next()?).into()
     }
 }
