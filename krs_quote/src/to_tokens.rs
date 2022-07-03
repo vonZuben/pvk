@@ -137,7 +137,8 @@ impl TokenStream {
         Self(Vec::new())
     }
 
-    fn push(&mut self, t: impl Into<Token>) {
+    /// Push a token into the steam
+    pub fn push(&mut self, t: impl Into<Token>) {
         self.0.push(t.into());
     }
 }
