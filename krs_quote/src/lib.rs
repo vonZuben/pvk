@@ -50,6 +50,7 @@ macro_rules! my_quote {
         use $crate::__private::*;
         let mut ts = TokenStream::new();
         let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let _: NoIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         let mut ti = to_tokens.for_each(ApplyPrepareQuote);
         ti.next().unwrap().for_each(ApplyToTokens(&mut ts));
         ts
@@ -79,6 +80,7 @@ macro_rules! my_quote_with {
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
         let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let _: NoIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         let mut ti = to_tokens.for_each(ApplyPrepareQuote);
         ti.next().unwrap().for_each(ApplyToTokens(ts));
         ts
