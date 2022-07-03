@@ -10,6 +10,20 @@
 //!
 //! Also, the string output inserts `\n` in specific places so that the output of any generated `macro_rules!` code looks nicer (since rustfmt can;t help there),
 //! otherwise, I was getting files with every long single line `macro_rules!`.
+//!
+//! # Example
+//! ```
+//! use krs_quote::my_quote;
+//!
+//! fn main() {
+//!     let greeting = "Hello";
+//!     let names = ["Foo", "Bar", "Zap"];
+//!     let q = my_quote!{
+//!         {@* println!("{} {}", {@greeting}, {@names}); }
+//!     };
+//!     println!("{q}");
+//! }
+//! ```
 
 #![warn(missing_docs)]
 
