@@ -4,7 +4,7 @@
 //!
 //! 1) different syntax to allow much simpler `macro_rules!` implementation.
 //! 2) I was annoyed that I couldn't use [IntoIterator] types, so this crate lets you do that.
-//! 3) I only need to output to file, so this basically only generates a `String` stream.
+//! 3) I only need to output to file, so this basically only generates a `String` stream. (kind of just a glorified format macro)
 //!
 //! I also kind of only made it just for fun and to see what I could put together.
 //!
@@ -62,7 +62,6 @@ macro_rules! quote_each_tt {
 
     // expand repetition wth separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
-        // use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
         let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         match stringify!($sep) {
@@ -74,7 +73,6 @@ macro_rules! quote_each_tt {
 
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
-        // use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
         let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         InnerRep::new(to_tokens)

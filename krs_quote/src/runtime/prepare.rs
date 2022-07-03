@@ -30,10 +30,6 @@ impl<P: PrepareQuote + Copy> PrepareQuote for &P {
     }
 }
 
-// pub trait RefLike : Copy {}
-
-// impl<T: ?Sized> RefLike for &T {}
-
 #[doc(hidden)]
 /// Wrapper around variables interpolated from scope
 ///

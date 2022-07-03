@@ -41,14 +41,12 @@ impl<R> InnerRep<R> {
 impl<R> ToTokens for InnerRep<R>
 where
     R: ForEach<ApplyPrepareQuote>,
-    // <R as krs_hlist::ApplyRef<ApplyPrepareQuote>>::Output: Iterator,
     for<'a> ForEachOut<'a, R, ApplyPrepareQuote>: Iterator,
     for<'a, 't> <ForEachOut<'a, R, ApplyPrepareQuote> as Iterator>::Item: ForEach<ApplyToTokens<'t>>,
 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let token_cons_iter = self.0.for_each(ApplyPrepareQuote);
         for token_cons in token_cons_iter {
-            // use krs_hlist::ApplyRef;
             token_cons.for_each(ApplyToTokens(tokens));
         }
     }
@@ -81,7 +79,6 @@ where
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let mut token_cons_iter = self.0.for_each(ApplyPrepareQuote).peekable();
         while let Some(token_cons) = token_cons_iter.next() {
-            // use krs_hlist::ApplyRef;
             token_cons.for_each(ApplyToTokens(tokens));
             if token_cons_iter.peek().is_some() {
                 self.1.to_tokens(tokens);

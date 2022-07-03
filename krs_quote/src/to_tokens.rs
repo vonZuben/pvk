@@ -143,12 +143,6 @@ impl TokenStream {
     }
 }
 
-//impl Extend<Token> for TokenStream {
-//    fn extend<T>(&mut self, iter: T) where T: IntoIterator<Item=Token> {
-//        self.0.extend(iter)
-//    }
-//}
-
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for tt in self.0.iter() {
