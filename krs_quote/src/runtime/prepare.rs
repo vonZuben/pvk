@@ -153,6 +153,13 @@ impl<R, T> BitOr<&super::InnerRepWithSeparator<R, T>> for HasIter {
     }
 }
 
+impl<C> BitOr<&HlistWrapper<C>> for HasIter {
+    type Output = HasIter;
+    fn bitor(self, _rhs: &HlistWrapper<C>) -> Self::Output {
+        HasIter
+    }
+}
+
 impl<R> BitOr<&super::InnerRep<R>> for NoIter {
     type Output = NoIter;
     fn bitor(self, _rhs: &super::InnerRep<R>) -> Self::Output {
@@ -164,6 +171,13 @@ impl<R, T> BitOr<&super::InnerRepWithSeparator<R, T>> for NoIter {
     type Output = NoIter;
     fn bitor(self, _rhs: &super::InnerRepWithSeparator<R, T>) -> Self::Output {
         NoIter
+    }
+}
+
+impl<'a, C: FoldRef<NoIter, FoldHasIter>> BitOr<&'a HlistWrapper<C>> for NoIter {
+    type Output = FoldRefOut<'a, C, NoIter, FoldHasIter>;
+    fn bitor(self, rhs: &'a HlistWrapper<C>) -> Self::Output {
+        rhs.0.fold_ref(NoIter, FoldHasIter)
     }
 }
 

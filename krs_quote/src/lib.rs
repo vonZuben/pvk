@@ -83,18 +83,18 @@ macro_rules! quote_each_tt {
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
         let to_tokens = End
-            .append(RawToken("("))
+            .append(RawToken("(").as_to_prepare())
             $(.append($crate::quote_each_tt!($tt)))*
-            .append(RawToken(")"));
+            .append(RawToken(")").as_to_prepare());
         HlistWrapper::new(to_tokens)
     }};
 
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
         let to_tokens = End
-            .append(RawToken("["))
+            .append(RawToken("[").as_to_prepare())
             $(.append($crate::quote_each_tt!($tt)))*
-            .append(RawToken("]"));
+            .append(RawToken("]").as_to_prepare());
         HlistWrapper::new(to_tokens)
     }};
 
