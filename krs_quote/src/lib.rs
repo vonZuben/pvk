@@ -56,6 +56,35 @@ macro_rules! my_quote {
     }}
 }
 
+/// my_quote, but append tokens to an existing [TokenStream]
+///
+/// This should be preferred to use inside [ToTokens] implementations
+///
+/// # Example
+/// ```
+/// use krs_quote::{my_quote_with, ToTokens, TokenStream};
+///
+/// struct CustomId(i32);
+///
+/// impl ToTokens for CustomId {
+///     fn to_tokens(&self, tokens: &mut TokenStream) {
+///         let id = format!("Id{}", self.0);
+///         my_quote_with!(tokens <- {@id});
+///     }
+/// }
+/// ```
+#[macro_export]
+macro_rules! my_quote_with {
+    ( $ts:ident <- $($tt:tt)* ) => {{
+        use $crate::__private::*;
+        let ts: &mut TokenStream = $ts;
+        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let mut ti = to_tokens.for_each(ApplyPrepareQuote);
+        ti.next().unwrap().for_each(ApplyToTokens(ts));
+        ts
+    }}
+}
+
 #[doc(hidden)]
 #[macro_export]
 macro_rules! quote_each_tt {
