@@ -1,8 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-#[doc(hidden)]
-/// Single token
+/// Single token for a [TokenStream]
 #[derive(Clone)]
 pub struct Token(Rc<String>);
 

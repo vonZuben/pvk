@@ -13,14 +13,18 @@
 
 #![warn(missing_docs)]
 
-#[doc(hidden)]
-pub use krs_hlist::{ Cons, End, higher_order::prelude::* };
-
 mod to_tokens;
 mod runtime;
 
-pub use to_tokens::*;
-pub use runtime::*;
+pub use to_tokens::{ Token, TokenStream, ToTokens };
+
+#[doc(hidden)]
+pub mod __private {
+    pub use super::to_tokens::*;
+    pub use super::runtime::*;
+    pub use prepare_different_types::*;
+    pub use krs_hlist::{ Cons, End, higher_order::prelude::* };
+}
 
 /// The whole point!
 ///
@@ -29,38 +33,37 @@ pub use runtime::*;
 #[macro_export]
 macro_rules! my_quote {
     ( $($tt:tt)* ) => {{
-        use $crate::ForEach;
-        use $crate::prepare_different_types::*;
-        let mut ts = $crate::TokenStream::new();
-        let to_tokens = $crate::End$(.append($crate::tokenizer!($tt)))*;
-        let mut ti = to_tokens.for_each($crate::ApplyPrepareQuote);
-        ti.next().unwrap().for_each($crate::ApplyToTokens(&mut ts));
+        use $crate::__private::*;
+        let mut ts = TokenStream::new();
+        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let mut ti = to_tokens.for_each(ApplyPrepareQuote);
+        ti.next().unwrap().for_each(ApplyToTokens(&mut ts));
         ts
     }}
 }
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! tokenizer {
+macro_rules! quote_each_tt {
 
     // expand repetition wth separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
-        use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
-        let to_tokens = $crate::End$(.append($crate::tokenizer!($tt)))*;
+        // use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
+        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         match stringify!($sep) {
-            "," => $crate::InnerRepWithSeparator::new(to_tokens, $crate::Comma.into()),
-            ";" => $crate::InnerRepWithSeparator::new(to_tokens, $crate::SemiColon.into()),
-            x => $crate::InnerRepWithSeparator::new(to_tokens, $crate::RawToken(x)),
+            "," => InnerRepWithSeparator::new(to_tokens, Comma.into()),
+            ";" => InnerRepWithSeparator::new(to_tokens, SemiColon.into()),
+            x => InnerRepWithSeparator::new(to_tokens, RawToken(x)),
         }
     }};
 
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
-        use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
-        let to_tokens = $crate::End$(.append($crate::tokenizer!($tt)))*;
+        // use $crate::{HasIter, NoIter, FoldHasIter, FoldRef};
+        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
-        $crate::InnerRep::new(to_tokens)
+        InnerRep::new(to_tokens)
     }};
 
     // expand token
@@ -70,44 +73,44 @@ macro_rules! tokenizer {
 
     // extract braces
     ( { $($tt:tt)* } ) => {{
-        let to_tokens = $crate::End
-            .append($crate::LeftBrace.as_to_prepare())
-            $(.append($crate::tokenizer!($tt)))*
-            .append($crate::RightBrace.as_to_prepare());
-        $crate::HlistWrapper::new(to_tokens)
+        let to_tokens = End
+            .append(LeftBrace.as_to_prepare())
+            $(.append($crate::quote_each_tt!($tt)))*
+            .append(RightBrace.as_to_prepare());
+        HlistWrapper::new(to_tokens)
     }};
 
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
-        let to_tokens = $crate::End
-            .append($crate::RawToken("("))
-            $(.append($crate::tokenizer!($tt)))*
-            .append($crate::RawToken(")"));
-        $crate::HlistWrapper::new(to_tokens)
+        let to_tokens = End
+            .append(RawToken("("))
+            $(.append($crate::quote_each_tt!($tt)))*
+            .append(RawToken(")"));
+        HlistWrapper::new(to_tokens)
     }};
 
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
-        let to_tokens = $crate::End
-            .append($crate::RawToken("["))
-            $(.append($crate::tokenizer!($tt)))*
-            .append($crate::RawToken("]"));
-        $crate::HlistWrapper::new(to_tokens)
+        let to_tokens = End
+            .append(RawToken("["))
+            $(.append($crate::quote_each_tt!($tt)))*
+            .append(RawToken("]"));
+        HlistWrapper::new(to_tokens)
     }};
 
     // special case fo comma
     ( , ) => {{
-        $crate::Comma.as_to_prepare()
+        Comma.as_to_prepare()
     }};
 
     // special case fo semicolon
     ( ; ) => {{
-        $crate::SemiColon.as_to_prepare()
+        SemiColon.as_to_prepare()
     }};
 
     // Regular token
     ( $tt:tt ) => {{
-        $crate::RawToken(stringify!($tt)).as_to_prepare()
+        RawToken(stringify!($tt)).as_to_prepare()
     }};
 
 }
