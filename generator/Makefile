@@ -20,6 +20,8 @@ rd: /tmp/tmp.rs
 run: /tmp/tmp
 	/tmp/tmp
 
+cmp: /tmp/tmp.rs
+
 dbg:
 	cargo run --bin vk_stdout vk.xml 2>&1 | less
 

@@ -1,6 +1,9 @@
 use std::borrow::{Borrow, Cow};
 
-use quote::{quote, ToTokens};
+use krs_quote::{my_quote, my_quote_with};
+use utils::ToTokensInterop;
+
+use quote::ToTokens;
 use proc_macro2::TokenStream;
 
 use crate::utils::{self, case};
@@ -17,12 +20,12 @@ impl Default for Visability {
     }
 }
 
-impl ToTokens for Visability {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl krs_quote::ToTokens for Visability {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         use Visability::*;
         match self {
             Private => {}
-            Public => quote!(pub).to_tokens(tokens),
+            Public => my_quote_with!(tokens { pub }),
         }
     }
 }
@@ -33,12 +36,12 @@ pub enum Pointer {
     Mut,
 }
 
-impl ToTokens for Pointer {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl krs_quote::ToTokens for Pointer {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         use Pointer::*;
         match self {
-            Const => quote!(*const).to_tokens(tokens),
-            Mut => quote!(*mut).to_tokens(tokens),
+            Const => my_quote_with!(tokens { *const }),
+            Mut => my_quote_with!(tokens { *mut }),
         }
     }
 }
@@ -95,18 +98,17 @@ impl Basetype {
     }
 }
 
-impl ToTokens for Basetype {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
-
+impl krs_quote::ToTokens for Basetype {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let pointers = &self.pointers;
         let name = self.name;
 
-        quote!(
-            #(#pointers)* #name
-        ).to_tokens(tokens);
+        my_quote_with!( tokens {
+            {@* {@pointers}} {@name}
+        });
     }
 }
+
 
 impl PartialEq for Basetype {
     fn eq(&self, other: &Self) -> bool {
@@ -125,11 +127,10 @@ impl Eq for Basetype {}
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 struct Size(utils::VkTyName);
 
-impl ToTokens for Size {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
+impl krs_quote::ToTokens for Size {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let s = self.0;
-        quote!(#s).to_tokens(tokens);
+        my_quote_with!(tokens { {@s} });
     }
 }
 
@@ -152,17 +153,21 @@ impl CtypeInner {
     }
 }
 
-impl ToTokens for CtypeInner {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl krs_quote::ToTokens for CtypeInner {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let bt = &self.basetype;
         let array = &self.array;
 
-        let mut accumulate = quote!(#bt);
-        for size in array {
-            accumulate = quote!( [ #accumulate ; #size] );
+        if array.len() > 1 {
+            panic!("handling of multidimensional arrays is not good right now");
         }
 
-        accumulate.to_tokens(tokens);
+        if let Some(size) = array.iter().next() {
+            my_quote_with!(tokens { [ {@bt} ; {@size}] });
+        }
+        else {
+            my_quote_with!(tokens { {@bt} });
+        }
     }
 }
 
@@ -224,7 +229,14 @@ impl Ctype {
 impl ToTokens for Ctype {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let inner = &self.inner;
-        quote!( #inner ).to_tokens(tokens);
+        my_quote!( {@inner} ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Ctype {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let inner = &self.inner;
+        my_quote_with!(tokens { {@inner} });
     }
 }
 
@@ -248,8 +260,17 @@ impl From<Ctype> for ReturnType {
 impl ToTokens for ReturnType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
-            ReturnType::None => quote!( () ).to_tokens(tokens),
-            ReturnType::Some(ct) => quote!( #ct ).to_tokens(tokens),
+            ReturnType::None => my_quote!( () ).to_tokens_interop(tokens),
+            ReturnType::Some(ct) => my_quote!( {@ct} ).to_tokens_interop(tokens),
+        }
+    }
+}
+
+impl krs_quote::ToTokens for ReturnType {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        match self {
+            ReturnType::None => my_quote_with!(tokens { () }),
+            ReturnType::Some(ct) => my_quote_with!(tokens { {@ct} }),
         }
     }
 }
@@ -283,6 +304,20 @@ impl ToTokens for Cfield {
         let name = case::camel_to_snake(self.name.borrow()).as_code();
         let ty = &self.ty;
 
-        quote!( #vis #name : #ty ).to_tokens(tokens);
+        my_quote!( {@vis} {@name} : {@ty} ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Cfield {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        use crate::utils::StrAsCode;
+
+        let vis = &self.vis;
+        let name = case::camel_to_snake(self.name.borrow()).as_code();
+        let ty = &self.ty;
+
+        my_quote_with!(tokens {
+            {@vis} {@name} : {@ty}
+        });
     }
 }

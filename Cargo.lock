@@ -6,6 +6,7 @@ version = 3
 name = "generator"
 version = "0.1.0"
 dependencies = [
+ "krs_quote",
  "once_cell",
  "proc-macro2",
  "quote",

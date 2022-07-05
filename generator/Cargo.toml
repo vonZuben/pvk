@@ -16,6 +16,7 @@ path = "src/stdout.rs"
 vkxml = "*"
 proc-macro2 = "*"
 once_cell = "1.2.0"
+krs_quote = { path = "../krs_quote" }
 
 [dependencies.quote]
 version = "*"

@@ -44,7 +44,7 @@ impl ToTokens for Constant3<'_> {
         };
         let ty = &self.ty;
         let val = &self.val;
-        
+
         quote!(
             pub const #name: #ty = #val;
         )
@@ -216,7 +216,7 @@ impl ToTokens for ConstValue2<'_> {
                 Negate2::False => calcualted.to_string().as_code(),
                 Negate2::True => format!("-{}", calcualted).as_code(),
             },
-            Text(text) => quote!(#text),
+            Text(text) => krs_quote::Token::str_as_token(text).into(),
             Enumref(enumref, target) => {
                 match target {
                     Some(target) => crate::enumerations::make_variant_name(&target, &enumref).as_code(),
