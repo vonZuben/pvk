@@ -2,6 +2,9 @@ use quote::{quote, ToTokens};
 
 use vkxml::*;
 
+use krs_quote::{my_quote, my_quote_with};
+use crate::utils::ToTokensInterop;
+
 use proc_macro2::TokenStream;
 
 use crate::utils::*;
@@ -45,10 +48,27 @@ impl ToTokens for Constant3<'_> {
         let ty = &self.ty;
         let val = &self.val;
 
-        quote!(
-            pub const #name: #ty = #val;
+        my_quote!(
+            pub const {@name}: {@ty} = {@val};
         )
-        .to_tokens(tokens);
+        .to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Constant3<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        use crate::utils::StrAsCode;
+
+        let name = match self.target {
+            Some(target) => crate::enumerations::make_variant_name(&target, &self.name).as_code(),
+            None => self.name.as_code(),
+        };
+        let ty = &self.ty;
+        let val = &self.val;
+
+        my_quote_with!(tokens {
+            pub const {@name}: {@ty} = {@val};
+        });
     }
 }
 
@@ -208,8 +228,8 @@ impl<'a> ConstValue2<'a> {
     }
 }
 
-impl ToTokens for ConstValue2<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
+impl krs_quote::ToTokens for ConstValue2<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         use ValueKind::*;
         let value = match self.value {
             Offset(calcualted, negate) => match negate {
@@ -236,9 +256,9 @@ impl ToTokens for ConstValue2<'_> {
         };
 
         match (self.context, self.value) {
-            (ConstantContext::Enum, Enumref(..)) => quote!( Self::#value ).to_tokens(tokens),
-            (ConstantContext::Enum, _) => quote!( Self(#value) ).to_tokens(tokens),
-            (ConstantContext::GlobalConstant, _) => value.to_tokens(tokens),
+            (ConstantContext::Enum, Enumref(..)) => my_quote_with!(tokens { Self::{@value} }),
+            (ConstantContext::Enum, _) => my_quote_with!(tokens { Self({@value}) }),
+            (ConstantContext::GlobalConstant, _) =><TokenWrapper as krs_quote::ToTokens>::to_tokens(&value, tokens),
             _ => panic!("error: unsure how to make ConstValue2 ToTokens"),
         }
     }
