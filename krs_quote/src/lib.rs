@@ -70,20 +70,19 @@ macro_rules! my_quote {
 /// impl ToTokens for CustomId {
 ///     fn to_tokens(&self, tokens: &mut TokenStream) {
 ///         let id = format!("Id{}", self.0);
-///         my_quote_with!(tokens <- {@id});
+///         my_quote_with!(tokens { {@id} });
 ///     }
 /// }
 /// ```
 #[macro_export]
 macro_rules! my_quote_with {
-    ( $ts:ident <- $($tt:tt)* ) => {{
+    ( $ts:ident { $($tt:tt)* }) => {{
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
         let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
         let _: NoIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         let mut ti = to_tokens.for_each(ApplyPrepareQuote);
         ti.next().unwrap().for_each(ApplyToTokens(ts));
-        ts
     }}
 }
 

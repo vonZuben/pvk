@@ -5,6 +5,13 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct Token(Rc<String>);
 
+impl Token {
+    /// convert a string into a Token, preserving the stringness (rather than treating it like code)
+    pub fn str_as_token(s: impl AsRef<str>) -> Self {
+        format!("\"{}\"", s.as_ref()).into()
+    }
+}
+
 impl From<&str> for Token {
     fn from(s: &str) -> Self {
         Self(s.to_string().into())
