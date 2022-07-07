@@ -1,6 +1,9 @@
 
 use std::marker::PhantomData;
 
+use krs_quote::{my_quote, my_quote_with};
+use crate::utils::ToTokensInterop;
+
 use quote::{quote, ToTokens};
 
 use vkxml::*;
@@ -37,7 +40,17 @@ impl ToTokens for TypeDef {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = self.name;
         let ty = self.ty;
-        quote!( pub type #name = #ty; ).to_tokens(tokens);
+        my_quote!( pub type {@name} = {@ty}; ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for TypeDef {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let ty = self.ty;
+        my_quote_with!(tokens{
+            pub type {@name} = {@ty};
+        });
     }
 }
 
@@ -64,12 +77,25 @@ impl ToTokens for Bitmask {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = self.name;
         let ty = self.ty;
-        quote!(
+        my_quote!(
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-            pub struct #name(pub(crate) #ty);
-            vk_bitflags_wrapped!(#name, #ty);
-        ).to_tokens(tokens);
+            pub struct {@name}(pub(crate) {@ty});
+            vk_bitflags_wrapped!({@name}, {@ty});
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Bitmask {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let ty = self.ty;
+        my_quote_with!(tokens{
+            #[repr(transparent)]
+            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            pub struct {@name}(pub(crate) {@ty});
+            vk_bitflags_wrapped!({@name}, {@ty});
+        });
     }
 }
 
@@ -104,39 +130,68 @@ impl Struct2 {
 
 impl ToTokens for Struct2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
-
         let name = self.name;
-        
+
         match self.non_normative {
             false => {
                 let fields = &self.fields;
-                quote!(
+                my_quote!(
                     #[repr(C)]
                     #[derive(Copy, Clone, Debug)]
-                    pub struct #name {
-                        #( #fields , )*
+                    pub struct {@name} {
+                        {@* {@fields} , }
                     }
-                ).to_tokens(tokens);
+                ).to_tokens_interop(tokens);
             }
             true => {
                 let fields = BitFieldIter::new(self.fields.iter());
-                quote!(
+                my_quote!(
                     #[repr(C)]
                     #[repr(packed)]
                     #[derive(Copy, Clone, Debug)]
-                    pub struct #name {
-                        #( #fields , )*
+                    pub struct {@name} {
+                        {@* {@fields} , }
                     }
-                ).to_tokens(tokens);
+                ).to_tokens_interop(tokens);
             }
-        }        
+        }
+    }
+}
+
+impl krs_quote::ToTokens for Struct2 {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+
+        match self.non_normative {
+            false => {
+                let fields = &self.fields;
+                my_quote_with!(tokens {
+                    #[repr(C)]
+                    #[derive(Copy, Clone, Debug)]
+                    pub struct {@name} {
+                        {@* {@fields} , }
+                    }
+                });
+            }
+            true => {
+                let fields = BitFieldIter::new(self.fields.iter());
+                my_quote_with!(tokens {
+                    #[repr(C)]
+                    #[repr(packed)]
+                    #[derive(Copy, Clone, Debug)]
+                    pub struct {@name} {
+                        {@* {@fields} , }
+                    }
+                });
+            }
+        }
     }
 }
 
 // in C, bitfields should be compiled to fit into the same space
 // this iterates over potential bitfields and emits one field for all bit fields that should fit within the one field
 // we assume that the vulkan spec only uses bit fields efficiently and tightly packs and uses all space
+#[derive(Clone)]
 struct BitFieldIter<'a, I: Iterator<Item=&'a ctype::Cfield>> {
     fields: I,
     _p: PhantomData<&'a I::Item>,
@@ -221,22 +276,49 @@ impl ToTokens for Union {
         let fields = &self.fields;
         let field_names = fields.iter().map(|field| case::camel_to_snake(field.name.as_ref()).as_code());
 
-        quote!(
+        my_quote!(
             #[repr(C)]
             #[derive(Copy, Clone)]
-            pub union #name {
-                #( #fields , )*
-            } 
-            impl std::fmt::Debug for #name {
+            pub union {@name} {
+                {@* {@fields} , }
+            }
+            impl std::fmt::Debug for {@name} {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                     unsafe {
-                        f.debug_struct(stringify!(#name))
-                            #( .field(stringify!(#field_names), &self.#field_names) )*
+                        f.debug_struct(stringify!({@name}))
+                            {@* .field(stringify!({@field_names}), &self.{@field_names})}
                             .finish()
                     }
                 }
             }
-        ).to_tokens(tokens);
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Union {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        use crate::utils::StrAsCode;
+
+        let name = self.name;
+        let fields = &self.fields;
+        let field_names = fields.iter().map(|field| case::camel_to_snake(field.name.as_ref()).as_code());
+
+        my_quote_with!(tokens {
+            #[repr(C)]
+            #[derive(Copy, Clone)]
+            pub union {@name} {
+                {@* {@fields} , }
+            }
+            impl std::fmt::Debug for {@name} {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    unsafe {
+                        f.debug_struct(stringify!({@name}))
+                            {@* .field(stringify!({@field_names}), &self.{@field_names})}
+                            .finish()
+                    }
+                }
+            }
+        });
     }
 }
 
@@ -260,8 +342,6 @@ impl Handle2 {
 
 impl ToTokens for Handle2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
-
         let name = self.name;
         let ty = match self.dispatch {
             true => {
@@ -272,18 +352,45 @@ impl ToTokens for Handle2 {
             false => ctype::Ctype::new("u64"),
         };
 
-        quote!(
+        my_quote!(
             #[repr(transparent)]
             #[derive(Copy, Clone)]
-            pub struct #name {
-                pub handle: #ty,
+            pub struct {@name} {
+                pub handle: {@ty},
             }
-            impl ::std::fmt::Debug for #name {
+            impl ::std::fmt::Debug for {@name} {
                 fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-                    write!(f, concat!(stringify!(#name), "({:?})"), self.handle)
+                    write!(f, concat!(stringify!({@name}), "({:?})"), self.handle)
                 }
             }
-        ).to_tokens(tokens);
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Handle2 {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let ty = match self.dispatch {
+            true => {
+                let mut ty = ctype::Ctype::new("c_void");
+                ty.push_pointer(ctype::Pointer::Const);
+                ty
+            }
+            false => ctype::Ctype::new("u64"),
+        };
+
+        my_quote_with!(tokens {
+            #[repr(transparent)]
+            #[derive(Copy, Clone)]
+            pub struct {@name} {
+                pub handle: {@ty},
+            }
+            impl ::std::fmt::Debug for {@name} {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    write!(f, concat!(stringify!({@name}), "({:?})"), self.handle)
+                }
+            }
+        });
     }
 }
 
@@ -308,16 +415,25 @@ impl Enum2 {
 
 impl ToTokens for Enum2 {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
         let name = self.name;
-        quote!(
+        my_quote!(
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
-            pub struct #name(pub(crate) i32);
-        ).to_tokens(tokens);
+            pub struct {@name}(pub(crate) i32);
+        ).to_tokens_interop(tokens);
     }
 }
 
+impl krs_quote::ToTokens for Enum2 {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        my_quote_with!(tokens {
+            #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            #[repr(transparent)]
+            pub struct {@name}(pub(crate) i32);
+        });
+    }
+}
 
 // =================================================================
 /// Function Pointers
@@ -355,29 +471,65 @@ impl ToTokens for FunctionPointer {
         let fields = &self.fields;
         let return_type = &self.return_type;
 
-        quote!(
+        my_quote!(
             #[allow(non_camel_case_types)]
-            pub type #name_inner = unsafe extern "system" fn(
-                #( #fields ),*
-            ) -> #return_type;
+            pub type {@name_inner} = unsafe extern "system" fn(
+                {@,* {@fields} }
+            ) -> {@return_type};
 
             #[repr(transparent)]
             #[derive(Copy, Clone)]
-            pub struct #name(#name_inner);
+            pub struct {@name}({@name_inner});
 
-            impl std::ops::Deref for #name {
-                type Target = #name_inner;
+            impl std::ops::Deref for {@name} {
+                type Target = {@name_inner};
                 fn deref(&self) -> &Self::Target {
                     &self.0
                 }
             }
 
-            impl std::fmt::Debug for #name {
+            impl std::fmt::Debug for {@name} {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                    write!(f, "{}", stringify!(#name))
+                    write!(f, "{}", stringify!({@name}))
                 }
             }
-        ).to_tokens(tokens);
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for FunctionPointer {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        use crate::utils::StrAsCode;
+
+        let name = self.name;
+        let name_inner = format!("{}_inner", self.name).as_code();
+
+        let fields = &self.fields;
+        let return_type = &self.return_type;
+
+        my_quote_with!(tokens {
+            #[allow(non_camel_case_types)]
+            pub type {@name_inner} = unsafe extern "system" fn(
+                {@,* {@fields} }
+            ) -> {@return_type};
+
+            #[repr(transparent)]
+            #[derive(Copy, Clone)]
+            pub struct {@name}({@name_inner});
+
+            impl std::ops::Deref for {@name} {
+                type Target = {@name_inner};
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl std::fmt::Debug for {@name} {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    write!(f, "{}", stringify!({@name}))
+                }
+            }
+        });
     }
 }
 
@@ -426,14 +578,36 @@ impl ToTokens for Definitions2 {
         let enumerations = &self.enumerations;
         let function_pointers = &self.function_pointers;
 
-        quote!(
-            #( #type_defs )*
-            #( #bitmasks )*
-            #( #structs )*
-            #( #unions )*
-            #( #handles )*
-            #( #enumerations )*
-            #( #function_pointers )*
-        ).to_tokens(tokens);
+        my_quote!(
+            {@* {@type_defs} }
+            {@* {@bitmasks} }
+            {@* {@structs} }
+            {@* {@unions} }
+            {@* {@handles} }
+            {@* {@enumerations} }
+            {@* {@function_pointers} }
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Definitions2 {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let type_defs = &self.type_defs;
+        let bitmasks = &self.bitmasks;
+        let structs = self.structs.iter();
+        let unions = &self.unions;
+        let handles = &self.handles;
+        let enumerations = &self.enumerations;
+        let function_pointers = &self.function_pointers;
+
+        my_quote_with!(tokens {
+            {@* {@type_defs} }
+            {@* {@bitmasks} }
+            {@* {@structs} }
+            {@* {@unions} }
+            {@* {@handles} }
+            {@* {@enumerations} }
+            {@* {@function_pointers} }
+        });
     }
 }
