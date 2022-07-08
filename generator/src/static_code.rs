@@ -2,7 +2,6 @@
 use quote::{quote, ToTokens};
 use proc_macro2::TokenStream;
 
-use krs_quote::my_quote_simple;
 use crate::utils::ToTokensInterop;
 
 pub struct StaticCode;
