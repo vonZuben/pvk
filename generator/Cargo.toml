@@ -14,7 +14,6 @@ path = "src/stdout.rs"
 
 [dependencies]
 vkxml = "*"
-once_cell = "1.2.0"
 krs_quote = { path = "../krs_quote" }
 
 [dependencies.vk-parse]
