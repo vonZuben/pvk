@@ -1,5 +1,5 @@
 
-use krs_hlist::{ hlist, higher_order::prelude::* };
+use krs_hlist::{ Cons, End, higher_order::prelude::* };
 
 struct Add(i32);
 
@@ -14,7 +14,7 @@ where
 }
 
 fn main() {
-    let mut list = hlist!(1, 2, 3);
+    let mut list = Cons::new(1, Cons::new(2, Cons::new(3, End)));
 
     list.for_each_mut(Add(10));
 

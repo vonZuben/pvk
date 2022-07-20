@@ -47,16 +47,6 @@ pub mod higher_order;
 
 pub use const_utils::Comparator;
 
-/// Create an `Hlist`
-///
-/// Creates an `Hlist` from a given list of expressions.
-#[macro_export]
-macro_rules! hlist {
-    ( $( $val:expr ),* $(,)? ) => {{
-        $crate::End$(.append($val))*
-    }};
-}
-
 /// Represents a a generic hlist
 ///
 /// A properly constructed hlist (nested chain of [Cons] ending with [End]) will implement this trait automatically

@@ -1,5 +1,5 @@
 
-use krs_hlist::{Comparator, hlist};
+use krs_hlist::{Comparator, Cons, End};
 
 unsafe trait Id {
     const ID: usize;
@@ -59,9 +59,9 @@ fn main() {
     // TODO: At this time, I like to think that the Contains trait represents that a collection contains a type
     // but this is incorrect since as seen below, 'list' does not contain B which should be required for 'tst'.
     //
-    // Hopefully the feature "associated_const_equality" becomes stable. Afterward, the Contains trait can be used 
+    // Hopefully the feature "associated_const_equality" becomes stable. Afterward, the Contains trait can be used
     // as a question regarding if a collection contains a type, and another trait (which I plan to call Get), will
     // be implemented for types that *must* contain a specific type (e.g. Get<T> for L where L: Contains<T, OFFSET.is_some()>)
-    let list = hlist!(A, C);
+    let list = Cons::new(A, Cons::new(B, End));
     tst(list);
 }
