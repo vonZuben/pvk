@@ -111,15 +111,15 @@ macro_rules! quote_each_tt {
 
     // expand token
     ( {@$item:ident} ) => {{
-        (&$item).as_to_prepare()
+        Df(Df(Df(Df(&$item)))).as_to_prepare()
     }};
 
     // extract braces
     ( { $($tt:tt)* } ) => {{
         let to_tokens = hlist!(
-            LeftBrace.as_to_prepare(),
+            ToPrepare::prep(LeftBrace),
             $($crate::quote_each_tt!($tt),)*
-            RightBrace.as_to_prepare(),
+            ToPrepare::prep(RightBrace),
         );
         HlistWrapper::new(to_tokens)
     }};
@@ -127,9 +127,9 @@ macro_rules! quote_each_tt {
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
         let to_tokens = hlist!(
-            RawToken("(").as_to_prepare(),
+            ToPrepare::prep(RawToken("(")),
             $($crate::quote_each_tt!($tt),)*
-            RawToken(")").as_to_prepare(),
+            ToPrepare::prep(RawToken(")")),
         );
         HlistWrapper::new(to_tokens)
     }};
@@ -137,26 +137,26 @@ macro_rules! quote_each_tt {
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
         let to_tokens = hlist!(
-            RawToken("[").as_to_prepare(),
+            ToPrepare::prep(RawToken("[")),
             $($crate::quote_each_tt!($tt),)*
-            RawToken("]").as_to_prepare(),
+            ToPrepare::prep(RawToken("]")),
         );
         HlistWrapper::new(to_tokens)
     }};
 
     // special case fo comma
     ( , ) => {{
-        Comma.as_to_prepare()
+        ToPrepare::prep(Comma)
     }};
 
     // special case fo semicolon
     ( ; ) => {{
-        SemiColon.as_to_prepare()
+        ToPrepare::prep(SemiColon)
     }};
 
     // Regular token
     ( $tt:tt ) => {{
-        RawToken(stringify!($tt)).as_to_prepare()
+        ToPrepare::prep(RawToken(stringify!($tt)))
     }};
 
 }

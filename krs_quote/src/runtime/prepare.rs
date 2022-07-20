@@ -37,6 +37,28 @@ impl<P: PrepareQuote + Copy> PrepareQuote for &P {
 #[derive(Clone, Copy, Debug)]
 pub struct ToPrepare<R, KIND>(R, PhantomData<KIND>);
 
+#[doc(hidden)]
+pub struct SimplePrepare;
+impl<R> ToPrepare<R, SimplePrepare> {
+    pub fn prep(r: R) -> Self {
+        Self(r, PhantomData)
+    }
+}
+
+impl<'a, R: ToTokens> PrepareQuote for &'a ToPrepare<R, SimplePrepare> {
+    type Output = std::iter::Repeat<&'a R>;
+    fn prepare_quote(self) -> Self::Output {
+        std::iter::repeat(&self.0)
+    }
+}
+
+impl<R> BitOr<&ToPrepare<R, SimplePrepare>> for NoIter {
+    type Output = NoIter;
+    fn bitor(self, _rhs: &ToPrepare<R, SimplePrepare>) -> Self::Output {
+        NoIter
+    }
+}
+
 macro_rules! to_prepare_trait {
     ( $trait_name:ident -> $kind:ident <$($generics:tt),*> for $from:ty => $to:ty { where $($applicable:tt)* } {
         type Output = $out:ty;
@@ -50,12 +72,12 @@ macro_rules! to_prepare_trait {
 
         #[doc(hidden)]
         pub trait $trait_name<R> {
-            fn as_to_prepare(self) -> ToPrepare<R, $kind>;
+            fn as_to_prepare(&self) -> ToPrepare<R, $kind>;
         }
 
         impl<$($generics),*> $trait_name<$to> for $from where $($applicable)* {
-            fn as_to_prepare(self) -> ToPrepare<$to, $kind> {
-                ToPrepare(self, PhantomData)
+            fn as_to_prepare(&self) -> ToPrepare<$to, $kind> {
+                ToPrepare(self.unwrap_to(), PhantomData)
             }
         }
 
@@ -76,17 +98,40 @@ macro_rules! to_prepare_trait {
 }
 
 #[doc(hidden)]
+/// Used to create layers for auto-deref specialization.
+pub struct Df<T>(pub T);
+
+#[doc(hidden)]
+/// internal detail for extracting the internal T
+pub trait UnwrapTo<T: Copy> {
+    fn unwrap_to(&self) -> T;
+}
+
+impl<T: Copy> UnwrapTo<T> for Df<T> {
+    fn unwrap_to(&self) -> T {
+        self.0
+    }
+}
+
+impl<T> std::ops::Deref for Df<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[doc(hidden)]
 /// implement different ways of preparing different types.
 /// We try to pick the most efficient implementation based on the input type.
 ///
-/// Note that we use the autoref specialization trick to avoid issues with multiple implementations found
+/// Note that we use the auto-deref specialization trick to avoid issues with multiple implementations found
 pub mod prepare_different_types {
     use super::*;
 
     // A single ToTokens type.
     //
     // We make a `Repeat` iterator since we need to be able to repeatedly quote it in repetitions
-    to_prepare_trait!(PrepareRef -> Ref <'a, T> for &'a T => &'a T { where T: ToTokens } {
+    to_prepare_trait!(PrepareRef -> Ref <'a, T> for Df<Df<Df<Df<&'a T>>>> => &'a T { where T: ToTokens } {
         type Output = std::iter::Repeat<&'a T>;
         |this| std::iter::repeat(this.0);
         NoIter
@@ -95,7 +140,7 @@ pub mod prepare_different_types {
     // Optimization for slices/arrays
     //
     // otherwise, slices and arrays would go under PrepareCloneIntoIter
-    to_prepare_trait!(PrepareSlice -> Slice <'a, T> for &&'a [T] => &'a [T] { where T: ToTokens } {
+    to_prepare_trait!(PrepareSlice -> Slice <'a, T> for Df<Df<Df<&'a [T]>>> => &'a [T] { where T: ToTokens } {
         type Output = <&'a [T] as IntoIterator>::IntoIter;
         |this| this.0.into_iter();
         HasIter
@@ -104,7 +149,7 @@ pub mod prepare_different_types {
     // Optimization &IntoIterator types
     //
     // it is assumed that is &T: IntoIterator is cheaper than T: IntoIterator to Clone (since we need to clone to be able to use in repetitions)
-    to_prepare_trait!(PrepareRefIntoIter -> RefIntoIter <'a, T> for &'a T => &'a T { where &'a T: IntoIterator, <&'a T as IntoIterator>::Item : ToTokens } {
+    to_prepare_trait!(PrepareRefIntoIter -> RefIntoIter <'a, T> for Df<Df<&'a T>> => &'a T { where &'a T: IntoIterator, <&'a T as IntoIterator>::Item : ToTokens } {
         type Output = <&'a T as IntoIterator>::IntoIter;
         |this| this.0.into_iter();
         HasIter
@@ -113,7 +158,7 @@ pub mod prepare_different_types {
     // hopefully last case scenario, should be avoided
     //
     // If clone is expensive, then try to avoid (e.g. collect the results of the iterator before hand, such as into a Vec, and pass that to my_quote)
-    to_prepare_trait!(PrepareCloneIntoIter -> CloneIntoIter <'a, T> for &&'a T => &'a T { where T: Clone + IntoIterator, <T as IntoIterator>::Item : ToTokens } {
+    to_prepare_trait!(PrepareCloneIntoIter -> CloneIntoIter <'a, T> for Df<&'a T> => &'a T { where T: Clone + IntoIterator, <T as IntoIterator>::Item : ToTokens } {
         type Output = <T as IntoIterator>::IntoIter;
         |this| this.0.clone().into_iter();
         HasIter
