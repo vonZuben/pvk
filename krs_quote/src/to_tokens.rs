@@ -130,7 +130,7 @@ make_special_token!{
     Comma => ",\n",
     SemiColon => ";\n",
     LeftBrace => "{\n",
-    RightBrace => "\n}\n",
+    RightBrace => "}\n",
 }
 
 /// The output of [my_quote!]
