@@ -86,6 +86,10 @@ pub struct Cons<H, T> {
 }
 
 impl<H, T> Cons<H, T> {
+    /// Make a new hlist by prepending a head on to another hlist
+    pub fn new(head: H, tail: T) -> Self where T: Hlist {
+        Self { head, tail }
+    }
     /// Append an item to the hlist
     ///
     /// The corresponding method on [End] is for adding items to an empty list.
@@ -185,8 +189,8 @@ impl<T, C, L: const_utils::Searchable<T, C>> Contains<T, C> for L {
     }
 }
 
-/// Get T using C as a Comparator
-/// if "associated_const_equality" becomes stable
+// Get T using C as a Comparator
+// if "associated_const_equality" becomes stable
 // trait Get<T, C> : Contains<T, C, HAS==true> {
 //     fn get(&self) -> &T;
 //     fn get_mut(&self) -> &mut T;
