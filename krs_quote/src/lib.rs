@@ -37,7 +37,8 @@ pub mod __private {
     pub use super::to_tokens::*;
     pub use super::runtime::*;
     pub use prepare_different_types::*;
-    pub use krs_hlist::{ Cons, End, higher_order::prelude::* };
+    pub use krs_hlist::{ self, higher_order::prelude::* };
+    pub use krs_hlist_pm::hlist;
 }
 
 /// The whole point!
@@ -49,7 +50,7 @@ macro_rules! my_quote {
     ( $($tt:tt)* ) => {{
         use $crate::__private::*;
         let mut ts = TokenStream::new();
-        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
         let _: NoIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         let mut ti = to_tokens.for_each(ApplyPrepareQuote);
         ti.next().unwrap().for_each(ApplyToTokens(&mut ts));
@@ -79,7 +80,7 @@ macro_rules! my_quote_with {
     ( $ts:ident { $($tt:tt)* }) => {{
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
-        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
         let _: NoIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         let mut ti = to_tokens.for_each(ApplyPrepareQuote);
         ti.next().unwrap().for_each(ApplyToTokens(ts));
@@ -92,7 +93,7 @@ macro_rules! quote_each_tt {
 
     // expand repetition wth separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
-        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         match stringify!($sep) {
             "," => InnerRepWithSeparator::new(to_tokens, Comma.into()),
@@ -103,7 +104,7 @@ macro_rules! quote_each_tt {
 
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
-        let to_tokens = End$(.append($crate::quote_each_tt!($tt)))*;
+        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
         let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         InnerRep::new(to_tokens)
     }};
@@ -115,28 +116,31 @@ macro_rules! quote_each_tt {
 
     // extract braces
     ( { $($tt:tt)* } ) => {{
-        let to_tokens = End
-            .append(LeftBrace.as_to_prepare())
-            $(.append($crate::quote_each_tt!($tt)))*
-            .append(RightBrace.as_to_prepare());
+        let to_tokens = hlist!(
+            LeftBrace.as_to_prepare(),
+            $($crate::quote_each_tt!($tt),)*
+            RightBrace.as_to_prepare(),
+        );
         HlistWrapper::new(to_tokens)
     }};
 
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
-        let to_tokens = End
-            .append(RawToken("(").as_to_prepare())
-            $(.append($crate::quote_each_tt!($tt)))*
-            .append(RawToken(")").as_to_prepare());
+        let to_tokens = hlist!(
+            RawToken("(").as_to_prepare(),
+            $($crate::quote_each_tt!($tt),)*
+            RawToken(")").as_to_prepare(),
+        );
         HlistWrapper::new(to_tokens)
     }};
 
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
-        let to_tokens = End
-            .append(RawToken("[").as_to_prepare())
-            $(.append($crate::quote_each_tt!($tt)))*
-            .append(RawToken("]").as_to_prepare());
+        let to_tokens = hlist!(
+            RawToken("[").as_to_prepare(),
+            $($crate::quote_each_tt!($tt),)*
+            RawToken("]").as_to_prepare(),
+        );
         HlistWrapper::new(to_tokens)
     }};
 

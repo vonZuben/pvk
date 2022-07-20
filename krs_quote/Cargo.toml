@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 krs_hlist = { path = "../krs_hlist" }
+krs_hlist_pm = { path = "../krs_hlist_pm", features = ["re-export"] }
