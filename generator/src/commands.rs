@@ -1,6 +1,9 @@
 
 use quote::{quote, ToTokens};
 
+use krs_quote::{my_quote, my_quote_with};
+use crate::utils::ToTokensInterop;
+
 use vkxml::*;
 
 use proc_macro2::{TokenStream};
@@ -34,13 +37,29 @@ impl ToTokens for Commands2 {
         let function_pointers = self.function_pointers.iter();
         let commands = self.function_pointers.iter().map(|fptr|fptr.name);
         let command_names = self.function_pointers.iter().map(|fptr|fptr.name.as_str());
-        quote!(
-            #(#function_pointers)*
+        my_quote!(
+            {@* {@function_pointers}}
             macro_rules! use_command_function_pointer_names {
                 ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#commands -> #command_names);* );
+                    $call!( $($pass)* {@;* {@commands} -> {@command_names} } );
                 }
             }
-        ).to_tokens(tokens);
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for Commands2 {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let function_pointers = self.function_pointers.iter();
+        let commands = self.function_pointers.iter().map(|fptr|fptr.name);
+        let command_names = self.function_pointers.iter().map(|fptr|fptr.name.as_str());
+        my_quote_with!( tokens {
+            {@* {@function_pointers}}
+            macro_rules! use_command_function_pointer_names {
+                ( $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* {@;* {@commands} -> {@command_names} } );
+                }
+            }
+        });
     }
 }
