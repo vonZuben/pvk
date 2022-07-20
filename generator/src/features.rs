@@ -3,6 +3,9 @@ use std::collections::HashMap;
 
 use quote::{quote, ToTokens};
 
+use krs_quote::{my_quote, my_quote_with};
+use crate::utils::ToTokensInterop;
+
 use vkxml::*;
 
 use proc_macro2::{TokenStream};
@@ -36,6 +39,18 @@ impl ToTokens for RequireRemove {
         match self {
             Require(name) => {
                 quote!( #name ).to_tokens(tokens);
+            }
+            Remove(_) => panic!("should not turn Remove into code"),
+        }
+    }
+}
+
+impl krs_quote::ToTokens for RequireRemove {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        use RequireRemove::*;
+        match self {
+            Require(name) => {
+                my_quote_with!(tokens { {@name} } );
             }
             Remove(_) => panic!("should not turn Remove into code"),
         }
@@ -118,22 +133,50 @@ impl ToTokens for FeatureCommands {
         let device_command_names = &device_command_names;
         let entry_command_names: Vec<_> = self.entry_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
         let entry_command_names = &entry_command_names;
-        quote!(
-            macro_rules! #version {
+        my_quote!(
+            macro_rules! {@version} {
                 ( @INSTANCE $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#instance_command_names),* );
+                    $call!( $($pass)* {@,* {@instance_command_names}} );
                 };
                 ( @DEVICE $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#device_command_names),* );
+                    $call!( $($pass)* {@,* {@device_command_names}} );
                 };
                 ( @ENTRY $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#entry_command_names),* );
+                    $call!( $($pass)* {@,* {@entry_command_names}} );
                 };
                 ( @ALL $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#instance_command_names),* ; #(#device_command_names),* ; #(#entry_command_names),* );
+                    $call!( $($pass)* {@,* {@instance_command_names}} ; {@,* {@device_command_names}} ; {@,* {@entry_command_names}} );
                 };
             }
-        ).to_tokens(tokens);
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for FeatureCommands {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let version = self.version.as_code();
+        let instance_command_names: Vec<_> = self.instance_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
+        let instance_command_names = &instance_command_names;
+        let device_command_names: Vec<_> = self.device_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
+        let device_command_names = &device_command_names;
+        let entry_command_names: Vec<_> = self.entry_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
+        let entry_command_names = &entry_command_names;
+        my_quote_with!( tokens {
+            macro_rules! {@version} {
+                ( @INSTANCE $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* {@,* {@instance_command_names}} );
+                };
+                ( @DEVICE $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* {@,* {@device_command_names}} );
+                };
+                ( @ENTRY $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* {@,* {@entry_command_names}} );
+                };
+                ( @ALL $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* {@,* {@instance_command_names}} ; {@,* {@device_command_names}} ; {@,* {@entry_command_names}} );
+                };
+            }
+        });
     }
 }
 
@@ -156,13 +199,29 @@ impl ToTokens for VulkanVersionNames<'_> {
             .map(StrAsCode::as_code);
         let version_tuple = self.versions.iter()
             .map(|v| parse_version(v).as_code());
-        quote!(
+        my_quote!(
             macro_rules! use_all_vulkan_version_names {
                 ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* #(#versions => #version_tuple),* );
+                    $call!( $($pass)* {@,* {@versions} => {@version_tuple}} );
                 }
             }
-        ).to_tokens(tokens);
+        ).to_tokens_interop(tokens);
+    }
+}
+
+impl krs_quote::ToTokens for VulkanVersionNames<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let versions = self.versions.iter()
+            .map(StrAsCode::as_code);
+        let version_tuple = self.versions.iter()
+            .map(|v| parse_version(v).as_code());
+        my_quote_with!( tokens {
+            macro_rules! use_all_vulkan_version_names {
+                ( $call:ident $($pass:tt)* ) => {
+                    $call!( $($pass)* {@,* {@versions} => {@version_tuple}} );
+                }
+            }
+        });
     }
 }
 
