@@ -1,13 +1,6 @@
-
-use quote::quote;
-use quote::ToTokens;
-
 use krs_quote::{my_quote, my_quote_with};
-use crate::utils::ToTokensInterop;
 
 use vkxml::*;
-
-use proc_macro2::{TokenStream};
 
 use crate::utils::*;
 use crate::utils;
@@ -102,43 +95,6 @@ impl ExtensionInfo {
     }
 }
 
-impl ToTokens for ExtensionInfo {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let kind = self.kind;
-        let extension_name = &self.extension_name;
-        let instance_command_names = &self.instance_command_names;
-        let device_command_names = &self.device_command_names;
-        let all_commands_names = instance_command_names.iter().chain(device_command_names.iter());
-        let load = match &self.extension_name {
-            ExtensionName::Noraml(name) => Some(&**name),
-            ExtensionName::Extended(_, _) => None,
-        };
-        let required: Vec<_> = match self.extension_name {
-            ExtensionName::Noraml(name) => self.required.iter().copied().collect(),
-            ExtensionName::Extended(base, _) => std::iter::once(base).collect(),
-        };
-        my_quote!(
-            macro_rules! {@extension_name} {
-                ( @KIND $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@kind} );
-                };
-                ( @INSTANCE_COMMANDS $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@instance_command_names}} );
-                };
-                ( @DEVICE_COMMANDS $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@device_command_names}} );
-                };
-                ( @ALL_COMMANDS $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@all_commands_names}} );
-                };
-                ( @REQUIRE $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@load} ; {@,* {@required}} );
-                };
-            }
-        ).to_tokens_interop(tokens);
-    }
-}
-
 impl krs_quote::ToTokens for ExtensionInfo {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let kind = self.kind;
@@ -186,19 +142,6 @@ pub struct VulkanExtensionNames {
 impl VulkanExtensionNames {
     pub fn push_extension(&mut self, extension_name: ExtensionName) {
         self.extensions.push(extension_name);
-    }
-}
-
-impl ToTokens for VulkanExtensionNames {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let extension_names = &self.extensions;
-        my_quote!(
-            macro_rules! use_all_vulkan_extension_names {
-                ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@extension_names}} );
-                }
-            }
-        ).to_tokens_interop(tokens);
     }
 }
 

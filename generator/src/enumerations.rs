@@ -1,9 +1,6 @@
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
 use vkxml::*;
 
 use krs_quote::{my_quote, my_quote_with};
-use crate::utils::ToTokensInterop;
 
 use crate::utils;
 use crate::utils::*;
@@ -47,73 +44,6 @@ impl<'a> EnumVariants<'a> {
             // we only want to generate one, but we should ensure they are all consistent
             Some(already) => assert_eq!(*already, variant),
             None => self.variants.push(name, variant),
-        }
-    }
-}
-
-impl ToTokens for EnumVariants<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
-        let target = self.target;
-        let target_string = ctype_to_rtype(self.target.as_str());
-        let variants: Vec<_> = self
-            .variants
-            .iter().collect();
-
-        let make_proper_name = |name| make_variant_name(target_string, ctype_to_rtype(name));
-
-        let variant_names = variants.iter()
-            .map(|c| {
-                make_proper_name(c.name.as_str()).as_code()
-            });
-        let variant_name_strings = variants.iter()
-            .map(|c| {
-                make_proper_name(c.name.as_str())
-            });
-
-        my_quote!(
-            impl {@target} {
-                {@* {@variants} }
-            }
-        ).to_tokens_interop(tokens);
-
-        match self.kind {
-            EnumKind::Normal => {
-                my_quote!(
-                    impl std::fmt::Debug for {@target} {
-                        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                        let to_print = match *self {
-                            {@* Self::{@variant_names} => {@variant_name_strings},}
-                            _ => "Unknown Variant",
-                        };
-                        f.debug_tuple({@target_string})
-                            .field(&to_print)
-                            .finish()
-                        }
-                    }
-                ).to_tokens_interop(tokens);
-            }
-            EnumKind::BitFlags => {
-                my_quote!(
-                    impl std::fmt::Debug for {@target} {
-                        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                        let mut self_copy = *self;
-                        let to_print = std::iter::from_fn(|| self_copy.take_lowest_bit())
-                            .map(|bit| {
-                                match bit {
-                                    {@* Self::{@variant_names} => {@variant_name_strings},}
-                                    _ => "Unknown Bit",
-                                }
-                            })
-                            .map(|s| DbgStringAsDisplay(s));
-                        write!(f, "{}", {@target_string})?;
-                        f.debug_list()
-                            .entries(to_print)
-                            .finish()
-                        }
-                    }
-                ).to_tokens_interop(tokens);
-            }
         }
     }
 }

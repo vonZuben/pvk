@@ -2,8 +2,6 @@
 
 #![allow(unused)]
 
-use quote::quote;
-
 // just for coverting the xml file into a vkxml registry
 extern crate vk_parse;
 
@@ -36,7 +34,6 @@ use std::path::Path;
 use std::collections::HashMap;
 
 use vkxml::*;
-use proc_macro2::{TokenStream};
 
 use definitions::*;
 use enumerations::*;

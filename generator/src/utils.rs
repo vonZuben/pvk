@@ -1,40 +1,14 @@
-use quote::quote;
-use quote::ToTokens;
-
-use proc_macro2::{TokenStream};
-
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::fmt;
 
 use crate::intern::{Interner, Istring};
 
-// NOTE: THIS IS TEMPORARY FOR MIGRATING FROM `quote` to `krs_quote`
-pub trait ToTokensInterop {
-    fn to_tokens_interop(&self, tokens: &mut proc_macro2::TokenStream);
-}
-
-impl ToTokensInterop for krs_quote::TokenStream {
-    fn to_tokens_interop(&self, tokens: &mut proc_macro2::TokenStream) {
-        let ts: proc_macro2::TokenStream = self.to_string().parse().expect("error: krs_quote::TokenStream failed to parse to proc_macro2::TokenStream");
-        ts.to_tokens(tokens);
-    }
-}
-
 pub struct TokenWrapper(krs_quote::Token);
 
 impl From<krs_quote::Token> for TokenWrapper {
     fn from(t: krs_quote::Token) -> Self {
         Self(t)
-    }
-}
-
-impl ToTokens for TokenWrapper {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let this = self.0.to_string();
-        this.parse::<TokenStream>()
-            .expect(format!("error: can't parse {{{}}} as TokenStream", this).as_ref())
-            .to_tokens(tokens);
     }
 }
 
@@ -142,15 +116,6 @@ impl VkTyName {
     }
     fn normalize(&self) -> &str {
         ctype_to_rtype(self.name.get())
-    }
-}
-
-impl ToTokens for VkTyName {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = self.normalize();
-        name.parse::<TokenStream>()
-            .expect(format!("error: can't parse {{{}}} as TokenStream", name).as_ref())
-            .to_tokens(tokens)
     }
 }
 

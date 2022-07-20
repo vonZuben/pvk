@@ -1,10 +1,6 @@
 use std::borrow::{Borrow, Cow};
 
 use krs_quote::{my_quote, my_quote_with};
-use utils::ToTokensInterop;
-
-use quote::ToTokens;
-use proc_macro2::TokenStream;
 
 use crate::utils::{self, case};
 
@@ -226,13 +222,6 @@ impl Ctype {
     }
 }
 
-impl ToTokens for Ctype {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let inner = &self.inner;
-        my_quote!( {@inner} ).to_tokens_interop(tokens);
-    }
-}
-
 impl krs_quote::ToTokens for Ctype {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let inner = &self.inner;
@@ -254,15 +243,6 @@ impl Default for ReturnType {
 impl From<Ctype> for ReturnType {
     fn from(ct: Ctype) -> Self {
         ReturnType::Some(ct)
-    }
-}
-
-impl ToTokens for ReturnType {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self {
-            ReturnType::None => my_quote!( () ).to_tokens_interop(tokens),
-            ReturnType::Some(ct) => my_quote!( {@ct} ).to_tokens_interop(tokens),
-        }
     }
 }
 
@@ -293,18 +273,6 @@ impl Cfield {
     }
     pub fn set_public(&mut self) {
         self.vis = Visability::Public;
-    }
-}
-
-impl ToTokens for Cfield {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
-
-        let vis = &self.vis;
-        let name = case::camel_to_snake(self.name.borrow()).as_code();
-        let ty = &self.ty;
-
-        my_quote!( {@vis} {@name} : {@ty} ).to_tokens_interop(tokens);
     }
 }
 

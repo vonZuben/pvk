@@ -1,12 +1,6 @@
-
-use quote::{quote, ToTokens};
-
 use krs_quote::{my_quote, my_quote_with};
-use crate::utils::ToTokensInterop;
 
 use vkxml::*;
-
-use proc_macro2::{TokenStream};
 
 use crate::{utils::*};
 use crate::utils;
@@ -29,22 +23,6 @@ impl Commands2 {
     }
     pub fn contains(&self, name: VkTyName) -> bool {
         self.function_pointers.get(name).is_some()
-    }
-}
-
-impl ToTokens for Commands2 {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let function_pointers = self.function_pointers.iter();
-        let commands = self.function_pointers.iter().map(|fptr|fptr.name);
-        let command_names = self.function_pointers.iter().map(|fptr|fptr.name.as_str());
-        my_quote!(
-            {@* {@function_pointers}}
-            macro_rules! use_command_function_pointer_names {
-                ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@;* {@commands} -> {@command_names} } );
-                }
-            }
-        ).to_tokens_interop(tokens);
     }
 }
 

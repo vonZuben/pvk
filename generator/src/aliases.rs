@@ -1,8 +1,4 @@
-
-use quote::{ToTokens, quote};
-
 use krs_quote::{my_quote, my_quote_with};
-use crate::utils::ToTokensInterop;
 
 use crate::{definitions::TypeDef, utils::{StrAsCode, VecMap}};
 
@@ -15,21 +11,6 @@ impl<I> CmdAliasNames<I> {
         Self {
             alias_defs: i,
         }
-    }
-}
-
-impl<'a, I: Iterator<Item=TypeDef> + Clone> ToTokens for CmdAliasNames<I> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let name = self.alias_defs.clone().map(|td|td.name);
-        let alias = self.alias_defs.clone().map(|td|td.ty);
-
-        my_quote!(
-            macro_rules! use_cmd_alias_pairs {
-                ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@name} = {@alias} } );
-                }
-            }
-        ).to_tokens_interop(tokens);
     }
 }
 

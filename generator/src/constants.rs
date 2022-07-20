@@ -1,11 +1,6 @@
-use quote::{quote, ToTokens};
-
 use vkxml::*;
 
 use krs_quote::{my_quote, my_quote_with};
-use crate::utils::ToTokensInterop;
-
-use proc_macro2::TokenStream;
 
 use crate::utils::*;
 
@@ -35,24 +30,6 @@ impl<'a> Constant3<'a> {
     //         None => None,
     //     }
     // }
-}
-
-impl ToTokens for Constant3<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        use crate::utils::StrAsCode;
-
-        let name = match self.target {
-            Some(target) => crate::enumerations::make_variant_name(&target, &self.name).as_code(),
-            None => self.name.as_code(),
-        };
-        let ty = &self.ty;
-        let val = &self.val;
-
-        my_quote!(
-            pub const {@name}: {@ty} = {@val};
-        )
-        .to_tokens_interop(tokens);
-    }
 }
 
 impl krs_quote::ToTokens for Constant3<'_> {

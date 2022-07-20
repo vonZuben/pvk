@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
-use quote::{quote, ToTokens};
-use proc_macro2::TokenStream;
-
 use krs_quote::{my_quote, my_quote_with};
-use crate::utils::ToTokensInterop;
 
 use crate::vkxml_visitor;
 use crate::vkxml_visitor::{VisitExtension, VisitFeature, VisitVkxml};
