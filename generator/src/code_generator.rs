@@ -3,6 +3,9 @@ use std::collections::HashMap;
 use quote::{quote, ToTokens};
 use proc_macro2::TokenStream;
 
+use krs_quote::{my_quote, my_quote_with};
+use crate::utils::ToTokensInterop;
+
 use crate::vkxml_visitor;
 use crate::vkxml_visitor::{VisitExtension, VisitFeature, VisitVkxml};
 
@@ -95,29 +98,19 @@ impl<'a> Generator<'a> {
             aliases.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
         );
 
-        let s1 = quote!(#static_code).to_string();
-        let s2 = quote!(#definitions).to_string();
-        let s3 = quote!(#(#constants)*).to_string();
-        let s4 = quote!(#(#enum_variants)*).to_string();
-        let s5 = quote!(#commands).to_string();
-        let s6 = quote!(#(#aliases)*).to_string();
-        let s7 = quote!(#vulkan_version_names).to_string();
-        let s8 = quote!(#(#feature_commands)*).to_string();
-        let s9 = quote!(#vulkan_extension_names).to_string();
-        let s10 = quote!(#(#extension_commands)*).to_string();
-        let s11 = quote!(#cmd_aliases).to_string();
-
-        s1 
-        + &s2 
-        + &s3 
-        + &s4 
-        + &s5 
-        + &s6
-        + &s7
-        + &s8
-        + &s9
-        + &s10
-        + &s11
+        my_quote!(
+            {@static_code}
+            {@definitions}
+            {@* {@constants}}
+            {@* {@enum_variants}}
+            {@commands}
+            {@* {@aliases}}
+            {@vulkan_version_names}
+            {@* {@feature_commands}}
+            {@vulkan_extension_names}
+            {@* {@extension_commands}}
+            {@cmd_aliases}
+        ).to_string()
     }
 }
 
@@ -468,7 +461,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             .extension_infos
             .get_mut(ex_name)
             .expect("error: this should already exist from visiting the node");
-        
+
         match cmd_type {
             CommandType::Instance => ex.push_instance_command(cmd_name),
             CommandType::Device => ex.push_device_command(cmd_name),
@@ -510,16 +503,16 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 
 fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
     use crate::simple_parse::*;
-    
+
     let input = crate::simple_parse::TokenIter::new(code);
-    
+
     let (input, c) = opt(tag("const"))(input)?;
     let (input, _) = opt(tag("struct"))(input)?;
     let (input, bt) = token()(input)?;
     let (input, p) = opt(tag("*"))(input)?;
 
     let mut ty = ctype::Ctype::new(bt);
-    
+
     if p.is_some() && c.is_some() {
         ty.push_pointer(ctype::Pointer::Const);
     }
@@ -528,8 +521,8 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
     }
 
     let (input, _) = repeat(
-        input, 
-        followed(opt(tag("const")), tag("*")), 
+        input,
+        followed(opt(tag("const")), tag("*")),
         |(c, _)| {
             if c.is_some() {
                 ty.push_pointer(ctype::Pointer::Const);
@@ -539,7 +532,7 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
             }
         }
     )?;
-    
+
     let (input, name) = token()(input)?;
 
     let (input, bit_width) = opt(followed(tag(":"), token()))(input)?;
@@ -554,11 +547,11 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
         delimited(tag("["), token(), tag("]")),
         |(_, size, _)| ty.push_array(size)
     )?;
-    
+
     // this is expected to consume all tokens
     if input.next().is_some() {
         Err(())
-    } 
+    }
     else {
         Ok(ctype::Cfield::new(name, ty))
     }
