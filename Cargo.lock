@@ -7,9 +7,6 @@ name = "generator"
 version = "0.1.0"
 dependencies = [
  "krs_quote",
- "once_cell",
- "proc-macro2",
- "quote",
  "vk-parse",
  "vkxml",
 ]
@@ -19,17 +16,16 @@ name = "krs_hlist"
 version = "0.1.0"
 
 [[package]]
+name = "krs_hlist_pm"
+version = "0.1.0"
+
+[[package]]
 name = "krs_quote"
 version = "0.1.0"
 dependencies = [
  "krs_hlist",
+ "krs_hlist_pm",
 ]
-
-[[package]]
-name = "once_cell"
-version = "1.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af8b08b04175473088b46763e51ee54da5f9a164bc162f615b91bc179dbf15a3"
 
 [[package]]
 name = "proc-macro2"
