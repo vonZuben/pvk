@@ -115,17 +115,6 @@ impl<'a> Generator<'a> {
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
 
-    fn visit_bitmask(&mut self, bitmask: &'a vkxml::Bitmask) {
-        let name = utils::VkTyName::new(bitmask.name.as_str());
-        assert!(bitmask.name.as_str().contains("Flags"));
-        self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags));
-        let bitmask = definitions::Bitmask::new(&bitmask.name, &bitmask.basetype);
-        self.definitions.bitmasks.push(bitmask);
-    }
-
-    fn visit_struct(&mut self, struct_def: &'a vkxml::Struct) {
-    }
-
     fn visit_union(&mut self, union_def: &'a vkxml::Union) {
         let mut uni = definitions::Union::new(&union_def.name);
         let fields = union_def
@@ -466,6 +455,13 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_basetype(&mut self, basetype: crate::vk_parse_visitor::VkBastetype<'a>) {
         let type_def = definitions::TypeDef::new(basetype.name, basetype.ty);
         self.definitions.type_defs.push(type_def);
+    }
+    fn visit_bitmask(&mut self, basetype: crate::vk_parse_visitor::VkBastetype<'a>) {
+        let name = utils::VkTyName::new(basetype.name);
+        assert!(name.contains("Flags"));
+        self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags));
+        let bitmask = definitions::Bitmask::new(name, basetype.ty);
+        self.definitions.bitmasks.push(bitmask);
     }
 }
 

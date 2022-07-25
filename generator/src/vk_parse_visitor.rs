@@ -8,6 +8,7 @@ pub trait VisitVkParse<'a> {
     fn visit_struct_member(&mut self, member: StructPart<'a>) {}
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>) {}
     fn visit_basetype(&mut self, basetype: VkBastetype<'a>) {}
+    fn visit_bitmask(&mut self, basetype: VkBastetype<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -68,25 +69,21 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         }
                                     }
                                     Some("basetype") => {
-                                        use crate::simple_parse::*;
                                         match ty.spec {
                                             vk_parse::TypeSpec::Code(ref code) => {
-                                                let get_basetype = |code| -> Result<VkBastetype, ()> {
-                                                    let input = TokenIter::new(code);
-                                                    let (input, _) = tag("typedef")(input)?;
-                                                    let (input, ty) = token()(input)?;
-                                                    let (input, name) = token()(input)?;
-                                                    let (input, _) = tag(";")(input)?;
-                                                    Ok(VkBastetype {
-                                                        name,
-                                                        ty,
-                                                    })
-                                                };
-
-                                                let basetype = get_basetype(&code.code).expect("error: can't parse basetype in vk_parese");
+                                                let basetype = parse_basetype(&code.code).expect("error: can't parse basetype in vk_parese");
                                                 visitor.visit_basetype(basetype);
                                             }
                                             _ => panic!("unexpected basetype spec"),
+                                        }
+                                    }
+                                    Some("bitmask") => {
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref code) => {
+                                                let basetype = parse_basetype(&code.code).expect("error: can't parse bitmask in vk_parese");
+                                                visitor.visit_bitmask(basetype);
+                                            }
+                                            _ => panic!("unexpected bitmask spec"),
                                         }
                                     }
                                     Some(_) | None => {}
@@ -324,4 +321,18 @@ pub struct ExtensionInfo<'a, I> {
 pub struct VkBastetype<'a> {
     pub name: &'a str,
     pub ty: &'a str,
+}
+
+fn parse_basetype<'a>(code: &'a str) -> Result<VkBastetype, ()> {
+    use crate::simple_parse::*;
+
+    let input = TokenIter::new(code);
+    let (input, _) = tag("typedef")(input)?;
+    let (input, ty) = token()(input)?;
+    let (input, name) = token()(input)?;
+    let (input, _) = tag(";")(input)?;
+    Ok(VkBastetype {
+        name,
+        ty,
+    })
 }
