@@ -110,42 +110,10 @@ impl<'a> Generator<'a> {
     }
 }
 
-// impl ToTokens for Generator<'_> {
-//     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-//         let definitions = &self.definitions;
-//         let constants = &self.constants;
-//         let enum_variants = self.enum_variants.iter();
-//         let commands = &self.commands;
-//         let vulkan_version_names = &self.vulkan_version_names;
-//         let feature_commands = &self.feature_commands;
-//         let vulkan_extension_names = &self.vulkan_extension_names;
-//         let extension_commands = &self.extension_commands;
-
-//         quote!(
-//             #definitions
-//             #(#constants)*
-//             #(#enum_variants)*
-//             #commands
-//             #vulkan_version_names
-//             #(#feature_commands)*
-//             vulkan_extension_names
-//             #(#extension_commands)*
-//         ).to_tokens(tokens);
-//     }
-// }
-
 // =================================================================
 // vkxml
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
-    fn visit_type_def(&mut self, type_def: &'a vkxml::Typedef) {
-        if type_def.basetype.as_str() == "" {
-            return; // some types are defined with no basetype. These should correspond to extern types which are hard coded into static_code.rs
-            // TODO: maybe some day we can use extern types?
-        }
-        let type_def = definitions::TypeDef::new(&type_def.name, &type_def.basetype);
-        self.definitions.type_defs.push(type_def);
-    }
 
     fn visit_bitmask(&mut self, bitmask: &'a vkxml::Bitmask) {
         let name = utils::VkTyName::new(bitmask.name.as_str());
@@ -494,6 +462,10 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         let ty = val.type_of(&self.constants);
 
         self.constants.push(name, constants::Constant3::new(name, ty, val, None));
+    }
+    fn visit_basetype(&mut self, basetype: crate::vk_parse_visitor::VkBastetype<'a>) {
+        let type_def = definitions::TypeDef::new(basetype.name, basetype.ty);
+        self.definitions.type_defs.push(type_def);
     }
 }
 

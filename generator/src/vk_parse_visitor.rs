@@ -7,6 +7,7 @@ pub trait VisitVkParse<'a> {
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
     fn visit_struct_member(&mut self, member: StructPart<'a>) {}
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>) {}
+    fn visit_basetype(&mut self, basetype: VkBastetype<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -64,6 +65,28 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             }
                                             vk_parse::TypeSpec::None => {}
                                             _ => panic!("error: unhandled TypSpec node"),
+                                        }
+                                    }
+                                    Some("basetype") => {
+                                        use crate::simple_parse::*;
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref code) => {
+                                                let get_basetype = |code| -> Result<VkBastetype, ()> {
+                                                    let input = TokenIter::new(code);
+                                                    let (input, _) = tag("typedef")(input)?;
+                                                    let (input, ty) = token()(input)?;
+                                                    let (input, name) = token()(input)?;
+                                                    let (input, _) = tag(";")(input)?;
+                                                    Ok(VkBastetype {
+                                                        name,
+                                                        ty,
+                                                    })
+                                                };
+
+                                                let basetype = get_basetype(&code.code).expect("error: can't parse basetype in vk_parese");
+                                                visitor.visit_basetype(basetype);
+                                            }
+                                            _ => panic!("unexpected basetype spec"),
                                         }
                                     }
                                     Some(_) | None => {}
@@ -278,8 +301,8 @@ pub struct VkParseEnumConstant<'a> {
 
 #[derive(Clone, Copy)]
 pub struct VkParseExtensionParts<'a> {
-    pub extension_name: &'a str, 
-    pub further_extended: Option<&'a str>, 
+    pub extension_name: &'a str,
+    pub further_extended: Option<&'a str>,
 }
 
 pub struct StructPart<'a> {
@@ -296,4 +319,9 @@ pub struct ExtensionInfo<'a, I> {
     pub name_parts: VkParseExtensionParts<'a>,
     pub required: Option<I>,
     pub kind: &'a str,
+}
+
+pub struct VkBastetype<'a> {
+    pub name: &'a str,
+    pub ty: &'a str,
 }
