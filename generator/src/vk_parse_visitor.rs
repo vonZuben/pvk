@@ -1,3 +1,5 @@
+use crate::ctype;
+
 pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {}
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
@@ -5,7 +7,7 @@ pub trait VisitVkParse<'a> {
     fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>) {}
     fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: ExtensionInfo<'a, I>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
-    fn visit_struct_member(&mut self, member: StructPart<'a>) {}
+    fn visit_struct_def(&mut self, def: StructDef<'a>) {}
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>) {}
     fn visit_basetype(&mut self, basetype: VkBastetype<'a>) {}
     fn visit_bitmask(&mut self, basetype: VkBastetype<'a>) {}
@@ -46,23 +48,10 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 // eprintln!("TCODE: {:?}", ty_code);
                                             }
                                             vk_parse::TypeSpec::Members(ref members) => {
-                                                for member in members {
-                                                    match member {
-                                                        vk_parse::TypeMember::Comment(cmnt) => {
-                                                            visitor.visit_struct_member(StructPart {
-                                                                struct_name: ty.name.as_deref().expect("error: struct with no name"),
-                                                                part: StructPartKind::Comment(cmnt.as_str()),
-                                                            });
-                                                        }
-                                                        vk_parse::TypeMember::Definition(def) => {
-                                                            visitor.visit_struct_member(StructPart {
-                                                                struct_name: ty.name.as_deref().expect("error: struct with no name"),
-                                                                part: StructPartKind::Code(def.code.as_str()),
-                                                            });
-                                                        }
-                                                        _ => panic!("error: unexpected TypeMember node"),
-                                                    }
-                                                }
+                                                visitor.visit_struct_def(StructDef {
+                                                    name: ty.name.as_deref().expect("error: struct with no name"),
+                                                    members: Members { members: members.iter() },
+                                                });
                                             }
                                             vk_parse::TypeSpec::None => {}
                                             _ => panic!("error: unhandled TypSpec node"),
@@ -302,14 +291,38 @@ pub struct VkParseExtensionParts<'a> {
     pub further_extended: Option<&'a str>,
 }
 
-pub struct StructPart<'a> {
-    pub struct_name: &'a str,
-    pub part: StructPartKind<'a>,
+pub struct StructDef<'a> {
+    pub name: &'a str,
+    pub members: Members<'a>,
 }
 
-pub enum StructPartKind<'a> {
-    Code(&'a str),
-    Comment(&'a str),
+pub struct Members<'a> {
+    members: std::slice::Iter<'a, vk_parse::TypeMember>,
+}
+
+impl<'a> Iterator for Members<'a> {
+    type Item = MemberKind<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let member = self.members.next()?;
+
+        use vk_parse::TypeMember;
+        match member {
+            TypeMember::Definition(ref def) => {
+                let field = parse_field(def.code.as_str())
+                    .expect("error: failed to parse struct member code");
+                Some(MemberKind::Member(field))
+            }
+            TypeMember::Comment(ref cmnt) => {
+                Some(MemberKind::Comment(cmnt))
+            }
+            _ => panic!("error: unexpected TypeMember node"),
+        }
+    }
+}
+
+pub enum MemberKind<'a> {
+    Member(ctype::Cfield),
+    Comment(&'a str)
 }
 
 pub struct ExtensionInfo<'a, I> {
@@ -335,4 +348,60 @@ fn parse_basetype<'a>(code: &'a str) -> Result<VkBastetype, ()> {
         name,
         ty,
     })
+}
+
+fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
+    use crate::simple_parse::*;
+
+    let input = crate::simple_parse::TokenIter::new(code);
+
+    let (input, c) = opt(tag("const"))(input)?;
+    let (input, _) = opt(tag("struct"))(input)?;
+    let (input, bt) = token()(input)?;
+    let (input, p) = opt(tag("*"))(input)?;
+
+    let mut ty = ctype::Ctype::new(bt);
+
+    if p.is_some() && c.is_some() {
+        ty.push_pointer(ctype::Pointer::Const);
+    }
+    else if p.is_some() {
+        ty.push_pointer(ctype::Pointer::Mut);
+    }
+
+    let (input, _) = repeat(
+        input,
+        followed(opt(tag("const")), tag("*")),
+        |(c, _)| {
+            if c.is_some() {
+                ty.push_pointer(ctype::Pointer::Const);
+            }
+            else {
+                ty.push_pointer(ctype::Pointer::Mut);
+            }
+        }
+    )?;
+
+    let (input, name) = token()(input)?;
+
+    let (input, bit_width) = opt(followed(tag(":"), token()))(input)?;
+
+    if let Some((_colon, bit_width)) = bit_width {
+        let bit_width: u8 = str::parse(bit_width).expect("error: can't parse bit_width");
+        ty.set_bit_width(bit_width);
+    }
+
+    let (mut input, _) = repeat(
+        input,
+        delimited(tag("["), token(), tag("]")),
+        |(_, size, _)| ty.push_array(size)
+    )?;
+
+    // this is expected to consume all tokens
+    if input.next().is_some() {
+        Err(())
+    }
+    else {
+        Ok(ctype::Cfield::new(name, ty))
+    }
 }

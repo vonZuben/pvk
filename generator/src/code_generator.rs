@@ -427,20 +427,20 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             CommandType::DoNotGenerate => {}
         }
     }
-    fn visit_struct_member(&mut self, part: crate::vk_parse_visitor::StructPart<'a>) {
-        use crate::vk_parse_visitor::StructPartKind;
-        let struct_name = utils::VkTyName::new(part.struct_name);
-        let mut stct = self.definitions.structs.get_mut_or_default(struct_name, definitions::Struct2::new(part.struct_name));
-        match part.part {
-            StructPartKind::Code(code) => {
-                let mut field = parse_field(code)
-                    .expect("error: failed to parse struct member code");
-                field.set_public();
-                stct.push_field(field);
-            }
-            StructPartKind::Comment(comment) => {
-                if comment.contains("non-normative") {
-                    stct.non_normative();
+    fn visit_struct_def(&mut self, def: crate::vk_parse_visitor::StructDef<'a>) {
+        let struct_name = utils::VkTyName::new(def.name);
+        let mut stct = self.definitions.structs.get_mut_or_default(struct_name, definitions::Struct2::new(def.name));
+        for member in def.members {
+            use crate::vk_parse_visitor::MemberKind;
+            match member {
+                MemberKind::Member(mut field) => {
+                    field.set_public();
+                    stct.push_field(field);
+                }
+                MemberKind::Comment(comment) => {
+                    if comment.contains("non-normative") {
+                        stct.non_normative();
+                    }
                 }
             }
         }
@@ -462,61 +462,5 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags));
         let bitmask = definitions::Bitmask::new(name, basetype.ty);
         self.definitions.bitmasks.push(bitmask);
-    }
-}
-
-fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
-    use crate::simple_parse::*;
-
-    let input = crate::simple_parse::TokenIter::new(code);
-
-    let (input, c) = opt(tag("const"))(input)?;
-    let (input, _) = opt(tag("struct"))(input)?;
-    let (input, bt) = token()(input)?;
-    let (input, p) = opt(tag("*"))(input)?;
-
-    let mut ty = ctype::Ctype::new(bt);
-
-    if p.is_some() && c.is_some() {
-        ty.push_pointer(ctype::Pointer::Const);
-    }
-    else if p.is_some() {
-        ty.push_pointer(ctype::Pointer::Mut);
-    }
-
-    let (input, _) = repeat(
-        input,
-        followed(opt(tag("const")), tag("*")),
-        |(c, _)| {
-            if c.is_some() {
-                ty.push_pointer(ctype::Pointer::Const);
-            }
-            else {
-                ty.push_pointer(ctype::Pointer::Mut);
-            }
-        }
-    )?;
-
-    let (input, name) = token()(input)?;
-
-    let (input, bit_width) = opt(followed(tag(":"), token()))(input)?;
-
-    if let Some((_colon, bit_width)) = bit_width {
-        let bit_width: u8 = str::parse(bit_width).expect("error: can't parse bit_width");
-        ty.set_bit_width(bit_width);
-    }
-
-    let (mut input, _) = repeat(
-        input,
-        delimited(tag("["), token(), tag("]")),
-        |(_, size, _)| ty.push_array(size)
-    )?;
-
-    // this is expected to consume all tokens
-    if input.next().is_some() {
-        Err(())
-    }
-    else {
-        Ok(ctype::Cfield::new(name, ty))
     }
 }
