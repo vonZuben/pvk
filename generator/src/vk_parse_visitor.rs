@@ -12,6 +12,7 @@ pub trait VisitVkParse<'a> {
     fn visit_basetype(&mut self, basetype: VkBastetype<'a>) {}
     fn visit_bitmask(&mut self, basetype: VkBastetype<'a>) {}
     fn visit_union(&mut self, def: UnionDef<'a>) {}
+    fn visit_handle(&mut self, def: HandleDef<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -54,7 +55,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 });
                                             }
                                             vk_parse::TypeSpec::None => {}
-                                            _ => panic!("error: unhandled TypSpec node"),
+                                            _ => panic!("error: unhandled struct TypSpec node"),
                                         }
                                     }
                                     Some("basetype") => {
@@ -87,7 +88,17 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 });
                                             }
                                             vk_parse::TypeSpec::None => {}
-                                            _ => panic!("error: unhandled TypSpec node"),
+                                            _ => panic!("error: unhandled union TypSpec node"),
+                                        }
+                                    }
+                                    Some("handle") => {
+                                        print!("");
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref ty_code) => {
+                                                let handle_def = parse_handle(&ty_code.code).expect("error: can't parse handle");
+                                                visitor.visit_handle(handle_def);
+                                            }
+                                            _ => panic!("error: unhandled handle TypSpec node"),
                                         }
                                     }
                                     Some(_) | None => {}
@@ -356,6 +367,16 @@ pub struct VkBastetype<'a> {
     pub ty: &'a str,
 }
 
+pub struct HandleDef<'a> {
+    pub name: &'a str,
+    pub kind: HandleKind,
+}
+
+pub enum HandleKind {
+    Dispatchable,
+    NonDispatchable,
+}
+
 fn parse_basetype<'a>(code: &'a str) -> Result<VkBastetype, ()> {
     use crate::simple_parse::*;
 
@@ -423,5 +444,29 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
     }
     else {
         Ok(ctype::Cfield::new(name, ty))
+    }
+}
+
+fn parse_handle<'a>(code: &'a str) -> Result<HandleDef<'a>, ()> {
+    use crate::simple_parse::*;
+
+    let input = crate::simple_parse::TokenIter::new(code);
+
+    let (_input, (kind, (_, name, _))) = followed(token(), delimited(tag("("), token(), tag(")")))(input)?;
+
+    match kind {
+        "VK_DEFINE_HANDLE" => {
+            Ok(HandleDef {
+                name,
+                kind: HandleKind::Dispatchable,
+            })
+        }
+        "VK_DEFINE_NON_DISPATCHABLE_HANDLE" => {
+            Ok(HandleDef {
+                name,
+                kind: HandleKind::NonDispatchable,
+            })
+        }
+        _ => panic!("error: unknown handle kind"),
     }
 }

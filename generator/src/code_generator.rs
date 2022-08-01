@@ -115,15 +115,6 @@ impl<'a> Generator<'a> {
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
 
-    fn visit_handle(&mut self, handle: &'a vkxml::Handle) {
-        let dispatch = match handle.ty {
-            vkxml::HandleType::Dispatch => true,
-            vkxml::HandleType::NoDispatch => false,
-        };
-        let handle = definitions::Handle2::new(&handle.name, dispatch);
-        self.definitions.handles.push(handle);
-    }
-
     fn visit_enum_def(&mut self, enum_def: &'a vkxml::EnumerationDeclaration) {
         // let enum_def = definitions::Enum2::new(&enum_def.name);
         // self.definitions.enumerations.push(enum_def);
@@ -468,5 +459,13 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags));
         let bitmask = definitions::Bitmask::new(name, basetype.ty);
         self.definitions.bitmasks.push(bitmask);
+    }
+    fn visit_handle(&mut self, def: crate::vk_parse_visitor::HandleDef<'a>) {
+        let dispatch = match def.kind{
+            crate::vk_parse_visitor::HandleKind::Dispatchable => true,
+            crate::vk_parse_visitor::HandleKind::NonDispatchable => false,
+        };
+        let handle = definitions::Handle2::new(def.name, dispatch);
+        self.definitions.handles.push(handle);
     }
 }
