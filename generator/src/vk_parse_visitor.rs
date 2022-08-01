@@ -11,6 +11,7 @@ pub trait VisitVkParse<'a> {
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>) {}
     fn visit_basetype(&mut self, basetype: VkBastetype<'a>) {}
     fn visit_bitmask(&mut self, basetype: VkBastetype<'a>) {}
+    fn visit_union(&mut self, def: UnionDef<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -42,7 +43,6 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         visitor.visit_enum(ty);
                                     }
                                     Some("struct") => {
-                                        // print!("");
                                         match ty.spec {
                                             vk_parse::TypeSpec::Code(ref ty_code) => {
                                                 // eprintln!("TCODE: {:?}", ty_code);
@@ -73,6 +73,21 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 visitor.visit_bitmask(basetype);
                                             }
                                             _ => panic!("unexpected bitmask spec"),
+                                        }
+                                    }
+                                    Some("union") => {
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref ty_code) => {
+                                                // eprintln!("TCODE: {:?}", ty_code);
+                                            }
+                                            vk_parse::TypeSpec::Members(ref members) => {
+                                                visitor.visit_union(UnionDef {
+                                                    name: ty.name.as_deref().expect("error: union with no name"),
+                                                    members: Members { members: members.iter() },
+                                                });
+                                            }
+                                            vk_parse::TypeSpec::None => {}
+                                            _ => panic!("error: unhandled TypSpec node"),
                                         }
                                     }
                                     Some(_) | None => {}
@@ -292,6 +307,11 @@ pub struct VkParseExtensionParts<'a> {
 }
 
 pub struct StructDef<'a> {
+    pub name: &'a str,
+    pub members: Members<'a>,
+}
+
+pub struct UnionDef<'a> {
     pub name: &'a str,
     pub members: Members<'a>,
 }

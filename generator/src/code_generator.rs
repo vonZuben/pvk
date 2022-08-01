@@ -115,16 +115,6 @@ impl<'a> Generator<'a> {
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
 
-    fn visit_union(&mut self, union_def: &'a vkxml::Union) {
-        let mut uni = definitions::Union::new(&union_def.name);
-        let fields = union_def
-            .elements
-            .iter()
-            .map(|field| make_cfield(field, FieldPurpose::StructField));
-        uni.extend_fields(fields);
-        self.definitions.unions.push(uni);
-    }
-
     fn visit_handle(&mut self, handle: &'a vkxml::Handle) {
         let dispatch = match handle.ty {
             vkxml::HandleType::Dispatch => true,
@@ -444,6 +434,22 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
                 }
             }
         }
+    }
+    fn visit_union(&mut self, def: crate::vk_parse_visitor::UnionDef<'a>) {
+        let mut uni = definitions::Union::new(def.name);
+        let fields = def
+            .members
+            .filter_map(|member| match member {
+                crate::vk_parse_visitor::MemberKind::Comment(_) => {
+                    None
+                }
+                crate::vk_parse_visitor::MemberKind::Member(mut member) => {
+                    member.set_public();
+                    Some(member)
+                }
+            });
+        uni.extend_fields(fields);
+        self.definitions.unions.push(uni);
     }
     fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let name = utils::VkTyName::new(spec.enm.name.as_str());
