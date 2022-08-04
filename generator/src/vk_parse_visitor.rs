@@ -13,6 +13,7 @@ pub trait VisitVkParse<'a> {
     fn visit_bitmask(&mut self, basetype: VkBastetype<'a>) {}
     fn visit_union(&mut self, def: UnionDef<'a>) {}
     fn visit_handle(&mut self, def: HandleDef<'a>) {}
+    fn visit_fptr(&mut self, def: FptrDef<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -92,11 +93,19 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         }
                                     }
                                     Some("handle") => {
-                                        print!("");
                                         match ty.spec {
                                             vk_parse::TypeSpec::Code(ref ty_code) => {
                                                 let handle_def = parse_handle(&ty_code.code).expect("error: can't parse handle");
                                                 visitor.visit_handle(handle_def);
+                                            }
+                                            _ => panic!("error: unhandled handle TypSpec node"),
+                                        }
+                                    }
+                                    Some("funcpointer") => {
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref ty_code) => {
+                                                let fptr_def = parse_fptr(&ty_code.code).expect("error: can't parse fptr");
+                                                visitor.visit_fptr(fptr_def);
                                             }
                                             _ => panic!("error: unhandled handle TypSpec node"),
                                         }
@@ -377,6 +386,83 @@ pub enum HandleKind {
     NonDispatchable,
 }
 
+pub struct FptrDef<'a> {
+    pub name: &'a str,
+    pub params: Parameters<'a>,
+    pub return_type: ctype::Ctype,
+}
+
+pub struct Parameters<'a> {
+    members: crate::simple_parse::TokenIter<'a>,
+}
+
+impl<'a> Iterator for Parameters<'a> {
+    type Item = ctype::Cfield;
+    fn next(&mut self) -> Option<Self::Item> {
+        use crate::simple_parse::*;
+
+        let (input, end1) = opt(followed(tag(")"), tag(";")))(self.members.clone())
+            .expect("opt can't fail");
+
+        let (input, end2) = opt(followed(tag("void"), tag(")")))(self.members.clone())
+            .expect("opt can't fail");
+
+        if end1.is_some() || end2.is_some() {
+            self.members = input;
+            return None;
+        }
+        else {
+            let parse_cfield = || -> Result<(crate::simple_parse::TokenIter, ctype::Cfield), ()> {
+                let (input, c) = opt(tag("const"))(input)?;
+                let (input, _) = opt(tag("struct"))(input)?;
+                let (input, bt) = token()(input)?;
+                let (input, p) = opt(tag("*"))(input)?;
+
+                let mut ty = ctype::Ctype::new(bt);
+
+                if p.is_some() && c.is_some() {
+                    ty.push_pointer(ctype::Pointer::Const);
+                }
+                else if p.is_some() {
+                    ty.push_pointer(ctype::Pointer::Mut);
+                }
+
+                let (input, _) = repeat(
+                    input,
+                    followed(opt(tag("const")), tag("*")),
+                    |(c, _)| {
+                        if c.is_some() {
+                            ty.push_pointer(ctype::Pointer::Const);
+                        }
+                        else {
+                            ty.push_pointer(ctype::Pointer::Mut);
+                        }
+                    }
+                )?;
+
+                let (input, name) = token()(input)?;
+
+                let (mut input, _) = repeat(
+                    input,
+                    delimited(tag("["), token(), tag("]")),
+                    // |(_, size, _)| ty.push_array(size)
+                    |_| panic!("need proper handle array in fptr params")
+                )?;
+
+                let (input, _) = opt(tag(","))(input)?;
+
+                Ok((input, ctype::Cfield::new(name, ty)))
+            };
+
+            let (input, param) = parse_cfield().expect(format!("error: can parse param from: {}", self.members.s).as_str());
+
+            self.members = input;
+
+            Some(param)
+        }
+    }
+}
+
 fn parse_basetype<'a>(code: &'a str) -> Result<VkBastetype, ()> {
     use crate::simple_parse::*;
 
@@ -469,4 +555,38 @@ fn parse_handle<'a>(code: &'a str) -> Result<HandleDef<'a>, ()> {
         }
         _ => panic!("error: unknown handle kind"),
     }
+}
+
+fn parse_fptr<'a>(code: &'a str) -> Result<FptrDef<'a>, ()> {
+    use crate::simple_parse::*;
+
+    let input = crate::simple_parse::TokenIter::new(code);
+
+    let (input, _) = tag("typedef")(input)?;
+
+    let (input, return_base_type) = token()(input)?;
+    let (input, ptr) = opt(tag("*"))(input)?;
+
+    let (input, _) = followed(tag("("), followed(tag("VKAPI_PTR"), tag("*")))(input)?;
+
+    let (input, fptr_name) = token()(input)?;
+
+    let (input, _) = followed(tag(")"), tag("("))(input)?;
+
+    let mut return_type = if return_base_type == "void" && ptr.is_none() {
+        ctype::Ctype::new("()")
+    }
+    else {
+        ctype::Ctype::new(return_base_type)
+    };
+
+    if ptr.is_some() {
+        return_type.push_pointer(ctype::Pointer::Mut);
+    }
+
+    Ok(FptrDef {
+        name: fptr_name,
+        params: Parameters { members: input },
+        return_type,
+    })
 }

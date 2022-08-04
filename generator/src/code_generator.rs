@@ -115,26 +115,6 @@ impl<'a> Generator<'a> {
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
 
-    fn visit_enum_def(&mut self, enum_def: &'a vkxml::EnumerationDeclaration) {
-        // let enum_def = definitions::Enum2::new(&enum_def.name);
-        // self.definitions.enumerations.push(enum_def);
-    }
-
-    fn visit_function_pointer(&mut self, function_pointer: &'a vkxml::FunctionPointer) {
-        let mut fptr = definitions::FunctionPointer::new(&function_pointer.name);
-        let fields = function_pointer
-            .param
-            .iter()
-            .map(|field| make_cfield(field, FieldPurpose::FunctionParam));
-        fptr.extend_fields(fields);
-        fptr.set_return_type(make_return_ctype(&function_pointer.return_type));
-        self.definitions.function_pointers.push(fptr);
-    }
-
-    fn visit_constant(&mut self, constant: &'a vkxml::Constant) {}
-
-    fn visit_enum_variants(&mut self, enumeration: &'a vkxml::Enumeration) {}
-
     fn visit_command(&mut self, command: &'a vkxml::Command) {
         // // get CommandType metadata for feature and extension code generation
         // self.command_types
@@ -467,5 +447,11 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         };
         let handle = definitions::Handle2::new(def.name, dispatch);
         self.definitions.handles.push(handle);
+    }
+    fn visit_fptr(&mut self, def: crate::vk_parse_visitor::FptrDef<'a>) {
+        let mut fptr = definitions::FunctionPointer::new(def.name);
+        fptr.extend_fields(def.params);
+        fptr.set_return_type(def.return_type);
+        self.definitions.function_pointers.push(fptr);
     }
 }
