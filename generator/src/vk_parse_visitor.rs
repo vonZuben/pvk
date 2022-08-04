@@ -454,7 +454,7 @@ impl<'a> Iterator for Parameters<'a> {
                 Ok((input, ctype::Cfield::new(name, ty)))
             };
 
-            let (input, param) = parse_cfield().expect(format!("error: can parse param from: {}", self.members.s).as_str());
+            let (input, param) = parse_cfield().expect(format!("error: can parse param from: {}", self.members.inner_str()).as_str());
 
             self.members = input;
 
