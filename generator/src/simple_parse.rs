@@ -1,6 +1,6 @@
 #[derive(Clone)]
 pub struct TokenIter<'a> {
-    pub s: &'a str,
+    s: &'a str,
 }
 
 impl<'a> TokenIter<'a> {
@@ -8,6 +8,9 @@ impl<'a> TokenIter<'a> {
         Self {
             s,
         }
+    }
+    pub fn inner_str(&self) -> &str {
+        &self.s
     }
 }
 
