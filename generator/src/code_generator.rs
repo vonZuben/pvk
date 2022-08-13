@@ -115,22 +115,6 @@ impl<'a> Generator<'a> {
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
 
-    fn visit_command(&mut self, command: &'a vkxml::Command) {
-        // // get CommandType metadata for feature and extension code generation
-        // self.command_types
-        //     .insert(&command.name, command_type(command));
-
-        // generate command function_pointers
-        let mut function_pointer = definitions::FunctionPointer::new(&command.name);
-        let fields = command
-            .param
-            .iter()
-            .map(|field| make_cfield(field, FieldPurpose::FunctionParam));
-        function_pointer.extend_fields(fields);
-        function_pointer.set_return_type(make_return_ctype(&command.return_type));
-        self.commands.push(&command.name, function_pointer);
-    }
-
     fn visit_feature(&mut self, feature: &'a vkxml::Feature) {
         // collect feature/version names
         self.vulkan_version_names.push_version(&feature.name);
@@ -306,11 +290,20 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         let enum_def = definitions::Enum2::new(enum_name);
         self.definitions.enumerations.push(enum_def);
     }
-    fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {
+    fn visit_command(&mut self, def_wrapper: crate::vk_parse_visitor::CommandDefWrapper<'a>) {
         // get CommandType metadata for feature and extension code generation
-        let name = utils::VkTyName::new(command.proto.name.as_str());
+        let name = utils::VkTyName::new(def_wrapper.def.name);
         self.command_types
-            .insert(name, command_type(command));
+            .insert(name, command_type(&def_wrapper.raw));
+
+        // generate actual command
+        let def = def_wrapper.def;
+        let command_name = utils::VkTyName::new(def.name);
+        let mut function_pointer = definitions::FunctionPointer::new(command_name);
+        let fields = def.params;
+        function_pointer.extend_fields(fields);
+        function_pointer.set_return_type(def.return_type);
+        self.commands.push(command_name, function_pointer);
     }
     fn visit_ex_enum(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let number = spec.number;

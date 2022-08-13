@@ -3,7 +3,7 @@ use crate::ctype;
 pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {}
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
-    fn visit_command(&mut self, command: &'a vk_parse::CommandDefinition) {}
+    fn visit_command(&mut self, def_wrapper: CommandDefWrapper<'a>) {}
     fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>) {}
     fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: ExtensionInfo<'a, I>) {}
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
@@ -165,7 +165,15 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                     match command {
                         Alias { name, alias } => visitor.visit_alias(name, alias),
                         Definition(cmd_def) => {
-                            visitor.visit_command(cmd_def);
+                            let def = match parse_command(&cmd_def.code) {
+                                Ok(def) => def,
+                                Err(_) => panic!("error: can't parse command"),
+                            };
+                            let def_wrapper = CommandDefWrapper {
+                                def,
+                                raw: cmd_def,
+                            };
+                            visitor.visit_command(def_wrapper);
                         }
                         _ => panic!("unexpected Command node"),
                     }
@@ -392,6 +400,17 @@ pub struct FptrDef<'a> {
     pub return_type: ctype::Ctype,
 }
 
+pub struct CommandDef<'a> {
+    pub name: &'a str,
+    pub params: Parameters<'a>,
+    pub return_type: ctype::Ctype,
+}
+
+pub struct CommandDefWrapper<'a> {
+    pub def: CommandDef<'a>,
+    pub raw: &'a vk_parse::CommandDefinition,
+}
+
 pub struct Parameters<'a> {
     members: crate::simple_parse::TokenIter<'a>,
 }
@@ -445,8 +464,12 @@ impl<'a> Iterator for Parameters<'a> {
                 let (mut input, _) = repeat(
                     input,
                     delimited(tag("["), token(), tag("]")),
-                    // |(_, size, _)| ty.push_array(size)
-                    |_| panic!("need proper handle array in fptr params")
+                    |(_, _size, _)| if c.is_some() {
+                        ty.push_pointer(ctype::Pointer::Const);
+                    }
+                    else {
+                        ty.push_pointer(ctype::Pointer::Mut);
+                    }
                 )?;
 
                 let (input, _) = opt(tag(","))(input)?;
@@ -586,6 +609,54 @@ fn parse_fptr<'a>(code: &'a str) -> Result<FptrDef<'a>, ()> {
 
     Ok(FptrDef {
         name: fptr_name,
+        params: Parameters { members: input },
+        return_type,
+    })
+}
+
+fn parse_command<'a>(code: &'a str) -> Result<CommandDef<'a>, ()> {
+    use crate::simple_parse::*;
+
+    let input = crate::simple_parse::TokenIter::new(code);
+
+    let (input, c) = opt(tag("const"))(input)?;
+    let (input, _) = opt(tag("struct"))(input)?;
+    let (input, bt) = token()(input)?;
+    let (input, p) = opt(tag("*"))(input)?;
+
+    let mut return_type = if bt == "void" && p.is_none() {
+        ctype::Ctype::new("()")
+    }
+    else {
+        ctype::Ctype::new(bt)
+    };
+
+    if p.is_some() && c.is_some() {
+        return_type.push_pointer(ctype::Pointer::Const);
+    }
+    else if p.is_some() {
+        return_type.push_pointer(ctype::Pointer::Mut);
+    }
+
+    let (input, _) = repeat(
+        input,
+        followed(opt(tag("const")), tag("*")),
+        |(c, _)| {
+            if c.is_some() {
+                return_type.push_pointer(ctype::Pointer::Const);
+            }
+            else {
+                return_type.push_pointer(ctype::Pointer::Mut);
+            }
+        }
+    )?;
+
+    let (input, name) = token()(input)?;
+
+    let (input, _) = tag("(")(input)?;
+
+    Ok(CommandDef {
+        name,
         params: Parameters { members: input },
         return_type,
     })

@@ -50,7 +50,10 @@ impl<K, V> Default for VecMap<K, V> {
 
 impl<K: Eq + Hash, V> VecMap<K, V> {
     pub fn push(&mut self, key: K, val: V) {
-        assert!(self.map.insert(key, self.vec.len()).is_none());
+        match self.map.insert(key, self.vec.len()) {
+            Some(_) => panic!("error: trying to put duplicate item in vecmap"),
+            None => {} // good
+        }
         self.vec.push(val);
     }
     pub fn extend(&mut self, items: impl IntoIterator<Item=(K, V)>) {
