@@ -50,8 +50,8 @@ pub struct Generator<'a> {
     constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
     enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2,
-    vulkan_version_names: features::VulkanVersionNames<'a>,
-    feature_commands: Vec<features::FeatureCommands>,
+    vulkan_version_names: features::VulkanVersionNames,
+    feature_commands_collection: features::FeatureCommandsCollection,
     vulkan_extension_names: extensions::VulkanExtensionNames,
     extension_infos: VecMap<extensions::ExtensionName, extensions::ExtensionInfo>,
     aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
@@ -85,7 +85,7 @@ impl<'a> Generator<'a> {
         let enum_variants = self.enum_variants.iter();
         let commands = &self.commands;
         let vulkan_version_names = &self.vulkan_version_names;
-        let feature_commands = &self.feature_commands;
+        let feature_commands_collection = &self.feature_commands_collection;
         let vulkan_extension_names = &self.vulkan_extension_names;
         let extension_commands = self.extension_infos.iter();
         let aliases = self.aliases.iter();
@@ -102,7 +102,7 @@ impl<'a> Generator<'a> {
             {@commands}
             {@* {@aliases}}
             {@vulkan_version_names}
-            {@* {@feature_commands}}
+            {@feature_commands_collection}
             {@vulkan_extension_names}
             {@* {@extension_commands}}
             {@cmd_aliases}
@@ -114,19 +114,6 @@ impl<'a> Generator<'a> {
 // vkxml
 // =================================================================
 impl<'a> VisitVkxml<'a> for Generator<'a> {
-
-    fn visit_feature(&mut self, feature: &'a vkxml::Feature) {
-        // collect feature/version names
-        self.vulkan_version_names.push_version(&feature.name);
-
-        // collect commands per feature/version
-        let mut fc = match self.feature_commands.last() {
-            Some(previous_feature) => previous_feature.as_new_version(&feature.name),
-            None => features::FeatureCommands::new(&feature.name),
-        };
-        self.feature_commands.push(fc);
-        vkxml_visitor::visit_feature(feature, self);
-    }
 
     fn visit_extension(&mut self, extension: &'a vkxml::Extension) {
         // TODO - this code should be removed soon
@@ -141,38 +128,6 @@ impl<'a> VisitVkxml<'a> for Generator<'a> {
         self.extension_infos.contains_or_default(ex_name, extensions::ExtensionInfo::new(ex_name, kind));
 
         vkxml_visitor::visit_extension(extension, self);
-    }
-}
-
-// when visiting a Feature, the generator will modify the last FeatureCommands added
-// thus, you must add the FeatureCommands you want to modify as the last one
-impl<'a> VisitFeature<'a> for Generator<'a> {
-    fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
-        let cmd_name = utils::VkTyName::new(command_ref.name.as_str());
-        let fc = self
-            .feature_commands
-            .last_mut()
-            .expect("error: no feature_command created");
-        match self
-            .command_types
-            .get(&cmd_name)
-            .expect("error: feature identifies unknown command")
-        {
-            CommandType::Instance => fc.push_instance_command(cmd_name),
-            CommandType::Device => fc.push_device_command(cmd_name),
-            CommandType::Entry => fc.push_entry_command(cmd_name),
-            CommandType::Static => {}
-            CommandType::DoNotGenerate => {}
-        }
-    }
-
-    fn visit_remove_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
-        let cmd_name = command_ref.name.as_str();
-        let fc = self
-            .feature_commands
-            .last_mut()
-            .expect("error: no feature_command created");
-        fc.remove_command(cmd_name);
     }
 }
 
@@ -446,5 +401,26 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         fptr.extend_fields(def.params);
         fptr.set_return_type(def.return_type);
         self.definitions.function_pointers.push(fptr);
+    }
+    fn visit_feature_name(&mut self, name: utils::VkTyName) {
+        self.vulkan_version_names.push_version_once(name);
+    }
+    fn visit_require_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
+        let cmd_name = utils::VkTyName::new(def.name);
+        let fcc = &mut self.feature_commands_collection;
+        match self
+            .command_types
+            .get(&cmd_name)
+            .expect("error: feature identifies unknown command")
+        {
+            CommandType::Instance => fcc.modify_with(def.version, |fc| fc.push_instance_command(cmd_name)),
+            CommandType::Device => fcc.modify_with(def.version, |fc| fc.push_device_command(cmd_name)),
+            CommandType::Entry => fcc.modify_with(def.version, |fc| fc.push_entry_command(cmd_name)),
+            CommandType::Static => {}
+            CommandType::DoNotGenerate => {}
+        }
+    }
+    fn visit_remove_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
+        self.feature_commands_collection.modify_with(def.version, |fc| fc.remove_command(def.name));
     }
 }

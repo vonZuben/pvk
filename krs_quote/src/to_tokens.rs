@@ -101,6 +101,7 @@ impl_to_tokens_for_numbers!{
     i64, u64,
     i128, u128,
     f32, f64,
+    usize, isize,
 }
 
 #[doc(hidden)]

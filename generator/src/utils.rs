@@ -79,12 +79,51 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
                 self.vec.last_mut().unwrap() // unwrap since we know we just pushed a value
             }
         }
+    }pub fn get_mut_or_default_with(&mut self, key: K, default: impl FnOnce() -> V) -> &mut V {
+        match self.map.get(&key) {
+            Some(index) => {
+                unsafe { self.vec.get_unchecked_mut(*index) }
+            }
+            None => {
+                self.push(key, default());
+                self.vec.last_mut().unwrap() // unwrap since we know we just pushed a value
+            }
+        }
     }
     pub fn contains_or_default(&mut self, key: K, default: V) {
         let _ = self.get_mut_or_default(key, default);
     }
     pub fn iter<'a>(&'a self) -> impl Iterator<Item=&'a V> + Clone {
         self.vec.iter()
+    }
+    pub fn last(&self) -> Option<&V> {
+        self.vec.last()
+    }
+    pub fn last_mut(&mut self) -> Option<&mut V> {
+        self.vec.last_mut()
+    }
+    pub fn entry<'a>(&'a mut self, key: K) -> VecMapEntry<'a, K, V> {
+        match self.map.get(&key) {
+            Some(index) => VecMapEntry::Occupied(self, *index),
+            None => VecMapEntry::Empty(self, key),
+        }
+    }
+}
+
+pub enum VecMapEntry<'a, K, V> {
+    Occupied(&'a mut VecMap<K, V>, usize),
+    Empty(&'a mut VecMap<K, V>, K),
+}
+
+impl<'a, K: Eq + Hash, V> VecMapEntry<'a, K, V> {
+    pub fn or_insert_with(self, f: impl FnOnce() -> V) -> &'a mut V {
+        match self {
+            VecMapEntry::Occupied(vm, index) => unsafe { vm.vec.get_unchecked_mut(index) },
+            VecMapEntry::Empty(vm, key) => {
+                vm.push(key, f());
+                vm.last_mut().unwrap()
+            }
+        }
     }
 }
 

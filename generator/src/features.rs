@@ -7,6 +7,45 @@ use vkxml::*;
 use crate::utils::*;
 use crate::commands::*;
 
+// Feature Collection is for keeping track of different feature Versions
+// Since the Vulkan spec defines each Feature as additions/deletions (requires/remove)
+// on the previous version, then it is necessary to keep track of all feature versions
+// previous to a specific version
+
+#[derive(Default)]
+pub struct FeatureCommandsCollection {
+    feature_commands: VecMap<VkTyName, FeatureCommands>,
+}
+
+impl FeatureCommandsCollection {
+    // needs to be called in order of versions
+    // will automatically make a new FeatureCommands collection based on the previous version
+    // when a new version is passed
+    pub fn modify_with(&mut self, version: impl Into<VkTyName>, f: impl FnOnce(&mut FeatureCommands)) {
+        let version = version.into();
+        match self.feature_commands.get_mut(version) {
+            Some(fc) => f(fc),
+            None => {
+                let mut fc = match self.feature_commands.last() {
+                    Some(previous_feature) => previous_feature.as_new_version(version),
+                    None => FeatureCommands::new(version),
+                };
+                f(&mut fc);
+                self.feature_commands.push(version, fc);
+            }
+        }
+    }
+}
+
+impl krs_quote::ToTokens for FeatureCommandsCollection {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let fc = self.feature_commands.iter();
+        my_quote_with!(tokens {
+            {@* {@fc}}
+        })
+    }
+}
+
 // =================================================================
 #[derive(Copy, Clone)]
 enum RequireRemove {
@@ -137,22 +176,21 @@ impl krs_quote::ToTokens for FeatureCommands {
 // =================================================================
 /// list of all existing Vulkan versions
 #[derive(Default)]
-pub struct VulkanVersionNames<'a> {
-    versions: Vec<&'a str>,
+pub struct VulkanVersionNames {
+    versions: VecMap<VkTyName, VkTyName>,
 }
 
-impl<'a> VulkanVersionNames<'a> {
-    pub fn push_version(&mut self, version: &'a str) {
-        self.versions.push(version);
+impl VulkanVersionNames {
+    pub fn push_version_once(&mut self, version: VkTyName) {
+        self.versions.contains_or_default(version, version);
     }
 }
 
-impl krs_quote::ToTokens for VulkanVersionNames<'_> {
+impl krs_quote::ToTokens for VulkanVersionNames {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let versions = self.versions.iter()
-            .map(StrAsCode::as_code);
+        let versions = self.versions.iter();
         let version_tuple = self.versions.iter()
-            .map(|v| parse_version(v).as_code());
+            .map(|v| parse_version(v));
         my_quote_with!( tokens {
             macro_rules! use_all_vulkan_version_names {
                 ( $call:ident $($pass:tt)* ) => {
@@ -163,7 +201,7 @@ impl krs_quote::ToTokens for VulkanVersionNames<'_> {
     }
 }
 
-fn parse_version(ver: &str) -> String {
+fn parse_version(ver: &str) -> FeatureVersion {
 
     let mut tokens = ver.split('_');
 
@@ -175,6 +213,23 @@ fn parse_version(ver: &str) -> String {
 
     // Note: I am assuming that the major and minor that are parsed are integers
 
-    format!("({}, {}, {})", major, minor, 0)
+    FeatureVersion {
+        major: major.parse().expect("error: major not number"),
+        minor: minor.parse().expect("error: minor not number")
+    }
 
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct FeatureVersion {
+    major: usize,
+    minor: usize,
+}
+
+impl krs_quote::ToTokens for FeatureVersion {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let major = self.major;
+        let minor = self.minor;
+        my_quote_with!(tokens { ({@major}, {@minor}, 0) });
+    }
 }

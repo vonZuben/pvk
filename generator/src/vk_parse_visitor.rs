@@ -14,6 +14,9 @@ pub trait VisitVkParse<'a> {
     fn visit_union(&mut self, def: UnionDef<'a>) {}
     fn visit_handle(&mut self, def: HandleDef<'a>) {}
     fn visit_fptr(&mut self, def: FptrDef<'a>) {}
+    fn visit_feature_name(&mut self, name: crate::utils::VkTyName) {}
+    fn visit_require_command(&mut self, def: CommandRef<'a>) {}
+    fn visit_remove_command(&mut self, def: CommandRef<'a>) {}
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -182,6 +185,8 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
             Feature(feature) => {
                 for feature_child in feature.children.iter() {
                     use vk_parse::ExtensionChild::*;
+                    let feature_name = feature.name.as_str().into();
+                    visitor.visit_feature_name(feature_name);
                     match feature_child {
                         Require {
                             api,
@@ -207,7 +212,9 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             });
                                         }
                                     }
-                                    Command { name, comment } => {}
+                                    Command { name: cmd_name, comment } => {
+                                        visitor.visit_require_command(CommandRef { name: &cmd_name, version: feature_name });
+                                    }
                                     _ => panic!("unexpected InterfaceItem node"),
                                 }
                             }
@@ -217,7 +224,20 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                             profile,
                             comment,
                             items,
-                        } => {}
+                        } => {
+                            for item in items.iter() {
+                                use vk_parse::InterfaceItem::*;
+                                match item {
+                                    Comment(_) => {}
+                                    Type { name, comment } => {}
+                                    Enum(enm) => {}
+                                    Command { name: cmd_name, comment } => {
+                                        visitor.visit_remove_command(CommandRef { name: &cmd_name, version: feature_name });
+                                    }
+                                    _ => panic!("unexpected InterfaceItem node"),
+                                }
+                            }
+                        }
                         _ => panic!("unexpected Feature node"),
                     }
                 }
@@ -398,6 +418,11 @@ pub struct FptrDef<'a> {
     pub name: &'a str,
     pub params: Parameters<'a>,
     pub return_type: ctype::Ctype,
+}
+
+pub struct CommandRef<'a> {
+    pub name: &'a str,
+    pub version: crate::utils::VkTyName,
 }
 
 pub struct CommandDef<'a> {
