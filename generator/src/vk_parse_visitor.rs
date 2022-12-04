@@ -290,6 +290,14 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                     is_alias: enm.spec.is_alias(),
                                                 });
                                             }
+                                            else if enm.spec.is_some() {
+                                                visitor.visit_constant(VkParseEnumConstant {
+                                                    number: extension.number,
+                                                    enm,
+                                                    target: extends,
+                                                    is_alias: enm.spec.is_alias(),
+                                                })
+                                            }
                                         }
                                         Command { name, comment } => {
                                             visitor.visit_ex_cmd_ref(name, &parts);
@@ -317,11 +325,15 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
 }
 
 trait EnumSpecEx {
+    fn is_some(&self) -> bool;
     fn is_alias(&self) -> bool;
     fn extends(&self) -> Option<&str>;
 }
 
 impl EnumSpecEx for vk_parse::EnumSpec {
+    fn is_some(&self) -> bool {
+        ! matches!(self, Self::None)
+    }
     fn is_alias(&self) -> bool {
         matches!(self, Self::Alias { .. })
     }

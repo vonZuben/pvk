@@ -113,40 +113,7 @@ impl<'a> Generator<'a> {
 // =================================================================
 // vkxml
 // =================================================================
-impl<'a> VisitVkxml<'a> for Generator<'a> {
-
-    fn visit_extension(&mut self, extension: &'a vkxml::Extension) {
-        // TODO - this code should be removed soon
-        // ensure all extensions get a macro generated even if no commands are included, since it will be expected when crating user extension lists
-        let ex_name = extensions::ExtensionName::new(&extension.name, None);
-
-        let kind = match extension.ty.as_ref().expect("error: expected extension type") {
-            vkxml::ExtensionType::Instance => extensions::ExtensionKind::Instance,
-            vkxml::ExtensionType::Device => extensions::ExtensionKind::Device,
-        };
-
-        self.extension_infos.contains_or_default(ex_name, extensions::ExtensionInfo::new(ex_name, kind));
-
-        vkxml_visitor::visit_extension(extension, self);
-    }
-}
-
-impl<'a> VisitExtension<'a> for Generator<'a> {
-    fn visit_require_command_ref(&mut self, command_ref: &'a vkxml::NamedIdentifier) {
-    }
-
-    fn visit_require_constant(&mut self, constant: &'a vkxml::ExtensionConstant) {
-        let name = utils::VkTyName::new(constant.name.as_str());
-        let val = constants::ConstValue2::from_vkxml(constant, constants::ConstantContext::GlobalConstant, None);
-        let ty = val.type_of(&self.constants);
-
-        self.constants.push(name, constants::Constant3::new(name, ty, val, None));
-    }
-
-    fn visit_require_enum_variant(&mut self, enum_def: vkxml_visitor::VkxmlExtensionEnum<'a>) {
-
-    }
-}
+impl<'a> VisitVkxml<'a> for Generator<'a> {}
 
 #[derive(Copy, Clone)]
 enum FieldPurpose {
