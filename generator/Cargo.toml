@@ -13,11 +13,7 @@ name = "vk_stdout"
 path = "src/stdout.rs"
 
 [dependencies]
-vkxml = "*"
 krs_quote = { path = "../krs_quote" }
 
 [dependencies.vk-parse]
-# path = "../../vk-parse/vk-parse"
 version = "0.6.0"
-features = ["vkxml-convert"]
-#version = "0.2.0"

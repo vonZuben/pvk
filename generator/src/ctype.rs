@@ -59,39 +59,6 @@ impl Basetype {
     fn push_pointer(&mut self, pointer: Pointer) {
         self.pointers.push(pointer);
     }
-    fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
-        match ref_type {
-            Some(vkxml::ReferenceType::Pointer) => {
-                if is_const {
-                    self.pointers.push(Pointer::Const);
-                }
-                else {
-                    self.pointers.push(Pointer::Mut);
-                }
-            }
-            Some(vkxml::ReferenceType::PointerToPointer) => {
-                if is_const {
-                    self.pointers.push(Pointer::Const);
-                    self.pointers.push(Pointer::Mut);
-                }
-                else {
-                    self.pointers.push(Pointer::Mut);
-                    self.pointers.push(Pointer::Mut);
-                }
-            }
-            Some(vkxml::ReferenceType::PointerToConstPointer) => {
-                if is_const {
-                    self.pointers.push(Pointer::Const);
-                    self.pointers.push(Pointer::Const);
-                }
-                else {
-                    self.pointers.push(Pointer::Mut);
-                    self.pointers.push(Pointer::Const);
-                }
-            }
-            None => {},
-        }
-    }
 }
 
 impl krs_quote::ToTokens for Basetype {
@@ -143,9 +110,6 @@ impl CtypeInner {
     }
     fn push_pointer(&mut self, pointer: Pointer) {
         self.basetype.push_pointer(pointer);
-    }
-    fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
-        self.basetype.set_pointer_from_vkxml(ref_type, is_const);
     }
 }
 
@@ -201,9 +165,6 @@ impl Ctype {
     }
     pub fn push_pointer(&mut self, pointer: Pointer) {
         self.inner.push_pointer(pointer);
-    }
-    pub fn set_pointer_from_vkxml(&mut self, ref_type: &Option<vkxml::ReferenceType>, is_const: bool) {
-        self.inner.set_pointer_from_vkxml(ref_type, is_const);
     }
     pub fn set_bit_width(&mut self, bit_width: u8) {
         self.bit_width = Some(bit_width);

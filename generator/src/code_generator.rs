@@ -2,9 +2,6 @@ use std::collections::HashMap;
 
 use krs_quote::{my_quote, my_quote_with};
 
-use crate::vkxml_visitor;
-use crate::vkxml_visitor::{VisitExtension, VisitFeature, VisitVkxml};
-
 use crate::vk_parse_visitor::{VisitVkParse};
 
 use crate::utils::{self, VecMap};
@@ -107,89 +104,6 @@ impl<'a> Generator<'a> {
             {@* {@extension_commands}}
             {@cmd_aliases}
         ).to_string()
-    }
-}
-
-// =================================================================
-// vkxml
-// =================================================================
-impl<'a> VisitVkxml<'a> for Generator<'a> {}
-
-#[derive(Copy, Clone)]
-enum FieldPurpose {
-    StructField,
-    FunctionParam,
-}
-
-fn make_cfield(field: &vkxml::Field, purpose: FieldPurpose) -> ctype::Cfield {
-    let mut ctype = ctype::Ctype::new(&field.basetype);
-
-    set_ctype_pointer_or_array(field, purpose, &mut ctype);
-
-    let mut field = ctype::Cfield::new(
-        field
-            .name
-            .as_ref()
-            .expect("error: field in this position must have name")
-            .as_str(),
-        ctype,
-    );
-
-    match purpose {
-        FieldPurpose::FunctionParam => {}
-        FieldPurpose::StructField => field.set_public(),
-    }
-
-    field
-}
-
-fn make_return_ctype(field: &vkxml::Field) -> ctype::ReturnType {
-    if field.basetype.as_str() == "void" && field.reference.is_none() {
-        return Default::default();
-    } else {
-        let mut ctype = ctype::Ctype::new(&field.basetype);
-        // for now, assuming return type cannot be a pointer to a static size array
-        assert!(
-            !(matches!(field.reference, Some(_))
-                && matches!(field.array, Some(vkxml::ArrayType::Static)))
-        );
-        set_ctype_pointer_or_array(field, FieldPurpose::FunctionParam, &mut ctype);
-        ctype.into()
-    }
-}
-
-fn set_ctype_pointer_or_array<'a>(
-    field: &'a vkxml::Field,
-    purpose: FieldPurpose,
-    ctype: &mut ctype::Ctype,
-) {
-    use vkxml::ArrayType;
-
-    match field.array {
-        Some(ArrayType::Static) => match purpose {
-            FieldPurpose::StructField => {
-                let size = field
-                    .size
-                    .as_ref()
-                    .or_else(|| field.size_enumref.as_ref())
-                    .expect("error: field is static size array with no size");
-                ctype.push_array(size);
-            }
-            FieldPurpose::FunctionParam => {
-                if field.reference.is_some() {
-                    // ctype.set_pointer_from_vkxml(&field.reference, field.is_const)
-                    panic!("error: not sure yet how to handle static array with reference type");
-                } else {
-                    match field.is_const {
-                        true => ctype.push_pointer(ctype::Pointer::Const),
-                        false => ctype.push_pointer(ctype::Pointer::Mut),
-                    }
-                }
-            }
-        },
-        Some(ArrayType::Dynamic) | None => {
-            ctype.set_pointer_from_vkxml(&field.reference, field.is_const);
-        }
     }
 }
 

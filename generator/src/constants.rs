@@ -1,11 +1,8 @@
-use vkxml::*;
-
 use krs_quote::{my_quote, my_quote_with};
 
 use crate::utils::*;
 
 use crate::ctype;
-use crate::vkxml_visitor;
 use crate::vk_parse_visitor;
 
 use std::fmt;
@@ -99,52 +96,6 @@ impl<'a> ConstValue2<'a> {
                 _ => Ctype::new("u32"),
             },
         }
-    }
-
-    pub fn from_vkxml(vkxml_ex_constant: &'a vkxml::ExtensionConstant, context: ConstantContext, target: Option<VkTyName>) -> Self {
-        if let Some(ref text) = vkxml_ex_constant.text {
-            return ConstValue2{
-                value: ValueKind::Text(text),
-                context
-            }
-        }
-
-        if let Some(ref enumref) = vkxml_ex_constant.enumref {
-            return ConstValue2{
-                value: ValueKind::Enumref(enumref.into(), target),
-                context
-            }
-        }
-
-        if let Some(num) = vkxml_ex_constant.number {
-            return ConstValue2{
-                value: ValueKind::Number(num),
-                context
-            }
-        }
-
-        if let Some(ref hex_str) = vkxml_ex_constant.hex {
-            return ConstValue2{
-                value: ValueKind::Hex(hex_str),
-                context
-            }
-        }
-
-        if let Some(bitpos) = vkxml_ex_constant.bitpos {
-            return ConstValue2{
-                value: ValueKind::Bitpos(bitpos),
-                context
-            }
-        }
-
-        if let Some(ref expr) = vkxml_ex_constant.c_expression {
-            return ConstValue2{
-                value: ValueKind::Cexpr(expr),
-                context
-            }
-        }
-
-        panic!("improper vkxml_ex_constant does not have a value");
     }
 
     pub fn from_vk_parse(ex: vk_parse_visitor::VkParseEnumConstant<'a>, context: ConstantContext, target: Option<VkTyName>) -> Self {
