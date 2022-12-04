@@ -1,7 +1,6 @@
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote_with;
 
-use crate::utils;
-use crate::utils::*;
+use crate::utils::{self, VkTyName};
 
 use crate::constants;
 
@@ -26,15 +25,6 @@ impl<'a> EnumVariants<'a> {
         }
     }
 
-    pub fn extend_variants(
-        &mut self,
-        variants: impl IntoIterator<Item = constants::Constant3<'a>>,
-    ) {
-        for variant in variants.into_iter() {
-            self.push_variant_once(variant);
-        }
-    }
-
     pub fn push_variant_once(&mut self, variant: constants::Constant3<'a>) {
         let name = variant.name;
         match self.variants.get(name) {
@@ -50,12 +40,12 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         use crate::utils::StrAsCode;
         let target = self.target;
-        let target_string = ctype_to_rtype(self.target.as_str());
+        let target_string = utils::ctype_to_rtype(self.target.as_str());
         let variants: Vec<_> = self
             .variants
             .iter().collect();
 
-        let make_proper_name = |name| make_variant_name(target_string, ctype_to_rtype(name));
+        let make_proper_name = |name| make_variant_name(target_string, utils::ctype_to_rtype(name));
 
         let variant_names = variants.iter()
             .map(|c| {
@@ -124,7 +114,7 @@ pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
         .map(|i| &enumeration_name[..i])
         .unwrap_or(enumeration_name);
 
-    let mut enum_name = case::camel_to_snake(enumeration_name);
+    let mut enum_name = utils::case::camel_to_snake(enumeration_name);
     enum_name.make_ascii_uppercase();
     enum_name.push('_');
 

@@ -56,6 +56,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
         }
         self.vec.push(val);
     }
+    #[allow(unused)]
     pub fn extend(&mut self, items: impl IntoIterator<Item=(K, V)>) {
         for (key, value) in items.into_iter() {
             self.push(key, value);
@@ -79,7 +80,9 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
                 self.vec.last_mut().unwrap() // unwrap since we know we just pushed a value
             }
         }
-    }pub fn get_mut_or_default_with(&mut self, key: K, default: impl FnOnce() -> V) -> &mut V {
+    }
+    #[allow(unused)]
+    pub fn get_mut_or_default_with(&mut self, key: K, default: impl FnOnce() -> V) -> &mut V {
         match self.map.get(&key) {
             Some(index) => {
                 unsafe { self.vec.get_unchecked_mut(*index) }
@@ -99,9 +102,11 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     pub fn last(&self) -> Option<&V> {
         self.vec.last()
     }
+    #[allow(unused)]
     pub fn last_mut(&mut self) -> Option<&mut V> {
         self.vec.last_mut()
     }
+    #[allow(unused)]
     pub fn entry<'a>(&'a mut self, key: K) -> VecMapEntry<'a, K, V> {
         match self.map.get(&key) {
             Some(index) => VecMapEntry::Occupied(self, *index),
@@ -116,6 +121,7 @@ pub enum VecMapEntry<'a, K, V> {
 }
 
 impl<'a, K: Eq + Hash, V> VecMapEntry<'a, K, V> {
+    #[allow(unused)]
     pub fn or_insert_with(self, f: impl FnOnce() -> V) -> &'a mut V {
         match self {
             VecMapEntry::Occupied(vm, index) => unsafe { vm.vec.get_unchecked_mut(index) },
@@ -211,24 +217,6 @@ pub fn ctype_to_rtype(type_name: &str) -> &str {
         x if x.starts_with("VK_") => &type_name[3..],
         x => x,
     }
-}
-
-macro_rules! one_option {
-
-    ( $( $val:expr , $f:expr );+ $(;)* ) => {
-
-        if false {
-            unreachable!();
-        }
-            $( else if let Some(v) = $val {
-                $f(v)
-            })+
-        else {
-            panic!("error: reached end of one_option");
-        }
-
-    }
-
 }
 
 pub mod case {

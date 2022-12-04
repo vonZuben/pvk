@@ -1,6 +1,6 @@
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote_with;
 
 use crate::utils::{self, case};
 

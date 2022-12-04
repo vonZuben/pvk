@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote;
 
 use crate::vk_parse_visitor::{VisitVkParse};
 
@@ -19,7 +19,6 @@ enum CommandType {
     Instance,
     Device,
     Static,
-    DoNotGenerate,
     Entry,
 }
 
@@ -142,10 +141,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.commands.push(command_name, function_pointer);
     }
     fn visit_ex_enum(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
-        let number = spec.number;
         let enm = spec.enm;
         let target = utils::VkTyName::new(spec.target.expect("error: enum with no target"));
-        let is_alias = spec.is_alias;
 
         let kind;
         if spec.target.unwrap().contains("FlagBits") {
@@ -155,7 +152,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             kind = enumerations::EnumKind::Normal;
         }
 
-        let mut enum_variants = self
+        let enum_variants = self
             .enum_variants
             .get_mut_or_default(target, enumerations::EnumVariants::new(target, kind));
 
@@ -188,9 +185,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             None => {}
         }
 
-        let ex = self
-            .extension_infos
-            .push(ex_name, extension_commands);
+        self.extension_infos.push(ex_name, extension_commands);
     }
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
         let cmd_name = utils::VkTyName::new(cmd_name);
@@ -214,12 +209,11 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             CommandType::Static => {
                 panic!("error: static level command added by extension not handled")
             }
-            CommandType::DoNotGenerate => {}
         }
     }
     fn visit_struct_def(&mut self, def: crate::vk_parse_visitor::StructDef<'a>) {
         let struct_name = utils::VkTyName::new(def.name);
-        let mut stct = self.definitions.structs.get_mut_or_default(struct_name, definitions::Struct2::new(def.name));
+        let stct = self.definitions.structs.get_mut_or_default(struct_name, definitions::Struct2::new(def.name));
         for member in def.members {
             use crate::vk_parse_visitor::MemberKind;
             match member {
@@ -298,7 +292,6 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             CommandType::Device => fcc.modify_with(def.version, |fc| fc.push_device_command(cmd_name)),
             CommandType::Entry => fcc.modify_with(def.version, |fc| fc.push_entry_command(cmd_name)),
             CommandType::Static => {}
-            CommandType::DoNotGenerate => {}
         }
     }
     fn visit_remove_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {

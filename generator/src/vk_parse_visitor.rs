@@ -1,22 +1,22 @@
 use crate::ctype;
 
 pub trait VisitVkParse<'a> {
-    fn visit_alias(&mut self, name: &'a str, alias: &'a str) {}
-    fn visit_enum(&mut self, enm: &'a vk_parse::Type) {}
-    fn visit_command(&mut self, def_wrapper: CommandDefWrapper<'a>) {}
-    fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>) {}
-    fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: ExtensionInfo<'a, I>) {}
-    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>) {}
-    fn visit_struct_def(&mut self, def: StructDef<'a>) {}
-    fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>) {}
-    fn visit_basetype(&mut self, basetype: VkBastetype<'a>) {}
-    fn visit_bitmask(&mut self, basetype: VkBastetype<'a>) {}
-    fn visit_union(&mut self, def: UnionDef<'a>) {}
-    fn visit_handle(&mut self, def: HandleDef<'a>) {}
-    fn visit_fptr(&mut self, def: FptrDef<'a>) {}
-    fn visit_feature_name(&mut self, name: crate::utils::VkTyName) {}
-    fn visit_require_command(&mut self, def: CommandRef<'a>) {}
-    fn visit_remove_command(&mut self, def: CommandRef<'a>) {}
+    fn visit_alias(&mut self, name: &'a str, alias: &'a str);
+    fn visit_enum(&mut self, enm: &'a vk_parse::Type);
+    fn visit_command(&mut self, def_wrapper: CommandDefWrapper<'a>);
+    fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>);
+    fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: ExtensionInfo<'a, I>);
+    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>);
+    fn visit_struct_def(&mut self, def: StructDef<'a>);
+    fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>);
+    fn visit_basetype(&mut self, basetype: VkBastetype<'a>);
+    fn visit_bitmask(&mut self, basetype: VkBastetype<'a>);
+    fn visit_union(&mut self, def: UnionDef<'a>);
+    fn visit_handle(&mut self, def: HandleDef<'a>);
+    fn visit_fptr(&mut self, def: FptrDef<'a>);
+    fn visit_feature_name(&mut self, name: crate::utils::VkTyName);
+    fn visit_require_command(&mut self, def: CommandRef<'a>);
+    fn visit_remove_command(&mut self, def: CommandRef<'a>);
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -49,9 +49,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     }
                                     Some("struct") => {
                                         match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref ty_code) => {
-                                                // eprintln!("TCODE: {:?}", ty_code);
-                                            }
+                                            vk_parse::TypeSpec::Code(ref _ty_code) => {}
                                             vk_parse::TypeSpec::Members(ref members) => {
                                                 visitor.visit_struct_def(StructDef {
                                                     name: ty.name.as_deref().expect("error: struct with no name"),
@@ -82,9 +80,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     }
                                     Some("union") => {
                                         match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref ty_code) => {
-                                                // eprintln!("TCODE: {:?}", ty_code);
-                                            }
+                                            vk_parse::TypeSpec::Code(ref _ty_code) => {}
                                             vk_parse::TypeSpec::Members(ref members) => {
                                                 visitor.visit_union(UnionDef {
                                                     name: ty.name.as_deref().expect("error: union with no name"),
@@ -189,18 +185,18 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                     visitor.visit_feature_name(feature_name);
                     match feature_child {
                         Require {
-                            api,
-                            profile,
-                            extension,
-                            feature,
-                            comment,
+                            api: _,
+                            profile: _,
+                            extension: _,
+                            feature: _,
+                            comment: _,
                             items,
                         } => {
                             for item in items.iter() {
                                 use vk_parse::InterfaceItem::*;
                                 match item {
                                     Comment(_) => {}
-                                    Type { name, comment } => {}
+                                    Type { name: _, comment: _ } => {}
                                     Enum(enm) => {
                                         let extends = enm.spec.extends();
                                         if extends.is_some() {
@@ -212,7 +208,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             });
                                         }
                                     }
-                                    Command { name: cmd_name, comment } => {
+                                    Command { name: cmd_name, comment: _ } => {
                                         visitor.visit_require_command(CommandRef { name: &cmd_name, version: feature_name });
                                     }
                                     _ => panic!("unexpected InterfaceItem node"),
@@ -220,18 +216,18 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                             }
                         }
                         Remove {
-                            api,
-                            profile,
-                            comment,
+                            api: _,
+                            profile: _,
+                            comment: _,
                             items,
                         } => {
                             for item in items.iter() {
                                 use vk_parse::InterfaceItem::*;
                                 match item {
                                     Comment(_) => {}
-                                    Type { name, comment } => {}
-                                    Enum(enm) => {}
-                                    Command { name: cmd_name, comment } => {
+                                    Type { name: _, comment: _ } => {}
+                                    Enum(_) => {}
+                                    Command { name: cmd_name, comment: _ } => {
                                         visitor.visit_remove_command(CommandRef { name: &cmd_name, version: feature_name });
                                     }
                                     _ => panic!("unexpected InterfaceItem node"),
@@ -251,11 +247,11 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                         use vk_parse::ExtensionChild::*;
                         match ex_child {
                             Require {
-                                api,
-                                profile,
+                                api: _,
+                                profile: _,
                                 extension: required_extension,
                                 feature: requiered_feature,
-                                comment,
+                                comment: _,
                                 items,
                             } => {
                                 // assuming for now that feature and extension additions are exclusive
@@ -279,7 +275,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     use vk_parse::InterfaceItem::*;
                                     match item {
                                         Comment(_) => {}
-                                        Type { name, comment } => {}
+                                        Type { name: _, comment: _ } => {}
                                         Enum(enm) => {
                                             let extends = enm.spec.extends();
                                             if extends.is_some() {
@@ -299,7 +295,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 })
                                             }
                                         }
-                                        Command { name, comment } => {
+                                        Command { name, comment: _ } => {
                                             visitor.visit_ex_cmd_ref(name, &parts);
                                         }
                                         _ => panic!("unexpected InterfaceChild node"),
@@ -307,10 +303,10 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 }
                             }
                             Remove {
-                                api,
-                                profile,
-                                comment,
-                                items,
+                                api: _,
+                                profile: _,
+                                comment: _,
+                                items: _,
                             } => panic!("error: extension should not remove anything"),
                             _ => panic!("unexpected ExtensionChild node"),
                         }
@@ -457,7 +453,7 @@ impl<'a> Iterator for Parameters<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         use crate::simple_parse::*;
 
-        let (input, end1) = opt(followed(tag(")"), tag(";")))(self.members.clone())
+        let (_input, end1) = opt(followed(tag(")"), tag(";")))(self.members.clone())
             .expect("opt can't fail");
 
         let (input, end2) = opt(followed(tag("void"), tag(")")))(self.members.clone())
@@ -498,7 +494,7 @@ impl<'a> Iterator for Parameters<'a> {
 
                 let (input, name) = token()(input)?;
 
-                let (mut input, _) = repeat(
+                let (input, _) = repeat(
                     input,
                     delimited(tag("["), token(), tag("]")),
                     |(_, _size, _)| if c.is_some() {
@@ -530,7 +526,7 @@ fn parse_basetype<'a>(code: &'a str) -> Result<VkBastetype, ()> {
     let (input, _) = tag("typedef")(input)?;
     let (input, ty) = token()(input)?;
     let (input, name) = token()(input)?;
-    let (input, _) = tag(";")(input)?;
+    let (_input, _) = tag(";")(input)?;
     Ok(VkBastetype {
         name,
         ty,

@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 use std::fmt;
-use std::marker::PhantomData;
-use std::sync::Once;
 use std::borrow::Cow;
 use std::sync::atomic::{self, AtomicBool};
 
@@ -30,7 +28,7 @@ impl Interner {
         unsafe { LOCKED.compare_exchange(false, true, atomic::Ordering::Acquire, atomic::Ordering::Acquire).unwrap(); }
 
         let s = s.into();
-        let mut inner;
+        let inner;
         unsafe {
             inner = INTERNER.as_mut().unwrap();
         }

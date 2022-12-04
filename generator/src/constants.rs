@@ -1,11 +1,9 @@
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote_with;
 
 use crate::utils::*;
 
 use crate::ctype;
 use crate::vk_parse_visitor;
-
-use std::fmt;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Constant3<'a> {
@@ -31,8 +29,6 @@ impl<'a> Constant3<'a> {
 
 impl krs_quote::ToTokens for Constant3<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        use crate::utils::StrAsCode;
-
         let name = match self.target {
             Some(target) => crate::enumerations::make_variant_name(&target, &self.name).as_code(),
             None => self.name.as_code(),
@@ -88,7 +84,7 @@ impl<'a> ConstValue2<'a> {
                     }
             Number(_) => Ctype::new("usize"),
             Hex(_) => Ctype::new("usize"),
-            Bitpos(bitpos) => Ctype::new("Flags"),
+            Bitpos(_) => Ctype::new("Flags"),
             Cexpr(cexpr) => match cexpr {
                 e if e.contains("ULL") => Ctype::new("u64"),
                 e if e.contains("U") => Ctype::new("u32"),
@@ -187,7 +183,6 @@ impl krs_quote::ToTokens for ConstValue2<'_> {
             (ConstantContext::Enum, Enumref(..)) => my_quote_with!(tokens { Self::{@value} }),
             (ConstantContext::Enum, _) => my_quote_with!(tokens { Self({@value}) }),
             (ConstantContext::GlobalConstant, _) =><TokenWrapper as krs_quote::ToTokens>::to_tokens(&value, tokens),
-            _ => panic!("error: unsure how to make ConstValue2 ToTokens"),
         }
     }
 }

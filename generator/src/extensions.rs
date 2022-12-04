@@ -1,11 +1,6 @@
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote_with;
 
-use crate::utils::*;
-use crate::utils;
-use crate::commands::*;
-use crate::constants;
-
-use std::borrow::Cow;
+use crate::utils::{VkTyName, StrAsCode};
 
 // used to represent names of commands that are enabled by an extension and possible extra commands when other features/extensions are available
 // base: base extension
@@ -105,7 +100,7 @@ impl krs_quote::ToTokens for ExtensionInfo {
             ExtensionName::Extended(_, _) => None,
         };
         let required: Vec<_> = match self.extension_name {
-            ExtensionName::Noraml(name) => self.required.iter().copied().collect(),
+            ExtensionName::Noraml(_name) => self.required.iter().copied().collect(),
             ExtensionName::Extended(base, _) => std::iter::once(base).collect(),
         };
         my_quote_with!( tokens {

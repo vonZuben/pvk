@@ -1,6 +1,6 @@
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote_with;
 
-use crate::{definitions::TypeDef, utils::{StrAsCode, VecMap}};
+use crate::definitions::TypeDef;
 
 pub struct CmdAliasNames<I> {
     alias_defs: I,

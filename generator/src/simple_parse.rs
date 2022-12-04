@@ -79,8 +79,6 @@ impl<'a> Iterator for TokenIter<'a> {
     }
 }
 
-use std::fmt;
-
 type MyErr<'a> = ();
 
 type Res<I, O> = Result<(I, O), MyErr<'static>>;

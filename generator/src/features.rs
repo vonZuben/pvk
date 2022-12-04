@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote_with;
 
-use crate::utils::*;
-use crate::commands::*;
+use crate::utils::{VecMap, VkTyName};
 
 // Feature Collection is for keeping track of different feature Versions
 // Since the Vulkan spec defines each Feature as additions/deletions (requires/remove)

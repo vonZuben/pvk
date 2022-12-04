@@ -1,10 +1,8 @@
 use std::marker::PhantomData;
 
-use krs_quote::{my_quote, my_quote_with};
+use krs_quote::my_quote_with;
 
-use crate::utils::*;
-
-use crate::utils;
+use crate::utils::{VkTyName, VecMap, case};
 
 use crate::ctype;
 
@@ -87,9 +85,6 @@ impl Struct2 {
             fields: Default::default(),
             non_normative: false,
         }
-    }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield>) {
-        self.fields.extend(fields);
     }
     pub fn push_field(&mut self, field: ctype::Cfield) {
         self.fields.push(field);
