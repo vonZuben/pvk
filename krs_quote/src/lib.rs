@@ -36,8 +36,7 @@ pub use to_tokens::{ Token, TokenStream, ToTokens };
 pub mod __private {
     pub use super::to_tokens::*;
     pub use super::runtime::*;
-    pub use prepare_different_types::*;
-    pub use krs_hlist::{ self, higher_order::prelude::* };
+    pub use krs_hlist;
     pub use krs_hlist_pm::hlist;
 }
 
@@ -50,10 +49,8 @@ macro_rules! my_quote {
     ( $($tt:tt)* ) => {{
         use $crate::__private::*;
         let mut ts = TokenStream::new();
-        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        let _: NoIter = to_tokens.fold_ref(NoIter, FoldHasIter);
-        let mut ti = to_tokens.for_each(ApplyPrepareQuote);
-        ti.next().unwrap().for_each(ApplyToTokens(&mut ts));
+        let mut to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
+        to_tokens.next_token().expect("expected at least one token").to_tokens(&mut ts);
         ts
     }}
 }
@@ -80,10 +77,8 @@ macro_rules! my_quote_with {
     ( $ts:ident { $($tt:tt)* }) => {{
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
-        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        let _: NoIter = to_tokens.fold_ref(NoIter, FoldHasIter);
-        let mut ti = to_tokens.for_each(ApplyPrepareQuote);
-        ti.next().unwrap().for_each(ApplyToTokens(ts));
+        let mut to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
+        to_tokens.next_token().to_tokens(ts);
     }}
 }
 
@@ -94,7 +89,6 @@ macro_rules! quote_each_tt {
     // expand repetition wth separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
         let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         match stringify!($sep) {
             "," => InnerRepWithSeparator::new(to_tokens, Comma.into()),
             ";" => InnerRepWithSeparator::new(to_tokens, SemiColon.into()),
@@ -105,58 +99,54 @@ macro_rules! quote_each_tt {
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
         let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        let _: HasIter = to_tokens.fold_ref(NoIter, FoldHasIter);
         InnerRep::new(to_tokens)
     }};
 
     // expand token
     ( {@$item:ident} ) => {{
-        Df(Df(Df(Df(&$item)))).as_to_prepare()
+        (&$item).input()
     }};
 
     // extract braces
     ( { $($tt:tt)* } ) => {{
-        let to_tokens = hlist!(
-            ToPrepare::prep(LeftBrace),
+        hlist!(
+            LeftBrace.input(),
             $($crate::quote_each_tt!($tt),)*
-            ToPrepare::prep(RightBrace),
-        );
-        HlistWrapper::new(to_tokens)
+            RightBrace.input(),
+        )
     }};
 
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
-        let to_tokens = hlist!(
-            ToPrepare::prep(RawToken("(")),
+        hlist!(
+            RawToken("(").input(),
             $($crate::quote_each_tt!($tt),)*
-            ToPrepare::prep(RawToken(")")),
-        );
-        HlistWrapper::new(to_tokens)
+            RawToken(")").input(),
+        )
     }};
 
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
-        let to_tokens = hlist!(
-            ToPrepare::prep(RawToken("[")),
+        hlist!(
+            RawToken("[").input(),
             $($crate::quote_each_tt!($tt),)*
-            ToPrepare::prep(RawToken("]")),
-        );
-        HlistWrapper::new(to_tokens)
+            RawToken("]").input(),
+        )
     }};
 
     // special case fo comma
     ( , ) => {{
-        ToPrepare::prep(Comma)
+        Comma.input()
     }};
 
     // special case fo semicolon
     ( ; ) => {{
-        ToPrepare::prep(SemiColon)
+        SemiColon.input()
     }};
 
     // Regular token
     ( $tt:tt ) => {{
-        ToPrepare::prep(RawToken(stringify!($tt)))
+        RawToken(stringify!($tt)).input()
     }};
 
 }
@@ -216,5 +206,11 @@ mod my_quote_test {
         let s = v.as_slice();
         let q = my_quote!({@,* {@s} });
         println!("{}", q);
+    }
+
+    #[test]
+    fn tmp() {
+        println!("=========empty_quote============");
+        let _q = my_quote!();
     }
 }
