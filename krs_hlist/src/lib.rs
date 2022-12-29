@@ -69,10 +69,10 @@ pub trait Hlist {
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct Cons<H, T> {
-    /// `pub` is depreciated
-    head: H,
-    /// `pub` is depreciated
-    tail: T,
+    /// This holds that actual data for each spot in the hlist
+    pub head: H,
+    /// This hold the next part of the list, which should be another 'Cons' or [End]
+    pub tail: T,
 }
 
 impl<H, T> Cons<H, T> {
