@@ -12,6 +12,8 @@ fn main() {
 
     let os = [o1, o2];
 
+    let o3 = Some(1);
+
     let code = my_quote!{
         struct {@name} {
             {@,* {@members} : i32 }
@@ -37,6 +39,7 @@ fn main() {
             let s = {@name} {
                 {@,* {@members} : {@values} }
             };
+            {@o3}
         }
     };
 
