@@ -1,4 +1,4 @@
-use krs_quote::my_quote_with;
+use krs_quote::krs_quote_with;
 
 use crate::utils::*;
 
@@ -36,7 +36,7 @@ impl krs_quote::ToTokens for Constant3<'_> {
         let ty = &self.ty;
         let val = &self.val;
 
-        my_quote_with!(tokens {
+        krs_quote_with!(tokens {
             pub const {@name}: {@ty} = {@val};
         });
     }
@@ -180,8 +180,8 @@ impl krs_quote::ToTokens for ConstValue2<'_> {
         };
 
         match (self.context, self.value) {
-            (ConstantContext::Enum, Enumref(..)) => my_quote_with!(tokens { Self::{@value} }),
-            (ConstantContext::Enum, _) => my_quote_with!(tokens { Self({@value}) }),
+            (ConstantContext::Enum, Enumref(..)) => krs_quote_with!(tokens { Self::{@value} }),
+            (ConstantContext::Enum, _) => krs_quote_with!(tokens { Self({@value}) }),
             (ConstantContext::GlobalConstant, _) =><TokenWrapper as krs_quote::ToTokens>::to_tokens(&value, tokens),
         }
     }

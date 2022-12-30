@@ -1,4 +1,4 @@
-use krs_quote::my_quote_with;
+use krs_quote::krs_quote_with;
 
 use crate::definitions::TypeDef;
 
@@ -19,7 +19,7 @@ impl<'a, I: Iterator<Item=TypeDef> + Clone> krs_quote::ToTokens for CmdAliasName
         let name = self.alias_defs.clone().map(|td|td.name);
         let alias = self.alias_defs.clone().map(|td|td.ty);
 
-        my_quote_with!( tokens {
+        krs_quote_with!( tokens {
             macro_rules! use_cmd_alias_pairs {
                 ( $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* {@,* {@name} = {@alias} } );

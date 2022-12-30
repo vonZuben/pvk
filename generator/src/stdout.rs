@@ -1,6 +1,6 @@
 use generator::generate;
 
-use krs_quote::my_quote;
+use krs_quote::krs_quote;
 
 fn main() {
     let get_first_input_arg = || {
@@ -30,7 +30,7 @@ fn main() {
 
 fn append_main(code: String) -> String {
 
-    let main = my_quote!{
+    let main = krs_quote!{
         fn main(){}
     };
 

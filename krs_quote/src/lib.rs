@@ -1,7 +1,7 @@
 //! Alternate quote macro (Not really intended for general use)
 //!
-//! This crate provides the [my_quote!] macro. It is a lot like [quote](https://docs.rs/quote/latest/quote/), but with different design decisions.
-//! [my_quote_with!] is provided to allow efficiently appending tokens to an already existing [TokenStream] (recommended to use in [ToTokens] implementations)
+//! This crate provides the [krs_quote!] macro. It is a lot like [quote](https://docs.rs/quote/latest/quote/), but with different design decisions.
+//! [krs_quote_with!] is provided to allow efficiently appending tokens to an already existing [TokenStream] (recommended to use in [ToTokens] implementations)
 //!
 //! 1) different syntax to allow much simpler `macro_rules!` implementation.
 //! 2) I was annoyed that I couldn't use [IntoIterator] types, so this crate lets you do that.
@@ -14,12 +14,12 @@
 //!
 //! # Example
 //! ```
-//! use krs_quote::my_quote;
+//! use krs_quote::krs_quote;
 //!
 //! fn main() {
 //!     let greeting = "Hello";
 //!     let names = ["Foo", "Bar", "Zap"];
-//!     let q = my_quote!{
+//!     let q = krs_quote!{
 //!         {@* println!("{} {}", {@greeting}, {@names}); }
 //!     };
 //!     println!("{q}");
@@ -32,7 +32,7 @@
 //! creating an hlist tree comprising ToTokens iterators and other hlists.
 //!
 //! A single hlist represents a sequence of tokens that may be repeated any number of times (depending on what iterators are provided).
-//! The outermost hlist is intended to only be used to produce one sequence of tokens (handled by `my_quote!` and `my_quote_with!`)
+//! The outermost hlist is intended to only be used to produce one sequence of tokens (handled by `krs_quote!` and `krs_quote_with!`)
 //! An inner hlist is intended to produce a sequence of tokens repeatedly based on user provided iterators (handled by the 'InnerRep'
 //! and 'InnerRepWithSeparator' wrappers).
 //!
@@ -63,7 +63,7 @@ pub mod __private {
 /// Performs variable interpolation against the input and produces it as [TokenStream](to_tokens::TokenStream)
 /// (which is basically just a `Vec<String>` for now).
 #[macro_export]
-macro_rules! my_quote {
+macro_rules! krs_quote {
     ( $($tt:tt)* ) => {{
         use $crate::__private::*;
         let mut ts = TokenStream::new();
@@ -73,25 +73,25 @@ macro_rules! my_quote {
     }}
 }
 
-/// my_quote, but append tokens to an existing [TokenStream]
+/// krs_quote, but append tokens to an existing [TokenStream]
 ///
 /// This should be preferred to use inside [ToTokens] implementations
 ///
 /// # Example
 /// ```
-/// use krs_quote::{my_quote_with, ToTokens, TokenStream};
+/// use krs_quote::{krs_quote_with, ToTokens, TokenStream};
 ///
 /// struct CustomId(i32);
 ///
 /// impl ToTokens for CustomId {
 ///     fn to_tokens(&self, tokens: &mut TokenStream) {
 ///         let id = format!("Id{}", self.0);
-///         my_quote_with!(tokens { {@id} });
+///         krs_quote_with!(tokens { {@id} });
 ///     }
 /// }
 /// ```
 #[macro_export]
-macro_rules! my_quote_with {
+macro_rules! krs_quote_with {
     ( $ts:ident { $($tt:tt)* }) => {{
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
@@ -170,7 +170,7 @@ macro_rules! quote_each_tt {
 }
 
 #[cfg(test)]
-mod my_quote_test {
+mod krs_quote_test {
 
     use super::Token;
 
@@ -182,29 +182,29 @@ mod my_quote_test {
     }
 
     #[test]
-    fn use_my_quote() {
-        println!("=========use_my_quote_test============");
+    fn use_krs_quote() {
+        println!("=========use_krs_quote_test============");
         let s = "hello".to_string();
         let s2 = "me";
-        let q = my_quote!(hey {@s} there {@s2});
+        let q = krs_quote!(hey {@s} there {@s2});
         println!("{}", q);
     }
 
     #[test]
-    fn use_my_quote_repeat() {
-        println!("=========use_my_quote_repeat_test============");
+    fn use_krs_quote_repeat() {
+        println!("=========use_krs_quote_repeat_test============");
         let friend = ["bill", "bob", "dave"];
         let greeting = ["hey", "welcome", "not you"];
         let bye = "and good bye";
-        let q = my_quote!(greetings {@* {@greeting} {@friend} {@bye} } finally);
+        let q = krs_quote!(greetings {@* {@greeting} {@friend} {@bye} } finally);
         println!("{}", q);
     }
 
     #[test]
-    fn use_my_quote_repeat_with_separator() {
-        println!("=========use_my_quote_repeat_with_separator============");
+    fn use_krs_quote_repeat_with_separator() {
+        println!("=========use_krs_quote_repeat_with_separator============");
         let name = ["A", "B", "C", "D"];
-        let q = my_quote!({@,* {@name} });
+        let q = krs_quote!({@,* {@name} });
         println!("{}", q);
     }
 
@@ -213,7 +213,7 @@ mod my_quote_test {
         println!("=========with_map============");
         let v = vec![1, 2, 3];
         let m = v.iter().map(|x|x+1);
-        let q = my_quote!({@,* {@m} });
+        let q = krs_quote!({@,* {@m} });
         println!("{}", q);
     }
 
@@ -222,13 +222,13 @@ mod my_quote_test {
         println!("=========with_slice============");
         let v = vec![1, 2, 3];
         let s = v.as_slice();
-        let q = my_quote!({@,* {@s} });
+        let q = krs_quote!({@,* {@s} });
         println!("{}", q);
     }
 
     #[test]
     fn tmp() {
         println!("=========empty_quote============");
-        let _q = my_quote!();
+        let _q = krs_quote!();
     }
 }

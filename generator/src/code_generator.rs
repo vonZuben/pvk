@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use krs_quote::my_quote;
+use krs_quote::krs_quote;
 
 use crate::vk_parse_visitor::{VisitVkParse};
 
@@ -90,7 +90,7 @@ impl<'a> Generator<'a> {
             aliases.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
         );
 
-        my_quote!(
+        krs_quote!(
             {@static_code}
             {@definitions}
             {@* {@constants}}

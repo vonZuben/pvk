@@ -1,4 +1,4 @@
-use krs_quote::my_quote_with;
+use krs_quote::krs_quote_with;
 
 use crate::utils::{VkTyName, StrAsCode};
 
@@ -30,11 +30,11 @@ impl krs_quote::ToTokens for ExtensionName {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         match self {
             ExtensionName::Noraml(name) => {
-                my_quote_with!(tokens {{@name}});
+                krs_quote_with!(tokens {{@name}});
             }
             ExtensionName::Extended(base, extend) => {
                 let name = format!("{}_WITH_{}", base, extend).as_code();
-                my_quote_with!(tokens {{@name}});
+                krs_quote_with!(tokens {{@name}});
             }
         }
     }
@@ -50,8 +50,8 @@ pub enum ExtensionKind {
 impl krs_quote::ToTokens for ExtensionKind {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         match self {
-            Self::Instance => my_quote_with!(tokens {INSTANCE}),
-            Self::Device => my_quote_with!(tokens {DEVICE}),
+            Self::Instance => krs_quote_with!(tokens {INSTANCE}),
+            Self::Device => krs_quote_with!(tokens {DEVICE}),
         }
     }
 }
@@ -103,7 +103,7 @@ impl krs_quote::ToTokens for ExtensionInfo {
             ExtensionName::Noraml(_name) => self.required.iter().copied().collect(),
             ExtensionName::Extended(base, _) => std::iter::once(base).collect(),
         };
-        my_quote_with!( tokens {
+        krs_quote_with!( tokens {
             macro_rules! {@extension_name} {
                 ( @KIND $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* {@kind} );
@@ -141,7 +141,7 @@ impl VulkanExtensionNames {
 impl krs_quote::ToTokens for VulkanExtensionNames {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let extension_names = &self.extensions;
-        my_quote_with!( tokens {
+        krs_quote_with!( tokens {
             macro_rules! use_all_vulkan_extension_names {
                 ( $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* {@,* {@extension_names}} );

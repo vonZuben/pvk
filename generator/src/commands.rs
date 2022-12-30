@@ -1,4 +1,4 @@
-use krs_quote::my_quote_with;
+use krs_quote::krs_quote_with;
 
 use crate::utils::{VkTyName, VecMap};
 
@@ -24,7 +24,7 @@ impl krs_quote::ToTokens for Commands2 {
         let function_pointers = self.function_pointers.iter();
         let commands = self.function_pointers.iter().map(|fptr|fptr.name);
         let command_names = self.function_pointers.iter().map(|fptr|fptr.name.as_str());
-        my_quote_with!( tokens {
+        krs_quote_with!( tokens {
             {@* {@function_pointers}}
             macro_rules! use_command_function_pointer_names {
                 ( $call:ident $($pass:tt)* ) => {
