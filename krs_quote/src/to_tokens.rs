@@ -319,12 +319,12 @@ impl<I: Iterator> TokenIter for IterWrapper<I> where I::Item: ToTokens {
 
 /// This is for performance
 ///
-/// the internal repetitions ('InnerRep' and 'InnerRepWithSeparator') don;t need to be completely cloned
+/// the internal repetitions ('InnerRep' and 'InnerRepWithSeparator') don't need to be completely cloned
 /// so they implement this by just passing a reference to them selves
 ///
 /// The 'Item' implements TokenIter because it is needed in the 'InnerRep' and 'InnerRepWithSeparator'
-/// I would actually prefer if this trait was just 'MaybeClone' with not limitation on the item.
 ///
+/// I would actually prefer if this trait was just 'MaybeClone' with not limitation on the item.
 /// However, then 'InnerRep' and 'InnerRepWithSeparator' would need to express the 'TokenIter' requirement
 /// via 'for<'a> <L as MaybeClone>::Item<'a>: TokenIter', which has a current GAT limitation of making 'a: 'static.
 /// By expressing the trait bound I need here, I avoid the above issue.

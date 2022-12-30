@@ -1,6 +1,7 @@
 //! Alternate quote macro (Not really intended for general use)
 //!
 //! This crate provides the [my_quote!] macro. It is a lot like [quote](https://docs.rs/quote/latest/quote/), but with different design decisions.
+//! [my_quote_with!] is provided to allow efficiently appending tokens to an already existing [TokenStream] (recommended to use in [ToTokens] implementations)
 //!
 //! 1) different syntax to allow much simpler `macro_rules!` implementation.
 //! 2) I was annoyed that I couldn't use [IntoIterator] types, so this crate lets you do that.
@@ -8,8 +9,8 @@
 //!
 //! I also kind of only made it just for fun and to see what I could put together.
 //!
-//! Also, the string output inserts `\n` in specific places so that the output of any generated `macro_rules!` code looks nicer (since rustfmt can;t help there),
-//! otherwise, I was getting files with every long single line `macro_rules!`.
+//! Also, the string output inserts `\n` in specific places so that the output of any generated `macro_rules!` code looks nicer (since rustfmt can't help there),
+//! otherwise, I was getting files with very long single line `macro_rules!`.
 //!
 //! # Example
 //! ```
@@ -24,6 +25,23 @@
 //!     println!("{q}");
 //! }
 //! ```
+//!
+//! ## internal details
+//!
+//! This macro works by converting each user input into an iterator over `ToTokens` implementors. (see runtime/user_input.rs), and
+//! creating an hlist tree comprising ToTokens iterators and other hlists.
+//!
+//! A single hlist represents a sequence of tokens that may be repeated any number of times (depending on what iterators are provided).
+//! The outermost hlist is intended to only be used to produce one sequence of tokens (handled by `my_quote!` and `my_quote_with!`)
+//! An inner hlist is intended to produce a sequence of tokens repeatedly based on user provided iterators (handled by the 'InnerRep'
+//! and 'InnerRepWithSeparator' wrappers).
+//!
+//! Repetition is achieved by cloning the iterators. We try to only use iterators that "should" be cheap to clone (e.g.
+//! iterators over references such that the whole collection is not closed).
+//!
+//! 'MaybeCloneTokenIter' is an internal detail that avoids recursive cloning of hlists.
+//!
+//! 'TokenIter' is another internal detail to avoid cloning inner hlists.
 
 #![warn(missing_docs)]
 
