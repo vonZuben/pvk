@@ -41,17 +41,14 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
         use crate::utils::StrAsCode;
         let target = self.target;
         let target_string = utils::ctype_to_rtype(self.target.as_str());
-        let variants: Vec<_> = self
-            .variants
-            .iter().collect();
+        let variants = self.variants.iter();
 
         let make_proper_name = |name| make_variant_name(target_string, utils::ctype_to_rtype(name));
-
-        let variant_names = variants.iter()
+        let variant_names = self.variants.iter()
             .map(|c| {
                 make_proper_name(c.name.as_str()).as_code()
             });
-        let variant_name_strings = variants.iter()
+        let variant_name_strings = self.variants.iter()
             .map(|c| {
                 make_proper_name(c.name.as_str())
             });
