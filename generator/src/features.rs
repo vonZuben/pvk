@@ -137,7 +137,7 @@ impl FeatureCommands {
             Some(List::Instance(index)) => self.instance_command_names[*index].remove(),
             Some(List::Device(index)) => self.device_command_names[*index].remove(),
             Some(List::Entry(index)) => self.entry_command_names[*index].remove(),
-            None => panic!("should not be trying to remove command that was never requiered"),
+            None => panic!("should not be trying to remove command that was never required"),
         }
     }
 }

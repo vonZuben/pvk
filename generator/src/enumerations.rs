@@ -103,7 +103,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
     }
 }
 
-pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
+pub fn make_variant_name(enumeration_name: &str, variant_name: &str) -> String {
     // check for both Flags and FlagBits and remove such
     let enumeration_name = enumeration_name
         .find("FlagBits")
@@ -118,7 +118,7 @@ pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
     enum_name.make_ascii_uppercase();
     enum_name.push('_');
 
-    let const_name_string = varient_name.replace(&enum_name, ""); //.replace("_BIT", "");
+    let const_name_string = variant_name.replace(&enum_name, ""); //.replace("_BIT", "");
 
     let is_numeric = const_name_string
         .chars()
@@ -147,27 +147,27 @@ pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
 //             quote!{
 //                 impl ::std::fmt::Display for #name {
 //                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-//                         let match_flag_varient = |flags| match flags {
+//                         let match_flag_variant = |flags| match flags {
 //                             #( #display_cases )*
 //                             _ => None,
 //                         };
 
 //                         // first check if variant matches an 'ALL' flag e.g. SHADER_STAGE_ALL
-//                         if let Some(disp) = match_flag_varient(*self) {
-//                             return write!(f, "{}", disp);
+//                         if let Some(display) = match_flag_variant(*self) {
+//                             return write!(f, "{}", display);
 //                         }
 
 //                         // else, match and print each variant individually
 //                         let mut bitset = self.0 as i32;
 //                         while let Some(bit) = take_lowest_bit(&mut bitset) {
-//                             let disp: Option<&'static str> =
-//                                 match_flag_varient( unsafe { ::std::mem::transmute::<_, Self>(bit) } );
-//                             if let Some(disp) = disp {
+//                             let display: Option<&'static str> =
+//                                 match_flag_variant( unsafe { ::std::mem::transmute::<_, Self>(bit) } );
+//                             if let Some(display) = display {
 //                                 if bitset == 0 {
-//                                     write!(f, "{}", disp)?;
+//                                     write!(f, "{}", display)?;
 //                                 }
 //                                 else {
-//                                     write!(f, "{} | ", disp)?;
+//                                     write!(f, "{} | ", display)?;
 //                                 }
 //                             }
 //                             else {
@@ -188,12 +188,12 @@ pub fn make_variant_name(enumeration_name: &str, varient_name: &str) -> String {
 //             quote!{
 //                 impl ::std::fmt::Display for #name {
 //                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-//                         let disp: Option<&'static str> = match *self {
+//                         let display: Option<&'static str> = match *self {
 //                             #( #display_cases )*
 //                             _ => None,
 //                         };
-//                         if let Some(disp) = disp {
-//                             write!(f, "{}", disp)
+//                         if let Some(display) = display {
+//                             write!(f, "{}", display)
 //                         }
 //                         else {
 //                             write!(f, "")

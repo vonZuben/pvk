@@ -5,20 +5,20 @@ use krs_quote::krs_quote_with;
 use crate::utils::{self, case};
 
 #[derive(Copy, Clone)]
-enum Visability {
+enum Visibility {
     Private,
     Public,
 }
 
-impl Default for Visability {
+impl Default for Visibility {
     fn default() -> Self {
-        Visability::Private
+        Visibility::Private
     }
 }
 
-impl krs_quote::ToTokens for Visability {
+impl krs_quote::ToTokens for Visibility {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        use Visability::*;
+        use Visibility::*;
         match self {
             Private => {}
             Public => krs_quote_with!(tokens <- pub ),
@@ -218,7 +218,7 @@ impl krs_quote::ToTokens for ReturnType {
 
 #[derive(Clone)]
 pub struct Cfield {
-    vis: Visability,
+    vis: Visibility,
     pub name: utils::VkTyName,
     pub ty: Ctype,
 }
@@ -233,7 +233,7 @@ impl Cfield {
         }
     }
     pub fn set_public(&mut self) {
-        self.vis = Visability::Public;
+        self.vis = Visibility::Public;
     }
 }
 

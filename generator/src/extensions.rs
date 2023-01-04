@@ -7,7 +7,7 @@ use crate::utils::{VkTyName, StrAsCode};
 // extra: feature or extension that adds more commands
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtensionName {
-    Noraml(VkTyName),
+    Normal(VkTyName),
     Extended(VkTyName, VkTyName),
 }
 
@@ -20,7 +20,7 @@ impl ExtensionName {
                 ExtensionName::Extended(base, extra)
             }
             None => {
-                ExtensionName::Noraml(base)
+                ExtensionName::Normal(base)
             }
         }
     }
@@ -29,7 +29,7 @@ impl ExtensionName {
 impl krs_quote::ToTokens for ExtensionName {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         match self {
-            ExtensionName::Noraml(name) => {
+            ExtensionName::Normal(name) => {
                 krs_quote_with!(tokens <- {@name} );
             }
             ExtensionName::Extended(base, extend) => {
@@ -96,11 +96,11 @@ impl krs_quote::ToTokens for ExtensionInfo {
         let device_command_names = &self.device_command_names;
         let all_commands_names = instance_command_names.iter().chain(device_command_names.iter());
         let load = match &self.extension_name {
-            ExtensionName::Noraml(name) => Some(&**name),
+            ExtensionName::Normal(name) => Some(&**name),
             ExtensionName::Extended(_, _) => None,
         };
         let required: Vec<_> = match self.extension_name {
-            ExtensionName::Noraml(_name) => self.required.iter().copied().collect(),
+            ExtensionName::Normal(_name) => self.required.iter().copied().collect(),
             ExtensionName::Extended(base, _) => std::iter::once(base).collect(),
         };
         krs_quote_with!( tokens <-

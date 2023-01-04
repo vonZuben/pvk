@@ -79,8 +79,8 @@ impl<'a> ConstValue2<'a> {
             Offset(_, _) => panic!("I think this never happens"),// Ctype::new("usize"),
             Text(_) => Ctype::new("&'static str"),
             Enumref(enumref, _) => {
-                        let cref = constant_ref_map.get(enumref).expect("error: enumref to constant that does not exist (yet?)");
-                        cref.ty.clone()
+                        let const_ref = constant_ref_map.get(enumref).expect("error: enumref to constant that does not exist (yet?)");
+                        const_ref.ty.clone()
                     }
             Number(_) => Ctype::new("usize"),
             Hex(_) => Ctype::new("usize"),
@@ -129,7 +129,8 @@ impl<'a> ConstValue2<'a> {
                         value: ValueKind::Number(val),
                         context
                     }
-                } else if value.starts_with('"') && value.ends_with('"') { // TODO: in future, if I remove vkxml entierly, then this can just keep the quotes as part of the value rather than removing them
+                } else if value.starts_with('"') && value.ends_with('"') { // TODO: in future, if I remove vkxml entirely, then this can just keep the quotes as part of the value rather than removing them
+                    // TODO: vkxml is now removed. Is there some optimization possible now?
                     ConstValue2 {
                         value: ValueKind::Text(&value[1..value.len()-1]),
                         context
@@ -146,8 +147,8 @@ impl<'a> ConstValue2<'a> {
                     }
                 }
             }
-            None => panic!("error: enum has no value, is this somhow an enumref?"),
-            _ => panic!("unexpecxted unknown value"),
+            None => panic!("error: enum has no value, is this somehow an enumref?"),
+            _ => panic!("unexpected unknown value"),
         }
     }
 }
@@ -156,9 +157,9 @@ impl krs_quote::ToTokens for ConstValue2<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         use ValueKind::*;
         let value = match self.value {
-            Offset(calcualted, negate) => match negate {
-                Negate2::False => calcualted.to_string().as_code(),
-                Negate2::True => format!("-{}", calcualted).as_code(),
+            Offset(calculated, negate) => match negate {
+                Negate2::False => calculated.to_string().as_code(),
+                Negate2::True => format!("-{}", calculated).as_code(),
             },
             Text(text) => krs_quote::Token::str_as_token(text).into(),
             Enumref(enumref, target) => {
