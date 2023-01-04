@@ -56,15 +56,15 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
                 make_proper_name(c.name.as_str())
             });
 
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             impl {@target} {
                 {@* {@variants} }
             }
-        });
+        );
 
         match self.kind {
             EnumKind::Normal => {
-                krs_quote_with!(tokens {
+                krs_quote_with!(tokens <-
                     impl std::fmt::Debug for {@target} {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                         let to_print = match *self {
@@ -76,10 +76,10 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
                             .finish()
                         }
                     }
-                });
+                );
             }
             EnumKind::BitFlags => {
-                krs_quote_with!(tokens {
+                krs_quote_with!(tokens <-
                     impl std::fmt::Debug for {@target} {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                         let mut self_copy = *self;
@@ -97,7 +97,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
                             .finish()
                         }
                     }
-                });
+                );
             }
         }
     }

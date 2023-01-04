@@ -21,7 +21,7 @@ impl krs_quote::ToTokens for Visability {
         use Visability::*;
         match self {
             Private => {}
-            Public => krs_quote_with!(tokens { pub }),
+            Public => krs_quote_with!(tokens <- pub ),
         }
     }
 }
@@ -36,8 +36,8 @@ impl krs_quote::ToTokens for Pointer {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         use Pointer::*;
         match self {
-            Const => krs_quote_with!(tokens { *const }),
-            Mut => krs_quote_with!(tokens { *mut }),
+            Const => krs_quote_with!(tokens <- *const ),
+            Mut => krs_quote_with!(tokens <- *mut ),
         }
     }
 }
@@ -66,9 +66,9 @@ impl krs_quote::ToTokens for Basetype {
         let pointers = &self.pointers;
         let name = self.name;
 
-        krs_quote_with!( tokens {
+        krs_quote_with!( tokens <-
             {@* {@pointers}} {@name}
-        });
+        );
     }
 }
 
@@ -93,7 +93,7 @@ struct Size(utils::VkTyName);
 impl krs_quote::ToTokens for Size {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let s = self.0;
-        krs_quote_with!(tokens { {@s} });
+        krs_quote_with!(tokens <- {@s} );
     }
 }
 
@@ -123,10 +123,10 @@ impl krs_quote::ToTokens for CtypeInner {
         }
 
         if let Some(size) = array.iter().next() {
-            krs_quote_with!(tokens { [ {@bt} ; {@size}] });
+            krs_quote_with!(tokens <- [ {@bt} ; {@size}] );
         }
         else {
-            krs_quote_with!(tokens { {@bt} });
+            krs_quote_with!(tokens <- {@bt} );
         }
     }
 }
@@ -186,7 +186,7 @@ impl Ctype {
 impl krs_quote::ToTokens for Ctype {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let inner = &self.inner;
-        krs_quote_with!(tokens { {@inner} });
+        krs_quote_with!(tokens <- {@inner} );
     }
 }
 
@@ -210,8 +210,8 @@ impl From<Ctype> for ReturnType {
 impl krs_quote::ToTokens for ReturnType {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         match self {
-            ReturnType::None => krs_quote_with!(tokens { () }),
-            ReturnType::Some(ct) => krs_quote_with!(tokens { {@ct} }),
+            ReturnType::None => krs_quote_with!(tokens <- () ),
+            ReturnType::Some(ct) => krs_quote_with!(tokens <- {@ct} ),
         }
     }
 }
@@ -245,8 +245,8 @@ impl krs_quote::ToTokens for Cfield {
         let name = case::camel_to_snake(self.name.borrow()).as_code();
         let ty = &self.ty;
 
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             {@vis} {@name} : {@ty}
-        });
+        );
     }
 }

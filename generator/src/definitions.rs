@@ -30,9 +30,9 @@ impl krs_quote::ToTokens for TypeDef {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let ty = self.ty;
-        krs_quote_with!(tokens{
+        krs_quote_with!(tokens <-
             pub type {@name} = {@ty};
-        });
+        );
     }
 }
 
@@ -59,12 +59,12 @@ impl krs_quote::ToTokens for Bitmask {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let ty = self.ty;
-        krs_quote_with!(tokens{
+        krs_quote_with!(tokens <-
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub struct {@name}(pub(crate) {@ty});
             vk_bitflags_wrapped!({@name}, {@ty});
-        });
+        );
     }
 }
 
@@ -101,24 +101,24 @@ impl krs_quote::ToTokens for Struct2 {
         match self.non_normative {
             false => {
                 let fields = &self.fields;
-                krs_quote_with!(tokens {
+                krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[derive(Copy, Clone, Debug)]
                     pub struct {@name} {
                         {@* {@fields} , }
                     }
-                });
+                );
             }
             true => {
                 let fields = BitFieldIter::new(self.fields.iter());
-                krs_quote_with!(tokens {
+                krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[repr(packed)]
                     #[derive(Copy, Clone, Debug)]
                     pub struct {@name} {
                         {@* {@fields} , }
                     }
-                });
+                );
             }
         }
     }
@@ -212,7 +212,7 @@ impl krs_quote::ToTokens for Union {
         let fields = &self.fields;
         let field_names = fields.iter().map(|field| case::camel_to_snake(field.name.as_ref()).as_code());
 
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             #[repr(C)]
             #[derive(Copy, Clone)]
             pub union {@name} {
@@ -227,7 +227,7 @@ impl krs_quote::ToTokens for Union {
                     }
                 }
             }
-        });
+        );
     }
 }
 
@@ -261,7 +261,7 @@ impl krs_quote::ToTokens for Handle2 {
             false => ctype::Ctype::new("u64"),
         };
 
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             #[repr(transparent)]
             #[derive(Copy, Clone)]
             pub struct {@name} {
@@ -272,7 +272,7 @@ impl krs_quote::ToTokens for Handle2 {
                     write!(f, concat!(stringify!({@name}), "({:?})"), self.handle)
                 }
             }
-        });
+        );
     }
 }
 
@@ -298,11 +298,11 @@ impl Enum2 {
 impl krs_quote::ToTokens for Enum2 {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
             pub struct {@name}(pub(crate) i32);
-        });
+        );
     }
 }
 
@@ -342,7 +342,7 @@ impl krs_quote::ToTokens for FunctionPointer {
         let fields = &self.fields;
         let return_type = &self.return_type;
 
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             #[allow(non_camel_case_types)]
             pub type {@name_inner} = unsafe extern "system" fn(
                 {@,* {@fields} }
@@ -364,7 +364,7 @@ impl krs_quote::ToTokens for FunctionPointer {
                     write!(f, "{}", stringify!({@name}))
                 }
             }
-        });
+        );
     }
 }
 
@@ -413,7 +413,7 @@ impl krs_quote::ToTokens for Definitions2 {
         let enumerations = &self.enumerations;
         let function_pointers = &self.function_pointers;
 
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             {@* {@type_defs} }
             {@* {@bitmasks} }
             {@* {@structs} }
@@ -421,6 +421,6 @@ impl krs_quote::ToTokens for Definitions2 {
             {@* {@handles} }
             {@* {@enumerations} }
             {@* {@function_pointers} }
-        });
+        );
     }
 }

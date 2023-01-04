@@ -24,13 +24,13 @@ impl krs_quote::ToTokens for Commands2 {
         let function_pointers = self.function_pointers.iter();
         let commands = self.function_pointers.iter().map(|fptr|fptr.name);
         let command_names = self.function_pointers.iter().map(|fptr|fptr.name.as_str());
-        krs_quote_with!( tokens {
+        krs_quote_with!( tokens <-
             {@* {@function_pointers}}
             macro_rules! use_command_function_pointer_names {
                 ( $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* {@;* {@commands} -> {@command_names} } );
                 }
             }
-        });
+        );
     }
 }

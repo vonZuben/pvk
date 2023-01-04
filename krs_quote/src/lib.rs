@@ -86,13 +86,13 @@ macro_rules! krs_quote {
 /// impl ToTokens for CustomId {
 ///     fn to_tokens(&self, tokens: &mut TokenStream) {
 ///         let id = format!("Id{}", self.0);
-///         krs_quote_with!(tokens { {@id} });
+///         krs_quote_with!(tokens <- {@id} );
 ///     }
 /// }
 /// ```
 #[macro_export]
 macro_rules! krs_quote_with {
-    ( $ts:ident { $($tt:tt)* }) => {{
+    ( $ts:ident <- $($tt:tt)* ) => {{
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
         let mut to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);

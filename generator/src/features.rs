@@ -37,9 +37,9 @@ impl FeatureCommandsCollection {
 impl krs_quote::ToTokens for FeatureCommandsCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let fc = self.feature_commands.iter();
-        krs_quote_with!(tokens {
+        krs_quote_with!(tokens <-
             {@* {@fc}}
-        })
+        )
     }
 }
 
@@ -68,7 +68,7 @@ impl krs_quote::ToTokens for RequireRemove {
         use RequireRemove::*;
         match self {
             Require(name) => {
-                krs_quote_with!(tokens { {@name} } );
+                krs_quote_with!(tokens <- {@name}  );
             }
             Remove(_) => panic!("should not turn Remove into code"),
         }
@@ -151,7 +151,7 @@ impl krs_quote::ToTokens for FeatureCommands {
         let device_command_names = &device_command_names;
         let entry_command_names: Vec<_> = self.entry_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
         let entry_command_names = &entry_command_names;
-        krs_quote_with!( tokens {
+        krs_quote_with!( tokens <-
             macro_rules! {@version} {
                 ( @INSTANCE $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* {@,* {@instance_command_names}} );
@@ -166,7 +166,7 @@ impl krs_quote::ToTokens for FeatureCommands {
                     $call!( $($pass)* {@,* {@instance_command_names}} ; {@,* {@device_command_names}} ; {@,* {@entry_command_names}} );
                 };
             }
-        });
+        );
     }
 }
 
@@ -188,13 +188,13 @@ impl krs_quote::ToTokens for VulkanVersionNames {
         let versions = self.versions.iter();
         let version_tuple = self.versions.iter()
             .map(|v| parse_version(v));
-        krs_quote_with!( tokens {
+        krs_quote_with!( tokens <-
             macro_rules! use_all_vulkan_version_names {
                 ( $call:ident $($pass:tt)* ) => {
                     $call!( $($pass)* {@,* {@versions} => {@version_tuple}} );
                 }
             }
-        });
+        );
     }
 }
 
@@ -227,6 +227,6 @@ impl krs_quote::ToTokens for FeatureVersion {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let major = self.major;
         let minor = self.minor;
-        krs_quote_with!(tokens { ({@major}, {@minor}, 0) });
+        krs_quote_with!(tokens <- ({@major}, {@minor}, 0) );
     }
 }
