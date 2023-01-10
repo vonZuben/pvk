@@ -46,7 +46,6 @@ pub struct Generator<'a> {
     constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
     enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2,
-    vulkan_version_names: features::VulkanVersionNames,
     feature_commands_collection: features::FeatureCommandsCollection,
     vulkan_extension_names: extensions::VulkanExtensionNames,
     extension_infos: VecMap<extensions::ExtensionName, extensions::ExtensionInfo>,
@@ -76,13 +75,13 @@ impl<'a> Generator<'a> {
     pub fn generate_output_for_single_file(&self) -> String {
         let static_code = crate::static_code::StaticCode;
 
-        let traits = crate::traits::VulkanCommand;
+        let commands_trait = crate::traits::VulkanCommand;
+        let version_trait = crate::traits::VulkanVersion;
 
         let definitions = &self.definitions;
         let constants = self.constants.iter();
         let enum_variants = self.enum_variants.iter();
         let commands = &self.commands;
-        let vulkan_version_names = &self.vulkan_version_names;
         let feature_commands_collection = &self.feature_commands_collection;
         let vulkan_extension_names = &self.vulkan_extension_names;
         let extension_commands = self.extension_infos.iter();
@@ -94,13 +93,13 @@ impl<'a> Generator<'a> {
 
         krs_quote!(
             {@static_code}
-            {@traits}
+            {@commands_trait}
+            {@version_trait}
             {@definitions}
             {@* {@constants}}
             {@* {@enum_variants}}
             {@commands}
             {@* {@aliases}}
-            {@vulkan_version_names}
             {@feature_commands_collection}
             {@vulkan_extension_names}
             {@* {@extension_commands}}
@@ -280,8 +279,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         fptr.set_return_type(def.return_type);
         self.definitions.function_pointers.push(fptr);
     }
-    fn visit_feature_name(&mut self, name: utils::VkTyName) {
-        self.vulkan_version_names.push_version_once(name);
+    fn visit_feature_name(&mut self, _name: utils::VkTyName) {
+
     }
     fn visit_require_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
         let cmd_name = utils::VkTyName::new(def.name);

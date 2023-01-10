@@ -11,3 +11,18 @@ impl ToTokens for VulkanCommand {
         )
     }
 }
+
+pub struct VulkanVersion;
+
+impl ToTokens for VulkanVersion {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        krs_quote_with!(tokens <-
+            pub trait VulkanVersion {
+                const VersionTriple: (u32, u32, u32);
+                type InstanceCommands;
+                type DeviceCommands;
+                type EntryCommands;
+            }
+        )
+    }
+}

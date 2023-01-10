@@ -145,54 +145,19 @@ impl FeatureCommands {
 impl krs_quote::ToTokens for FeatureCommands {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let version = self.version.as_code();
-        let instance_command_names: Vec<_> = self.instance_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
-        let instance_command_names = &instance_command_names;
-        let device_command_names: Vec<_> = self.device_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
-        let device_command_names = &device_command_names;
-        let entry_command_names: Vec<_> = self.entry_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_))).collect();
-        let entry_command_names = &entry_command_names;
+        let instance_command_names = self.instance_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_)));
+        let device_command_names = self.device_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_)));
+        let entry_command_names = self.entry_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_)));
+
+        let version_triple = parse_version(&self.version);
+
         krs_quote_with!( tokens <-
-            macro_rules! {@version} {
-                ( @INSTANCE $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@instance_command_names}} );
-                };
-                ( @DEVICE $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@device_command_names}} );
-                };
-                ( @ENTRY $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@entry_command_names}} );
-                };
-                ( @ALL $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@instance_command_names}} ; {@,* {@device_command_names}} ; {@,* {@entry_command_names}} );
-                };
-            }
-        );
-    }
-}
-
-// =================================================================
-/// list of all existing Vulkan versions
-#[derive(Default)]
-pub struct VulkanVersionNames {
-    versions: VecMap<VkTyName, VkTyName>,
-}
-
-impl VulkanVersionNames {
-    pub fn push_version_once(&mut self, version: VkTyName) {
-        self.versions.contains_or_default(version, version);
-    }
-}
-
-impl krs_quote::ToTokens for VulkanVersionNames {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let versions = self.versions.iter();
-        let version_tuple = self.versions.iter()
-            .map(|v| parse_version(v));
-        krs_quote_with!( tokens <-
-            macro_rules! use_all_vulkan_version_names {
-                ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@versions} => {@version_tuple}} );
-                }
+            pub struct {@version};
+            impl VulkanVersion for {@version} {
+                const VersionTriple: (u32, u32, u32) = {@version_triple};
+                type InstanceCommands = hlist_ty!({@,* {@instance_command_names}});
+                type DeviceCommands = hlist_ty!({@,* {@device_command_names}});
+                type EntryCommands = hlist_ty!({@,* {@entry_command_names}});
             }
         );
     }
