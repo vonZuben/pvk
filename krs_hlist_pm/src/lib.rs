@@ -38,6 +38,40 @@ fn make_node<I: Iterator<Item=TokenTree>>(tt_iter: &mut iter::Peekable<I>) -> To
 	}
 }
 
+#[proc_macro]
+pub fn hlist_ty(input: TokenStream) -> TokenStream {
+	let mut tt_iter = input.into_iter().peekable();
+	let output = make_node_ty(&mut tt_iter);
+	if let Some(extra_tt) = tt_iter.next() {
+		return compile_error("unexpected token", extra_tt.span());
+	}
+	else {
+		output
+	}
+}
+
+fn make_node_ty<I: Iterator<Item=TokenTree>>(tt_iter: &mut iter::Peekable<I>) -> TokenStream {
+	let next = tt_iter.peek();
+
+	//dbg!(next);
+	if next.is_none() || matches!(next, Some(TokenTree::Punct(x)) if x.as_char() == ',') {
+		make_path(["krs_hlist", "End"])
+	}
+	else {
+		let head: TokenStream = UntilComma::new(tt_iter).collect();
+		let tail: TokenStream = make_node_ty(tt_iter);
+
+		[
+			make_path(["krs_hlist", "Cons"]),
+			TokenTree::Punct(Punct::new('<', Spacing::Alone)).into(),
+			head,
+			TokenTree::Punct(Punct::new(',', Spacing::Alone)).into(),
+			tail,
+			TokenTree::Punct(Punct::new('>', Spacing::Alone)).into(),
+		].into_iter().collect()
+	}
+}
+
 #[cfg(not(feature = "re-export"))]
 fn make_path<'a>(names: impl IntoIterator<Item=&'a str>) -> TokenStream {
 	let level = |name| {
@@ -92,7 +126,7 @@ fn compile_error(msg: &str, with_span: Span) -> TokenStream {
 }
 
 // repeatedly call next on the iterator until a comma
-// can potentialy resume after a comma
+// can potentially resume after a comma
 struct UntilComma<'a, I>{
 	iter: &'a mut I,
 }
