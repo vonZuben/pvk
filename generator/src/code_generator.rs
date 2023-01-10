@@ -76,6 +76,8 @@ impl<'a> Generator<'a> {
     pub fn generate_output_for_single_file(&self) -> String {
         let static_code = crate::static_code::StaticCode;
 
+        let traits = crate::traits::VulkanCommand;
+
         let definitions = &self.definitions;
         let constants = self.constants.iter();
         let enum_variants = self.enum_variants.iter();
@@ -92,6 +94,7 @@ impl<'a> Generator<'a> {
 
         krs_quote!(
             {@static_code}
+            {@traits}
             {@definitions}
             {@* {@constants}}
             {@* {@enum_variants}}

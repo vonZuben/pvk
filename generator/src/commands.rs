@@ -26,9 +26,10 @@ impl krs_quote::ToTokens for Commands2 {
         let command_names = self.function_pointers.iter().map(|fptr|fptr.name.as_str());
         krs_quote_with!( tokens <-
             {@* {@function_pointers}}
-            macro_rules! use_command_function_pointer_names {
-                ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@;* {@commands} -> {@command_names} } );
+
+            {@*
+                impl VulkanCommand for {@commands} {
+                    const VK_NAME: *const c_char = concat!({@command_names}, '\0').as_ptr().cast();
                 }
             }
         );

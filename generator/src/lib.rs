@@ -1,6 +1,5 @@
 #![recursion_limit = "1000"]
 
-// just for coverting the xml file into a vkxml registry
 extern crate vk_parse;
 
 #[macro_use]
@@ -21,6 +20,7 @@ mod vk_parse_visitor;
 mod code_generator;
 mod static_code;
 mod aliases;
+mod traits;
 
 use std::path::Path;
 
