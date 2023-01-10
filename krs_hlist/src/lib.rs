@@ -47,6 +47,8 @@ pub mod higher_order;
 
 pub use const_utils::Comparator;
 
+pub use krs_hlist_pm::{hlist, hlist_ty};
+
 /// Represents a a generic hlist
 ///
 /// A properly constructed hlist (nested chain of [Cons] ending with [End]) will implement this trait automatically
@@ -66,7 +68,7 @@ pub trait Hlist {
 ///
 /// *Note* this type is repr(C) at this time in order to work soundly with the current implementation of [Contains], but it
 /// is not clear if this will be maintained.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 #[repr(C)]
 pub struct Cons<H, T> {
     /// This holds that actual data for each spot in the hlist
@@ -97,7 +99,7 @@ impl<H, T: Hlist> Hlist for Cons<H, T> {
 /// Mark the end of an hlist
 ///
 /// The last `tail` in an hlist should be set with this
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct End;
 
 impl End {

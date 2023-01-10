@@ -6,3 +6,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+krs_hlist_pm = { path = "../krs_hlist_pm", features = ["re-export"] }
