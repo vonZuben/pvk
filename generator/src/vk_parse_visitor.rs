@@ -9,8 +9,8 @@ pub trait VisitVkParse<'a> {
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>);
     fn visit_struct_def(&mut self, def: StructDef<'a>);
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>);
-    fn visit_basetype(&mut self, basetype: VkBastetype<'a>);
-    fn visit_bitmask(&mut self, basetype: VkBastetype<'a>);
+    fn visit_basetype(&mut self, basetype: VkBasetype<'a>);
+    fn visit_bitmask(&mut self, basetype: VkBasetype<'a>);
     fn visit_union(&mut self, def: UnionDef<'a>);
     fn visit_handle(&mut self, def: HandleDef<'a>);
     fn visit_fptr(&mut self, def: FptrDef<'a>);
@@ -63,7 +63,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     Some("basetype") => {
                                         match ty.spec {
                                             vk_parse::TypeSpec::Code(ref code) => {
-                                                let basetype = parse_basetype(&code.code).expect("error: can't parse basetype in vk_parese");
+                                                let basetype = parse_basetype(&code.code).expect("error: can't parse basetype in vk_parse");
                                                 visitor.visit_basetype(basetype);
                                             }
                                             _ => panic!("unexpected basetype spec"),
@@ -72,7 +72,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     Some("bitmask") => {
                                         match ty.spec {
                                             vk_parse::TypeSpec::Code(ref code) => {
-                                                let basetype = parse_basetype(&code.code).expect("error: can't parse bitmask in vk_parese");
+                                                let basetype = parse_basetype(&code.code).expect("error: can't parse bitmask in vk_parse");
                                                 visitor.visit_bitmask(basetype);
                                             }
                                             _ => panic!("unexpected bitmask spec"),
@@ -250,16 +250,16 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 api: _,
                                 profile: _,
                                 extension: required_extension,
-                                feature: requiered_feature,
+                                feature: required_feature,
                                 comment: _,
                                 items,
                             } => {
                                 // assuming for now that feature and extension additions are exclusive
-                                let further_extended = match (requiered_feature, required_extension) {
+                                let further_extended = match (required_feature, required_extension) {
                                     (Some(feature), None) => Some(feature.as_str()),
                                     (None, Some(extension)) => Some(extension.as_str()),
                                     (None, None) => None,
-                                    _ => panic!("error: not expecting feature and exteions additions at the same time"),
+                                    _ => panic!("error: not expecting feature and extension additions at the same time"),
                                 };
                                 let parts = VkParseExtensionParts {
                                     extension_name: &extension.name,
@@ -388,8 +388,8 @@ impl<'a> Iterator for Members<'a> {
                     .expect("error: failed to parse struct member code");
                 Some(MemberKind::Member(field))
             }
-            TypeMember::Comment(ref cmnt) => {
-                Some(MemberKind::Comment(cmnt))
+            TypeMember::Comment(ref comment) => {
+                Some(MemberKind::Comment(comment))
             }
             _ => panic!("error: unexpected TypeMember node"),
         }
@@ -407,7 +407,7 @@ pub struct ExtensionInfo<'a, I> {
     pub kind: &'a str,
 }
 
-pub struct VkBastetype<'a> {
+pub struct VkBasetype<'a> {
     pub name: &'a str,
     pub ty: &'a str,
 }
@@ -519,7 +519,7 @@ impl<'a> Iterator for Parameters<'a> {
     }
 }
 
-fn parse_basetype<'a>(code: &'a str) -> Result<VkBastetype, ()> {
+fn parse_basetype<'a>(code: &'a str) -> Result<VkBasetype, ()> {
     use crate::simple_parse::*;
 
     let input = TokenIter::new(code);
@@ -527,7 +527,7 @@ fn parse_basetype<'a>(code: &'a str) -> Result<VkBastetype, ()> {
     let (input, ty) = token()(input)?;
     let (input, name) = token()(input)?;
     let (_input, _) = tag(";")(input)?;
-    Ok(VkBastetype {
+    Ok(VkBasetype {
         name,
         ty,
     })

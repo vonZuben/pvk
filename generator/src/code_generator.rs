@@ -255,11 +255,11 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 
         self.constants.push(name, constants::Constant3::new(name, ty, val, None));
     }
-    fn visit_basetype(&mut self, basetype: crate::vk_parse_visitor::VkBastetype<'a>) {
+    fn visit_basetype(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
         let type_def = definitions::TypeDef::new(basetype.name, basetype.ty);
         self.definitions.type_defs.push(type_def);
     }
-    fn visit_bitmask(&mut self, basetype: crate::vk_parse_visitor::VkBastetype<'a>) {
+    fn visit_bitmask(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
         let name = utils::VkTyName::new(basetype.name);
         assert!(name.contains("Flags"));
         self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags));
