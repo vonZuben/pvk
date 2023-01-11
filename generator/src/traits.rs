@@ -26,3 +26,26 @@ impl ToTokens for VulkanVersion {
         )
     }
 }
+
+pub struct VulkanExtension;
+
+impl ToTokens for VulkanExtension {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        krs_quote_with!(tokens <-
+            pub trait Extension {
+                /// This is intended to be an Hlist representing all other extension prerequisites for this extension
+                type Require;
+                /// Represent if this extension needs to load (i.e. some implementors of this trait only represent additional optional commands which otherwise require a base extension)
+                type Load;
+                const LoadThis: Self::Load;
+
+                type ExtensionType;
+
+                type Commands : commands::LoadCommands;
+                fn load_extension_commands(f: impl commands::FunctionLoader) -> Result<Self::Commands, commands::LoadError> {
+                    <Self::Commands as commands::LoadCommands>::load(f)
+                }
+            }
+        )
+    }
+}

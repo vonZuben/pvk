@@ -124,29 +124,3 @@ impl krs_quote::ToTokens for ExtensionInfo {
         );
     }
 }
-
-// =================================================================
-/// list of all existing Vulkan extensions
-#[derive(Default)]
-pub struct VulkanExtensionNames {
-    extensions: Vec<ExtensionName>,
-}
-
-impl VulkanExtensionNames {
-    pub fn push_extension(&mut self, extension_name: ExtensionName) {
-        self.extensions.push(extension_name);
-    }
-}
-
-impl krs_quote::ToTokens for VulkanExtensionNames {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let extension_names = &self.extensions;
-        krs_quote_with!( tokens <-
-            macro_rules! use_all_vulkan_extension_names {
-                ( $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@extension_names}} );
-                }
-            }
-        );
-    }
-}

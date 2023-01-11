@@ -47,7 +47,6 @@ pub struct Generator<'a> {
     enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2,
     feature_commands_collection: features::FeatureCommandsCollection,
-    vulkan_extension_names: extensions::VulkanExtensionNames,
     extension_infos: VecMap<extensions::ExtensionName, extensions::ExtensionInfo>,
     aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
 }
@@ -83,7 +82,6 @@ impl<'a> Generator<'a> {
         let enum_variants = self.enum_variants.iter();
         let commands = &self.commands;
         let feature_commands_collection = &self.feature_commands_collection;
-        let vulkan_extension_names = &self.vulkan_extension_names;
         let extension_commands = self.extension_infos.iter();
         let aliases = self.aliases.iter();
 
@@ -101,7 +99,6 @@ impl<'a> Generator<'a> {
             {@commands}
             {@* {@aliases}}
             {@feature_commands_collection}
-            {@vulkan_extension_names}
             {@* {@extension_commands}}
             {@cmd_aliases}
         ).to_string()
@@ -171,8 +168,6 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: crate::vk_parse_visitor::ExtensionInfo<'a, I>) {
         let ex_name = extensions::ExtensionName::new(info.name_parts.extension_name, info.name_parts.further_extended);
-
-        self.vulkan_extension_names.push_extension(ex_name);
 
         let kind = match info.kind {
             "instance" => extensions::ExtensionKind::Instance,
