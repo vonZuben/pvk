@@ -97,25 +97,19 @@ const fn get_cons_offset_helper<T, C, L: Searchable<T, C>>(offset: isize) -> Opt
     else if <L::Head as CompareWith<T, C>>::EQUAL {
         // offset is in bytes, so when we found our type, divide by type size
         // for the proper offset
-        // assert!(offset + std::mem::size_of::<G>() as isize <= isize::MAX);
         let head_size = std::mem::size_of::<T>();
         if head_size == 0 {
             Some(offset)
         }
         else {
-            Some(offset / std::mem::size_of::<T>() as isize)
+            Some(offset / head_size as isize)
         }
     }
     else {
-        let head_size = std::mem::size_of::<L::Head>();
-        let tail_align = std::mem::align_of::<L::Tail>();
-        let align_diff = head_size % tail_align;
-        let padding = if align_diff != 0 {
-            tail_align - align_diff
-        }
-        else {
-            0
-        };
-        get_cons_offset_helper::<T, C, L::Tail>(offset + head_size as isize + padding as isize)
+        let head_size = std::mem::size_of::<L::Head>() as isize;
+        let tail_align = std::mem::align_of::<L::Tail>() as isize;
+        // thanks https://en.wikipedia.org/wiki/Data_structure_alignment#Computing_padding
+        let aligned = (head_size + (tail_align - 1)) & -tail_align;
+        get_cons_offset_helper::<T, C, L::Tail>(offset + aligned)
     }
 }
