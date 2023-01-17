@@ -136,13 +136,13 @@ make_special_token!{
     RightBrace => "}\n",
 }
 
-/// The output of [krs_quote!]
+/// The output of [krs_quote!](crate::krs_quote!)
 pub struct TokenStream(Vec<Token>);
 
 impl TokenStream {
     /// Not really intended for use
     ///
-    /// used automatically my [krs_quote!]
+    /// used automatically my [krs_quote!](crate::krs_quote!)
     pub fn new() -> Self {
         Self(Vec::new())
     }

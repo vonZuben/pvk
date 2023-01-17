@@ -156,9 +156,9 @@ pub trait Contains<T, C> {
     /// offset in bytes from start of `Hlist` to where `T` can be found
     const OFFSET: isize;
     // const HAS: bool = Self::OFFSET.is_some();  // for use with "associated_const_equality", and OFFSET should be Option<isize>
-    /// get `&T` at [OFFSET]
+    /// get `&T` at [OFFSET](Contains::OFFSET)
     fn get(&self) -> &T;
-    /// get `&mut T` at [OFFSET]
+    /// get `&mut T` at [OFFSET](Contains::OFFSET)
     fn get_mut(&mut self) -> &mut T;
 }
 
