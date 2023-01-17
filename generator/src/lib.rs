@@ -1,5 +1,3 @@
-#![recursion_limit = "1000"]
-
 extern crate vk_parse;
 
 #[macro_use]
