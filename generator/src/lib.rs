@@ -43,6 +43,7 @@ running rust fmt is still recommended if the output is for human.
 pub struct Code {
     util_code: String,
     vulkan_traits: String,
+    c_type_defs: String,
 }
 
 impl Code {
@@ -57,6 +58,11 @@ impl Code {
     /// Code that represents certain aspects of Vulkan via traits
     pub fn vulkan_traits(&self) -> &str {
         &self.vulkan_traits
+    }
+
+    /// Code for c style type definitions (just aliases for fundamental types like VkBool32)
+    pub fn c_type_defs(&self) -> &str {
+        &self.c_type_defs
     }
 }
 
@@ -87,5 +93,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
     Code {
         util_code: generator.static_code(),
         vulkan_traits: generator.vulkan_traits(),
+        c_type_defs: generator.c_type_defs(),
     }
 }

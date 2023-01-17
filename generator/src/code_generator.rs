@@ -118,6 +118,11 @@ impl<'a> Generator<'a> {
             {@extension_traits}
         ).to_string()
     }
+
+    pub fn c_type_defs(&self) -> String {
+        let c_type_defs = &self.definitions.type_defs;
+        krs_quote!({@* {@c_type_defs} }).to_string()
+    }
 }
 
 // =================================================================
