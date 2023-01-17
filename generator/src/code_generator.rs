@@ -128,6 +128,11 @@ impl<'a> Generator<'a> {
         let bitmasks = &self.definitions.bitmasks;
         krs_quote!({@* {@bitmasks} }).to_string()
     }
+
+    pub fn structs(&self) -> String {
+        let structs = self.definitions.structs.iter();
+        krs_quote!({@* {@structs} }).to_string()
+    }
 }
 
 // =================================================================
