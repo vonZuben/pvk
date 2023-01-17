@@ -51,7 +51,7 @@ impl<K, V> Default for VecMap<K, V> {
 impl<K: Eq + Hash, V> VecMap<K, V> {
     pub fn push(&mut self, key: K, val: V) {
         match self.map.insert(key, self.vec.len()) {
-            Some(_) => panic!("error: trying to put duplicate item in vecmap"),
+            Some(_) => panic!("error: trying to put duplicate item in VecMap"),
             None => {} // good
         }
         self.vec.push(val);
