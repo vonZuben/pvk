@@ -49,6 +49,7 @@ pub struct Code {
     c_type_defs: String,
     bitmasks: String,
     structs: String,
+    unions: String,
 }
 
 impl Code {
@@ -78,6 +79,11 @@ impl Code {
     /// Code for structs
     pub fn structs(&self) -> &str {
         &self.structs
+    }
+
+    /// Code for unions
+    pub fn unions(&self) -> &str {
+        &self.unions
     }
 }
 
@@ -111,5 +117,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         c_type_defs: generator.c_type_defs(),
         bitmasks: generator.bitmasks(),
         structs: generator.structs(),
+        unions: generator.unions(),
     }
 }

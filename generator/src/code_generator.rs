@@ -133,6 +133,11 @@ impl<'a> Generator<'a> {
         let structs = self.definitions.structs.iter();
         krs_quote!({@* {@structs} }).to_string()
     }
+
+    pub fn unions(&self) -> String {
+        let unions = &self.definitions.unions;
+        krs_quote!({@* {@unions} }).to_string()
+    }
 }
 
 // =================================================================
