@@ -36,10 +36,10 @@ impl krs_quote::ToTokens for StaticCode {
                             $name(0)
                         }
 
-                        // this is for supporteing taking each bit one at a time
+                        // this is for supporting taking each bit one at a time
                         // can use for iterating over each bit
-                        // creates a copy of the bit field with only the lowest active bit
-                        // and unsets the same bit in the origin
+                        // create a copy of the bit field with only the lowest active bit
+                        // and unset the same bit in the origin
                         // or returns None if no bits set
                         fn take_lowest_bit(&mut self) -> Option<$name> {
                             let lowest_bit = self.0 & self.0.wrapping_neg();
@@ -106,14 +106,14 @@ impl krs_quote::ToTokens for StaticCode {
                         type Output = $name;
 
                         #[inline]
-                        fn bitand(self, rhs: $name) -> $name {
+                        fn bit_and(self, rhs: $name) -> $name {
                             $name (self.0 & rhs.0)
                         }
                     }
 
                     impl ::std::ops::BitAndAssign for $name {
                         #[inline]
-                        fn bitand_assign(&mut self, rhs: $name) {
+                        fn bit_and_assign(&mut self, rhs: $name) {
                             *self = *self & rhs
                         }
                     }
@@ -122,14 +122,14 @@ impl krs_quote::ToTokens for StaticCode {
                         type Output = $name;
 
                         #[inline]
-                        fn bitxor(self, rhs: $name) -> $name {
+                        fn bit_xor(self, rhs: $name) -> $name {
                             $name (self.0 ^ rhs.0 )
                         }
                     }
 
                     impl ::std::ops::BitXorAssign for $name {
                         #[inline]
-                        fn bitxor_assign(&mut self, rhs: $name) {
+                        fn bit_xor_assign(&mut self, rhs: $name) {
                             *self = *self ^ rhs
                         }
                     }
@@ -186,10 +186,10 @@ impl krs_quote::ToTokens for StaticCode {
             pub type zx_handle_t = u32;
 
             // FIXME: Platform specific types that should come from a library id:0
-            // typedefs are only here so that the code compiles for now
+            // type_defs are only here so that the code compiles for now
             #[allow(non_camel_case_types)]
             pub type SECURITY_ATTRIBUTES = ();
-            // Opage types
+            // Android NDK types
             pub type ANativeWindow = c_void;
             pub type AHardwareBuffer = c_void;
 
@@ -201,7 +201,7 @@ impl krs_quote::ToTokens for StaticCode {
             pub type GgpFrameToken = *const c_void;
             pub type HMONITOR = *const c_void;
 
-            // more types that shuld not be used but are only here so it can compile
+            // more types that should not be used but are only here so it can compile
             pub type IDirectFB = *const c_void;
             pub type IDirectFBSurface = *const c_void;
             pub type _screen_context = *const c_void;
