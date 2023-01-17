@@ -39,6 +39,9 @@ Provides methods for obtaining different parts of the code as &str
 The generated code is mostly unformatted (there are newlines in some places to make
 it easier to read even without rustfmt; based on how [krs_quote] works). However,
 running rust fmt is still recommended if the output is for human.
+
+Generated code removes the "Vk" prefixes since the code can be imbedded in a crate
+and used as vk to provide e.g. vk::Instance.
 */
 pub struct Code {
     util_code: String,
