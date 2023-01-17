@@ -100,6 +100,13 @@ impl<'a> Generator<'a> {
             {@* {@extension_commands}}
         ).to_string()
     }
+
+    /// internally I call it static code (see [StaticCode](crate::static_code::StaticCode))
+    /// externally, this is utility code that other generated code relies on
+    pub fn static_code(&self) -> String {
+        let static_code = crate::static_code::StaticCode;
+        krs_quote!({@static_code}).to_string()
+    }
 }
 
 // =================================================================

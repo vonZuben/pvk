@@ -1,4 +1,7 @@
 
+/// I call this "static" code because it is not dynamically generated from vk.xml
+///
+/// it is basic utility code used by other code that is generated based on vk.xml
 pub struct StaticCode;
 
 impl krs_quote::ToTokens for StaticCode {
