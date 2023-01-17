@@ -47,6 +47,7 @@ pub struct Code {
     util_code: String,
     vulkan_traits: String,
     c_type_defs: String,
+    bitmasks: String,
 }
 
 impl Code {
@@ -66,6 +67,11 @@ impl Code {
     /// Code for c style type definitions (just aliases for fundamental types like VkBool32)
     pub fn c_type_defs(&self) -> &str {
         &self.c_type_defs
+    }
+
+    /// Code for bitmasks
+    pub fn bitmasks(&self) -> &str {
+        &self.bitmasks
     }
 }
 
@@ -97,5 +103,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         util_code: generator.static_code(),
         vulkan_traits: generator.vulkan_traits(),
         c_type_defs: generator.c_type_defs(),
+        bitmasks: generator.bitmasks(),
     }
 }

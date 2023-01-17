@@ -123,6 +123,11 @@ impl<'a> Generator<'a> {
         let c_type_defs = &self.definitions.type_defs;
         krs_quote!({@* {@c_type_defs} }).to_string()
     }
+
+    pub fn bitmasks(&self) -> String {
+        let bitmasks = &self.definitions.bitmasks;
+        krs_quote!({@* {@bitmasks} }).to_string()
+    }
 }
 
 // =================================================================
