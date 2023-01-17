@@ -48,6 +48,7 @@ pub struct Code {
     vulkan_traits: String,
     c_type_defs: String,
     bitmasks: String,
+    structs: String,
 }
 
 impl Code {
@@ -72,6 +73,11 @@ impl Code {
     /// Code for bitmasks
     pub fn bitmasks(&self) -> &str {
         &self.bitmasks
+    }
+
+    /// Code for structs
+    pub fn structs(&self) -> &str {
+        &self.structs
     }
 }
 
@@ -104,5 +110,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         vulkan_traits: generator.vulkan_traits(),
         c_type_defs: generator.c_type_defs(),
         bitmasks: generator.bitmasks(),
+        structs: generator.structs(),
     }
 }
