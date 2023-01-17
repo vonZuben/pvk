@@ -14,9 +14,6 @@ impl Commands2 {
         let name = name.into();
         self.function_pointers.push(name, function_pointer);
     }
-    pub fn contains(&self, name: VkTyName) -> bool {
-        self.function_pointers.get(name).is_some()
-    }
 }
 
 impl krs_quote::ToTokens for Commands2 {

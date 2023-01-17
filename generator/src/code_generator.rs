@@ -86,10 +86,6 @@ impl<'a> Generator<'a> {
         let extension_commands = self.extension_infos.iter();
         let aliases = self.aliases.iter();
 
-        let cmd_aliases = crate::aliases::CmdAliasNames::new(
-            aliases.clone().filter(|td|commands.contains(td.ty)).map(Clone::clone)
-        );
-
         krs_quote!(
             {@static_code}
             {@commands_trait}
@@ -102,7 +98,6 @@ impl<'a> Generator<'a> {
             {@* {@aliases}}
             {@feature_commands_collection}
             {@* {@extension_commands}}
-            {@cmd_aliases}
         ).to_string()
     }
 }
