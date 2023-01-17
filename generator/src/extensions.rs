@@ -1,14 +1,20 @@
 use krs_quote::krs_quote_with;
 
-use crate::utils::{VkTyName, StrAsCode};
+use crate::utils::VkTyName;
 
 // used to represent names of commands that are enabled by an extension and possible extra commands when other features/extensions are available
 // base: base extension
 // extra: feature or extension that adds more commands
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtensionName {
-    Normal(VkTyName),
-    Extended(VkTyName, VkTyName),
+    Base {
+        name: VkTyName
+    },
+    Extra {
+        name: VkTyName,
+        base: VkTyName,
+        extra: VkTyName,
+    },
 }
 
 impl ExtensionName {
@@ -17,26 +23,34 @@ impl ExtensionName {
         match extra {
             Some(extra) => {
                 let extra = VkTyName::new(extra);
-                ExtensionName::Extended(base, extra)
+                ExtensionName::Extra{ name: format!("{}_WITH_{}", base, extra).into(), base, extra }
             }
             None => {
-                ExtensionName::Normal(base)
+                ExtensionName::Base{ name: base }
             }
+        }
+    }
+    fn is_base(&self) -> bool {
+        matches!(self, ExtensionName::Base{ .. })
+    }
+    fn name_as_str(&self) -> &str {
+        match self {
+            ExtensionName::Base{name} => name,
+            ExtensionName::Extra{name, .. } => name,
+        }
+    }
+    fn name(&self) -> VkTyName {
+        match self {
+            ExtensionName::Base{name} => *name,
+            ExtensionName::Extra{name, .. } => *name,
         }
     }
 }
 
 impl krs_quote::ToTokens for ExtensionName {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        match self {
-            ExtensionName::Normal(name) => {
-                krs_quote_with!(tokens <- {@name} );
-            }
-            ExtensionName::Extended(base, extend) => {
-                let name = format!("{}_WITH_{}", base, extend).as_code();
-                krs_quote_with!(tokens <- {@name});
-            }
-        }
+        let name = self.name();
+        krs_quote_with!(tokens <- {@name})
     }
 }
 
@@ -50,8 +64,8 @@ pub enum ExtensionKind {
 impl krs_quote::ToTokens for ExtensionKind {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         match self {
-            Self::Instance => krs_quote_with!(tokens <- INSTANCE),
-            Self::Device => krs_quote_with!(tokens <- DEVICE),
+            Self::Instance => krs_quote_with!(tokens <- InstanceExtension),
+            Self::Device => krs_quote_with!(tokens <- DeviceExtension),
         }
     }
 }
@@ -92,35 +106,36 @@ impl krs_quote::ToTokens for ExtensionInfo {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let kind = self.kind;
         let extension_name = &self.extension_name;
+        let raw_name = self.extension_name.name_as_str();
         let instance_command_names = &self.instance_command_names;
         let device_command_names = &self.device_command_names;
-        let all_commands_names = instance_command_names.iter().chain(device_command_names.iter());
-        let load = match &self.extension_name {
-            ExtensionName::Normal(name) => Some(&**name),
-            ExtensionName::Extended(_, _) => None,
+        let tmp;
+        let required = match self.extension_name {
+            ExtensionName::Base{ .. } => self.required.as_slice(),
+            ExtensionName::Extra{ base, extra, .. } => { tmp = [base, extra]; &tmp },
         };
-        let required: Vec<_> = match self.extension_name {
-            ExtensionName::Normal(_name) => self.required.iter().copied().collect(),
-            ExtensionName::Extended(base, _) => std::iter::once(base).collect(),
-        };
-        krs_quote_with!( tokens <-
-            macro_rules! {@extension_name} {
-                ( @KIND $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@kind} );
-                };
-                ( @INSTANCE_COMMANDS $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@instance_command_names}} );
-                };
-                ( @DEVICE_COMMANDS $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@device_command_names}} );
-                };
-                ( @ALL_COMMANDS $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@,* {@all_commands_names}} );
-                };
-                ( @REQUIRE $call:ident $($pass:tt)* ) => {
-                    $call!( $($pass)* {@load} ; {@,* {@required}} );
-                };
-            }
-        );
+
+        if self.extension_name.is_base() {
+            krs_quote_with!(tokens <-
+                pub struct {@extension_name};
+                impl VulkanExtension for {@extension_name} {
+                    type Require = hlist_ty!({@,* {@required}});
+                    const VK_NAME: *const c_char = concat!({@raw_name}, '\0').as_ptr().cast();
+                    type ExtensionType = {@kind};
+                    type InstanceCommands = hlist_ty!({@,* {@instance_command_names}});
+                    type DeviceCommands = hlist_ty!({@,* {@device_command_names}});
+                }
+            )
+        }
+        else {
+            krs_quote_with!(tokens <-
+                pub struct {@extension_name};
+                impl VulkanExtensionExtras for {@extension_name} {
+                    type Require = hlist_ty!({@,* {@required}});
+                    type InstanceCommands = hlist_ty!({@,* {@instance_command_names}});
+                    type DeviceCommands = hlist_ty!({@,* {@device_command_names}});
+                }
+            )
+        }
     }
 }

@@ -76,6 +76,7 @@ impl<'a> Generator<'a> {
 
         let commands_trait = crate::traits::VulkanCommand;
         let version_trait = crate::traits::VulkanVersion;
+        let extension_traits = crate::traits::VulkanExtension;
 
         let definitions = &self.definitions;
         let constants = self.constants.iter();
@@ -93,6 +94,7 @@ impl<'a> Generator<'a> {
             {@static_code}
             {@commands_trait}
             {@version_trait}
+            {@extension_traits}
             {@definitions}
             {@* {@constants}}
             {@* {@enum_variants}}
