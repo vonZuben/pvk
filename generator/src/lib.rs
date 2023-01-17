@@ -1,3 +1,11 @@
+#![warn(missing_docs)]
+
+//! This crate is for parsing vk.xml and generating code intended for use in another
+//! crate that provides a safe vulkan interface that is as close as possible to using bare
+//! vulkan, with a few nice rust additions.
+//!
+//! These docs are still very work in progress.
+
 extern crate vk_parse;
 
 #[macro_use]
@@ -21,6 +29,8 @@ mod traits;
 
 use std::path::Path;
 
+#[deprecated]
+/// This generates all code generated from vk.xml into a single file
 pub fn generate(vk_xml_path: &str) -> String {
     unsafe {intern::Interner::init();}
     let vk_xml_path = Path::new(vk_xml_path);
