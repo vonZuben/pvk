@@ -42,13 +42,21 @@ running rust fmt is still recommended if the output is for human.
 */
 pub struct Code {
     util_code: String,
+    vulkan_traits: String,
 }
 
 impl Code {
-    /// Code that provided basic utility and is not based on vk.xml
-    /// Other parts of the generated code rely on this to compile
+    /**
+    Code that provided basic utility and is not based on vk.xml.
+    Other parts of the generated code rely on this to compile
+    */
     pub fn util_code(&self) -> &str {
         &self.util_code
+    }
+
+    /// Code that represents certain aspects of Vulkan via traits
+    pub fn vulkan_traits(&self) -> &str {
+        &self.vulkan_traits
     }
 }
 
@@ -78,5 +86,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
 
     Code {
         util_code: generator.static_code(),
+        vulkan_traits: generator.vulkan_traits(),
     }
 }

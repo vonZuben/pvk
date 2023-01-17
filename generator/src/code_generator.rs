@@ -107,6 +107,17 @@ impl<'a> Generator<'a> {
         let static_code = crate::static_code::StaticCode;
         krs_quote!({@static_code}).to_string()
     }
+
+    pub fn vulkan_traits(&self) -> String {
+        let commands_trait = crate::traits::VulkanCommand;
+        let version_trait = crate::traits::VulkanVersion;
+        let extension_traits = crate::traits::VulkanExtension;
+        krs_quote!(
+            {@commands_trait}
+            {@version_trait}
+            {@extension_traits}
+        ).to_string()
+    }
 }
 
 // =================================================================
