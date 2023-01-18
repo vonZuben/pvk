@@ -154,6 +154,11 @@ impl<'a> Generator<'a> {
         krs_quote!({@* {@function_pointers} }).to_string()
     }
 
+    pub fn constants(&self) -> String {
+        let constants = self.constants.iter();
+        krs_quote!({@* {@constants} }).to_string()
+    }
+
 }
 
 // =================================================================
