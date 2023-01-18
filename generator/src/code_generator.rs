@@ -46,7 +46,7 @@ pub struct Generator<'a> {
     constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
     enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2,
-    feature_commands_collection: features::FeatureCommandsCollection,
+    feature_collection: features::FeatureCollection,
     extension_infos: VecMap<extensions::ExtensionName, extensions::ExtensionInfo>,
     aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
 }
@@ -82,7 +82,7 @@ impl<'a> Generator<'a> {
         let constants = self.constants.iter();
         let enum_variants = self.enum_variants.iter();
         let commands = &self.commands;
-        let feature_commands_collection = &self.feature_commands_collection;
+        let feature_collection = &self.feature_collection;
         let extension_commands = self.extension_infos.iter();
         let aliases = self.aliases.iter();
 
@@ -96,7 +96,7 @@ impl<'a> Generator<'a> {
             {@* {@enum_variants}}
             {@commands}
             {@* {@aliases}}
-            {@feature_commands_collection}
+            {@feature_collection}
             {@* {@extension_commands}}
         ).to_string()
     }
@@ -170,7 +170,7 @@ impl<'a> Generator<'a> {
     }
 
     pub fn versions(&self) -> String {
-        let versions = &self.feature_commands_collection;
+        let versions = &self.feature_collection;
         krs_quote!({@versions}).to_string()
     }
 
@@ -360,7 +360,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_require_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
         let cmd_name = utils::VkTyName::new(def.name);
-        let fcc = &mut self.feature_commands_collection;
+        let fcc = &mut self.feature_collection;
         match self
             .command_types
             .get(&cmd_name)
@@ -373,6 +373,6 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         }
     }
     fn visit_remove_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
-        self.feature_commands_collection.modify_with(def.version, |fc| fc.remove_command(def.name));
+        self.feature_collection.modify_with(def.version, |fc| fc.remove_command(def.name));
     }
 }
