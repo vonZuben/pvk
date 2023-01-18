@@ -164,6 +164,11 @@ impl<'a> Generator<'a> {
         krs_quote!({@* {@constants} }).to_string()
     }
 
+    pub fn commands(&self) -> String {
+        let commands = &self.commands;
+        krs_quote!({@commands}).to_string()
+    }
+
 }
 
 // =================================================================

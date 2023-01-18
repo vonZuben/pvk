@@ -55,6 +55,7 @@ pub struct Code {
     enum_variants: String,
     function_pointers: String,
     constants: String,
+    commands: String,
 }
 
 impl Code {
@@ -116,6 +117,11 @@ impl Code {
         &self.constants
     }
 
+    /// Code for commands
+    pub fn commands(&self) -> &str {
+        &self.commands
+    }
+
 }
 
 #[deprecated]
@@ -154,5 +160,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         enum_variants: generator.enum_variants(),
         function_pointers: generator.function_pointers(),
         constants: generator.constants(),
+        commands: generator.commands(),
     }
 }
