@@ -106,14 +106,14 @@ impl krs_quote::ToTokens for StaticCode {
                         type Output = $name;
 
                         #[inline]
-                        fn bit_and(self, rhs: $name) -> $name {
+                        fn bitand(self, rhs: $name) -> $name {
                             $name (self.0 & rhs.0)
                         }
                     }
 
                     impl ::std::ops::BitAndAssign for $name {
                         #[inline]
-                        fn bit_and_assign(&mut self, rhs: $name) {
+                        fn bitand_assign(&mut self, rhs: $name) {
                             *self = *self & rhs
                         }
                     }
@@ -122,14 +122,14 @@ impl krs_quote::ToTokens for StaticCode {
                         type Output = $name;
 
                         #[inline]
-                        fn bit_xor(self, rhs: $name) -> $name {
+                        fn bitxor(self, rhs: $name) -> $name {
                             $name (self.0 ^ rhs.0 )
                         }
                     }
 
                     impl ::std::ops::BitXorAssign for $name {
                         #[inline]
-                        fn bit_xor_assign(&mut self, rhs: $name) {
+                        fn bitxor_assign(&mut self, rhs: $name) {
                             *self = *self ^ rhs
                         }
                     }
