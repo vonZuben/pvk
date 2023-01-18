@@ -50,6 +50,7 @@ pub struct Code {
     bitmasks: String,
     structs: String,
     unions: String,
+    handles: String,
 }
 
 impl Code {
@@ -85,6 +86,11 @@ impl Code {
     pub fn unions(&self) -> &str {
         &self.unions
     }
+
+    /// Code for handles
+    pub fn handles(&self) -> &str {
+        &self.handles
+    }
 }
 
 #[deprecated]
@@ -118,5 +124,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         bitmasks: generator.bitmasks(),
         structs: generator.structs(),
         unions: generator.unions(),
+        handles: generator.handles(),
     }
 }

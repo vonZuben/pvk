@@ -138,6 +138,11 @@ impl<'a> Generator<'a> {
         let unions = &self.definitions.unions;
         krs_quote!({@* {@unions} }).to_string()
     }
+
+    pub fn handles(&self) -> String {
+        let handles = &self.definitions.handles;
+        krs_quote!({@* {@handles} }).to_string()
+    }
 }
 
 // =================================================================
