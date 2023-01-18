@@ -143,6 +143,12 @@ impl<'a> Generator<'a> {
         let handles = &self.definitions.handles;
         krs_quote!({@* {@handles} }).to_string()
     }
+
+    pub fn enumerations(&self) -> String {
+        let enumerations = &self.definitions.enumerations;
+        krs_quote!({@* {@enumerations} }).to_string()
+    }
+
 }
 
 // =================================================================
