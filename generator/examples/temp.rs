@@ -4,6 +4,6 @@ fn main() {
     println!("{:?}", std::env::current_dir());
     let code = parse_vk_xml("generator/vk.xml");
 
-    let util_code = code.versions();
+    let util_code = code.extensions();
     println!("{util_code}");
 }

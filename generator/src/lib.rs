@@ -57,6 +57,7 @@ pub struct Code {
     constants: String,
     commands: String,
     versions: String,
+    extensions: String,
 }
 
 impl Code {
@@ -130,6 +131,13 @@ impl Code {
         &self.versions
     }
 
+    /// Code for extensions
+    ///
+    /// types and traits to represent information about Vulkan extensions
+    pub fn extensions(&self) -> &str {
+        &self.extensions
+    }
+
 }
 
 #[deprecated]
@@ -170,5 +178,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         constants: generator.constants(),
         commands: generator.commands(),
         versions: generator.versions(),
+        extensions: generator.extensions(),
     }
 }

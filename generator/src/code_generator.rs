@@ -174,6 +174,11 @@ impl<'a> Generator<'a> {
         krs_quote!({@versions}).to_string()
     }
 
+    pub fn extensions(&self) -> String {
+        let extensions = self.extension_infos.iter();
+        krs_quote!({@* {@extensions} }).to_string()
+    }
+
 }
 
 // =================================================================
