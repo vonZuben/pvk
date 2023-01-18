@@ -52,6 +52,7 @@ pub struct Code {
     unions: String,
     handles: String,
     enumerations: String,
+    function_pointers: String,
 }
 
 impl Code {
@@ -97,6 +98,11 @@ impl Code {
     pub fn enumerations(&self) -> &str {
         &self.enumerations
     }
+
+    /// Code for enumerations
+    pub fn function_pointers(&self) -> &str {
+        &self.function_pointers
+    }
 }
 
 #[deprecated]
@@ -132,5 +138,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         unions: generator.unions(),
         handles: generator.handles(),
         enumerations: generator.enumerations(),
+        function_pointers: generator.function_pointers(),
     }
 }

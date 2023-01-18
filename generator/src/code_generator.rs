@@ -149,6 +149,11 @@ impl<'a> Generator<'a> {
         krs_quote!({@* {@enumerations} }).to_string()
     }
 
+    pub fn function_pointers(&self) -> String {
+        let function_pointers = &self.definitions.function_pointers;
+        krs_quote!({@* {@function_pointers} }).to_string()
+    }
+
 }
 
 // =================================================================
