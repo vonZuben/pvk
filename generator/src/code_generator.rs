@@ -169,6 +169,11 @@ impl<'a> Generator<'a> {
         krs_quote!({@commands}).to_string()
     }
 
+    pub fn versions(&self) -> String {
+        let versions = &self.feature_commands_collection;
+        krs_quote!({@versions}).to_string()
+    }
+
 }
 
 // =================================================================

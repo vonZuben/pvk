@@ -56,6 +56,7 @@ pub struct Code {
     function_pointers: String,
     constants: String,
     commands: String,
+    versions: String,
 }
 
 impl Code {
@@ -122,6 +123,13 @@ impl Code {
         &self.commands
     }
 
+    /// Code for versions
+    ///
+    /// types and traits to represent information about Vulkan versions
+    pub fn versions(&self) -> &str {
+        &self.versions
+    }
+
 }
 
 #[deprecated]
@@ -161,5 +169,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         function_pointers: generator.function_pointers(),
         constants: generator.constants(),
         commands: generator.commands(),
+        versions: generator.versions(),
     }
 }
