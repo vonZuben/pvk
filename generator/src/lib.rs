@@ -52,6 +52,7 @@ pub struct Code {
     unions: String,
     handles: String,
     enumerations: String,
+    enum_variants: String,
     function_pointers: String,
     constants: String,
 }
@@ -100,6 +101,11 @@ impl Code {
         &self.enumerations
     }
 
+    /// Code for enum_variants
+    pub fn enum_variants(&self) -> &str {
+        &self.enum_variants
+    }
+
     /// Code for enumerations
     pub fn function_pointers(&self) -> &str {
         &self.function_pointers
@@ -145,6 +151,7 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         unions: generator.unions(),
         handles: generator.handles(),
         enumerations: generator.enumerations(),
+        enum_variants: generator.enum_variants(),
         function_pointers: generator.function_pointers(),
         constants: generator.constants(),
     }
