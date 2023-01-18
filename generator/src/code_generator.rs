@@ -179,6 +179,11 @@ impl<'a> Generator<'a> {
         krs_quote!({@* {@extensions} }).to_string()
     }
 
+    pub fn aliases(&self) -> String {
+        let aliases = self.aliases.iter();
+        krs_quote!({@* {@aliases} }).to_string()
+    }
+
 }
 
 // =================================================================

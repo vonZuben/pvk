@@ -58,6 +58,7 @@ pub struct Code {
     commands: String,
     versions: String,
     extensions: String,
+    aliases: String,
 }
 
 impl Code {
@@ -138,6 +139,14 @@ impl Code {
         &self.extensions
     }
 
+    /// Code for aliases
+    ///
+    /// aliases are usually for types or commands that were promoted to
+    /// a core version from an extension and drop the KHR suffix or similar
+    pub fn aliases(&self) -> &str {
+        &self.aliases
+    }
+
 }
 
 #[deprecated]
@@ -179,5 +188,6 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
         commands: generator.commands(),
         versions: generator.versions(),
         extensions: generator.extensions(),
+        aliases: generator.aliases(),
     }
 }
