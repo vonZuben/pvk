@@ -149,9 +149,12 @@ impl Code {
 
 }
 
-#[deprecated]
+#[doc(hidden)]
 /// This generates all code generated from vk.xml into a single file
-pub fn generate(vk_xml_path: &str) -> String {
+/// useful for testing
+///
+/// used in the stdout program that is included but is just for testing
+pub fn generate_output_for_single_file(vk_xml_path: &str) -> String {
     unsafe {intern::Interner::init();}
     let vk_xml_path = Path::new(vk_xml_path);
     let (registry2, _) = vk_parse::parse_file(&vk_xml_path).expect("failed to parse vk.xml");

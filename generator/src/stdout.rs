@@ -1,4 +1,4 @@
-use generator::generate;
+use generator::generate_output_for_single_file;
 
 use krs_quote::krs_quote;
 
@@ -21,7 +21,7 @@ fn main() {
         panic!("no vk.xml path provided");
     };
 
-    let code = generate(&get_first_input_arg());
+    let code = generate_output_for_single_file(&get_first_input_arg());
 
     let code = append_main(code);
 
