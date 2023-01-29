@@ -39,6 +39,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vk-safe-sys"
+version = "0.1.0"
+dependencies = [
+ "generator",
+]
+
+[[package]]
 name = "xml-rs"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

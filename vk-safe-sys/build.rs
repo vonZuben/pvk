@@ -27,36 +27,41 @@ fn set_env() {
 fn main() {
     if cfg!(feature = "generate") {
         generate();
+        set_env();
     }
 }
 
-fn generate() {
-    let fmt = Command::new("rustfmt")
+fn create_file(name: &str, code: &str) {
+    let formatter = Command::new("rustfmt")
         .args(&["--emit", "stdout"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
         .expect("Error: cannot run rustfmt");
 
-    fmt.stdin.expect("Error: can't get rustfmt stdin").write(generator::generate("vk.xml").as_bytes()).expect("Error writting to rustfmt stdin");
+    formatter.stdin.expect("Error: can't get rustfmt stdin").write(code.as_bytes()).expect("Error writing to rustfmt stdin");
 
     let mut formatted_code = Vec::new();
-    fmt.stdout.expect("Error: faild to get formatted code").read_to_end(&mut formatted_code).expect("can't read from formatted code stdout");
+    formatter.stdout.expect("Error: failed to get formatted code").read_to_end(&mut formatted_code).expect("can't read from formatted code stdout");
 
     let out_dir = std::env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("vk.rs");
+    let dest_path = Path::new(&out_dir).join(name);
 
-    let mut vkrs = OpenOptions::new()
+    let mut file = OpenOptions::new()
         .write(true)
         .create(true)
         .open(dest_path)
         .expect("Error: cannot open vk.rs for writting");
 
-    vkrs.write(&formatted_code).expect("Error: could not write to vk.rs");
-    vkrs.set_len(formatted_code.len() as _).expect("Error: cannot set vk.rs file len");
+    file.write(&formatted_code).expect("Error: could not write to vk.rs");
+    file.set_len(formatted_code.len() as _).expect("Error: cannot set vk.rs file len");
+}
 
-    set_env();
+fn generate() {
+    let code = generator::parse_vk_xml("vk.xml");
 
+    create_file("util_code.rs", code.util_code());
+    create_file("vulkan_traits.rs", code.vulkan_traits());
 }
 
 #[cfg(target_os = "windows")]
