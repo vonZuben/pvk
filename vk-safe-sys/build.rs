@@ -57,11 +57,30 @@ fn create_file(name: &str, code: &str) {
     file.set_len(formatted_code.len() as _).expect("Error: cannot set vk.rs file len");
 }
 
+macro_rules! make_rs_file {
+    ($code:ident, $name:ident) => {
+        create_file(concat!(stringify!($name), ".rs"), $code.$name())
+    }
+}
+
 fn generate() {
     let code = generator::parse_vk_xml("vk.xml");
 
-    create_file("util_code.rs", code.util_code());
-    create_file("vulkan_traits.rs", code.vulkan_traits());
+    make_rs_file!(code, util_code);
+    make_rs_file!(code, vulkan_traits);
+    make_rs_file!(code, c_type_defs);
+    make_rs_file!(code, bitmasks);
+    make_rs_file!(code, structs);
+    make_rs_file!(code, unions);
+    make_rs_file!(code, handles);
+    make_rs_file!(code, enumerations);
+    make_rs_file!(code, enum_variants);
+    make_rs_file!(code, function_pointers);
+    make_rs_file!(code, constants);
+    make_rs_file!(code, commands);
+    make_rs_file!(code, versions);
+    make_rs_file!(code, extensions);
+    make_rs_file!(code, aliases);
 }
 
 #[cfg(target_os = "windows")]
