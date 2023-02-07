@@ -11,6 +11,7 @@ default = ["generate"]
 generate = []
 
 [dependencies]
+krs_hlist = { path="../krs_hlist" }
 
 [build-dependencies]
 generator = { path="../generator" }

@@ -43,6 +43,7 @@ name = "vk-safe-sys"
 version = "0.1.0"
 dependencies = [
  "generator",
+ "krs_hlist",
 ]
 
 [[package]]
