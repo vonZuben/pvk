@@ -32,7 +32,7 @@ err:
 	vim /tmp/out.txt
 
 lib:
-	cargo run --bin gen_lib vk.xml /tmp/test/pvk/src
+	cargo run --bin gen_lib_cmd vk.xml /tmp/test/pvk/src
 
 c:
 	rm -f /tmp/tmp

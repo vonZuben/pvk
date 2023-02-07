@@ -10,11 +10,8 @@ use krs_quote::krs_quote;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-#[macro_use]
-mod code_parts;
-
 /// create a file with file name 'name', and content of 'code'
-fn create_file(out_dir: &str, name: &str, code: &str) -> Result<()> {
+fn create_file(out_dir: &Path, name: &str, code: &str) -> Result<()> {
     let formatter = Command::new("rustfmt")
         .args(&["--emit", "stdout"])
         .stdin(Stdio::piped())
@@ -37,11 +34,11 @@ fn create_file(out_dir: &str, name: &str, code: &str) -> Result<()> {
     file.set_len(formatted_code.len() as _).map_err(Into::into)
 }
 
-fn make_output_directory(path: &str) -> Result<()> {
+fn make_output_directory(path: &Path) -> Result<()> {
     std::fs::create_dir_all(path).map_err(Into::into)
 }
 
-fn make_lib_file(out_dir: &str) -> Result<()> {
+fn make_lib_file(out_dir: &Path) -> Result<()> {
 
     macro_rules! make_module_names {
         ( $($name:ident,)* ) => {
@@ -81,32 +78,9 @@ macro_rules! make_rs_files {
     };
 }
 
-fn main() -> Result<()> {
-    let mut args = std::env::args();
-    let current_exe = std::env::current_exe().unwrap();
-    let current_exe = current_exe.to_string_lossy();
-
-    let mut get_input_arg = || {
-        let arg = args.next()?;
-        if current_exe.contains(&arg) {
-            args.next()
-        }
-        else {
-            Some(arg)
-        }
-    };
-
-    const INPUT_ERROR_MSG: &str = "please provide vk.xml path and output directory";
-    let vk_xml = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
-    let out_dir = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
-
+pub fn generate_library(out_dir: &Path, vk_xml: &Path) -> Result<()> {
     make_output_directory(&out_dir)?;
-
-    let code = generator::parse_vk_xml(&vk_xml);
-
+    let code = crate::parse_vk_xml(vk_xml);
     code_parts!(make_rs_files() code, out_dir,);
-
-    make_lib_file(&out_dir)?;
-
-    Ok(())
+    make_lib_file(&out_dir)
 }

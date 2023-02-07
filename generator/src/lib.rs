@@ -32,6 +32,8 @@ mod code_generator;
 mod static_code;
 mod traits;
 
+mod gen_lib;
+
 use std::path::Path;
 
 macro_rules! make_code_type {
@@ -70,10 +72,9 @@ code_parts!(make_code_type(;));
 /// useful for testing
 ///
 /// used in the stdout program that is included but is just for testing
-pub fn generate_output_for_single_file(vk_xml_path: &str) -> String {
+pub fn generate_output_for_single_file(vk_xml_path: impl AsRef<std::ffi::OsStr>) -> String {
     unsafe {intern::Interner::init();}
-    let vk_xml_path = Path::new(vk_xml_path);
-    let (registry2, _) = vk_parse::parse_file(&vk_xml_path).expect("failed to parse vk.xml");
+    let (registry2, _) = vk_parse::parse_file(Path::new(&vk_xml_path)).expect("failed to parse vk.xml");
 
     let mut generator = code_generator::Generator::default();
 
@@ -83,10 +84,9 @@ pub fn generate_output_for_single_file(vk_xml_path: &str) -> String {
 }
 
 /// Parse a xk.xml at the provided path, and provide the generated [Code]
-pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
+pub fn parse_vk_xml(vk_xml_path: impl AsRef<std::ffi::OsStr>) -> Code {
     unsafe {intern::Interner::init();}
-    let vk_xml_path = Path::new(vk_xml_path);
-    let (registry2, _) = vk_parse::parse_file(&vk_xml_path).expect("failed to parse vk.xml");
+    let (registry2, _) = vk_parse::parse_file(Path::new(&vk_xml_path)).expect("failed to parse vk.xml");
 
     let mut generator = code_generator::Generator::default();
 
@@ -101,4 +101,10 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
     }
 
     code_parts!(get_code_parts() generator)
+}
+
+/// generate all the code parts into files that can be used for the src directory of a standalone crate
+/// or can be embedded into another crate
+pub fn generate_library(out_dir: impl AsRef<std::ffi::OsStr>, vk_xml: impl AsRef<std::ffi::OsStr>) -> Result<(), Box<dyn std::error::Error>> {
+    gen_lib::generate_library(Path::new(&out_dir), Path::new(&vk_xml))
 }

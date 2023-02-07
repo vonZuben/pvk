@@ -1,8 +1,4 @@
 
-use std::{io::{Read, Write}, process::{Command, Stdio}};
-use std::fs::OpenOptions;
-use std::path::Path;
-
 #[cfg(target_os = "windows")]
 fn target_env() {
     let vk_skd_path = std::env::var("VK_SDK_PATH");
@@ -24,63 +20,18 @@ fn set_env() {
     target_env();
 }
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     if cfg!(feature = "generate") {
-        generate();
+        generate()?;
         set_env();
     }
+    Ok(())
 }
 
-fn create_file(name: &str, code: &str) {
-    let formatter = Command::new("rustfmt")
-        .args(&["--emit", "stdout"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .expect("Error: cannot run rustfmt");
+fn generate() -> Result<(), Box<dyn std::error::Error>> {
+    let out_dir = std::env::var_os("OUT_DIR").ok_or("can't get 'OUT_DIR'")?;
 
-    formatter.stdin.expect("Error: can't get rustfmt stdin").write(code.as_bytes()).expect("Error writing to rustfmt stdin");
-
-    let mut formatted_code = Vec::new();
-    formatter.stdout.expect("Error: failed to get formatted code").read_to_end(&mut formatted_code).expect("can't read from formatted code stdout");
-
-    let out_dir = std::env::var_os("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join(name);
-
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .open(dest_path)
-        .expect("Error: cannot open vk.rs for writting");
-
-    file.write(&formatted_code).expect("Error: could not write to vk.rs");
-    file.set_len(formatted_code.len() as _).expect("Error: cannot set vk.rs file len");
-}
-
-macro_rules! make_rs_file {
-    ($code:ident, $name:ident) => {
-        create_file(concat!(stringify!($name), ".rs"), $code.$name())
-    }
-}
-
-fn generate() {
-    let code = generator::parse_vk_xml("vk.xml");
-
-    make_rs_file!(code, util_code);
-    make_rs_file!(code, vulkan_traits);
-    make_rs_file!(code, c_type_defs);
-    make_rs_file!(code, bitmasks);
-    make_rs_file!(code, structs);
-    make_rs_file!(code, unions);
-    make_rs_file!(code, handles);
-    make_rs_file!(code, enumerations);
-    make_rs_file!(code, enum_variants);
-    make_rs_file!(code, function_pointers);
-    make_rs_file!(code, constants);
-    make_rs_file!(code, commands);
-    make_rs_file!(code, versions);
-    make_rs_file!(code, extensions);
-    make_rs_file!(code, aliases);
+    generator::generate_library(&out_dir, "vk.xml")
 }
 
 #[cfg(target_os = "windows")]

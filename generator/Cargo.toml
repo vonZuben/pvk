@@ -13,8 +13,8 @@ name = "vk_stdout"
 path = "src/stdout.rs"
 
 [[bin]]
-name = "gen_lib"
-path = "src/gen_lib.rs"
+name = "gen_lib_cmd"
+path = "src/gen_lib_cmd.rs"
 
 [dependencies]
 krs_quote = { path = "../krs_quote" }
