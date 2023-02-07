@@ -13,6 +13,9 @@ extern crate vk_parse;
 #[macro_use]
 mod utils;
 
+#[macro_use]
+mod code_parts;
+
 mod intern;
 
 mod simple_parse;
@@ -31,123 +34,36 @@ mod traits;
 
 use std::path::Path;
 
-/**
-The generated code
+macro_rules! make_code_type {
+    ( $($param:ident,)* ) => {
+        /**
+        The generated code
 
-Provides methods for obtaining different parts of the code as &str
+        Provides methods for obtaining different parts of the code as &str
 
-The generated code is mostly unformatted (there are newlines in some places to make
-it easier to read even without rustfmt; based on how [krs_quote] works). However,
-running rust fmt is still recommended if the output is for human.
+        The generated code is mostly unformatted (there are newlines in some places to make
+        it easier to read even without rustfmt; based on how [krs_quote] works). However,
+        running rust fmt is still recommended if the output is for human.
 
-Generated code removes the "Vk" prefixes since the code can be imbedded in a crate
-and used as vk to provide e.g. vk::Instance.
-*/
-pub struct Code {
-    util_code: String,
-    vulkan_traits: String,
-    c_type_defs: String,
-    bitmasks: String,
-    structs: String,
-    unions: String,
-    handles: String,
-    enumerations: String,
-    enum_variants: String,
-    function_pointers: String,
-    constants: String,
-    commands: String,
-    versions: String,
-    extensions: String,
-    aliases: String,
+        Generated code removes the "Vk" prefixes since the code can be imbedded in a crate
+        and used as vk to provide e.g. vk::Instance.
+        */
+        pub struct Code {
+            $($param: String),*
+        }
+
+        impl Code {
+            $(
+                /// get subject code part
+                pub fn $param(&self) -> &str {
+                    &self.$param
+                }
+            )*
+        }
+    };
 }
 
-impl Code {
-    /**
-    Code that provided basic utility and is not based on vk.xml.
-    Other parts of the generated code rely on this to compile
-    */
-    pub fn util_code(&self) -> &str {
-        &self.util_code
-    }
-
-    /// Code that represents certain aspects of Vulkan via traits
-    pub fn vulkan_traits(&self) -> &str {
-        &self.vulkan_traits
-    }
-
-    /// Code for c style type definitions (just aliases for fundamental types like VkBool32)
-    pub fn c_type_defs(&self) -> &str {
-        &self.c_type_defs
-    }
-
-    /// Code for bitmasks
-    pub fn bitmasks(&self) -> &str {
-        &self.bitmasks
-    }
-
-    /// Code for structs
-    pub fn structs(&self) -> &str {
-        &self.structs
-    }
-
-    /// Code for unions
-    pub fn unions(&self) -> &str {
-        &self.unions
-    }
-
-    /// Code for handles
-    pub fn handles(&self) -> &str {
-        &self.handles
-    }
-
-    /// Code for enumerations
-    pub fn enumerations(&self) -> &str {
-        &self.enumerations
-    }
-
-    /// Code for enum_variants
-    pub fn enum_variants(&self) -> &str {
-        &self.enum_variants
-    }
-
-    /// Code for enumerations
-    pub fn function_pointers(&self) -> &str {
-        &self.function_pointers
-    }
-
-    /// Code for constants
-    pub fn constants(&self) -> &str {
-        &self.constants
-    }
-
-    /// Code for commands
-    pub fn commands(&self) -> &str {
-        &self.commands
-    }
-
-    /// Code for versions
-    ///
-    /// types and traits to represent information about Vulkan versions
-    pub fn versions(&self) -> &str {
-        &self.versions
-    }
-
-    /// Code for extensions
-    ///
-    /// types and traits to represent information about Vulkan extensions
-    pub fn extensions(&self) -> &str {
-        &self.extensions
-    }
-
-    /// Code for aliases
-    ///
-    /// aliases are usually for types or commands that were promoted to
-    /// a core version from an extension and drop the KHR suffix or similar
-    pub fn aliases(&self) -> &str {
-        &self.aliases
-    }
-
-}
+code_parts!(make_code_type(;));
 
 #[doc(hidden)]
 /// This generates all code generated from vk.xml into a single file
@@ -176,21 +92,13 @@ pub fn parse_vk_xml(vk_xml_path: &str) -> Code {
 
     vk_parse_visitor::visit_vk_parse(&registry2, &mut generator);
 
-    Code {
-        util_code: generator.static_code(),
-        vulkan_traits: generator.vulkan_traits(),
-        c_type_defs: generator.c_type_defs(),
-        bitmasks: generator.bitmasks(),
-        structs: generator.structs(),
-        unions: generator.unions(),
-        handles: generator.handles(),
-        enumerations: generator.enumerations(),
-        enum_variants: generator.enum_variants(),
-        function_pointers: generator.function_pointers(),
-        constants: generator.constants(),
-        commands: generator.commands(),
-        versions: generator.versions(),
-        extensions: generator.extensions(),
-        aliases: generator.aliases(),
+    macro_rules! get_code_parts {
+        ( $generator:ident $($param:ident,)* ) => {
+            Code {
+                $( $param: $generator.$param(), )*
+            }
+        };
     }
+
+    code_parts!(get_code_parts() generator)
 }
