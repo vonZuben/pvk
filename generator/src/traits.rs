@@ -7,6 +7,7 @@ impl ToTokens for VulkanCommand {
         krs_quote_with!(tokens <-
             pub trait VulkanCommand : Copy + Sized {
                 const VK_NAME: *const c_char;
+                unsafe fn new(ptr: PFN_vkVoidFunction) -> Self;
             }
         )
     }
