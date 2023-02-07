@@ -1,4 +1,4 @@
-.PHONY: c rd run dbg dbg-fmt
+.PHONY: c rd run dbg dbg-fmt lib err
 
 default:
 	cargo check
@@ -30,6 +30,9 @@ dbg-fmt:
 
 err:
 	vim /tmp/out.txt
+
+lib:
+	cargo run --bin gen_lib vk.xml /tmp/test/pvk/src
 
 c:
 	rm -f /tmp/tmp

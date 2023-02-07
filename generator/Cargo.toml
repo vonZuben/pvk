@@ -12,6 +12,10 @@ path = "src/lib.rs"
 name = "vk_stdout"
 path = "src/stdout.rs"
 
+[[bin]]
+name = "gen_lib"
+path = "src/gen_lib.rs"
+
 [dependencies]
 krs_quote = { path = "../krs_quote" }
 

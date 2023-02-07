@@ -13,7 +13,7 @@ impl krs_quote::ToTokens for StaticCode {
                 ( $($t:tt)* ) => { () }
             }
 
-            struct DbgStringAsDisplay<'a>(&'a str);
+            pub(crate) struct DbgStringAsDisplay<'a>(pub(crate) &'a str);
 
             impl std::fmt::Debug for DbgStringAsDisplay<'_> {
                 fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -41,7 +41,7 @@ impl krs_quote::ToTokens for StaticCode {
                         // create a copy of the bit field with only the lowest active bit
                         // and unset the same bit in the origin
                         // or returns None if no bits set
-                        fn take_lowest_bit(&mut self) -> Option<$name> {
+                        pub(crate) fn take_lowest_bit(&mut self) -> Option<$name> {
                             let lowest_bit = self.0 & self.0.wrapping_neg();
                             if lowest_bit == 0 {
                                 None
@@ -160,7 +160,6 @@ impl krs_quote::ToTokens for StaticCode {
                     //}
                 }
             }
-            use std::os::raw::*;
             pub type RROutput = c_ulong;
             pub type VisualID = c_uint;
             pub type Display = *const c_void;
