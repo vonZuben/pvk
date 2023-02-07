@@ -56,7 +56,7 @@ fn make_lib_file(out_dir: &str) -> Result<()> {
     let code = krs_quote!(
         #[macro_use]
         {@* mod {@module_names};}
-        {@* use {@module_names}::*;}
+        {@* pub use {@module_names}::*;}
 
         use std::ffi::{c_char, c_int, c_void, c_ulong, c_uint};
     ).to_string();
