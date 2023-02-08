@@ -8,10 +8,7 @@ impl krs_quote::ToTokens for StaticCode {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         tokens.push(
         stringify!(
-            // this is a temporary work around to be able to set without including the krs_hlist crate as a dependency yet
-            macro_rules! hlist_ty {
-                ( $($t:tt)* ) => { () }
-            }
+            pub use krs_hlist::hlist_ty;
 
             pub(crate) struct DbgStringAsDisplay<'a>(pub(crate) &'a str);
 
