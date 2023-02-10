@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 # vk-safe-sys = { path="../vk-safe-sys" }
 vk-safe-sys = { path="../vk-safe-sys", features=["generate"] }
+krs_hlist = { path = "../krs_hlist" }

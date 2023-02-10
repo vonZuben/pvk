@@ -39,6 +39,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vk-safe"
+version = "0.1.0"
+dependencies = [
+ "krs_hlist",
+ "vk-safe-sys",
+]
+
+[[package]]
 name = "vk-safe-sys"
 version = "0.1.0"
 dependencies = [

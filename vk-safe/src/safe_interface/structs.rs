@@ -68,14 +68,14 @@ impl LayerProperties {
 }
 
 //===========InstanceCreateInfo
-pub struct InstanceCreateInfo<'a, V: vk_safe_sys::version::Version, E> {
+pub struct InstanceCreateInfo<'a, V: vk_safe_sys::VulkanVersion, E> {
     inner: vk::InstanceCreateInfo,
     _version: PhantomData<V>,
     _extensions: PhantomData<E>,
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, V: vk_safe_sys::version::Version, E> InstanceCreateInfo<'a, V, E> {
+impl<'a, V: vk_safe_sys::VulkanVersion, E> InstanceCreateInfo<'a, V, E> {
     pub fn new(app_info: &'a ApplicationInfo<'a, V>) -> Self {
         Self {
             inner: vk::InstanceCreateInfo {
@@ -106,15 +106,15 @@ impl<'a, V: vk_safe_sys::version::Version, E> InstanceCreateInfo<'a, V, E> {
 }
 
 //===========ApplicationInfo
-pub struct ApplicationInfo<'a, V: vk_safe_sys::version::Version> {
+pub struct ApplicationInfo<'a, V: vk_safe_sys::VulkanVersion> {
     inner: vk::ApplicationInfo,
     _version: PhantomData<V>,
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, V: vk_safe_sys::version::Version> ApplicationInfo<'a, V> {
+impl<'a, V: vk_safe_sys::VulkanVersion> ApplicationInfo<'a, V> {
     pub fn new(_version: V) -> Self {
-        let version_tuple = V::VersionTuple;
+        let version_tuple = V::VersionTriple;
         let version = VkVersion::new(0, version_tuple.0, version_tuple.1, version_tuple.2);
         Self {
             inner: vk::ApplicationInfo {
@@ -130,7 +130,7 @@ impl<'a, V: vk_safe_sys::version::Version> ApplicationInfo<'a, V> {
             _refs: PhantomData,
         }
     }
-    
+
     pub fn app_name_and_version(mut self, name: &'a CStr, version: VkVersion) -> Self {
         self.inner.p_application_name = name.as_ptr();
         self.inner.application_version = version.raw();
