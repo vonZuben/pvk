@@ -51,36 +51,30 @@ macro_rules! impl_safe_entry_interface {
 }
 
 // enumerators are all very similar, so why repeat ourselves
-// macro_rules! enumerator_code {
-//     (
-//         $len_name:ident,
-//         $main_name:ident,
-//         $getting:ty =>
-//         ( $($param:ident : $param_t:ty),* )
-//     ) => {
-//         fn $len_name(&self, $($param : $param_t),*) -> Result<usize> {
-//             let mut num = 0;
-//             let res;
-//             unsafe {
-//                 res = self.commands.fptr()($($param.to_c(),)* &mut num, std::ptr::null_mut());
-//                 check_raw_err!(res);
-//             }
-//             Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
-//         }
-//         fn $main_name<S: EnumeratorStorage<$getting>>(&self, $($param : $param_t ,)* mut storage: S) -> Result<S::InitStorage> {
-//             let query_len = || self.$len_name($($param,)*);
-//             storage.query_len(query_len)?;
-//             let uninit_slice = storage.uninit_slice();
-//             let mut len = VulkanLenType::from_usize(uninit_slice.len());
-//             let res;
-//             unsafe {
-//                 res = self.commands.fptr()($($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
-//                 check_raw_err!(res);
-//             }
-//             Ok(storage.finalize(len.to_usize()))
-//         }
-//     };
-// }
+macro_rules! enumerator_code {
+    ( $fn_name:ident ( $($param:ident : $param_t:ty),* ) -> $getting:ty) => {
+        fn $fn_name<S: EnumeratorStorage<$getting>>(&self, $($param : $param_t ,)* mut storage: S) -> Result<S::InitStorage> {
+            let query_len = || {
+                let mut num = 0;
+                let res;
+                unsafe {
+                    res = self.commands.get()($($param.to_c(),)* &mut num, std::ptr::null_mut());
+                    check_raw_err!(res);
+                }
+                Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
+            };
+            storage.query_len(query_len)?;
+            let uninit_slice = storage.uninit_slice();
+            let mut len = VulkanLenType::from_usize(uninit_slice.len());
+            let res;
+            unsafe {
+                res = self.commands.get()($($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
+                check_raw_err!(res);
+            }
+            Ok(storage.finalize(len.to_usize()))
+        }
+    };
+}
 
 impl_safe_entry_interface!{
 CreateInstance {
@@ -94,26 +88,10 @@ CreateInstance {
     }
 }}
 
-// impl<V: VulkanVersion> safe_interface::CreateInstance for Entry<V> where V::EntryCommands : GetCommand<vk::CreateInstance> {
-//     fn create_instance(&self, create_info: &vk::InstanceCreateInfo) -> Result<vk::Instance> {
-//         let mut instance = MaybeUninit::uninit();
-//         unsafe {
-//             let res = self.commands.get()(create_info, None.to_c(), instance.as_mut_ptr());
-//             check_raw_err!(res);
-//             Ok(instance.assume_init())
-//         }
-//     }
-// }
-
-// impl_safe_entry_interface!{
-// EnumerateInstanceExtensionProperties {
-//     enumerator_code!(
-//         enumerate_instance_extension_properties_len,
-//         enumerate_instance_extension_properties,
-//         ExtensionProperties =>
-//         (layer_name: Option<&CStr>)
-//     );
-// }}
+impl_safe_entry_interface!{
+EnumerateInstanceExtensionProperties {
+    enumerator_code!(enumerate_instance_extension_properties(layer_name: Option<&CStr>) -> ExtensionProperties);
+}}
 
 // impl_safe_entry_interface!{
 // EnumerateInstanceLayerProperties {
