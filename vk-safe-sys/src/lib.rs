@@ -13,7 +13,7 @@ pub mod generated; // TODO I do not think I want this public, but need type defs
 #[link(name = "vulkan")]
 extern "system" {
     #[link_name = "vkGetInstanceProcAddr"]
-    fn GetInstanceProcAddr(instance: generated::Instance, p_name: *const std::ffi::c_char)
+    pub fn GetInstanceProcAddr(instance: generated::Instance, p_name: *const std::ffi::c_char)
             -> Option<generated::PFN_vkVoidFunction>;
 }
 

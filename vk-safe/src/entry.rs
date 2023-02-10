@@ -20,14 +20,6 @@ use vk::{
     GetCommand,
 };
 
-#[link(name = "vulkan")]
-extern "system" {
-    /// This is the very first point of entry that is internally used to load all other functions
-    #[link_name = "vkGetInstanceProcAddr"]
-    fn GetInstanceProcAddr(instance: vk::Instance, p_name: *const std::os::raw::c_char)
-             -> Option<vk::PFN_vkVoidFunction>;
-}
-
 /// Entry
 ///
 /// provides a means for accessing global vulkan commands
@@ -40,7 +32,7 @@ impl<V: VulkanVersion> Entry<V> {
     pub fn from_version(_v: V) -> std::result::Result<Self, CommandLoadError> where V::EntryCommands: LoadCommands {
 
         let loader = |command_name| unsafe {
-            GetInstanceProcAddr(vk::Instance{handle: std::ptr::null()}, command_name)
+            vk::GetInstanceProcAddr(vk::Instance{handle: std::ptr::null()}, command_name)
         };
 
         Ok(Self {
