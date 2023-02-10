@@ -15,7 +15,7 @@ use crate::safe_interface::{
 };
 
 use vk::{
-    commands::LoadCommands,
+    commands::{LoadCommands, CommandLoadError},
     VulkanVersion,
     GetCommand,
 };
@@ -31,22 +31,23 @@ extern "system" {
 /// Entry
 ///
 /// provides a means for accessing global vulkan commands
+#[derive(Debug)]
 pub struct Entry<V: VulkanVersion> {
     commands: V::EntryCommands,
 }
 
-// impl<V: VulkanVersion> Entry<V> {
-//     pub fn from_version(_v: V) -> std::result::Result<Self, String> {
+impl<V: VulkanVersion> Entry<V> {
+    pub fn from_version(_v: V) -> std::result::Result<Self, CommandLoadError> where V::EntryCommands: LoadCommands {
 
-//         let loader = |s| unsafe {
-//             GetInstanceProcAddr(vk::Instance{handle:std::ptr::null()}, s)
-//         };
+        let loader = |command_name| unsafe {
+            GetInstanceProcAddr(vk::Instance{handle: std::ptr::null()}, command_name)
+        };
 
-//         Ok(Self {
-//             commands: V::load_entry_commands(loader)?
-//         })
-//     }
-// }
+        Ok(Self {
+            commands: V::EntryCommands::load(loader)?
+        })
+    }
+}
 
 // This is how each safe command can be implemented on top of each raw command
 macro_rules! impl_safe_entry_interface {
