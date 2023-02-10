@@ -19,7 +19,7 @@ extern "system" {
 
 
 // #[macro_use]
-// mod utils;
+mod utils;
 // mod definitions;
 
 #[macro_use]
@@ -28,3 +28,4 @@ pub mod commands;
 // pub mod extension;
 
 pub use generated::*;
+pub use utils::GetCommand;
