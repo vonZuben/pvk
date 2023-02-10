@@ -117,6 +117,7 @@ impl krs_quote::ToTokens for ExtensionInfo {
 
         if self.extension_name.is_base() {
             krs_quote_with!(tokens <-
+                #[derive(Debug)]
                 pub struct {@extension_name};
                 impl VulkanExtension for {@extension_name} {
                     type Require = hlist_ty!({@,* {@required}});
@@ -129,6 +130,7 @@ impl krs_quote::ToTokens for ExtensionInfo {
         }
         else {
             krs_quote_with!(tokens <-
+                #[derive(Debug)]
                 pub struct {@extension_name};
                 impl VulkanExtensionExtras for {@extension_name} {
                     type Require = hlist_ty!({@,* {@required}});

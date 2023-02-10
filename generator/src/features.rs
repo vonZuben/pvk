@@ -152,6 +152,7 @@ impl krs_quote::ToTokens for Feature {
         let version_triple = parse_version(&self.version);
 
         krs_quote_with!( tokens <-
+            #[derive(Debug)]
             pub struct {@version};
             impl VulkanVersion for {@version} {
                 const VersionTriple: (u32, u32, u32) = {@version_triple};
