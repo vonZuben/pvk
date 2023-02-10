@@ -5,11 +5,11 @@ use super::Result;
 
 /// This is used for vulkan commands that enumerate or get multiple items,
 /// where the user needs to provide the space to store the items.
-/// 
+///
 /// This allows users to control how the want to allocate space.
-/// 
+///
 /// Implementations are provided for basic std type that are [T] like.
-/// 
+///
 /// Users can implement for custom types.
 pub trait EnumeratorStorage<T> {
     /// The final initialized storage type.
@@ -17,11 +17,11 @@ pub trait EnumeratorStorage<T> {
     /// Allow control of querying len of items to be returned.
     /// If preallocated space is provided, then there is no reason to query (e.g. for a slice).
     fn query_len(&mut self, _query_len: impl FnOnce() -> Result<usize>) -> Result<()> {Ok(())}
-    /// Provide the uninitialized space to which the Vulkan command will write to. 
+    /// Provide the uninitialized space to which the Vulkan command will write to.
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>];
     /// Finalize len amount of initialized memory.
     /// # Safety
-    /// len comes from the Vulkan implementation, and *should* always be less than or equal to 
+    /// len comes from the Vulkan implementation, and *should* always be less than or equal to
     /// the len of the slice returned from uninit_slice. However, there could be risk of faulty or
     /// malicious Vulkan implementations, so it is recommended to assert! that len is not too long
     /// for the capacity of your memory.
@@ -40,9 +40,9 @@ impl<T> EnumeratorStorage<T> for Vec<MaybeUninit<T>> {
     }
     fn finalize(mut self, len: usize) -> Self::InitStorage {
         assert!(len <= self.capacity());
-        unsafe { 
+        unsafe {
             self.set_len(len);
-            std::mem::transmute(self) 
+            std::mem::transmute(self)
         }
     }
 }
