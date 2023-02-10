@@ -40,8 +40,8 @@ unsafe_impl_id!{
     D: 4,
 }
 
-trait Contains<T> : krs_hlist::Contains<T, Comp> {}
-impl<T, L> Contains<T> for L where L: krs_hlist::Contains<T, Comp> {}
+trait Contains<T> : krs_hlist::Get<T, Comp> {}
+impl<T, L> Contains<T> for L where L: krs_hlist::Get<T, Comp> {}
 
 fn tst(list: impl Contains<C>) {
     let c: &C = list.get();

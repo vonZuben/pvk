@@ -40,8 +40,8 @@ unsafe_impl_id!{
     D: 4,
 }
 
-trait Contains<T> : krs_hlist::Contains<T, Comp> {}
-impl<T, L> Contains<T> for L where L: krs_hlist::Contains<T, Comp> {}
+trait Contains<T> : krs_hlist::Get<T, Comp> {}
+impl<T, L> Contains<T> for L where L: krs_hlist::Get<T, Comp> {}
 
 trait Ver10 : Contains<A> + Contains<B> {}
 impl<V> Ver10 for V where V: Contains<A> + Contains<B> {}

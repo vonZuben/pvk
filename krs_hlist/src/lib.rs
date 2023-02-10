@@ -148,36 +148,44 @@ impl<RHS: Hlist> Add<RHS> for End {
 ///
 /// Looks in `Hlist` for `T` using comparator `C`
 ///
-/// **NOTE** the plan is to change [OFFSET](Contains::OFFSET) to be an `Option<isize>`, where
-/// `Some(offset)` means that the type can be found at `offset` bytes.
-/// `None` means no type.
-/// the plan is to use it in conjunction with feature(associated_const_equality)
 pub trait Contains<T, C> {
+    /// offset in bytes from start of `Hlist` to where `T` can be found, if T is contained
+    const OFFSET: Option<isize>;
+
+    // const HAS: bool = Self::OFFSET.is_some();  // for use with "associated_const_equality"
+}
+
+impl<T, C, L: const_utils::Searchable<T, C>> Contains<T, C> for L {
+    const OFFSET: Option<isize> = const_utils::get_cons_offset::<T, C, L>();
+}
+
+/// Get type T, search using comparator C
+///
+/// #TODO
+/// This trait is implemented for things that Contain T.
+/// This is based on the [Contains] trait. However, currently, we cannot confirm that
+/// T is actually contained.
+///
+/// If "associated_const_equality" becomes available, it should be used to check at
+/// compile time that T is actually contained
+pub trait Get<T, C> {
     /// offset in bytes from start of `Hlist` to where `T` can be found
     const OFFSET: isize;
-    // const HAS: bool = Self::OFFSET.is_some();  // for use with "associated_const_equality", and OFFSET should be Option<isize>
     /// get `&T` at [OFFSET](Contains::OFFSET)
     fn get(&self) -> &T;
     /// get `&mut T` at [OFFSET](Contains::OFFSET)
     fn get_mut(&mut self) -> &mut T;
 }
 
-    // THIS IS A COPY OF THE NOTE IN THE EXAMPLE ex1.rs
-    // TODO: At this time, I like to think that the Contains trait represents that a collection contains a type
-    // but this is incorrect since as seen below, 'list' does not contain B which should be required for 'tst'.
-    //
-    // Hopefully the feature "associated_const_equality" becomes stable. Afterward, the Contains trait can be used
-    // as a question regarding if a collection contains a type, and another trait (which I plan to call Get), will
-    // be implemented for types that *must* contain a specific type (e.g. Get<T> for L where L: Contains<T, OFFSET.is_some()>)
-impl<T, C, L: const_utils::Searchable<T, C>> Contains<T, C> for L {
-    const OFFSET: isize = const_utils::expect_some(const_utils::get_cons_offset::<T, C, L>(), "error: type T is not in hlist");
+impl<T, C, L: Contains<T, C>> Get<T, C> for L {
+    const OFFSET: isize = const_utils::expect_some(<L as Contains<T, C>>::OFFSET, "error: type T is not in hlist");
     fn get(&self) -> &T {
         let t_ptr: *const T = (self as *const Self).cast();
-        unsafe { &*t_ptr.offset(<Self as Contains<T, C>>::OFFSET) }
+        unsafe { &*t_ptr.offset(<Self as Get<T, C>>::OFFSET) }
     }
     fn get_mut(&mut self) -> &mut T {
         let t_ptr: *mut T = (self as *mut Self).cast();
-        unsafe { &mut *t_ptr.offset(<Self as Contains<T, C>>::OFFSET) }
+        unsafe { &mut *t_ptr.offset(<Self as Get<T, C>>::OFFSET) }
     }
 }
 
