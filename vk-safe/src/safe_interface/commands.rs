@@ -14,10 +14,9 @@ pub trait EnumerateInstanceExtensionProperties {
     fn enumerate_instance_extension_properties<S: EnumeratorStorage<ExtensionProperties>>(&self, layer_name: Option<&CStr>, storage: S) -> Result<S::InitStorage>;
 }
 
-// pub trait EnumerateInstanceLayerProperties {
-//     fn enumerate_instance_layer_properties_len(&self) -> Result<usize>;
-//     fn enumerate_instance_layer_properties<S: EnumeratorStorage<LayerProperties>>(&self, storage: S) -> Result<S::InitStorage>;
-// }
+pub trait EnumerateInstanceLayerProperties {
+    fn enumerate_instance_layer_properties<S: EnumeratorStorage<LayerProperties>>(&self, storage: S) -> Result<S::InitStorage>;
+}
 
 // pub trait EnumerateInstanceVersion {
 //     fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion>;

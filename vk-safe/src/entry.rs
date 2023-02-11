@@ -93,15 +93,10 @@ EnumerateInstanceExtensionProperties {
     enumerator_code!(enumerate_instance_extension_properties(layer_name: Option<&CStr>) -> ExtensionProperties);
 }}
 
-// impl_safe_entry_interface!{
-// EnumerateInstanceLayerProperties {
-//     enumerator_code!(
-//         enumerate_instance_layer_properties_len,
-//         enumerate_instance_layer_properties,
-//         LayerProperties =>
-//         ()
-//     );
-// }}
+impl_safe_entry_interface!{
+EnumerateInstanceLayerProperties {
+    enumerator_code!(enumerate_instance_layer_properties() -> LayerProperties);
+}}
 
 // impl_safe_entry_interface!{
 // EnumerateInstanceVersion {
