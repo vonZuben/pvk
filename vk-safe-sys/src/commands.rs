@@ -44,12 +44,17 @@ pub trait LoadCommands : Sized {
     fn load(loader: impl FunctionLoader) -> Result<Self, CommandLoadError>;
 }
 
-impl<H: VulkanCommand, T: LoadCommands + Hlist> LoadCommands for Cons<H, T> {
+impl<C: VulkanCommand> LoadCommands for C {
     fn load(loader: impl FunctionLoader) -> Result<Self, CommandLoadError> {
-        let fptr = loader(H::VK_NAME).ok_or(CommandLoadError { command: H::VK_NAME })?;
+        let fptr = loader(C::VK_NAME).ok_or(CommandLoadError { command: C::VK_NAME })?;
         // SAFETY : fptr should be the correct kind of pointer since we loaded it with H::VK_NAME
-        let command = unsafe { H::new(fptr) };
-        Ok(Cons::new(command, T::load(loader)?))
+        unsafe { Ok(C::new(fptr)) }
+    }
+}
+
+impl<H: LoadCommands, T: LoadCommands + Hlist> LoadCommands for Cons<H, T> {
+    fn load(loader: impl FunctionLoader) -> Result<Self, CommandLoadError> {
+       Ok(Cons::new(H::load(loader)?, T::load(loader)?))
     }
 }
 
