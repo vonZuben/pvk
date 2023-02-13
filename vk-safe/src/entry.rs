@@ -50,9 +50,22 @@ macro_rules! impl_safe_entry_interface {
     };
 }
 
+macro_rules! result_getter {
+    ( $fn_name:ident ( $($param:ident : $param_t:ty),* ) -> $getting:ty ) => {
+        fn $fn_name(&self, $($param : $param_t ,)*) -> Result<$getting> {
+            let mut get = MaybeUninit::uninit();
+            unsafe {
+                let res = self.commands.get()($($param.to_c(),)* None.to_c(), get.as_mut_ptr());
+                check_raw_err!(res);
+                Ok(get.assume_init())
+            }
+        }
+    };
+}
+
 // enumerators are all very similar, so why repeat ourselves
 macro_rules! enumerator_code {
-    ( $fn_name:ident ( $($param:ident : $param_t:ty),* ) -> $getting:ty) => {
+    ( $fn_name:ident ( $($param:ident : $param_t:ty),* ) -> $getting:ty ) => {
         fn $fn_name<S: EnumeratorStorage<$getting>>(&self, $($param : $param_t ,)* mut storage: S) -> Result<S::InitStorage> {
             let query_len = || {
                 let mut num = 0;
@@ -78,14 +91,7 @@ macro_rules! enumerator_code {
 
 impl_safe_entry_interface!{
 CreateInstance {
-    fn create_instance(&self, create_info: &vk::InstanceCreateInfo) -> Result<vk::Instance> {
-        let mut instance = MaybeUninit::uninit();
-        unsafe {
-            let res = self.commands.get()(create_info, None.to_c(), instance.as_mut_ptr());
-            check_raw_err!(res);
-            Ok(instance.assume_init())
-        }
-    }
+    result_getter!(create_instance(create_info: &vk::InstanceCreateInfo) -> vk::Instance);
 }}
 
 impl_safe_entry_interface!{
