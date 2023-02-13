@@ -69,13 +69,13 @@ impl LayerProperties {
 
 //===========InstanceCreateInfo
 pub struct InstanceCreateInfo<'a, V: vk_safe_sys::VulkanVersion, E> {
-    inner: vk::InstanceCreateInfo,
+    pub(crate) inner: vk::InstanceCreateInfo,
     _version: PhantomData<V>,
     _extensions: PhantomData<E>,
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, V: vk_safe_sys::VulkanVersion, E> InstanceCreateInfo<'a, V, E> {
+impl<'a, V: vk_safe_sys::VulkanVersion> InstanceCreateInfo<'a, V, ()> {
     pub fn new(app_info: &'a ApplicationInfo<'a, V>) -> Self {
         Self {
             inner: vk::InstanceCreateInfo {
@@ -94,15 +94,15 @@ impl<'a, V: vk_safe_sys::VulkanVersion, E> InstanceCreateInfo<'a, V, E> {
         }
     }
 
-    pub fn extensions<E2>(self, extensions: E2) -> InstanceCreateInfo<'a, V, E2> {
-        // let new = InstanceCreateInfo {
-        //     _extensions: PhantomData,
-        //     inner: self.inner,
-        //     _version: self._version,
-        //     _refs: self._refs,
-        // };
-        todo!() // need to set the extension properly, probably need to define extension trait properly
-    }
+    // pub fn extensions<E2>(self, extensions: E2) -> InstanceCreateInfo<'a, V, E2> {
+    //     // let new = InstanceCreateInfo {
+    //     //     _extensions: PhantomData,
+    //     //     inner: self.inner,
+    //     //     _version: self._version,
+    //     //     _refs: self._refs,
+    //     // };
+    //     todo!() // need to set the extension properly, probably need to define extension trait properly
+    // }
 }
 
 //===========ApplicationInfo

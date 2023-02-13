@@ -44,14 +44,14 @@ impl<V: VulkanVersion> Entry<V> {
 // This is how each safe command can be implemented on top of each raw command
 macro_rules! impl_safe_entry_interface {
     ( $interface:ident { $($code:tt)* }) => {
-        impl<V: VulkanVersion> safe_interface::$interface for Entry<V> where V::EntryCommands : GetCommand<vk::$interface> {
+        impl<EntryVersion: VulkanVersion> safe_interface::$interface for Entry<EntryVersion> where EntryVersion::EntryCommands : GetCommand<vk::$interface> {
             $($code)*
         }
     };
 }
 
 macro_rules! result_getter {
-    ( $fn_name:ident ( $($param:ident : $param_t:ty),* ) -> $getting:ty ) => {
+    ( $fn_name:ident $(<$generic:ident>)? ( $($param:ident : $param_t:ty),* ) -> $getting:ty ) => {
         fn $fn_name(&self, $($param : $param_t ,)*) -> Result<$getting> {
             let mut get = MaybeUninit::uninit();
             unsafe {
@@ -91,7 +91,14 @@ macro_rules! enumerator_code {
 
 impl_safe_entry_interface!{
 CreateInstance {
-    result_getter!(create_instance(create_info: &vk::InstanceCreateInfo) -> vk::Instance);
+    fn create_instance<V: VulkanVersion, E>(&self, create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>) -> Result<vk::Instance> {
+        let mut instance = MaybeUninit::uninit();
+        unsafe {
+            let res = self.commands.get()(&create_info.inner, None.to_c(), instance.as_mut_ptr());
+            check_raw_err!(res);
+            Ok(instance.assume_init())
+        }
+    }
 }}
 
 impl_safe_entry_interface!{

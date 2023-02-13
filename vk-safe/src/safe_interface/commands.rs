@@ -7,7 +7,7 @@ use super::structs::*;
 
 // Entry level interface
 pub trait CreateInstance {
-    fn create_instance(&self, create_info: &vk::InstanceCreateInfo) -> Result<vk::Instance>;
+    fn create_instance<V: vk::VulkanVersion, E>(&self, create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>) -> Result<vk::Instance>;
 }
 
 pub trait EnumerateInstanceExtensionProperties {
