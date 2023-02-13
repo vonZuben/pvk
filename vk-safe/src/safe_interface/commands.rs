@@ -18,6 +18,6 @@ pub trait EnumerateInstanceLayerProperties {
     fn enumerate_instance_layer_properties<S: EnumeratorStorage<LayerProperties>>(&self, storage: S) -> Result<S::InitStorage>;
 }
 
-// pub trait EnumerateInstanceVersion {
-//     fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion>;
-// }
+pub trait EnumerateInstanceVersion {
+    fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion>;
+}
