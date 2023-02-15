@@ -8,7 +8,7 @@
 // trace_macros!(true);
 
 #[macro_use]
-pub mod generated; // TODO I do not think I want this public, but need type defs for now
+mod generated; // TODO I do not think I want this public, but need type defs for now
 
 #[link(name = "vulkan")]
 extern "system" {
@@ -18,14 +18,9 @@ extern "system" {
 }
 
 
-// #[macro_use]
 mod utils;
-// mod definitions;
 
-#[macro_use]
 pub mod commands;
-// pub mod version;
-// pub mod extension;
 
 pub use generated::*;
 pub use utils::GetCommand;
