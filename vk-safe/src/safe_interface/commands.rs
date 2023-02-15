@@ -4,10 +4,15 @@ use vk_safe_sys as vk;
 use super::Result;
 use super::enumerator_storage::EnumeratorStorage;
 use super::structs::*;
+use crate::instance as safe_instance;
+
+#[derive(Debug)]
+pub struct TempError;
 
 // Entry level interface
 pub trait CreateInstance {
-    fn create_instance<V: vk::VulkanVersion, E>(&self, create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>) -> Result<vk::Instance>;
+    fn create_instance<V: vk::VulkanVersion, E: vk::VulkanExtension>(&self, create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>) -> std::result::Result<safe_instance::Instance<V, E>, TempError>
+    where V::InstanceCommands: vk::commands::LoadCommands, E::InstanceCommands: vk::commands::LoadCommands;
 }
 
 pub trait EnumerateInstanceExtensionProperties {
