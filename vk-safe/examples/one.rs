@@ -1,4 +1,4 @@
-use vk_safe::safe_interface::{EnumerateInstanceExtensionProperties, EnumerateInstanceLayerProperties, EnumerateInstanceVersion, CreateInstance};
+use vk_safe::entry::*;
 use vk_safe::safe_interface::structs::{ApplicationInfo, InstanceCreateInfo};
 
 fn main() {

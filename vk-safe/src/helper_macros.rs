@@ -14,7 +14,8 @@ macro_rules! result_getter_code {
 // enumerators are all very similar, so why repeat ourselves
 macro_rules! enumerator_code {
     ( $fn_name:ident ( $($param:ident : $param_t:ty),* ) -> $getting:ty ) => {
-        fn $fn_name<S: EnumeratorStorage<$getting>>(&self, $($param : $param_t ,)* mut storage: S) -> Result<S::InitStorage> {
+        fn $fn_name<S: EnumeratorStorage<$getting>>(&self, $($param : $param_t ,)* mut storage: S) -> Result<S::InitStorage, vk_safe_sys::Result> {
+            use std::convert::TryInto;
             let query_len = || {
                 let mut num = 0;
                 let res;

@@ -1,7 +1,7 @@
 use core::ops::{Deref, DerefMut};
 use std::mem::MaybeUninit;
 
-use super::Result;
+type Result<T> = std::result::Result<T, vk_safe_sys::Result>;
 
 /// This is used for vulkan commands that enumerate or get multiple items,
 /// where the user needs to provide the space to store the items.
