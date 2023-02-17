@@ -1,22 +1,27 @@
-
-use vk_safe_sys as vk;
-use krs_hlist::Get;
 use crate::safe_interface::type_conversions::ToC;
+use krs_hlist::Get;
+use vk_safe_sys as vk;
 
-use vk::commands::{LoadCommands, CommandLoadError};
+use vk::commands::{CommandLoadError, LoadCommands};
 
 #[derive(Debug)]
-pub struct Instance<V: vk::VulkanVersion, E: vk::VulkanExtension> where V::InstanceCommands: vk::GetCommand<vk::DestroyInstance> {
+pub struct Instance<V: vk::VulkanVersion, E: vk::VulkanExtension>
+where
+    V::InstanceCommands: vk::GetCommand<vk::DestroyInstance>,
+{
     handle: vk::Instance,
     feature_commands: V::InstanceCommands,
     extension_commands: E::InstanceCommands,
 }
 
-impl<V: vk::VulkanVersion, E: vk::VulkanExtension> Instance<V, E> where V::InstanceCommands: LoadCommands, E::InstanceCommands: LoadCommands, V::InstanceCommands: vk::GetCommand<vk::DestroyInstance> {
+impl<V: vk::VulkanVersion, E: vk::VulkanExtension> Instance<V, E>
+where
+    V::InstanceCommands: LoadCommands,
+    E::InstanceCommands: LoadCommands,
+    V::InstanceCommands: vk::GetCommand<vk::DestroyInstance>,
+{
     pub(crate) fn new(handle: vk::Instance) -> Result<Self, CommandLoadError> {
-        let loader = |command_name| unsafe {
-            vk::GetInstanceProcAddr(handle, command_name)
-        };
+        let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
             feature_commands: V::InstanceCommands::load(loader)?,
@@ -53,7 +58,10 @@ If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAlloc
 
 - VkAllocationCallbacks is taken by a rust reference so it must be valid
 */
-impl<V: vk::VulkanVersion, E: vk::VulkanExtension> Drop for Instance<V, E> where V::InstanceCommands: vk::GetCommand<vk::DestroyInstance> {
+impl<V: vk::VulkanVersion, E: vk::VulkanExtension> Drop for Instance<V, E>
+where
+    V::InstanceCommands: vk::GetCommand<vk::DestroyInstance>,
+{
     fn drop(&mut self) {
         unsafe { self.feature_commands.get()(self.handle, None.to_c()) }
     }
