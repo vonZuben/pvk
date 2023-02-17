@@ -18,6 +18,29 @@ pub trait CreateInstance {
 
 impl_safe_entry_interface! {
 CreateInstance {
+/**
+SAFETY (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html)
+
+VUID-vkCreateInstance-ppEnabledExtensionNames-01388
+All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list
+
+- TODO should ensure safety by creation of the create_info
+
+VUID-vkCreateInstance-pCreateInfo-parameter
+pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure
+
+- taken by rust ref so valid, and creation of all safe interface types should only make valid types
+
+VUID-vkCreateInstance-pAllocator-parameter
+If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure
+
+- taken by rust ref so valid, and creation of all safe interface types should only make valid types
+
+VUID-vkCreateInstance-pInstance-parameter
+pInstance must be a valid pointer to a VkInstance handle
+
+- we pass a valid pointer to the location where the function will return the instance handle
+*/
     fn create_instance<V: vk::VulkanVersion, E: vk::VulkanExtension>(
         &self,
         create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>,

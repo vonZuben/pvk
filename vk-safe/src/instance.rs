@@ -51,12 +51,12 @@ If no VkAllocationCallbacks were provided when instance was created, pAllocator 
 VUID-vkDestroyInstance-instance-parameter
 If instance is not NULL, instance must be a valid VkInstance handle
 
-- the instance handle should be valid since the Instance can only exist if there was no error at creation
+- taken by rust ref so valid, and creation of all safe interface types should only make valid types
 
 VUID-vkDestroyInstance-pAllocator-parameter
 If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure
 
-- VkAllocationCallbacks is taken by a rust reference so it must be valid
+- taken by rust ref so valid
 */
 impl<V: vk::VulkanVersion, E: vk::VulkanExtension> Drop for Instance<V, E>
 where
