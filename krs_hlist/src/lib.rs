@@ -41,6 +41,7 @@
 #![warn(missing_docs)]
 
 use std::ops::Add;
+use std::fmt;
 
 mod const_utils;
 pub mod higher_order;
@@ -68,7 +69,7 @@ pub trait Hlist {
 ///
 /// *Note* this type is repr(C) at this time in order to work soundly with the current implementation of [Contains], but it
 /// is not clear if this will be maintained.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Clone, Copy, Default)]
 #[repr(C)]
 pub struct Cons<H, T> {
     /// This holds that actual data for each spot in the hlist
@@ -96,6 +97,25 @@ impl<H, T: Hlist> Hlist for Cons<H, T> {
     const LEN: usize = T::LEN + 1;
 }
 
+trait DebugFormatHlistTail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
+}
+
+impl<H: fmt::Debug, T: DebugFormatHlistTail> DebugFormatHlistTail for Cons<H, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, ", {:?}", self.head)?;
+        self.tail.fmt(f)
+    }
+}
+
+impl<H: fmt::Debug, T: DebugFormatHlistTail> fmt::Debug for Cons<H, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[{:?}", self.head)?;
+        self.tail.fmt(f)?;
+        write!(f, "]")
+    }
+}
+
 /// Mark the end of an hlist
 ///
 /// The last `tail` in an hlist should be set with this
@@ -115,6 +135,12 @@ impl Hlist for End {
     type Head = End;
     type Tail = End;
     const LEN: usize = 0;
+}
+
+impl DebugFormatHlistTail for End {
+    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
 }
 
 /// This allows adding different hlists together
