@@ -12,7 +12,7 @@ pub trait CreateInstance {
         create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>,
     ) -> std::result::Result<safe_instance::Instance<V, E>, TempError>
     where
-        V::InstanceCommands: vk::commands::LoadCommands,
+        V::InstanceCommands: vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>,
         E::InstanceCommands: vk::commands::LoadCommands;
 }
 
@@ -23,7 +23,7 @@ CreateInstance {
         create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>,
     ) -> std::result::Result<safe_instance::Instance<V, E>, TempError>
     where
-        V::InstanceCommands: vk::commands::LoadCommands,
+        V::InstanceCommands: vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>,
         E::InstanceCommands: vk::commands::LoadCommands
     {
         let mut instance = MaybeUninit::uninit();
