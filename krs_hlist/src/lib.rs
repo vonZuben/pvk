@@ -110,7 +110,7 @@ impl<H: fmt::Debug, T: DebugFormatHlistTail> DebugFormatHlistTail for Cons<H, T>
 
 impl<H: fmt::Debug, T: DebugFormatHlistTail> fmt::Debug for Cons<H, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{:?}", self.head)?;
+        write!(f, "Hlist[{:?}", self.head)?;
         self.tail.fmt(f)?;
         write!(f, "]")
     }
@@ -119,7 +119,7 @@ impl<H: fmt::Debug, T: DebugFormatHlistTail> fmt::Debug for Cons<H, T> {
 /// Mark the end of an hlist
 ///
 /// The last `tail` in an hlist should be set with this
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Clone, Copy, Default)]
 pub struct End;
 
 impl End {
@@ -135,6 +135,12 @@ impl Hlist for End {
     type Head = End;
     type Tail = End;
     const LEN: usize = 0;
+}
+
+impl fmt::Debug for End {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Hlist[]")
+    }
 }
 
 impl DebugFormatHlistTail for End {
