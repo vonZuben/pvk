@@ -6,6 +6,14 @@ pub trait EnumerateInstanceVersion {
     fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion, vk::Result>;
 }
 
+/*
+SAFETY (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceVersion.html)
+
+VUID-vkEnumerateInstanceVersion-pApiVersion-parameter
+pApiVersion must be a valid pointer to a uint32_t value
+
+- internally handled with a &mut u32
+*/
 impl_safe_entry_interface! {
 EnumerateInstanceVersion {
     fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion, vk::Result> {
