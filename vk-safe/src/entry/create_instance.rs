@@ -16,9 +16,7 @@ pub trait CreateInstance {
         E::InstanceCommands: vk::commands::LoadCommands;
 }
 
-impl_safe_entry_interface! {
-CreateInstance {
-/**
+/*
 SAFETY (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html)
 
 VUID-vkCreateInstance-ppEnabledExtensionNames-01388
@@ -41,6 +39,9 @@ pInstance must be a valid pointer to a VkInstance handle
 
 - we pass a valid pointer to the location where the function will return the instance handle
 */
+
+impl_safe_entry_interface! {
+CreateInstance {
     fn create_instance<V: vk::VulkanVersion, E: vk::VulkanExtension>(
         &self,
         create_info: &crate::safe_interface::structs::InstanceCreateInfo<V, E>,
