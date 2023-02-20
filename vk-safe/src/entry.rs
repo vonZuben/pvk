@@ -58,7 +58,7 @@ mod enumerate_instance_extension_properties;
 mod enumerate_instance_layer_properties;
 mod enumerate_instance_version;
 
-pub use create_instance::CreateInstance;
+pub use create_instance::*;
 pub use enumerate_instance_extension_properties::EnumerateInstanceExtensionProperties;
 pub use enumerate_instance_layer_properties::EnumerateInstanceLayerProperties;
 pub use enumerate_instance_version::EnumerateInstanceVersion;

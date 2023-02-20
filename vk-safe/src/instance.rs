@@ -2,30 +2,56 @@ use crate::safe_interface::type_conversions::ToC;
 use krs_hlist::Get;
 use vk_safe_sys as vk;
 
+use crate::utils::VkVersion;
+
+use std::marker::PhantomData;
+
 use vk::commands::{CommandLoadError, LoadCommands};
 
-#[derive(Debug)]
-pub struct Instance<V: vk::VulkanVersion, E: vk::VulkanExtension>
-where
-    V::InstanceCommands: vk::GetCommand<vk::DestroyInstance>,
-{
-    handle: vk::Instance,
-    feature_commands: V::InstanceCommands,
-    extension_commands: E::InstanceCommands,
+pub trait InstanceConfig {
+    const VERSION: VkVersion;
+    type InstanceCommands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>;
+    type InstanceExtensions : vk::commands::LoadCommands;
 }
 
-impl<V: vk::VulkanVersion, E: vk::VulkanExtension> Instance<V, E>
+#[derive(Debug)]
+pub struct Config<V, E> {
+    _version: PhantomData<V>,
+    _extension: PhantomData<E>,
+}
+
+impl<V, E> Config<V, E> {
+    pub fn new(_version: V, _extensions: E) -> Self {
+        Self { _version: PhantomData, _extension: PhantomData }
+    }
+}
+
+impl<V: vk::VulkanVersion, E: vk::VulkanExtension> InstanceConfig for Config<V, E>
 where
-    V::InstanceCommands: LoadCommands,
-    E::InstanceCommands: LoadCommands,
-    V::InstanceCommands: vk::GetCommand<vk::DestroyInstance>,
+    V::InstanceCommands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>,
+    E::InstanceCommands : vk::commands::LoadCommands,
 {
+    const VERSION: VkVersion = VkVersion::new(0, V::VersionTriple.0, V::VersionTriple.1, V::VersionTriple.2);
+
+    type InstanceCommands = V::InstanceCommands;
+
+    type InstanceExtensions = E::InstanceCommands;
+}
+
+#[derive(Debug)]
+pub struct Instance<C: InstanceConfig> {
+    handle: vk::Instance,
+    feature_commands: C::InstanceCommands,
+    extension_commands: C::InstanceExtensions,
+}
+
+impl<C: InstanceConfig> Instance<C> {
     pub(crate) fn new(handle: vk::Instance) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
-            feature_commands: V::InstanceCommands::load(loader)?,
-            extension_commands: E::InstanceCommands::load(loader)?,
+            feature_commands: C::InstanceCommands::load(loader)?,
+            extension_commands: C::InstanceExtensions::load(loader)?,
         })
     }
 }
@@ -58,10 +84,7 @@ If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAlloc
 
 - taken by rust ref so valid
 */
-impl<V: vk::VulkanVersion, E: vk::VulkanExtension> Drop for Instance<V, E>
-where
-    V::InstanceCommands: vk::GetCommand<vk::DestroyInstance>,
-{
+impl<C: InstanceConfig> Drop for Instance<C> {
     fn drop(&mut self) {
         unsafe { self.feature_commands.get()(self.handle, None.to_c()) }
     }
