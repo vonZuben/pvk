@@ -1,5 +1,5 @@
 use vk_safe::entry::*;
-use vk_safe::safe_interface::structs::{ApplicationInfo, InstanceCreateInfo};
+use vk_safe::instance::Config;
 
 fn main() {
     let entry = vk_safe::entry::Entry::from_version(vk_safe_sys::VERSION_1_1).unwrap();
@@ -19,7 +19,8 @@ fn main() {
         println!();
     }
 
-    let app_info = ApplicationInfo::new(vk_safe_sys::VERSION_1_1);
+    let instance_config = Config::new(vk_safe_sys::VERSION_1_1, ());
+    let app_info = ApplicationInfo::new(instance_config);
     let instance_info = InstanceCreateInfo::new(&app_info);
 
     let instance = entry.create_instance(&instance_info).unwrap();
