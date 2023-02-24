@@ -1,10 +1,18 @@
 use super::command_impl_prelude::*;
 
 pub trait EnumerateInstanceLayerProperties {
-    fn enumerate_instance_layer_properties<S: EnumeratorStorage<structs::LayerProperties>>(
+    fn enumerate_instance_layer_properties<S: EnumeratorStorage<LayerProperties>>(
         &self,
         storage: S,
     ) -> Result<S::InitStorage, vk::Result>;
+}
+
+//===========LayerProperties
+simple_struct_wrapper!(LayerProperties);
+
+impl LayerProperties {
+    get_str!(layer_name);
+    get_str!(description);
 }
 
 /*
@@ -22,5 +30,5 @@ If the value referenced by pPropertyCount is not 0, and pProperties is not NULL,
 */
 impl_safe_entry_interface! {
 EnumerateInstanceLayerProperties {
-    enumerator_code!(enumerate_instance_layer_properties() -> structs::LayerProperties);
+    enumerator_code!(enumerate_instance_layer_properties() -> LayerProperties);
 }}

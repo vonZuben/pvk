@@ -1,5 +1,3 @@
-pub mod structs;
-
 pub mod type_conversions;
 
 /// A specialized [`Result`] type for Vulkan operations.

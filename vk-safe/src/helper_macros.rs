@@ -37,3 +37,41 @@ macro_rules! enumerator_code {
         }
     };
 }
+
+
+// Use this to create wrappers around simple structs
+macro_rules! simple_struct_wrapper {
+    (
+        $name:ident
+    ) => {
+        #[repr(transparent)]
+        pub struct $name {
+            inner: vk_safe_sys::$name,
+        }
+
+        impl std::ops::Deref for $name {
+            type Target = vk_safe_sys::$name;
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
+    };
+}
+
+pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
+    s.iter().take_while(|&&c| c != 0).count()
+}
+
+macro_rules! get_str {
+    (
+        $name:ident
+    ) => {
+        pub fn $name(&self) -> &str {
+            let unchecked_utf8;
+            unsafe {
+                unchecked_utf8 = std::slice::from_raw_parts(self.inner.$name.as_ptr().cast(), crate::helper_macros::str_len(&self.inner.$name));
+            }
+            std::str::from_utf8(unchecked_utf8).expect("vk safe interface internal error: string from Vulkan implementation is not proper utf8")
+        }
+    };
+}

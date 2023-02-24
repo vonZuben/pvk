@@ -38,7 +38,6 @@ mod command_impl_prelude {
     pub use super::Entry;
     pub use crate::enumerator_storage::{EnumeratorStorage, VulkanLenType};
     pub use crate::safe_interface::type_conversions::*;
-    pub use crate::safe_interface::structs;
     pub use krs_hlist::Get;
     pub use vk_safe_sys as vk;
     pub use vk_safe_sys::{GetCommand, VulkanExtension, VulkanVersion};
@@ -59,6 +58,6 @@ mod enumerate_instance_layer_properties;
 mod enumerate_instance_version;
 
 pub use create_instance::*;
-pub use enumerate_instance_extension_properties::EnumerateInstanceExtensionProperties;
-pub use enumerate_instance_layer_properties::EnumerateInstanceLayerProperties;
-pub use enumerate_instance_version::EnumerateInstanceVersion;
+pub use enumerate_instance_extension_properties::*;
+pub use enumerate_instance_layer_properties::*;
+pub use enumerate_instance_version::*;
