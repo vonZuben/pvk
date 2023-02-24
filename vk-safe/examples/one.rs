@@ -1,4 +1,5 @@
 use vk_safe::entry::*;
+use vk_safe::instance::*;
 use vk_safe::instance::Config;
 
 fn main() {
@@ -26,6 +27,12 @@ fn main() {
     let instance = entry.create_instance(&instance_info).unwrap();
 
     println!("{instance:?}");
+
+    let physical_devices = instance.enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1]).unwrap();
+
+    for pd in physical_devices.iter() {
+        println!("{pd:?}");
+    }
 
 //     let info: vk_safe_sys::InstanceCreateInfo = unsafe { std::mem::MaybeUninit::zeroed().assume_init() };
 //     let instance = _x.create_instance(&info).unwrap();

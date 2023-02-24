@@ -89,3 +89,28 @@ impl<C: InstanceConfig> Drop for Instance<C> {
         unsafe { self.feature_commands.get()(self.handle, None.to_c()) }
     }
 }
+
+mod command_impl_prelude {
+    pub use super::Instance;
+    pub use crate::enumerator_storage::{EnumeratorStorage, VulkanLenType};
+    pub use crate::safe_interface::type_conversions::*;
+    pub use crate::safe_interface::structs;
+    pub use krs_hlist::Get;
+    pub use vk_safe_sys as vk;
+    pub use vk_safe_sys::{GetCommand, VulkanExtension, VulkanVersion};
+}
+
+// This is how each safe command can be implemented on top of each raw command
+macro_rules! impl_safe_instance_interface {
+    ( $interface:ident { $($code:tt)* }) => {
+        impl<C: InstanceConfig> $interface for Instance<C>
+        where
+            C::InstanceCommands: GetCommand<vk::$interface> {
+            $($code)*
+        }
+    };
+}
+
+mod enumerate_physical_devices;
+
+pub use enumerate_physical_devices::*;
