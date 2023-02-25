@@ -102,7 +102,7 @@ mod command_impl_prelude {
 // This is how each safe command can be implemented on top of each raw command
 macro_rules! impl_safe_instance_interface {
     ( $interface:ident { $($code:tt)* }) => {
-        impl<C: InstanceConfig> $interface for Instance<C>
+        impl<C: InstanceConfig> Instance<C>
         where
             C::InstanceCommands: GetCommand<vk::$interface> {
             $($code)*

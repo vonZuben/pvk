@@ -4,24 +4,11 @@ use crate::enumerator_storage::EnumeratorStorage;
 use crate::instance::InstanceConfig;
 use crate::physical_device::PhysicalDevice;
 
-pub trait EnumeratePhysicalDevices {
-    type Config: InstanceConfig;
-    // Self is intended to be Instance<C>
-    fn enumerate_physical_devices<
+impl_safe_instance_interface!{
+EnumeratePhysicalDevices {
+    pub fn enumerate_physical_devices<
         'a,
-        S: EnumeratorStorage<PhysicalDevice<'a, Self::Config>>,
-    >(
-        &'a self,
-        storage: S
-    ) -> Result<S::InitStorage, vk::Result>;
-}
-
-impl<C: InstanceConfig> EnumeratePhysicalDevices for Instance<C> where C::InstanceCommands: GetCommand<vk::EnumeratePhysicalDevices> {
-    type Config = C;
-
-    fn enumerate_physical_devices<
-        'a,
-        S: EnumeratorStorage<PhysicalDevice<'a, Self::Config>>,
+        S: EnumeratorStorage<PhysicalDevice<'a, C>>,
     >(
         &'a self,
         mut storage: S
@@ -46,4 +33,4 @@ impl<C: InstanceConfig> EnumeratePhysicalDevices for Instance<C> where C::Instan
         }
         Ok(storage.finalize(len.to_usize()))
     }
-}
+}}
