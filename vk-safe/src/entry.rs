@@ -46,7 +46,7 @@ mod command_impl_prelude {
 // This is how each safe command can be implemented on top of each raw command
 macro_rules! impl_safe_entry_interface {
     ( $interface:ident { $($code:tt)* }) => {
-        impl<EntryVersion: VulkanVersion> $interface for Entry<EntryVersion> where EntryVersion::EntryCommands : GetCommand<vk::$interface> {
+        impl<EntryVersion: VulkanVersion> Entry<EntryVersion> where EntryVersion::EntryCommands : GetCommand<vk::$interface> {
             $($code)*
         }
     };

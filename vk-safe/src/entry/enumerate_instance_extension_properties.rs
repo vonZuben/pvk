@@ -2,14 +2,6 @@ use super::command_impl_prelude::*;
 
 use std::ffi::CStr;
 
-pub trait EnumerateInstanceExtensionProperties {
-    fn enumerate_instance_extension_properties<S: EnumeratorStorage<ExtensionProperties>>(
-        &self,
-        layer_name: Option<&CStr>,
-        storage: S,
-    ) -> Result<S::InitStorage, vk::Result>;
-}
-
 //===========ExtensionProperties
 simple_struct_wrapper!(ExtensionProperties);
 

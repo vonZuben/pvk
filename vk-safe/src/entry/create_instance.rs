@@ -11,13 +11,6 @@ use std::ffi::CStr;
 #[derive(Debug)]
 pub struct TempError;
 
-pub trait CreateInstance {
-    fn create_instance<C: InstanceConfig>(
-        &self,
-        create_info: &InstanceCreateInfo<C>,
-    ) -> std::result::Result<safe_instance::Instance<C>, TempError>;
-}
-
 /*
 SAFETY (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html)
 
@@ -44,7 +37,7 @@ pInstance must be a valid pointer to a VkInstance handle
 
 impl_safe_entry_interface! {
 CreateInstance {
-    fn create_instance<C: InstanceConfig>(
+    pub fn create_instance<C: InstanceConfig>(
         &self,
         create_info: &InstanceCreateInfo<C>,
     ) -> std::result::Result<safe_instance::Instance<C>, TempError> {

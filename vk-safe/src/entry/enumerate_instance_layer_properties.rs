@@ -1,12 +1,5 @@
 use super::command_impl_prelude::*;
 
-pub trait EnumerateInstanceLayerProperties {
-    fn enumerate_instance_layer_properties<S: EnumeratorStorage<LayerProperties>>(
-        &self,
-        storage: S,
-    ) -> Result<S::InitStorage, vk::Result>;
-}
-
 //===========LayerProperties
 simple_struct_wrapper!(LayerProperties);
 

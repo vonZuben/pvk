@@ -2,10 +2,6 @@ use super::command_impl_prelude::*;
 
 use std::mem::MaybeUninit;
 
-pub trait EnumerateInstanceVersion {
-    fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion, vk::Result>;
-}
-
 /*
 SAFETY (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceVersion.html)
 
@@ -16,7 +12,7 @@ pApiVersion must be a valid pointer to a uint32_t value
 */
 impl_safe_entry_interface! {
 EnumerateInstanceVersion {
-    fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion, vk::Result> {
+    pub fn enumerate_instance_version(&self) -> Result<crate::utils::VkVersion, vk::Result> {
         let mut version = MaybeUninit::uninit();
         unsafe {
             let res = self.commands.get()(version.as_mut_ptr());
