@@ -13,7 +13,7 @@ type Result<T> = std::result::Result<T, vk_safe_sys::Result>;
 /// Users can implement for custom types.
 pub trait EnumeratorStorage<T> {
     /// The final initialized storage type.
-    type InitStorage;
+    type InitStorage : AsRef<[T]>;
     /// Allow control of querying len of items to be returned.
     /// If preallocated space is provided, then there is no reason to query (e.g. for a slice).
     fn query_len(&mut self, _query_len: impl FnOnce() -> Result<usize>) -> Result<()> {Ok(())}
@@ -94,6 +94,12 @@ impl<const LEN: usize, T> Deref for InitArray<LEN, T> {
 impl<const LEN: usize, T> DerefMut for InitArray<LEN, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.get_initialized_mut()
+    }
+}
+
+impl<const LEN: usize, T> AsRef<[T]> for InitArray<LEN, T> {
+    fn as_ref(&self) -> &[T] {
+        self
     }
 }
 
