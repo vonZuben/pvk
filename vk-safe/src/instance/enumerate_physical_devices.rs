@@ -2,17 +2,17 @@ use super::command_impl_prelude::*;
 
 use crate::enumerator_storage::EnumeratorStorage;
 use crate::instance::InstanceConfig;
-use crate::physical_device::PhysicalDevice;
+use crate::physical_device::PhysicalDevices;
 
 impl_safe_instance_interface!{
 EnumeratePhysicalDevices {
     pub fn enumerate_physical_devices<
         'a,
-        S: EnumeratorStorage<PhysicalDevice<'a, C>>,
+        S: EnumeratorStorage<vk::PhysicalDevice>,
     >(
         &'a self,
         mut storage: S
-    ) -> Result<S::InitStorage, vk::Result> {
+    ) -> Result<PhysicalDevices<'a, C, S>, vk::Result> {
         use std::convert::TryInto;
         let query_len = || {
             let mut num = 0;
@@ -31,6 +31,6 @@ EnumeratePhysicalDevices {
             res = self.feature_commands.get()(self.handle, &mut len, uninit_slice.as_mut_ptr().cast());
             check_raw_err!(res);
         }
-        Ok(storage.finalize(len.to_usize()))
+        Ok(PhysicalDevices::new(storage.finalize(len.to_usize()), self))
     }
 }}

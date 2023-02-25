@@ -26,10 +26,15 @@ fn main() {
 
     let instance = entry.create_instance(&instance_info).unwrap();
 
+    println!("-------");
     println!("{instance:?}");
 
     let physical_devices = instance.enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1]).unwrap();
 
+    println!("-------");
+    println!("{physical_devices:?}");
+
+    println!("-------");
     for pd in physical_devices.iter() {
         println!("{pd:?}");
     }
