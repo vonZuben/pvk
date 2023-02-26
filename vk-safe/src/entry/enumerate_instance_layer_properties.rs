@@ -2,8 +2,6 @@ use super::command_impl_prelude::*;
 
 use std::fmt;
 
-use crate::pretty_version::VkVersion;
-
 //===========LayerProperties
 simple_struct_wrapper!(LayerProperties);
 

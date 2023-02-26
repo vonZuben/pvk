@@ -1,4 +1,3 @@
-use std::fmt;
 // // =================Custom Result=======================
 // // there is more than one success value in Vulkan, which is important to know for some APIs
 // // so we need to keep it along with any actual returned values
