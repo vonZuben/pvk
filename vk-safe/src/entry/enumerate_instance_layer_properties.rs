@@ -1,11 +1,25 @@
 use super::command_impl_prelude::*;
 
+use std::fmt;
+
 //===========LayerProperties
 simple_struct_wrapper!(LayerProperties);
 
 impl LayerProperties {
     get_str!(layer_name);
     get_str!(description);
+}
+
+impl fmt::Debug for LayerProperties {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let spec_version = unsafe { crate::utils::VkVersion::from_raw(self.spec_version) };
+        f.debug_struct("LayerProperties")
+            .field("Name", &self.layer_name())
+            .field("Spec Version", &spec_version)
+            .field("Implementation Version", &self.implementation_version)
+            .field("Description", &self.description())
+            .finish()
+    }
 }
 
 /*

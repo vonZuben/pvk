@@ -1,12 +1,22 @@
 use super::command_impl_prelude::*;
 
 use std::ffi::CStr;
+use std::fmt;
 
 //===========ExtensionProperties
 simple_struct_wrapper!(ExtensionProperties);
 
 impl ExtensionProperties {
     get_str!(extension_name);
+}
+
+impl fmt::Debug for ExtensionProperties {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExtensionProperties")
+            .field("Name", &self.extension_name())
+            .field("Spec Version", &self.spec_version)
+            .finish()
+    }
 }
 
 /*

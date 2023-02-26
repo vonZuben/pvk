@@ -9,15 +9,12 @@ fn main() {
 
     println!("--Extensions--");
     for e in entry.enumerate_instance_extension_properties(None, Vec::new()).unwrap() {
-        let s = e.extension_name();
-        println!("{}", s);
+        println!("{e:#?}");
     }
 
     println!("--Layers--");
     for e in entry.enumerate_instance_layer_properties(Vec::new()).unwrap() {
-        println!("Name: {}", e.layer_name());
-        println!("Description: {}", e.description());
-        println!();
+        println!("{e:#?}");
     }
 
     let instance_config = Config::new(vk_safe_sys::VERSION_1_1, ());
