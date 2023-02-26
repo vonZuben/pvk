@@ -2,6 +2,8 @@ use super::command_impl_prelude::*;
 
 use std::fmt;
 
+use crate::pretty_version::VkVersion;
+
 //===========LayerProperties
 simple_struct_wrapper!(LayerProperties);
 
@@ -12,7 +14,7 @@ impl LayerProperties {
 
 impl fmt::Debug for LayerProperties {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let spec_version = unsafe { crate::utils::VkVersion::from_raw(self.spec_version) };
+        let spec_version = unsafe { VkVersion::from_raw(self.spec_version) };
         f.debug_struct("LayerProperties")
             .field("Name", &self.layer_name())
             .field("Spec Version", &spec_version)

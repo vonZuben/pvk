@@ -1,6 +1,8 @@
 #[macro_use]
 mod utils;
 
+mod pretty_version;
+
 #[macro_use]
 mod helper_macros;
 

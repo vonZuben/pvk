@@ -2,7 +2,7 @@ use crate::safe_interface::type_conversions::ToC;
 use krs_hlist::Get;
 use vk_safe_sys as vk;
 
-use crate::utils::VkVersion;
+use crate::pretty_version::VkVersion;
 
 use std::marker::PhantomData;
 
@@ -31,7 +31,7 @@ where
     V::InstanceCommands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>,
     E::InstanceCommands : vk::commands::LoadCommands,
 {
-    const VERSION: VkVersion = VkVersion::new(0, V::VersionTriple.0, V::VersionTriple.1, V::VersionTriple.2);
+    const VERSION: VkVersion = VkVersion::new(V::VersionTriple.0, V::VersionTriple.1, V::VersionTriple.2);
 
     type InstanceCommands = V::InstanceCommands;
 

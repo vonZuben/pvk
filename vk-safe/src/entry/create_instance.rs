@@ -2,7 +2,7 @@ use super::command_impl_prelude::*;
 
 use crate::instance as safe_instance;
 use crate::instance::InstanceConfig;
-use crate::utils::VkVersion;
+use crate::pretty_version::VkVersion;
 
 use std::mem::MaybeUninit;
 use std::marker::PhantomData;
