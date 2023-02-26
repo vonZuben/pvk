@@ -33,7 +33,7 @@ fn main() {
 
     println!("-------");
     for pd in physical_devices.iter() {
-        println!("{pd:?}");
+        println!("{:#?}", pd.get_physical_device_features());
     }
 
 //     let info: vk_safe_sys::InstanceCreateInfo = unsafe { std::mem::MaybeUninit::zeroed().assume_init() };

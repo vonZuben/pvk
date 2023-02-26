@@ -41,8 +41,8 @@ where
 #[derive(Debug)]
 pub struct Instance<C: InstanceConfig> {
     handle: vk::Instance,
-    feature_commands: C::InstanceCommands,
-    extension_commands: C::InstanceExtensions,
+    pub(crate) feature_commands: C::InstanceCommands,
+    pub(crate) extension_commands: C::InstanceExtensions,
 }
 
 impl<C: InstanceConfig> Instance<C> {
