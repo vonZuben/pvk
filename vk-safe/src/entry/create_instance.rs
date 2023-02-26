@@ -47,7 +47,7 @@ CreateInstance {
             if res.is_err() {
                 return Err(TempError);
             }
-            Ok(safe_instance::Instance::new(instance.assume_init()).map_err(|_|TempError)?)
+            Ok(safe_instance::Instance::load_commands(instance.assume_init()).map_err(|_|TempError)?)
         }
     }
 }}

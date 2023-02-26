@@ -46,7 +46,7 @@ pub struct Instance<C: InstanceConfig> {
 }
 
 impl<C: InstanceConfig> Instance<C> {
-    pub(crate) fn new(handle: vk::Instance) -> Result<Self, CommandLoadError> {
+    pub(crate) fn load_commands(handle: vk::Instance) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
