@@ -38,6 +38,31 @@ macro_rules! enumerator_code {
     };
 }
 
+// enumerators are all very similar, so why repeat ourselves
+macro_rules! enumerator_code2 {
+    ( $handle:expr, $commands:expr; ( $($param:ident : $param_t:ty),* ) -> $storage:ident ) => {{
+        use std::convert::TryInto;
+        let query_len = || {
+            let mut num = 0;
+            let res;
+            unsafe {
+                res = $commands.get()($handle, $($param.to_c(),)* &mut num, std::ptr::null_mut());
+                check_raw_err!(res);
+            }
+            Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
+        };
+        $storage.query_len(query_len)?;
+        let uninit_slice = $storage.uninit_slice();
+        let mut len = crate::enumerator_storage::VulkanLenType::from_usize(uninit_slice.len());
+        let res;
+        unsafe {
+            res = $commands.get()($handle, $($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
+            check_raw_err!(res);
+        }
+        $storage.finalize(len.to_usize())
+    }};
+}
+
 
 // Use this to create wrappers around simple structs
 macro_rules! simple_struct_wrapper {
