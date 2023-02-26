@@ -34,6 +34,10 @@ fn main() {
     println!("-------");
     for pd in physical_devices.iter() {
         println!("{:#?}", pd.get_physical_device_features());
+
+        //test getting format properties
+        let srgb_properties = pd.get_physical_device_format_properties(vk_safe_sys::Format::R8G8B8A8_SRGB);
+        println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
     }
 
 //     let info: vk_safe_sys::InstanceCreateInfo = unsafe { std::mem::MaybeUninit::zeroed().assume_init() };

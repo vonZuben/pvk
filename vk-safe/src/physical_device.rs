@@ -80,5 +80,7 @@ impl<'s, 'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> IntoIt
 }
 
 mod get_physical_device_features;
+mod get_physical_device_format_properties;
 
 use get_physical_device_features::*;
+use get_physical_device_format_properties::*;
