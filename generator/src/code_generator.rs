@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use krs_quote::krs_quote;
 
@@ -40,6 +40,8 @@ pub struct Generator<'a> {
     // metadata
     // when generating commands to load per feature, we use this to determine command_types
     command_types: HashMap<utils::VkTyName, CommandType>,
+    // in order to avoid external ".h" files and c libraries, we do not generate the external types and just treat them generically
+    external_types: HashSet<utils::VkTyName>,
 
     // code generation
     definitions: definitions::Definitions2,
@@ -374,5 +376,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_remove_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
         self.feature_collection.modify_with(def.version, |fc| fc.remove_command(def.name));
+    }
+    fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
+        self.external_types.insert(name);
     }
 }

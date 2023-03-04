@@ -17,6 +17,7 @@ pub trait VisitVkParse<'a> {
     fn visit_feature_name(&mut self, name: crate::utils::VkTyName);
     fn visit_require_command(&mut self, def: CommandRef<'a>);
     fn visit_remove_command(&mut self, def: CommandRef<'a>);
+    fn visit_external_type(&mut self, name: crate::utils::VkTyName);
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -40,7 +41,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 );
                             }
                             else {
-                                match ty.category.as_ref().map(|s|s.as_str()) {
+                                match ty.category.as_deref() {
                                     Some("enum") => {
                                         if ty.name.as_ref().expect("error: enum with no name").contains("FlagBits") {
                                             continue;
@@ -109,7 +110,16 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             _ => panic!("error: unhandled handle TypSpec node"),
                                         }
                                     }
-                                    Some(_) | None => {}
+                                    None => {
+                                        match ty.requires.as_deref() {
+                                            Some("vk_platform") => {} // this defines normal types like uint32_t which we already know
+                                            Some(_) => { // this should be types that are defined in an external library
+                                                visitor.visit_external_type(ty.name.as_ref().unwrap().into())
+                                            }
+                                            None => {}
+                                        }
+                                    }
+                                    Some(_) => {}
                                 }
                             }
                         }
