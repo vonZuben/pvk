@@ -6,6 +6,19 @@ use crate::instance::InstanceConfig;
 use std::mem::MaybeUninit;
 use std::fmt;
 
+/*
+https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html
+
+VUID-vkGetPhysicalDeviceFeatures-physicalDevice-parameter
+physicalDevice must be a valid VkPhysicalDevice handle
+
+- provided by vk_safe::PhysicalDevice
+
+VUID-vkGetPhysicalDeviceFeatures-pFeatures-parameter
+pFeatures must be a valid pointer to a VkPhysicalDeviceFeatures structure
+
+- provided with MaybeUninit
+*/
 impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceFeatures> {
     pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures {
         let mut features = MaybeUninit::uninit();
