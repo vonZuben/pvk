@@ -23,16 +23,23 @@ fn main() {
 
     let code = generate_output_for_single_file(&get_first_input_arg());
 
-    let code = append_main(code);
+    let code = prepend_code(code);
 
     println!("{}", code);
 }
 
-fn append_main(code: String) -> String {
+fn prepend_code(code: String) -> String {
 
     let main = krs_quote!{
+        macro_rules! hlist_ty {
+            ($($tt:tt)*) => { () }
+        }
+        mod krs_hlist {
+            pub struct hlist_ty;
+        }
+        use std::ffi::*;
         fn main(){}
     };
 
-    format!("{}{}", code, main)
+    format!("{}{}", main, code)
 }
