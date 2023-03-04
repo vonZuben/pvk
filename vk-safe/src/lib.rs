@@ -12,3 +12,5 @@ pub mod safe_interface;
 pub mod entry; // not finalized on if this should be pub
 pub mod instance;
 pub mod physical_device;
+
+pub mod bitflags;
