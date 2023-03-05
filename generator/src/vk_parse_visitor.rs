@@ -1,4 +1,4 @@
-use crate::ctype;
+use crate::{ctype, utils};
 
 pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str);
@@ -108,6 +108,19 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 visitor.visit_fptr(fptr_def);
                                             }
                                             _ => panic!("error: unhandled handle TypSpec node"),
+                                        }
+                                    }
+                                    Some("define") => {
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref code) => {
+                                                match parse_external_opaque_type(code.code.as_str()) {
+                                                    Ok(extern_ty) => visitor.visit_external_type(extern_ty),
+                                                    Err(_) => {}
+                                                }
+                                            }
+                                            vk_parse::TypeSpec::Members(_) => {}
+                                            vk_parse::TypeSpec::None => {}
+                                            _ => panic!("unhandled type spec kind")
                                         }
                                     }
                                     None => {
@@ -703,4 +716,21 @@ fn parse_command<'a>(code: &'a str) -> Result<CommandDef<'a>, ()> {
         params: Parameters { members: input },
         return_type,
     })
+}
+
+fn parse_external_opaque_type(code: &str) -> Result<utils::VkTyName, ()> {
+    use crate::simple_parse::*;
+
+    let input = crate::simple_parse::TokenIter::new(code);
+
+    let (input, _) = tag("struct")(input)?;
+    let (input, name) = token()(input)?;
+    let (mut input, _) = tag(";")(input)?;
+
+    if input.next().is_some() {
+        Err(())
+    }
+    else {
+        Ok(name.into())
+    }
 }
