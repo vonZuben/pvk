@@ -38,7 +38,7 @@ fn prepend_code(code: String) -> String {
             pub struct hlist_ty;
         }
         use std::ffi::*;
-        fn main(){}
+        fn main(){println!("Success")}
     };
 
     format!("{}{}", main, code)
