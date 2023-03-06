@@ -20,7 +20,7 @@ macro_rules! enumerator_code {
                 let mut num = 0;
                 let res;
                 unsafe {
-                    res = self.commands.get()($($param.to_c(),)* &mut num, std::ptr::null_mut());
+                    res = self.commands.get().get_fptr()($($param.to_c(),)* &mut num, std::ptr::null_mut());
                     check_raw_err!(res);
                 }
                 Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
@@ -30,7 +30,7 @@ macro_rules! enumerator_code {
             let mut len = VulkanLenType::from_usize(uninit_slice.len());
             let res;
             unsafe {
-                res = self.commands.get()($($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
+                res = self.commands.get().get_fptr()($($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
                 check_raw_err!(res);
             }
             Ok(storage.finalize(len.to_usize()))
@@ -46,7 +46,7 @@ macro_rules! enumerator_code2 {
             let mut num = 0;
             let res;
             unsafe {
-                res = $commands.get()($handle, $($param.to_c(),)* &mut num, std::ptr::null_mut());
+                res = $commands.get().get_fptr()($handle, $($param.to_c(),)* &mut num, std::ptr::null_mut());
                 check_raw_err!(res);
             }
             Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
@@ -56,7 +56,7 @@ macro_rules! enumerator_code2 {
         let mut len = crate::enumerator_storage::VulkanLenType::from_usize(uninit_slice.len());
         let res;
         unsafe {
-            res = $commands.get()($handle, $($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
+            res = $commands.get().get_fptr()($handle, $($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
             check_raw_err!(res);
         }
         $storage.finalize(len.to_usize())

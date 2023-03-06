@@ -23,7 +23,7 @@ impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::Get
     pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures {
         let mut features = MaybeUninit::uninit();
         unsafe {
-            self.instance.feature_commands.get()(self.handle, features.as_mut_ptr());
+            self.instance.feature_commands.get().get_fptr()(self.handle, features.as_mut_ptr());
             PhysicalDeviceFeatures { inner: features.assume_init() }
         }
     }

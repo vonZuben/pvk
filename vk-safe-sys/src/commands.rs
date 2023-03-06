@@ -84,7 +84,7 @@ mod test {
         info.s_type = crate::generated::StructureType::INSTANCE_CREATE_INFO;
         // info.p_application_info = &app_info;
 
-        unsafe { (&instance_commands.head)(&info, std::ptr::null(), &mut instance) };
+        unsafe { (&instance_commands.head.get_fptr())(&info, std::ptr::null(), &mut instance) };
 
         println!("{:?}", instance);
 

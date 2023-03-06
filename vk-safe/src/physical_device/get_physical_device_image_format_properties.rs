@@ -71,7 +71,7 @@ where
         }
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            let res = self.instance.feature_commands.get()(
+            let res = self.instance.feature_commands.get().get_fptr()(
                 self.handle,
                 format,
                 image_type,

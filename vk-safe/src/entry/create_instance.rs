@@ -43,7 +43,7 @@ CreateInstance {
     ) -> std::result::Result<safe_instance::Instance<C>, TempError> {
         let mut instance = MaybeUninit::uninit();
         unsafe {
-            let res = self.commands.get()(&create_info.inner, None.to_c(), instance.as_mut_ptr());
+            let res = self.commands.get().get_fptr()(&create_info.inner, None.to_c(), instance.as_mut_ptr());
             if res.is_err() {
                 return Err(TempError);
             }

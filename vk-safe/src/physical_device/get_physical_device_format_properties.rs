@@ -28,7 +28,7 @@ impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::Get
     pub fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties {
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance.feature_commands.get()(self.handle, format, properties.as_mut_ptr());
+            self.instance.feature_commands.get().get_fptr()(self.handle, format, properties.as_mut_ptr());
             FormatProperties { inner: properties.assume_init() }
         }
     }

@@ -86,7 +86,7 @@ If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAlloc
 */
 impl<C: InstanceConfig> Drop for Instance<C> {
     fn drop(&mut self) {
-        unsafe { self.feature_commands.get()(self.handle, None.to_c()) }
+        unsafe { self.feature_commands.get().get_fptr()(self.handle, None.to_c()) }
     }
 }
 

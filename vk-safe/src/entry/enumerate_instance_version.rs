@@ -17,7 +17,7 @@ EnumerateInstanceVersion {
     pub fn enumerate_instance_version(&self) -> Result<VkVersion, vk::Result> {
         let mut version = MaybeUninit::uninit();
         unsafe {
-            let res = self.commands.get()(version.as_mut_ptr());
+            let res = self.commands.get().get_fptr()(version.as_mut_ptr());
             check_raw_err!(res);
             Ok(VkVersion::from_raw(version.assume_init()))
         }
