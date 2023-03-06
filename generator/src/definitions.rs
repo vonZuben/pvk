@@ -98,13 +98,22 @@ impl krs_quote::ToTokens for Struct2 {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
 
+        let generics = self.fields.iter().filter_map(|field| {
+            if field.ty.is_external() {
+                Some(field.ty.name())
+            }
+            else {
+                None
+            }
+        });
+
         match self.non_normative {
             false => {
                 let fields = &self.fields;
                 krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[derive(Copy, Clone, Debug)]
-                    pub struct {@name} {
+                    pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
                 );
@@ -115,7 +124,7 @@ impl krs_quote::ToTokens for Struct2 {
                     #[repr(C)]
                     #[repr(packed)]
                     #[derive(Copy, Clone, Debug)]
-                    pub struct {@name} {
+                    pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
                 );
@@ -337,25 +346,43 @@ impl krs_quote::ToTokens for FunctionPointer {
         use crate::utils::StrAsCode;
 
         let name = self.name;
-        let name_inner = format!("{}_inner", self.name).as_code();
+        let fn_type = format!("FptrTy{}", self.name).as_code();
 
         let fields = &self.fields;
         let return_type = &self.return_type;
 
+        let generics: Vec<_> = self.fields.iter().filter_map(|field|{
+            if field.ty.is_external() {
+                Some(field.ty.name())
+            }
+            else {
+                None
+            }
+        }).collect();
+
+        let unsafe_get = if generics.len() == 0 {
+            None
+        }
+        else {
+            Some( krs_quote::Token::from("unsafe") )
+        };
+
         krs_quote_with!(tokens <-
             #[allow(non_camel_case_types)]
-            pub type {@name_inner} = unsafe extern "system" fn(
+            pub type {@fn_type} <{@,* {@generics}}> = unsafe extern "system" fn(
                 {@,* {@fields} }
             ) -> {@return_type};
 
             #[repr(transparent)]
             #[derive(Copy, Clone)]
-            pub struct {@name}({@name_inner});
+            pub struct {@name}(PFN_vkVoidFunction);
 
-            impl std::ops::Deref for {@name} {
-                type Target = {@name_inner};
-                fn deref(&self) -> &Self::Target {
-                    &self.0
+            impl {@name} {
+                unsafe fn new(fptr: PFN_vkVoidFunction) -> Self {
+                    Self(fptr)
+                }
+                {@unsafe_get} fn get_fptr<{@,* {@generics}}>(self) -> {@fn_type}<{@,* {@generics}}> {
+                    unsafe { std::mem::transmute(self) }
                 }
             }
 

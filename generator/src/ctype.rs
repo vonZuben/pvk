@@ -148,6 +148,7 @@ impl Eq for CtypeInner {}
 pub struct Ctype {
     inner: CtypeInner,
     bit_width: Option<u8>,
+    external: bool,
 }
 
 impl Ctype {
@@ -158,6 +159,7 @@ impl Ctype {
                 array: Default::default(),
             },
             bit_width: Default::default(),
+            external: false,
         }
     }
     pub fn push_array(&mut self, size: impl Into<utils::VkTyName>) {
@@ -180,6 +182,15 @@ impl Ctype {
     }
     pub fn is_pointer(&self) -> bool {
         self.inner.basetype.pointers.len() > 0
+    }
+    pub fn set_external(&mut self) {
+        self.external = true;
+    }
+    pub fn is_external(&self) -> bool {
+        self.external
+    }
+    pub fn name(&self) -> utils::VkTyName {
+        self.inner.basetype.name
     }
 }
 

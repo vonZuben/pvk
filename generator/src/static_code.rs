@@ -18,6 +18,8 @@ impl krs_quote::ToTokens for StaticCode {
                 }
             }
 
+            pub type PFN_vkVoidFunction = unsafe extern "system" fn() -> ();
+
             macro_rules! vk_bitflags_wrapped {
                 ($name: ident, $ty_name: ty) => {
 
@@ -157,66 +159,6 @@ impl krs_quote::ToTokens for StaticCode {
                     //}
                 }
             }
-            pub type RROutput = c_ulong;
-            pub type VisualID = c_uint;
-            pub type Display = *const c_void;
-            pub type Window = c_ulong;
-            #[allow(non_camel_case_types)]
-            pub type xcb_connection_t = *const c_void;
-            #[allow(non_camel_case_types)]
-            pub type xcb_window_t = u32;
-            #[allow(non_camel_case_types)]
-            pub type xcb_visualid_t = *const c_void;
-            pub type MirConnection = *const c_void;
-            pub type MirSurface = *const c_void;
-            pub type HINSTANCE = *const c_void;
-            pub type HWND = *const c_void;
-            #[allow(non_camel_case_types)]
-            pub type wl_display = c_void;
-            #[allow(non_camel_case_types)]
-            pub type wl_surface = c_void;
-            pub type HANDLE = *mut c_void;
-            pub type DWORD = c_ulong;
-            pub type LPCWSTR = *const u16;
-            #[allow(non_camel_case_types)]
-            pub type zx_handle_t = u32;
-
-            // FIXME: Platform specific types that should come from a library id:0
-            // type_defs are only here so that the code compiles for now
-            #[allow(non_camel_case_types)]
-            pub type SECURITY_ATTRIBUTES = ();
-            // Android NDK types
-            pub type ANativeWindow = c_void;
-            pub type AHardwareBuffer = c_void;
-
-            // NOTE These type are included only for compilation purposes
-            // These types should NOT be used because they are no necessarily
-            // the correct type definitions (i.e. just c_void by default)
-            pub type GgpStreamDescriptor = *const c_void;
-            pub type CAMetalLayer = *const c_void;
-            pub type GgpFrameToken = *const c_void;
-            pub type HMONITOR = *const c_void;
-
-            // more types that should not be used but are only here so it can compile
-            pub type IDirectFB = *const c_void;
-            pub type IDirectFBSurface = *const c_void;
-            pub type _screen_context = *const c_void;
-            pub type StdVideoH264ProfileIdc = *const c_void;
-            pub type StdVideoH264SequenceParameterSet = *const c_void;
-            pub type StdVideoDecodeH264PictureInfo = *const c_void;
-            pub type StdVideoDecodeH264ReferenceInfo = *const c_void;
-            pub type StdVideoDecodeH264Mvc = *const c_void;
-            pub type StdVideoH265ProfileIdc = *const c_void;
-            pub type StdVideoH265SequenceParameterSet = *const c_void;
-            pub type StdVideoH265PictureParameterSet = *const c_void;
-            pub type StdVideoDecodeH265PictureInfo = *const c_void;
-            pub type StdVideoDecodeH265ReferenceInfo = *const c_void;
-            pub type StdVideoH264PictureParameterSet = *const c_void;
-            pub type StdVideoEncodeH264PictureInfo = *const c_void;
-            pub type StdVideoEncodeH264SliceHeader = *const c_void;
-            pub type _screen_window = *const c_void;
-
-
 
         ));
     }

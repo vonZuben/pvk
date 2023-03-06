@@ -41,7 +41,8 @@ pub struct Generator<'a> {
     // when generating commands to load per feature, we use this to determine command_types
     command_types: HashMap<utils::VkTyName, CommandType>,
     // in order to avoid external ".h" files and c libraries, we do not generate the external types and just treat them generically
-    external_types: HashSet<utils::VkTyName>,
+    // to achieve this, we treat such types as generic, and a user needs to determine the correct type
+    generic_types: HashSet<utils::VkTyName>,
 
     // code generation
     definitions: definitions::Definitions2,
@@ -208,16 +209,20 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.definitions.enumerations.push(enum_def);
     }
     fn visit_command(&mut self, def_wrapper: crate::vk_parse_visitor::CommandDefWrapper<'a>) {
+        let def = def_wrapper.def;
         // get CommandType metadata for feature and extension code generation
-        let name = utils::VkTyName::new(def_wrapper.def.name);
+        let command_name = utils::VkTyName::new(def.name);
         self.command_types
-            .insert(name, command_type(&def_wrapper.raw));
+            .insert(command_name, command_type(&def_wrapper.raw));
 
         // generate actual command
-        let def = def_wrapper.def;
-        let command_name = utils::VkTyName::new(def.name);
         let mut function_pointer = definitions::FunctionPointer::new(command_name);
-        let fields = def.params;
+        let fields = def.params.into_iter().map(|mut field| {
+            if self.generic_types.contains(&field.ty.name()) {
+                field.ty.set_external();
+            }
+            field
+        });
         function_pointer.extend_fields(fields);
         function_pointer.set_return_type(def.return_type);
         self.commands.push(command_name, function_pointer);
@@ -294,11 +299,16 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_struct_def(&mut self, def: crate::vk_parse_visitor::StructDef<'a>) {
         let struct_name = utils::VkTyName::new(def.name);
         let stct = self.definitions.structs.get_mut_or_default(struct_name, definitions::Struct2::new(def.name));
+        let mut generic_struct = false;
         for member in def.members {
             use crate::vk_parse_visitor::MemberKind;
             match member {
                 MemberKind::Member(mut field) => {
                     field.set_public();
+                    if self.generic_types.contains(&field.ty.name()) {
+                        field.ty.set_external();
+                        generic_struct = true;
+                    }
                     stct.push_field(field);
                 }
                 MemberKind::Comment(comment) => {
@@ -307,6 +317,9 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
                     }
                 }
             }
+        }
+        if generic_struct {
+            self.generic_types.insert(struct_name);
         }
     }
     fn visit_union(&mut self, def: crate::vk_parse_visitor::UnionDef<'a>) {
@@ -352,6 +365,9 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.definitions.handles.push(handle);
     }
     fn visit_fptr(&mut self, def: crate::vk_parse_visitor::FptrDef<'a>) {
+        if def.name == "PFN_vkVoidFunction" {
+            return; // This is a special case that has a unique definition in the generated code
+        }
         let mut fptr = definitions::FunctionPointer::new(def.name);
         fptr.extend_fields(def.params);
         fptr.set_return_type(def.return_type);
@@ -378,6 +394,6 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         self.feature_collection.modify_with(def.version, |fc| fc.remove_command(def.name));
     }
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
-        self.external_types.insert(name);
+        self.generic_types.insert(name);
     }
 }
