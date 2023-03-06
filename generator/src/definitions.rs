@@ -378,10 +378,10 @@ impl krs_quote::ToTokens for FunctionPointer {
             pub struct {@name}(PFN_vkVoidFunction);
 
             impl {@name} {
-                unsafe fn new(fptr: PFN_vkVoidFunction) -> Self {
+                pub unsafe fn new(fptr: PFN_vkVoidFunction) -> Self {
                     Self(fptr)
                 }
-                {@unsafe_get} fn get_fptr<{@,* {@generics}}>(self) -> {@fn_type}<{@,* {@generics}}> {
+                pub {@unsafe_get} fn get_fptr<{@,* {@generics}}>(self) -> {@fn_type}<{@,* {@generics}}> {
                     unsafe { std::mem::transmute(self) }
                 }
             }
