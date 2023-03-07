@@ -65,7 +65,7 @@ impl<'a, C: InstanceConfig> InstanceCreateInfo<'a, C> {
             inner: vk::InstanceCreateInfo {
                 s_type: vk::StructureType::INSTANCE_CREATE_INFO,
                 p_next: std::ptr::null(),
-                flags: vk::InstanceCreateFlags::empty(),
+                flags: unsafe { vk::InstanceCreateFlags::empty() },
                 p_application_info: &app_info.inner,
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),

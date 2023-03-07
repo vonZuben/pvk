@@ -58,7 +58,7 @@ fn main() {
             vk::ImageType::TYPE_2D,
             vk::ImageTiling::OPTIMAL,
             vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT | vk::ImageUsageFlags::TRANSFER_SRC_BIT,
-            vk::ImageCreateFlags::empty(),
+            unsafe { vk::ImageCreateFlags::empty() },
         ).unwrap();
         println!("{tst_image_format_properties:#?}");
     }
