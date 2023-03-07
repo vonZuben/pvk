@@ -23,15 +23,9 @@ impl krs_quote::ToTokens for StaticCode {
             macro_rules! vk_bitflags_wrapped {
                 ($name: ident, $ty_name: ty) => {
 
-                    impl Default for $name{
-                        fn default() -> $name {
-                            $name(0)
-                        }
-                    }
-
                     impl $name {
                         #[inline]
-                        pub fn empty() -> $name {
+                        pub unsafe fn empty() -> $name {
                             $name(0)
                         }
 
@@ -51,32 +45,16 @@ impl krs_quote::ToTokens for StaticCode {
                             }
                         }
 
-                        // TODO fix $all
-                        //#[inline]
-                        //pub fn all() -> $name {
-                        //    $name($all)
-                        //}
-
                         #[inline]
-                        pub fn from_raw(x: $ty_name) -> Self { $name(x) }
+                        pub unsafe fn from_raw(x: $ty_name) -> Self { $name(x) }
 
                         #[inline]
                         pub fn as_raw(self) -> $ty_name { self.0 }
 
                         #[inline]
                         pub fn is_empty(self) -> bool {
-                            self == $name::empty()
+                            self == unsafe { $name::empty() }
                         }
-
-                        //#[inline]
-                        //pub fn is_all(self) -> bool {
-                        //    self & $name::all() == $name::all()
-                        //}
-
-                        //#[inline]
-                        //pub fn intersects(self, other: $name) -> bool {
-                        //    self & other != $name::empty()
-                        //}
 
                         #[doc = r" Returns whether `other` is a subset of `self`"]
                         #[inline]
@@ -132,31 +110,6 @@ impl krs_quote::ToTokens for StaticCode {
                             *self = *self ^ rhs
                         }
                     }
-
-                    //impl ::std::ops::Sub for $name {
-                    //    type Output = $name;
-
-                    //    #[inline]
-                    //    fn sub(self, rhs: $name) -> $name {
-                    //        self & !rhs
-                    //    }
-                    //}
-
-                    //impl ::std::ops::SubAssign for $name {
-                    //    #[inline]
-                    //    fn sub_assign(&mut self, rhs: $name) {
-                    //        *self = *self - rhs
-                    //    }
-                    //}
-
-                    //impl ::std::ops::Not for $name {
-                    //    type Output = $name;
-
-                    //    #[inline]
-                    //    fn not(self) -> $name {
-                    //        self ^ $name::all()
-                    //    }
-                    //}
                 }
             }
 
