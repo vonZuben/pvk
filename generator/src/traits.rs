@@ -58,3 +58,20 @@ impl ToTokens for VulkanExtension {
         )
     }
 }
+
+pub struct EnumTraits;
+
+impl ToTokens for EnumTraits {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        krs_quote_with!(tokens <-
+            pub trait VkEnum : Sized {
+                fn from_variant_type<V: VkEnumVariant<Enum=Self>>(_: V) -> Self;
+            }
+            /// All Vk Enums are C enums, which means they are i32
+            pub trait VkEnumVariant {
+                type Enum;
+                const VARIANT: i32;
+            }
+        )
+    }
+}

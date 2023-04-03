@@ -80,6 +80,7 @@ impl<'a> Generator<'a> {
         let commands_trait = crate::traits::VulkanCommand;
         let version_trait = crate::traits::VulkanVersion;
         let extension_traits = crate::traits::VulkanExtension;
+        let enum_traits = crate::traits::EnumTraits;
 
         let bitmask_traits = crate::bitmask_traits::BitmaskTraits;
 
@@ -96,6 +97,7 @@ impl<'a> Generator<'a> {
             {@commands_trait}
             {@version_trait}
             {@extension_traits}
+            {@enum_traits}
             {@bitmask_traits}
             {@definitions}
             {@* {@constants}}
@@ -118,10 +120,12 @@ impl<'a> Generator<'a> {
         let commands_trait = crate::traits::VulkanCommand;
         let version_trait = crate::traits::VulkanVersion;
         let extension_traits = crate::traits::VulkanExtension;
+        let enum_traits = crate::traits::EnumTraits;
         krs_quote!(
             {@commands_trait}
             {@version_trait}
             {@extension_traits}
+            {@enum_traits}
         ).to_string()
     }
 

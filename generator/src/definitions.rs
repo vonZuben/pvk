@@ -319,6 +319,11 @@ impl krs_quote::ToTokens for Enum2 {
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
             pub struct {@name}(pub(crate) i32);
+            impl VkEnum for {@name} {
+                fn from_variant_type<V: VkEnumVariant<Enum=Self>>(_: V) -> Self {
+                    Self(V::VARIANT)
+                }
+            }
         );
     }
 }

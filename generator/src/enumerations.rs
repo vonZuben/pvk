@@ -84,6 +84,16 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
         match self.kind {
             EnumKind::Normal => {
                 krs_quote_with!(tokens <-
+                    mod {@mod_name} {
+                        use super::{VkEnumVariant, {@target}};
+                        {@*
+                            pub struct {@variant_names};
+                            impl VkEnumVariant for {@variant_names} {
+                                type Enum = {@target};
+                                const VARIANT: i32 = {@target}::{@variant_names}.0;
+                            }
+                        }
+                    }
                     impl std::fmt::Debug for {@target} {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                         let to_print = match *self {
