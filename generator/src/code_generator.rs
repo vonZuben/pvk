@@ -81,6 +81,8 @@ impl<'a> Generator<'a> {
         let version_trait = crate::traits::VulkanVersion;
         let extension_traits = crate::traits::VulkanExtension;
 
+        let bitmask_traits = crate::bitmask_traits::BitmaskTraits;
+
         let definitions = &self.definitions;
         let constants = self.constants.iter();
         let enum_variants = self.enum_variants.iter();
@@ -94,6 +96,7 @@ impl<'a> Generator<'a> {
             {@commands_trait}
             {@version_trait}
             {@extension_traits}
+            {@bitmask_traits}
             {@definitions}
             {@* {@constants}}
             {@* {@enum_variants}}
@@ -120,6 +123,11 @@ impl<'a> Generator<'a> {
             {@version_trait}
             {@extension_traits}
         ).to_string()
+    }
+
+    pub fn bitmask_traits(&self) -> String {
+        let bitmask_traits = crate::bitmask_traits::BitmaskTraits;
+        krs_quote!({@bitmask_traits}).to_string()
     }
 
     pub fn c_type_defs(&self) -> String {

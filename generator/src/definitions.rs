@@ -63,6 +63,14 @@ impl krs_quote::ToTokens for Bitmask {
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub struct {@name}(pub(crate) {@ty});
+            impl VkBitmaskType for {@name} {
+                /// the underling type of the flags e.g. VkFlags (uint32_t) or VkFlags64 (uint64_t)
+                type RawType = {@ty};
+                // type Verifier: VerifyBits;
+                fn from_bit_type_list<L: BitList<Self::RawType, Self>>(_: L) -> Self {
+                    Self(L::FLAGS)
+                }
+            }
             vk_bitflags_wrapped!({@name}, {@ty});
         );
     }

@@ -8,6 +8,7 @@ macro_rules! code_parts {
         $run!( $($pass)*
             util_code,
             vulkan_traits,
+            bitmask_traits,
             c_type_defs,
             bitmasks,
             structs,

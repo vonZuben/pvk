@@ -9,6 +9,26 @@ pub enum EnumKind {
     BitFlags,
 }
 
+struct ModName {
+    name: String,
+}
+
+impl ModName {
+    fn new(name: VkTyName) -> Self {
+        let name = crate::utils::case::camel_to_snake(crate::utils::ctype_to_rtype(name.as_str())).replace("_flags", "_flag_bits");
+        Self { name }
+    }
+}
+
+impl krs_quote::ToTokens for ModName {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = krs_quote::Token::from(self.name.as_str());
+        krs_quote_with!(tokens <-
+            {@name}
+        )
+    }
+}
+
 pub struct EnumVariants<'a> {
     target: VkTyName,
     kind: EnumKind,
@@ -42,6 +62,8 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
         let target = self.target;
         let target_string = utils::ctype_to_rtype(self.target.as_str());
         let variants = self.variants.iter();
+
+        let mod_name = ModName::new(target);
 
         let make_proper_name = |name| make_variant_name(target_string, utils::ctype_to_rtype(name));
         let variant_names = self.variants.iter()
@@ -77,6 +99,17 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
             }
             EnumKind::BitFlags => {
                 krs_quote_with!(tokens <-
+                    mod {@mod_name} {
+                        use super::{VkFlagBitType, VkBitmaskType, {@target}};
+                        {@*
+                            pub struct {@variant_names};
+                            impl VkFlagBitType for {@variant_names} {
+                                type FlagType = {@target};
+                                const FLAG: <Self::FlagType as VkBitmaskType>::RawType = {@target}::{@variant_names}.0;
+                            }
+                        }
+                    }
+
                     impl std::fmt::Debug for {@target} {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                         let mut self_copy = *self;
