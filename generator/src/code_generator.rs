@@ -229,10 +229,11 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_ex_enum(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let enm = spec.enm;
-        let target = utils::VkTyName::new(spec.target.expect("error: enum with no target"));
+        let spec_target = spec.target.expect("error: enum with no target");
+        let target = utils::VkTyName::new(spec_target);
 
         let kind;
-        if spec.target.unwrap().contains("FlagBits") {
+        if spec_target.contains("FlagBits") {
             kind = enumerations::EnumKind::BitFlags;
         }
         else {
