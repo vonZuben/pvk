@@ -84,7 +84,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
         match self.kind {
             EnumKind::Normal => {
                 krs_quote_with!(tokens <-
-                    mod {@mod_name} {
+                    pub mod {@mod_name} {
                         use super::{VkEnumVariant, {@target}};
                         {@*
                             pub struct {@variant_names};
@@ -109,7 +109,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
             }
             EnumKind::BitFlags => {
                 krs_quote_with!(tokens <-
-                    mod {@mod_name} {
+                    pub mod {@mod_name} {
                         use super::{VkFlagBitType, VkBitmaskType, {@target}};
                         {@*
                             pub struct {@variant_names};
