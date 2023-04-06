@@ -87,6 +87,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
                     pub mod {@mod_name} {
                         use super::{VkEnumVariant, {@target}};
                         {@*
+                            #[derive(Copy, Clone)]
                             pub struct {@variant_names};
                             impl VkEnumVariant for {@variant_names} {
                                 type Enum = {@target};
@@ -112,6 +113,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
                     pub mod {@mod_name} {
                         use super::{VkFlagBitType, VkBitmaskType, {@target}};
                         {@*
+                            #[derive(Copy, Clone)]
                             pub struct {@variant_names};
                             impl VkFlagBitType for {@variant_names} {
                                 type FlagType = {@target};
