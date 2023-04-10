@@ -2,7 +2,7 @@ use krs_quote::krs_quote_with;
 
 use crate::utils::*;
 
-use crate::ctype;
+use crate::ctype::{self, Visibility};
 use crate::vk_parse_visitor;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -10,21 +10,21 @@ pub struct Constant3<'a> {
     pub name: VkTyName,
     pub ty: ctype::Ctype,
     pub val: ConstValue2<'a>,
+    visibility: Visibility,
     target: Option<VkTyName>,
 }
 
 impl<'a> Constant3<'a> {
     pub fn new(name: impl Into<VkTyName>, ty: ctype::Ctype, val: ConstValue2<'a>, target: Option<VkTyName>) -> Self {
         let name = name.into();
-        Self { name, ty, val, target }
+        // at first, visibility was assumed to always be public, but there are some times we want private now
+        // keep public as default so everything still works and set private when needed
+        let visibility = Visibility::Public;
+        Self { name, ty, val, target, visibility }
     }
-    // return variant name for enum constants
-    // pub fn variant_name(&self) -> Option<String> {
-    //     match self.target {
-    //         Some(target) => Some(crate::enumerations::make_variant_name(&target, &self.name)),
-    //         None => None,
-    //     }
-    // }
+    pub fn private(&mut self) {
+        self.visibility = Visibility::Private;
+    }
 }
 
 impl krs_quote::ToTokens for Constant3<'_> {
@@ -35,9 +35,10 @@ impl krs_quote::ToTokens for Constant3<'_> {
         };
         let ty = &self.ty;
         let val = &self.val;
+        let visibility = self.visibility;
 
         krs_quote_with!( tokens <-
-            pub const {@name}: {@ty} = {@val};
+            {@visibility} const {@name}: {@ty} = {@val};
         );
     }
 }

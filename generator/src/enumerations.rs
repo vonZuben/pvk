@@ -45,8 +45,9 @@ impl<'a> EnumVariants<'a> {
         }
     }
 
-    pub fn push_variant_once(&mut self, variant: constants::Constant3<'a>) {
+    pub fn push_variant_once(&mut self, mut variant: constants::Constant3<'a>) {
         let name = variant.name;
+        variant.private();
         match self.variants.get(name) {
             // the vulkan spec includes redundant enum definitions
             // we only want to generate one, but we should ensure they are all consistent

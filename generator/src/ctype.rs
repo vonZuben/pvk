@@ -4,8 +4,8 @@ use krs_quote::krs_quote_with;
 
 use crate::utils::{self, case};
 
-#[derive(Copy, Clone)]
-enum Visibility {
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum Visibility {
     Private,
     Public,
 }
