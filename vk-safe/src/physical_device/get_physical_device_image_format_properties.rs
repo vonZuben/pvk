@@ -12,7 +12,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 VUID-vkGetPhysicalDeviceImageFormatProperties-tiling-02248
 tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)
 
-- currently ensured by an internal runtime check - TODO can we provide type level safety for this?
+- checked with const Verify check
 
 VUID-vkGetPhysicalDeviceImageFormatProperties-physicalDevice-parameter
 physicalDevice must be a valid VkPhysicalDevice handle
@@ -37,7 +37,7 @@ tiling must be a valid VkImageTiling value
 VUID-vkGetPhysicalDeviceImageFormatProperties-usage-parameter
 usage must be a valid combination of VkImageUsageFlagBits values
 
-- provided by vk::ImageUsageFlags (*NOTE* I understand there is no "invalid" combination of bits, as long as only the defined bits are used)
+- TODO
 
 VUID-vkGetPhysicalDeviceImageFormatProperties-usage-requiredbitmask
 usage must not be 0
@@ -58,26 +58,25 @@ impl<C: InstanceConfig> PhysicalDevice<'_, C>
 where
     C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceImageFormatProperties>,
 {
+    #[track_caller]
     pub fn get_physical_device_image_format_properties(
         &self,
-        format: vk::Format,
-        image_type: vk::ImageType,
-        image_tiling: vk::ImageTiling,
-        usage_flags: vk::ImageUsageFlags,
-        create_flags: vk::ImageCreateFlags,
+        format: impl vk::FormatConst,
+        image_type: impl vk::ImageTypeConst,
+        image_tiling: impl vk::ImageTilingConst,
+        usage_flags: impl vk::ImageUsageFlagsConst,
+        create_flags: impl vk::ImageCreateFlagsConst,//vk::ImageCreateFlags,
     ) -> Result<ImageFormatProperties, vk::Result> {
-        if image_tiling == vk::ImageTiling::DRM_FORMAT_MODIFIER_EXT {
-            panic!("tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)");
-        }
+        Params::verify(image_tiling);
         let mut properties = MaybeUninit::uninit();
         unsafe {
             let res = self.instance.feature_commands.get().get_fptr()(
                 self.handle,
-                format,
-                image_type,
-                image_tiling,
-                usage_flags,
-                create_flags,
+                format.variant(),
+                image_type.variant(),
+                image_tiling.variant(),
+                usage_flags.bitmask(),
+                create_flags.bitmask(),
                 properties.as_mut_ptr(),
             );
             check_raw_err!(res);
@@ -87,6 +86,13 @@ where
         }
     }
 }
+
+verify_params!(Params(T: vk::ImageTilingConst) {
+    use vk::VkEnumVariant;
+    if T::VARIANT == vk::image_tiling::DRM_FORMAT_MODIFIER_EXT::VARIANT {
+        panic!("image_tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)")
+    }
+});
 
 simple_struct_wrapper!(ImageFormatProperties);
 

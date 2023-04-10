@@ -110,3 +110,26 @@ macro_rules! pretty_version {
         }
     };
 }
+
+macro_rules! verify_params {
+    ( $name:ident( $( $param:ident : $trait:path ),* ) { $($code:tt)* } ) => {
+        struct $name<$($param: $trait)*>( $( std::marker::PhantomData<$param> ),* );
+
+        impl<$($param: $trait)*> $name<$($param),*> {
+            const VERIFY: () = {
+                $($code)*
+            };
+            #[track_caller]
+            fn verify($(_: $param),*){ let _ = Self::VERIFY; }
+        }
+    };
+}
+
+
+// TODO, exported macro probably belong somewhere else
+#[macro_export]
+macro_rules! bitmask {
+    ( $path:path : $($bit:ident)|* ) => {
+        krs_hlist::hlist!( $( $path::$bit ),* )
+    };
+}

@@ -25,10 +25,10 @@ pFormatProperties must be a valid pointer to a VkFormatProperties structure
 - provided with MaybeUninit
 */
 impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceFormatProperties> {
-    pub fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties {
+    pub fn get_physical_device_format_properties(&self, format: impl vk::FormatConst) -> FormatProperties {
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance.feature_commands.get().get_fptr()(self.handle, format, properties.as_mut_ptr());
+            self.instance.feature_commands.get().get_fptr()(self.handle, format.variant(), properties.as_mut_ptr());
             FormatProperties { inner: properties.assume_init() }
         }
     }

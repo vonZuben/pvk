@@ -63,7 +63,7 @@ impl<'a, C: InstanceConfig> InstanceCreateInfo<'a, C> {
     pub fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
         Self {
             inner: vk::InstanceCreateInfo {
-                s_type: vk::StructureType::INSTANCE_CREATE_INFO,
+                s_type: vk::VkEnum::from_variant_type(vk::structure_type::INSTANCE_CREATE_INFO),
                 p_next: std::ptr::null(),
                 flags: unsafe { vk::InstanceCreateFlags::empty() },
                 p_application_info: &app_info.inner,
@@ -100,7 +100,7 @@ impl<'a, C: InstanceConfig> ApplicationInfo<'a, C> {
         let version = C::VERSION;
         Self {
             inner: vk::ApplicationInfo {
-                s_type: vk::StructureType::APPLICATION_INFO,
+                s_type: vk::VkEnum::from_variant_type(vk::structure_type::APPLICATION_INFO),
                 p_next: std::ptr::null(),
                 p_application_name: std::ptr::null(),
                 application_version: 0,

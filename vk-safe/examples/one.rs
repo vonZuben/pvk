@@ -1,3 +1,5 @@
+// trace_macros!(true);
+
 use vk_safe::entry::*;
 use vk_safe::instance::Config;
 use vk_safe::instance::*;
@@ -49,16 +51,16 @@ fn main() {
         println!("{:#?}", pd.get_physical_device_features());
 
         //test getting format properties
-        let srgb_properties = pd.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);
+        let srgb_properties = pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
         println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
 
         //test image format properties
         let tst_image_format_properties = pd.get_physical_device_image_format_properties(
-            vk::Format::R8G8B8A8_SRGB,
-            vk::ImageType::TYPE_2D,
-            vk::ImageTiling::OPTIMAL,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT | vk::ImageUsageFlags::TRANSFER_SRC_BIT,
-            unsafe { vk::ImageCreateFlags::empty() },
+            vk::format::R8G8B8A8_SRGB,
+            vk::image_type::TYPE_2D,
+            vk::image_tiling::OPTIMAL,
+            vk_safe::bitmask!(vk::image_usage_flag_bits : COLOR_ATTACHMENT_BIT | TRANSFER_DST_BIT ),
+            krs_hlist::End,
         ).unwrap();
         println!("{tst_image_format_properties:#?}");
     }
