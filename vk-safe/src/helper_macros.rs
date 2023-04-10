@@ -113,9 +113,9 @@ macro_rules! pretty_version {
 
 macro_rules! verify_params {
     ( $name:ident( $( $param:ident : $trait:path ),* ) { $($code:tt)* } ) => {
-        struct $name<$($param: $trait)*>( $( std::marker::PhantomData<$param> ),* );
+        struct $name<$($param: $trait),*>( $( std::marker::PhantomData<$param> ),* );
 
-        impl<$($param: $trait)*> $name<$($param),*> {
+        impl<$($param: $trait),*> $name<$($param),*> {
             const VERIFY: () = {
                 $($code)*
             };
