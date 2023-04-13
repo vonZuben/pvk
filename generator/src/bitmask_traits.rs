@@ -44,10 +44,17 @@ impl ToTokens for BitmaskTraits {
                 const ZERO: Self;
             }
 
+            /// This type is to allow using convenient methods in const context for the known raw bitmask types
             #[derive(Clone, Copy)]
-            pub struct SetFlags<T>(T);
+            pub struct RawFlags<R, F, T: BitList<R, F>>(R, std::marker::PhantomData<F>, std::marker::PhantomData<T>);
+            #[macro_export]
+            macro_rules! raw_flags {
+                ( $ty:ident ) => {
+                    $crate::RawFlags::<_, _, $ty>::new()
+                }
+            }
 
-            macro_rules! impl_bit_types {
+            macro_rules! impl_bit_types_for_const {
                 ( $( $ty:ty ),* ) => {
                     $(
                         impl Zero for $ty {
@@ -65,15 +72,24 @@ impl ToTokens for BitmaskTraits {
                             const FLAGS: <FlagsType as VkBitmaskType>::RawType = H::FLAG | T::FLAGS;
                         }
 
-                        impl SetFlags<$ty> {
-                            pub const fn from(t: $ty) -> Self {
-                                Self(t)
+                        impl<F: VkBitmaskType<RawType = $ty>, T: BitList<$ty, F>> RawFlags<$ty, F, T> {
+                            pub const fn new() -> Self {
+                                Self(T::FLAGS, std::marker::PhantomData, std::marker::PhantomData)
                             }
-                            pub const fn contains(self, other: $ty) -> bool {
+                            pub const fn contains<O: VkFlagBitType<FlagType = F> + Copy>(self, _: O) -> bool {
+                                let other = O::FLAG;
                                 self.0 & other == other
                             }
-                            pub const fn subset_of(self, of: $ty) -> bool {
+                            pub const fn any_of<O: BitList<$ty, F> + Copy>(self, _: O) -> bool {
+                                let other = O::FLAGS;
+                                self.0 & other != 0
+                            }
+                            pub const fn subset_of<O: BitList<$ty, F> + Copy>(self, _: O) -> bool {
+                                let of = O::FLAGS;
                                 self.0 | of == of
+                            }
+                            pub const fn is_empty(self) -> bool {
+                                self.0 == 0
                             }
                         }
                     )*
@@ -82,7 +98,7 @@ impl ToTokens for BitmaskTraits {
 
             // Implement this for all possible bit types
             // although, Vulkan only uses 32 and 64 bit flags at the moment
-            impl_bit_types!(u8, u16, u32, u64, u128);
+            impl_bit_types_for_const!(u8, u16, u32, u64, u128);
         ));
     }
 }

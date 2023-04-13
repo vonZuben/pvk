@@ -72,6 +72,25 @@ impl ToTokens for EnumTraits {
                 type Enum;
                 const VARIANT: i32;
             }
+
+            #[derive(Copy, Clone)]
+            pub struct ConstVariant<V, T: VkEnumVariant<Enum = V>>(std::marker::PhantomData<T>, std::marker::PhantomData<V>);
+
+            impl<V, T: VkEnumVariant<Enum = V>> ConstVariant<V, T> {
+                pub const fn new() -> Self {
+                    Self(std::marker::PhantomData, std::marker::PhantomData)
+                }
+                pub const fn is<O: VkEnumVariant<Enum = V> + Copy>(self, _: O) -> bool {
+                    T::VARIANT == O::VARIANT
+                }
+            }
+
+            #[macro_export]
+            macro_rules! const_enum {
+                ( $ty:ident ) => {
+                    $crate::ConstVariant::<_, $ty>::new()
+                }
+            }
         )
     }
 }

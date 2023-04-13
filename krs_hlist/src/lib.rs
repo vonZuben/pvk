@@ -80,7 +80,7 @@ pub struct Cons<H, T> {
 
 impl<H, T> Cons<H, T> {
     /// Make a new hlist by prepending a head on to another hlist
-    pub fn new(head: H, tail: T) -> Self where T: Hlist {
+    pub const fn new(head: H, tail: T) -> Self where T: Hlist {
         Self { head, tail }
     }
     /// Append an item to the hlist
