@@ -129,6 +129,9 @@ macro_rules! verify_params {
 // TODO, exported macro probably belong somewhere else
 #[macro_export]
 macro_rules! bitmask {
+    ( $($bit:ident)|* ) => {
+        krs_hlist::hlist!( $( $bit ),* )
+    };
     ( $path:path : $($bit:ident)|* ) => {
         krs_hlist::hlist!( $( $path::$bit ),* )
     };

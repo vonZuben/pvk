@@ -37,12 +37,12 @@ tiling must be a valid VkImageTiling value
 VUID-vkGetPhysicalDeviceImageFormatProperties-usage-parameter
 usage must be a valid combination of VkImageUsageFlagBits values
 
-- TODO
+- const verify
 
 VUID-vkGetPhysicalDeviceImageFormatProperties-usage-requiredbitmask
 usage must not be 0
 
-- TODO - make bitflags safe to use by being more limiting on what can be
+- const verify
 
 VUID-vkGetPhysicalDeviceImageFormatProperties-flags-parameter
 flags must be a valid combination of VkImageCreateFlagBits values
@@ -52,7 +52,7 @@ flags must be a valid combination of VkImageCreateFlagBits values
 VUID-vkGetPhysicalDeviceImageFormatProperties-pImageFormatProperties-parameter
 pImageFormatProperties must be a valid pointer to a VkImageFormatProperties structure
 
-- TODO
+- MaybeUninit
 */
 impl<C: InstanceConfig> PhysicalDevice<'_, C>
 where
@@ -67,7 +67,7 @@ where
         usage_flags: impl vk::ImageUsageFlagsConst,
         create_flags: impl vk::ImageCreateFlagsConst,//vk::ImageCreateFlags,
     ) -> Result<ImageFormatProperties, vk::Result> {
-        Params::verify(image_tiling);
+        Params::verify(image_tiling, usage_flags, create_flags, image_type, format);
         let mut properties = MaybeUninit::uninit();
         unsafe {
             let res = self.instance.feature_commands.get().get_fptr()(
@@ -87,11 +87,108 @@ where
     }
 }
 
-verify_params!(Params(T: vk::ImageTilingConst) {
-    use vk::VkEnumVariant;
-    if T::VARIANT == vk::image_tiling::DRM_FORMAT_MODIFIER_EXT::VARIANT {
-        panic!("image_tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)")
+verify_params!(Params(
+    Tiling: vk::ImageTilingConst,
+    Usage: vk::ImageUsageFlagsConst,
+    Create: vk::ImageCreateFlagsConst,
+    Type: vk::ImageTypeConst,
+    Format: vk::FormatConst)
+{
+    use vk::image_usage_flag_bits::*;
+    use vk::image_create_flag_bits::*;
+    use vk::image_tiling::*;
+    use vk::image_type::*;
+
+    let image_tiling = vk::const_enum!(Tiling);
+    let usage_flags = vk::raw_flags!(Usage);
+    let create_flags = vk::raw_flags!(Create);
+    let image_ty = vk::const_enum!(Type);
+
+    // validate image_tiling
+    if image_tiling.is(DRM_FORMAT_MODIFIER_EXT) {
+        panic!("image_tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)");
     }
+
+    // validate usage_flags
+    {
+        if usage_flags.is_empty() {
+            panic!("usage_flags must not be 0");
+        }
+
+        if usage_flags.contains(TRANSIENT_ATTACHMENT_BIT) {
+            let must_include = bitmask!(COLOR_ATTACHMENT_BIT | DEPTH_STENCIL_ATTACHMENT_BIT | INPUT_ATTACHMENT_BIT);
+            if !usage_flags.any_of(must_include) {
+                panic!("usage_flags must be a valid combination of VkImageUsageFlagBits values (see VUID-VkImageCreateInfo-usage-00966)")
+            }
+
+            let legal_transient_flags = bitmask!(TRANSIENT_ATTACHMENT_BIT | COLOR_ATTACHMENT_BIT | DEPTH_STENCIL_ATTACHMENT_BIT | INPUT_ATTACHMENT_BIT);
+            if !usage_flags.subset_of(legal_transient_flags) {
+                panic!("usage_flags must be a valid combination of VkImageUsageFlagBits values (see VUID-VkImageCreateInfo-usage-00963)")
+            }
+        }
+
+        if usage_flags.contains(SHADING_RATE_IMAGE_BIT_NV) && !image_tiling.is(OPTIMAL) {
+            panic!("if usage includes VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV, tiling must be VK_IMAGE_TILING_OPTIMAL (VUID-VkImageCreateInfo-shadingRateImage-07727)")
+        }
+    }
+
+    // validate usage and create flags
+    {
+        let sparse_create_flags = bitmask!(SPARSE_BINDING_BIT | SPARSE_RESIDENCY_BIT | SPARSE_ALIASED_BIT);
+
+        if create_flags.any_of(sparse_create_flags) && usage_flags.contains(TRANSIENT_ATTACHMENT_BIT) {
+            panic!("usage_flags and create_flags must be a valid combination of values (see VUID-VkImageCreateInfo-None-01925)")
+        }
+    }
+
+    /*
+    VUID-VkImageCreateInfo-imageType-02082
+    If usage includes VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, imageType must be VK_IMAGE_TYPE_2D
+    NOTE: currently not generating VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR
+
+    VUID-VkImageCreateInfo-samples-02083
+    If usage includes VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR, samples must be VK_SAMPLE_COUNT_1_BIT
+
+    ^^^^^^^^^^^^^NOTE: currently not generating VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR^^^^^^^^^^^^^
+
+    VUID-VkImageCreateInfo-usage-04992
+    If usage includes VK_IMAGE_USAGE_INVOCATION_MASK_BIT_HUAWEI, tiling must be VK_IMAGE_TILING_LINEAR
+
+    ^^^^^^^^^^^^^NOTE: not yet VK_IMAGE_USAGE_INVOCATION_MASK_BIT_HUAWEI^^^^^^^^^^^^^
+     */
+
+    if create_flags.contains(CUBE_COMPATIBLE_BIT) {
+        assert!(image_ty.is(TYPE_2D), "VUID-VkImageCreateInfo-flags-00949")
+    }
+
+    if usage_flags.contains(FRAGMENT_DENSITY_MAP_BIT_EXT) {
+        assert!(image_ty.is(TYPE_2D), "VUID-VkImageCreateInfo-flags-02557")
+    }
+
+    if create_flags.contains(TYPE_2D_ARRAY_COMPATIBLE_BIT) {
+        assert!(image_ty.is(TYPE_3D), "VUID-VkImageCreateInfo-flags-00950")
+    }
+
+    // TODO: VK_IMAGE_CREATE_2D_VIEW_COMPATIBLE_BIT_EXT -> VUID-VkImageCreateInfo-flags-07755
+
+    if image_tiling.is(LINEAR) {
+        assert!(!create_flags.contains(SPARSE_RESIDENCY_BIT), "VUID-VkImageCreateInfo-tiling-04121")
+    }
+
+    if image_ty.is(TYPE_1D) {
+        assert!(!create_flags.contains(SPARSE_RESIDENCY_BIT), "VUID-VkImageCreateInfo-imageType-00970")
+    }
+
+    let sparse_bits = bitmask!(SPARSE_ALIASED_BIT | SPARSE_RESIDENCY_BIT);
+    if create_flags.any_of(sparse_bits) {
+        assert!(create_flags.contains(SPARSE_BINDING_BIT), "VUID-VkImageCreateInfo-flags-00987")
+    }
+
+    if create_flags.contains(SPLIT_INSTANCE_BIND_REGIONS_BIT) {
+        assert!(image_ty.is(TYPE_2D), "VUID-VkImageCreateInfo-flags-02259") // also, mipLevels must be one, arrayLayers must be one, and imageCreateMaybeLinear (as defined in Image Creation Limits) must be VK_FALSE
+    }
+
+    // check compressed formats
 });
 
 simple_struct_wrapper!(ImageFormatProperties);
