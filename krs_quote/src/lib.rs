@@ -48,7 +48,7 @@
 mod to_tokens;
 mod runtime;
 
-pub use to_tokens::{ Token, TokenStream, ToTokens };
+pub use to_tokens::{ Token, TokenStream, ToTokens, ToTokensClosure };
 
 #[doc(hidden)]
 pub mod __private {

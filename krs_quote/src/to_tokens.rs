@@ -63,6 +63,21 @@ impl ToTokens for String {
     }
 }
 
+impl ToTokens for bool {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match self {
+            true => tokens.push(Token::from("true")),
+            false => tokens.push(Token::from("false")),
+        }
+    }
+}
+
+impl<T: ToTokens + ?Sized> ToTokens for Box<T> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        <T as ToTokens>::to_tokens(self, tokens)
+    }
+}
+
 impl ToTokens for Token {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.push(self.clone())
@@ -81,6 +96,17 @@ impl<T: ToTokens> ToTokens for Option<T> {
             Some(t) => t.to_tokens(tokens),
             None => {}
         }
+    }
+}
+
+/// Wrap a closure that can impl ToTokens
+///
+/// sometimes it is handy to define a closure to generate tokens into a TokenStream
+pub struct ToTokensClosure<F>(pub F);
+
+impl<F: Fn(&mut TokenStream)> ToTokens for ToTokensClosure<F> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0(tokens)
     }
 }
 
