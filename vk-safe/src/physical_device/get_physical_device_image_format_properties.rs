@@ -188,7 +188,39 @@ verify_params!(Params(
         assert!(image_ty.is(TYPE_2D), "VUID-VkImageCreateInfo-flags-02259") // also, mipLevels must be one, arrayLayers must be one, and imageCreateMaybeLinear (as defined in Image Creation Limits) must be VK_FALSE
     }
 
-    // check compressed formats
+    if create_flags.contains(BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) {
+        assert!(Format::COMPRESSED_FORMAT, "VUID-VkImageCreateInfo-flags-01572");
+        assert!(create_flags.contains(MUTABLE_FORMAT_BIT), "VUID-VkImageCreateInfo-flags-01573");
+    }
+
+    // VUID-VkImageCreateInfo-imageCreateFormatFeatures-02260 requires runtime check
+
+    if !Format::MULTI_PLANAR && !create_flags.contains(ALIAS_BIT) {
+        assert!(!create_flags.contains(DISJOINT_BIT), "VUID-VkImageCreateInfo-format-01577")
+    }
+
+    // VUID-VkImageCreateInfo-tiling-02353 need to deal with pnext
+
+    if create_flags.contains(SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT) {
+        assert!(Format::HAS_DEPTH_COMPONENT, "VUID-VkImageCreateInfo-flags-01533")
+    }
+
+    if create_flags.contains(CORNER_SAMPLED_BIT_NV) {
+        assert!(image_ty.is(TYPE_2D) || image_ty.is(TYPE_3D), "VUID-VkImageCreateInfo-flags-02050");
+        assert!(!create_flags.contains(CUBE_COMPATIBLE_BIT) && !Format::HAS_DEPTH_COMPONENT && !Format::HAS_STENCIL_COMPONENT, "VUID-VkImageCreateInfo-flags-02051");
+        // VUID-VkImageCreateInfo-flags-02052 and VUID-VkImageCreateInfo-flags-02053 dynamic check
+    }
+
+    if create_flags.contains(SUBSAMPLED_BIT_EXT) {
+        assert!(image_tiling.is(OPTIMAL), "VUID-VkImageCreateInfo-flags-02565");
+        assert!(image_ty.is(TYPE_2D), "VUID-VkImageCreateInfo-flags-02566");
+        assert!(!create_flags.contains(CUBE_COMPATIBLE_BIT), "VUID-VkImageCreateInfo-flags-02567");
+        // VUID-VkImageCreateInfo-flags-02568 mim level check
+    }
+
+    // VUID-VkImageCreateInfo-imageView2DOn3DImage-04459 dynamic check
+
+    // VUID-VkImageCreateInfo-pNext-06722 this is an interesting one to check, need pnext handling and more format properties
 });
 
 simple_struct_wrapper!(ImageFormatProperties);
