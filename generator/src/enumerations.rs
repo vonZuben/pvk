@@ -59,22 +59,26 @@ impl<'a> EnumVariants<'a> {
 
 impl krs_quote::ToTokens for EnumVariants<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        use crate::utils::StrAsCode;
         let target = self.target;
         let target_string = utils::ctype_to_rtype(self.target.as_str());
         let variants = self.variants.iter();
 
         let mod_name = ModName::new(target);
 
-        let make_proper_name = |name| make_variant_name(target_string, utils::ctype_to_rtype(name));
-        let variant_names = self.variants.iter()
+        let properties = crate::enum_properties::get_properties(target);
+
+        let properties_name = properties.map(|p|p.name(target));
+        let properties_name = properties_name.iter(); // Option iter yields one element, so I can use as poor mans optional expansion in repeat syntax
+
+        let variant_name_strings: Vec<_> = self.variants.iter()
             .map(|c| {
-                make_proper_name(c.name.as_str()).as_code()
-            });
-        let variant_name_strings = self.variants.iter()
-            .map(|c| {
-                make_proper_name(c.name.as_str())
-            });
+                make_variant_name(target_string, utils::ctype_to_rtype(c.name.as_str()))
+            }).collect();
+
+        let variant_names: Vec<_> = variant_name_strings.iter().map(VkTyName::from).collect();
+
+        let variant_properties = variant_names.iter()
+            .map(|&name| crate::enum_properties::variant_properties(name, target));
 
         krs_quote_with!(tokens <-
             impl {@target} {
@@ -86,7 +90,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
             EnumKind::Normal => {
                 krs_quote_with!(tokens <-
                     pub mod {@mod_name} {
-                        use super::{VkEnumVariant, {@target}};
+                        use super::{VkEnumVariant, {@target} {@* , {@properties_name}}};
                         {@*
                             #[derive(Copy, Clone)]
                             pub struct {@variant_names};
@@ -94,6 +98,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
                                 type Enum = {@target};
                                 const VARIANT: i32 = {@target}::{@variant_names}.0;
                             }
+                            {@variant_properties}
                         }
                     }
                     impl std::fmt::Debug for {@target} {

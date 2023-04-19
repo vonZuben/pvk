@@ -32,6 +32,7 @@ mod code_generator;
 mod static_code;
 mod traits;
 mod bitmask_traits;
+mod enum_properties;
 
 mod gen_lib;
 

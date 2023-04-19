@@ -322,23 +322,12 @@ impl Enum2 {
 impl krs_quote::ToTokens for Enum2 {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
-        let trait_name = krs_quote::Token::from(format!("{name}Const"));
         krs_quote_with!(tokens <-
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
             pub struct {@name}(pub(crate) i32);
-            impl VkEnum for {@name} {
-                fn from_variant_type<V: VkEnumVariant<Enum=Self>>(_: V) -> Self {
-                    Self(V::VARIANT)
-                }
-            }
-            pub trait {@trait_name} : VkEnumVariant<Enum={@name}> + Sized + Copy {
-                fn variant(self) -> {@name} {
-                    <{@name} as VkEnum>::from_variant_type(self)
-                }
-            }
-            impl<T> {@trait_name} for T where T: VkEnumVariant<Enum={@name}> + Sized + Copy {}
         );
+        crate::enum_properties::add_enum_properties(name, tokens);
     }
 }
 
