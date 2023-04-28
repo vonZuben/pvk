@@ -33,6 +33,7 @@ mod static_code;
 mod traits;
 mod bitmask_traits;
 mod enum_properties;
+mod vuid_visitor;
 
 mod gen_lib;
 

@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use krs_quote::krs_quote;
 
 use crate::vk_parse_visitor::{VisitVkParse};
+use crate::vuid_visitor::VuidVisitor;
 
 use crate::utils::{self, VecMap};
 
@@ -408,5 +409,14 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
         self.generic_types.insert(name);
+    }
+}
+
+// =================================================================
+// vuid
+// =================================================================
+impl<'a> VuidVisitor<'a> for Generator<'a> {
+    fn visit_vuid(&mut self, vuid: crate::vuid_visitor::Vuid<'a>) {
+        todo!()
     }
 }
