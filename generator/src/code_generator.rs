@@ -75,41 +75,6 @@ impl<'a> Generator<'a> {
         }
     }
 
-    pub fn generate_output_for_single_file(&self) -> String {
-        let static_code = crate::static_code::StaticCode;
-
-        let commands_trait = crate::traits::VulkanCommand;
-        let version_trait = crate::traits::VulkanVersion;
-        let extension_traits = crate::traits::VulkanExtension;
-        let enum_traits = crate::traits::EnumTraits;
-
-        let bitmask_traits = crate::bitmask_traits::BitmaskTraits;
-
-        let definitions = &self.definitions;
-        let constants = self.constants.iter();
-        let enum_variants = self.enum_variants.iter();
-        let commands = &self.commands;
-        let feature_collection = &self.feature_collection;
-        let extension_commands = self.extension_infos.iter();
-        let aliases = self.aliases.iter();
-
-        krs_quote!(
-            {@static_code}
-            {@commands_trait}
-            {@version_trait}
-            {@extension_traits}
-            {@enum_traits}
-            {@bitmask_traits}
-            {@definitions}
-            {@* {@constants}}
-            {@* {@enum_variants}}
-            {@commands}
-            {@* {@aliases}}
-            {@feature_collection}
-            {@* {@extension_commands}}
-        ).to_string()
-    }
-
     /// internally I call it static code (see [StaticCode](crate::static_code::StaticCode))
     /// externally, this is utility code that other generated code relies on
     pub fn util_code(&self) -> String {

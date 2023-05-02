@@ -70,22 +70,6 @@ macro_rules! make_code_type {
 
 code_parts!(make_code_type(;));
 
-#[doc(hidden)]
-/// This generates all code generated from vk.xml into a single file
-/// useful for testing
-///
-/// used in the stdout program that is included but is just for testing
-pub fn generate_output_for_single_file(vk_xml_path: impl AsRef<std::ffi::OsStr>) -> String {
-    unsafe {intern::Interner::init();}
-    let (registry2, _) = vk_parse::parse_file(Path::new(&vk_xml_path)).expect("failed to parse vk.xml");
-
-    let mut generator = code_generator::Generator::default();
-
-    vk_parse_visitor::visit_vk_parse(&registry2, &mut generator);
-
-    return generator.generate_output_for_single_file();
-}
-
 /// Parse a xk.xml at the provided path, and provide the generated [Code]
 pub fn parse_vk_xml(vk_xml_path: impl AsRef<std::ffi::OsStr>) -> Code {
     unsafe {intern::Interner::init();}

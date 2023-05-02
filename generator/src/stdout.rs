@@ -1,6 +1,9 @@
-use generator::generate_output_for_single_file;
+use generator::parse_vk_xml;
 
 use krs_quote::krs_quote;
+
+#[macro_use]
+mod code_parts;
 
 fn main() {
     let get_first_input_arg = || {
@@ -21,16 +24,21 @@ fn main() {
         panic!("no vk.xml path provided");
     };
 
-    let code = generate_output_for_single_file(&get_first_input_arg());
+    let code = parse_vk_xml(&get_first_input_arg());
 
-    let code = prepend_code(code);
+    print!("{}", prelude());
 
-    println!("{}", code);
+    macro_rules! print_code_parts {
+        ( $($module:ident,)* ) => {
+            $( print!("{}", code.$module()); )*
+        };
+    }
+
+    code_parts!(print_code_parts());
 }
 
-fn prepend_code(code: String) -> String {
-
-    let main = krs_quote!{
+fn prelude() -> String {
+    krs_quote!{
         macro_rules! hlist_ty {
             ($($tt:tt)*) => { () }
         }
@@ -42,7 +50,5 @@ fn prepend_code(code: String) -> String {
         }
         use std::ffi::*;
         fn main(){println!("Success")}
-    };
-
-    format!("{}{}", main, code)
+    }.to_string()
 }
