@@ -1,6 +1,18 @@
-use std::borrow::Cow;
-use std::io::Read;
+pub mod json;
 
+use std::borrow::Cow;
+
+/// A VUID by name and description
+///
+/// #internal detail
+/// the fields use Cow to allow for borrowed and owned strings for flexibility with possible parer implementations
+/// there is a json format where the descriptions have html, and I would want to remove the html in my code, so this
+/// will mean creating new Strings with the html removed.
+///
+/// there is also a version of the vuids available from lunarG that does not include the html, and could be used directly as borrowed data
+/// However, it is also a little harder to obtain the vuids from lunarG
+///
+/// I will experiment with the json first (and probably stick with it, but who knows for the future)
 #[derive(Debug)]
 pub struct VuidPair<'a> {
     /// the name of the VUID (e.g. VUID-vkGetInstanceProcAddr-instance-parameter)
@@ -32,28 +44,5 @@ impl<'a, V: VuidParser<'a>> Iterator for VuidParserIter<'a, V> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next_vuid()
-    }
-}
-
-pub struct VuidJsonStrParser<'a> {
-    json: &'a str,
-}
-
-impl<'a> VuidJsonStrParser<'a> {
-    pub fn new(json: &'a str) -> Self {
-        Self { json }
-    }
-}
-
-impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
-    fn next_vuid(&mut self) -> Option<VuidPair<'a>> {
-        let mut line = &self.json[..0];
-        for (i, c) in self.json.chars().enumerate() {
-            if c == '\n' {
-                line = &self.json[..i];
-            }
-        }
-
-        todo!()
     }
 }
