@@ -1,14 +1,16 @@
 .PHONY: c rd run dbg dbg-fmt lib err
 
+GEN_INPUT_FILES = vk.xml validusage.json
+
 default:
 	cargo check
 
-vk.xml:
-	echo "Please put a valid xk.xml file in the root of the generator"
-	false
+$(GEN_INPUT_FILES):
+	@echo "error: missing \""$@"\", please put in the root of the generator"
+	@false
 
-/tmp/tmp.rs: vk.xml
-	cargo run --bin vk_stdout vk.xml > /tmp/tmp.rs
+/tmp/tmp.rs: $(GEN_INPUT_FILES)
+	cargo run --bin vk_stdout $(GEN_INPUT_FILES) > /tmp/tmp.rs
 	rustfmt /tmp/tmp.rs
 
 rd: /tmp/tmp.rs
@@ -22,18 +24,19 @@ run: /tmp/tmp
 
 cmp: /tmp/tmp.rs
 
-dbg:
-	cargo run --bin vk_stdout vk.xml 2>&1 | less
+dbg: $(GEN_INPUT_FILES)
+	cargo run --bin vk_stdout $(GEN_INPUT_FILES) 2>&1 | less
 
-dbg-fmt:
+dbg-fmt: /tmp/tmp.rs
 	rustfmt /tmp/tmp.rs 2>&1 | less
 
 err:
 	vim /tmp/out.txt
 
-lib:
-	cargo run --bin gen_lib_cmd vk.xml /tmp/test/pvk/src
+lib: $(GEN_INPUT_FILES)
+	cargo run --bin gen_lib_cmd $(GEN_INPUT_FILES) /tmp/test/pvk/src
 
 c:
-	rm -f /tmp/tmp
-	rm -f /tmp/tmp.rs
+	@echo "cleaning tmp files"
+	@rm -f /tmp/tmp
+	@rm -f /tmp/tmp.rs
