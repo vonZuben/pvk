@@ -385,5 +385,6 @@ impl<'a> VuidVisitor<'a> for Generator<'a> {
         // temporary use
         eprintln!("{}", vuid.name());
         eprintln!("{}", vuid.description());
+        eprintln!("");
     }
 }

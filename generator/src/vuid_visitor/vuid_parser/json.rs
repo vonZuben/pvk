@@ -51,11 +51,14 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
                     .strip_prefix(TEXT_TAG)
                     .expect("error: line after 'vuid' is not 'text'");
 
-                let vuid_description = line[1..line.len()-1].trim(); // remove quotation marks
+                let vuid_description = line[1..line.len()-1].trim(); // remove quotation marks and whitespace leading/trailing
+
+                // remove HTML from the description
+                let filtered_description: String = HtmlFilter(vuid_description.chars()).collect();
 
                 let vuid_pair = VuidPair {
                     name: vuid_name.into(),
-                    description: vuid_description.into(),
+                    description: filtered_description.into(),
                 };
 
                 return Some(vuid_pair);
@@ -63,5 +66,30 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
         }
 
         None
+    }
+}
+
+/// This is simple html tag filter
+///
+/// this is very naive implementation that does not account for special escape characters in tags (if thats even possible)
+/// just assume everything between '<' and '>' is a tag and filter it out
+struct HtmlFilter<I>(I);
+
+impl<I: Iterator<Item = char>> Iterator for HtmlFilter<I> {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let c = self.0.next()?;
+        if c == '<' {
+            while let Some(c) = self.0.next() {
+                if c == '>' {
+                    return self.0.next();
+                }
+            }
+            panic!("error: HtmlFilter did not find end og html tag")
+        }
+        else {
+            Some(c)
+        }
     }
 }
