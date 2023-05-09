@@ -381,7 +381,9 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 // vuid
 // =================================================================
 impl<'a> VuidVisitor<'a> for Generator<'a> {
-    fn visit_vuid(&mut self, vuid: crate::vuid_visitor::Vuid<'a>) {
-        todo!()
+    fn visit_vuid(&mut self, vuid: crate::vuid_visitor::VuidPair<'a>) {
+        // temporary use
+        eprintln!("{}", vuid.name());
+        eprintln!("{}", vuid.description());
     }
 }

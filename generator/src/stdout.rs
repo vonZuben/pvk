@@ -5,26 +5,26 @@ use krs_quote::krs_quote;
 #[macro_use]
 mod code_parts;
 
-fn main() {
-    let get_first_input_arg = || {
-        let args = std::env::args_os();
-        let current_exe = std::env::current_exe().unwrap();
-        let current_exe = current_exe.to_string_lossy();
-        for arg in args {
-            let arg = arg.to_string_lossy();
-            // check if the first arg is the program path
-            // since this isn't technically guaranteed
-            if current_exe.contains(arg.as_ref()) {
-                continue;
-            }
-            else { // this should be the first real argument
-                return arg.into_owned();
-            }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = std::env::args();
+    let current_exe = std::env::current_exe().unwrap();
+    let current_exe = current_exe.to_string_lossy();
+
+    let mut get_input_arg = || {
+        let arg = args.next()?;
+        if current_exe.contains(&arg) {
+            args.next()
         }
-        panic!("no vk.xml path provided");
+        else {
+            Some(arg)
+        }
     };
 
-    let code = parse_vk_xml(&get_first_input_arg());
+    const INPUT_ERROR_MSG: &str = "please provide paths to vk.xml and validusage.json";
+    let vk_xml = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
+    let vuid = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
+
+    let code = parse_vk_xml(vk_xml, vuid);
 
     print!("{}", prelude());
 
@@ -35,6 +35,8 @@ fn main() {
     }
 
     code_parts!(print_code_parts());
+
+    Ok(())
 }
 
 fn prelude() -> String {

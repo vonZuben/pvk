@@ -78,9 +78,9 @@ macro_rules! make_rs_files {
     };
 }
 
-pub fn generate_library(out_dir: &Path, vk_xml: &Path) -> Result<()> {
+pub fn generate_library(out_dir: &Path, vk_xml: &Path, vuid: &Path) -> Result<()> {
     make_output_directory(&out_dir)?;
-    let code = crate::parse_vk_xml(vk_xml);
+    let code = crate::parse_vk_xml(vk_xml, vuid);
     code_parts!(make_rs_files() code, out_dir,);
     make_lib_file(&out_dir)
 }
