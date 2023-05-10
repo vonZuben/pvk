@@ -24,12 +24,7 @@ pub trait EnumProperties {
 pub fn add_enum_properties(name: VkTyName, tokens: &mut TokenStream) {
     let trait_name = Token::from(format!("{name}Const"));
 
-    let properties: Option<&dyn EnumProperties> = match name.as_str() {
-        "VkFormat" => {
-            Some(&format::FormatPropertiesDef)
-        }
-        _ => None
-    };
+    let properties = get_properties(name);
 
     let properties_name = properties.map(|p|p.name(name));
     let properties_name = properties_name.iter(); // Option iter yields one element, so I can use as poor mans optional expansion in repeat syntax
@@ -52,12 +47,7 @@ pub fn add_enum_properties(name: VkTyName, tokens: &mut TokenStream) {
 }
 
 pub fn variant_properties(name: VkTyName, target: VkTyName) -> impl ToTokens {
-    match target.as_str() {
-        "VkFormat" => {
-            Some(&format::FormatPropertiesDef)
-        }
-        _ => None
-    }.map(|p|p.variant(name, target))
+    get_properties(target).map(|p|p.variant(name, target))
 }
 
 pub fn get_properties(target: VkTyName) -> Option<&'static dyn EnumProperties> {
