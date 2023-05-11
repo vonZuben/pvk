@@ -14,6 +14,7 @@ use crate::definitions;
 use crate::enumerations;
 use crate::extensions;
 use crate::features;
+use crate::vuid;
 
 #[derive(Copy, Clone)]
 enum CommandType {
@@ -53,6 +54,9 @@ pub struct Generator<'a> {
     feature_collection: features::FeatureCollection,
     extension_infos: VecMap<extensions::ExtensionName, extensions::ExtensionInfo>,
     aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
+
+    // vuid
+    vuids: vuid::Vuids<'a>,
 }
 
 impl<'a> Generator<'a> {
@@ -165,6 +169,10 @@ impl<'a> Generator<'a> {
         krs_quote!({@* {@aliases} }).to_string()
     }
 
+    pub fn vuids(&self) -> String {
+        let vuids = &self.vuids;
+        krs_quote!({@vuids}).to_string()
+    }
 }
 
 // =================================================================
@@ -388,13 +396,17 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 // =================================================================
 impl<'a> VuidVisitor<'a> for Generator<'a> {
     fn visit_vuid(&mut self, vuid: crate::vuid_visitor::VuidPair<'a>) {
-        // temporary use
-        eprintln!("{}", vuid.name());
-        eprintln!("{}", vuid.description());
-        eprintln!("");
+        // get target from vuid name
+        let mut name_parts = vuid.name().split("-");
+
+        // vuid name format should be "VUID-Target-parameter_of_target-info"
+        // we just need target
+        assert_eq!(name_parts.next(), Some("VUID"));
+        let target: utils::VkTyName = name_parts.next().expect("error: could not get vuid target").into();
+
+        self.vuids.insert_vuid(target, vuid);
     }
     fn visit_vuid_version(&mut self, version: (u32, u32, u32)) {
-        eprintln!("{version:?}");
-        eprintln!("");
+        self.vuids.api_version(version)
     }
 }
