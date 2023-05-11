@@ -375,6 +375,12 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
         self.generic_types.insert(name);
     }
+    fn visit_api_version(&mut self, _version: (u32, u32)) {
+
+    }
+    fn visit_header_version(&mut self, _version: u32) {
+
+    }
 }
 
 // =================================================================

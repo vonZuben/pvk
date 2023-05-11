@@ -37,7 +37,7 @@ impl<'a> Iterator for TokenIter<'a> {
                     start += c.len_utf8();
                     continue;
                 }
-                // immidiate return for special chars
+                // immediate return for special chars
                 else if SPECIAL_CHARS.contains(&c) {
                     // want to just return single char, but need to return from slice so type matches
                     end = start + c.len_utf8();
@@ -163,6 +163,18 @@ pub fn repeat<I: Clone, O>(mut input: I, mut p: impl Parse<I, O>, mut f: impl Fn
                 return Ok((oldi, ()))
             }
         }
+    }
+}
+
+#[allow(unused)]
+pub fn until<'a, T: Eq, I: Iterator<Item = T> + 'a>(tag: T) -> impl ParseFn<I, T> {
+    move |mut input: I| {
+        while let Some(t) = input.next() {
+            if t == tag {
+                return Ok((input, t))
+            }
+        }
+        Err(())
     }
 }
 

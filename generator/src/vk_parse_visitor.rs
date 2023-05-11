@@ -18,6 +18,8 @@ pub trait VisitVkParse<'a> {
     fn visit_require_command(&mut self, def: CommandRef<'a>);
     fn visit_remove_command(&mut self, def: CommandRef<'a>);
     fn visit_external_type(&mut self, name: crate::utils::VkTyName);
+    fn visit_api_version(&mut self, version: (u32, u32));
+    fn visit_header_version(&mut self, version: u32);
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -113,10 +115,16 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     Some("define") => {
                                         match ty.spec {
                                             vk_parse::TypeSpec::Code(ref code) => {
-                                                match parse_external_opaque_type(code.code.as_str()) {
-                                                    Ok(extern_ty) => visitor.visit_external_type(extern_ty),
-                                                    Err(_) => {}
+                                                let code = code.code.as_str();
+                                                if let Ok(extern_ty) = parse_external_opaque_type(code) {
+                                                    visitor.visit_external_type(extern_ty);
                                                 }
+                                                // else if let Ok(api_version) = parse_api_version(code) {
+                                                //     visitor.visit_api_version(api_version);
+                                                // }
+                                                // else if let Ok(header_version) = parse_header_version(code) {
+                                                //     visitor.visit_header_version(header_version);
+                                                // }
                                             }
                                             vk_parse::TypeSpec::Members(_) => {}
                                             vk_parse::TypeSpec::None => {}
@@ -734,3 +742,22 @@ fn parse_external_opaque_type(code: &str) -> Result<utils::VkTyName, ()> {
         Ok(name.into())
     }
 }
+
+// fn parse_api_version(code: &str) -> Result<(u32, u32), ()> {
+//     use crate::simple_parse::*;
+
+//     let input = crate::simple_parse::TokenIter::new(code);
+
+//     let (input, _) = until("#define")(input)?;
+//     let (input, name) = token()(input)?;
+
+//     if name.contains("VK_API_VERSION") {
+//         let (input, _) = tag("VK_MAKE_VERSION")(input)?;
+//         let (input, _) = tag("(")(input)?;
+//         // ...
+//     }
+// }
+
+// fn parse_header_version(code: &str) -> Result<u32, ()> {
+//     todo!()
+// }
