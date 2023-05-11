@@ -393,4 +393,8 @@ impl<'a> VuidVisitor<'a> for Generator<'a> {
         eprintln!("{}", vuid.description());
         eprintln!("");
     }
+    fn visit_vuid_version(&mut self, version: (u32, u32, u32)) {
+        eprintln!("{version:?}");
+        eprintln!("");
+    }
 }

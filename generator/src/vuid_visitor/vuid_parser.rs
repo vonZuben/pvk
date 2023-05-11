@@ -31,18 +31,5 @@ impl VuidPair<'_> {
 }
 
 pub trait VuidParser<'a> {
-    fn next_vuid(&mut self) -> Option<VuidPair<'a>>;
-    fn iter(self) -> VuidParserIter<'a, Self> where Self: Sized {
-        VuidParserIter(self, std::marker::PhantomData)
-    }
-}
-
-pub struct VuidParserIter<'a, V: VuidParser<'a>>(V, std::marker::PhantomData<&'a str>);
-
-impl<'a, V: VuidParser<'a>> Iterator for VuidParserIter<'a, V> {
-    type Item = VuidPair<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next_vuid()
-    }
+    fn parse_with(self, visitor: &mut impl super::VuidVisitor<'a>);
 }

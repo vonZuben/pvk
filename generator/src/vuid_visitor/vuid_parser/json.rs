@@ -16,11 +16,7 @@ impl<'a> VuidJsonStrParser<'a> {
 }
 
 impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
-    fn next_vuid(&mut self) -> Option<VuidPair<'a>> {
-        if self.json.is_empty() {
-            return None;
-        }
-
+    fn parse_with(mut self, visitor: &mut impl crate::vuid_visitor::VuidVisitor<'a>) {
         let mut get_line = || {
             for (i, c) in self.json.chars().enumerate() {
                 if c == '\n' {
@@ -32,12 +28,16 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
             None
         };
 
+        let mut supported_schema = false;
+
         // parse all lines
         while let Some(line) = get_line() {
             let line = line.trim();
 
             const VUID_TAG: &'static str = "\"vuid\": ";
             const TEXT_TAG: &'static str = "\"text\": ";
+            const SCHEMA_TAG: &'static str = "\"schema version\": ";
+            const API_VER_TAG: &'static str = "\"api version\": ";
 
             // when find vuid line
             if line.starts_with(VUID_TAG) {
@@ -61,11 +61,33 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
                     description: filtered_description.into(),
                 };
 
-                return Some(vuid_pair);
+                visitor.visit_vuid(vuid_pair);
+            }
+            else if line.starts_with(SCHEMA_TAG) {
+                let schema_version: u32 = line[SCHEMA_TAG.len()..line.len()-1].parse().expect("error: can't parse json schema version");
+                if schema_version == 2 {
+                    supported_schema = true;
+                }
+                else {
+                    panic!("unsupported validusage.json schema version");
+                }
+            }
+            else if line.starts_with(API_VER_TAG) {
+                let api_version_str = &line[API_VER_TAG.len()+1..line.len()-2];
+
+                let mut version_parts = api_version_str.split(".");
+
+                let major = version_parts.next().expect("error: api version - no major").parse().expect("error: can't parse major");
+                let minor = version_parts.next().expect("error: api version - no minor").parse().expect("error: can't parse minor");
+                let patch = version_parts.next().expect("error: api version - no patch").parse().expect("error: can't parse patch");
+
+                visitor.visit_vuid_version((major, minor, patch));
             }
         }
 
-        None
+        if !supported_schema {
+            panic!("error: never found supported schema version");
+        }
     }
 }
 
