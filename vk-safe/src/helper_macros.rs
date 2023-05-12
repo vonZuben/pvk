@@ -136,3 +136,21 @@ macro_rules! bitmask {
         krs_hlist::hlist!( $( $path::$bit ),* )
     };
 }
+
+// check things that looks like this from where they are defined
+// const VUID_vkEnumeratePhysicalDevices_instance_parameter: &'static str = "instance must be a valid VkInstance handle";
+// when implementing vuid checks, create definitions checkers to ensure that if the definition changes later, we know to update our check
+macro_rules! check_vuid_defs {
+    ( $( pub const $vuid:ident : &'static [u8] = $def:expr ;)* ) => {
+        #[allow(non_upper_case_globals)]
+        #[allow(unused)]
+        const CHECK_DEF: () = {
+            $(
+                match $def {
+                    $vuid => {}
+                    _ => panic!(concat!("definition for ", stringify!($vuid), " has been updated")),
+                }
+            )*
+        };
+    };
+}
