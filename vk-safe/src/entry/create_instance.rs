@@ -12,35 +12,15 @@ use std::ffi::CStr;
 pub struct TempError;
 
 /*
-SAFETY (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html)
-
-VUID-vkCreateInstance-ppEnabledExtensionNames-01388
-All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list
-
-- TODO should ensure safety by creation of the create_info
-
-VUID-vkCreateInstance-pCreateInfo-parameter
-pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure
-
-- taken by rust ref so valid, and creation of all safe interface types should only make valid types
-
-VUID-vkCreateInstance-pAllocator-parameter
-If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure
-
-- taken by rust ref so valid, and creation of all safe interface types should only make valid types
-
-VUID-vkCreateInstance-pInstance-parameter
-pInstance must be a valid pointer to a VkInstance handle
-
-- we pass a valid pointer to the location where the function will return the instance handle
+https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
 */
-
 impl_safe_entry_interface! {
 CreateInstance {
     pub fn create_instance<C: InstanceConfig>(
         &self,
         create_info: &InstanceCreateInfo<C>,
     ) -> std::result::Result<safe_instance::Instance<C>, TempError> {
+        validate_create_instance::Validation::validate();
         let mut instance = MaybeUninit::uninit();
         unsafe {
             let res = self.commands.get().get_fptr()(&create_info.inner, None.to_c(), instance.as_mut_ptr());
@@ -51,6 +31,47 @@ CreateInstance {
         }
     }
 }}
+
+mod validate_create_instance {
+    use vk_safe_sys::validation::CreateInstance::*;
+
+    pub struct Validation;
+
+    impl Validation {
+        pub fn validate() {
+            validate(Self)
+        }
+    }
+
+    #[allow(non_upper_case_globals)]
+    impl Vuids for Validation {
+        const VUID_vkCreateInstance_ppEnabledExtensionNames_01388: () = {
+            // for checking at InstanceCreateInfo construction
+        };
+
+        const VUID_vkCreateInstance_pCreateInfo_parameter: () = {
+            // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
+        };
+
+        const VUID_vkCreateInstance_pAllocator_parameter: () = {
+            // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
+        };
+
+        const VUID_vkCreateInstance_pInstance_parameter: () = {
+            // using MaybeUninit::as_mut_ptr()
+        };
+    }
+
+    check_vuid_defs!(
+        pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list." . as_bytes ( ) ;
+        pub const VUID_vkCreateInstance_pCreateInfo_parameter: &'static [u8] =
+            "pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure"
+                .as_bytes();
+        pub const VUID_vkCreateInstance_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
+        pub const VUID_vkCreateInstance_pInstance_parameter: &'static [u8] =
+            "pInstance must be a valid pointer to a VkInstance handle".as_bytes();
+    );
+}
 
 //===========InstanceCreateInfo
 pub struct InstanceCreateInfo<'a, C: InstanceConfig> {
