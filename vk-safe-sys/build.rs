@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn generate() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = std::env::var_os("OUT_DIR").ok_or("can't get 'OUT_DIR'")?;
 
-    generator::generate_library(&out_dir, "vk.xml")
+    generator::generate_library(&out_dir, "vk.xml", "validusage.json")
 }
 
 #[cfg(target_os = "windows")]
