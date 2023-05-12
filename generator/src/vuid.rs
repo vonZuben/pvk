@@ -27,7 +27,7 @@ impl ToTokens for Vuids<'_> {
         let collections = self.collections.iter();
 
         krs_quote_with!(tokens <-
-            mod validation {
+            pub mod validation {
                 /// vuid api version
                 const API_VERSION: (u32, u32, u32) = ({@major}, {@minor}, {@patch});
                 {@* {@collections}}
@@ -55,7 +55,8 @@ impl ToTokens for TargetVuids<'_> {
 
         krs_quote_with!(tokens <-
 
-            mod {@target} {
+            #[allow(non_upper_case_globals)]
+            pub mod {@target} {
                 // output trait that should be implemented for vuid checks
                 pub trait Vuids {
                     {@*
@@ -63,8 +64,13 @@ impl ToTokens for TargetVuids<'_> {
                         const {@vuid_names}: ();
                     }
                 }
+                pub fn validate<V: Vuids>(_: V) {
+                    {@*
+                        let _ = V::{@vuid_names};
+                    }
+                }
                 {@*
-                    const {@vuid_names}: &'static str = {@descriptions};
+                    pub const {@vuid_names}: &'static [u8] = {@descriptions}.as_bytes();
                 }
             }
 
