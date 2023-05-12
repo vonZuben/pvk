@@ -5,6 +5,7 @@ use vk_safe::instance::Config;
 use vk_safe::instance::*;
 
 use vk_safe_sys as vk;
+use vk_safe::vk_str;
 
 fn main() {
     let entry = vk_safe::entry::Entry::from_version(vk_safe_sys::VERSION_1_1).unwrap();
@@ -31,7 +32,7 @@ fn main() {
     }
 
     let instance_config = Config::new(vk_safe_sys::VERSION_1_1, ());
-    let app_info = ApplicationInfo::new(instance_config);
+    let app_info = ApplicationInfo::new(instance_config).app_name_and_version(vk_str!("My App"), vk_safe::VkVersion::new(0, 0, 0));
     let instance_info = InstanceCreateInfo::new(&app_info);
 
     let instance = entry.create_instance(&instance_info).unwrap();
