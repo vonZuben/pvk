@@ -86,8 +86,65 @@ If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAlloc
 */
 impl<C: InstanceConfig> Drop for Instance<C> {
     fn drop(&mut self) {
+        destroy_instance_validation::Validation::validate();
         unsafe { self.feature_commands.get().get_fptr()(self.handle, None.to_c()) }
     }
+}
+
+mod destroy_instance_validation {
+    use vk_safe_sys::validation::DestroyInstance::*;
+
+    pub struct Validation;
+
+    impl Validation {
+        pub fn validate() {
+            validate(Self)
+        }
+    }
+
+    #[allow(non_upper_case_globals)]
+    impl Vuids for Validation {
+        const VUID_vkDestroyInstance_instance_00629: () = {
+            // all child objects borrow the instance, so Instance can't be dropped until the children are destroyed
+        };
+
+        const VUID_vkDestroyInstance_instance_00630: () = {
+            // *******************************************
+            // ******************TODO*********************
+            // *******************************************
+            // when implemented, check this
+            // probably the instance object will hold its allocator and automatically use it in drop
+        };
+
+        const VUID_vkDestroyInstance_instance_00631: () = {
+            // *******************************************
+            // ******************TODO*********************
+            // *******************************************
+            // when implemented, check this
+            // probably the instance object will hold its allocator and automatically use it in drop
+        };
+
+        const VUID_vkDestroyInstance_instance_parameter: () = {
+            // Instance must have been created with a valid handle, so only valid handle should be dropped
+        };
+
+        const VUID_vkDestroyInstance_pAllocator_parameter: () = {
+            // *******************************************
+            // ******************TODO*********************
+            // *******************************************
+            // when implemented, check this
+            // probably the instance object will hold its allocator and automatically use it in drop
+        };
+    }
+
+    check_vuid_defs!(
+        pub const VUID_vkDestroyInstance_instance_00629 : & 'static [ u8 ] = "All child objects created using instance must have been destroyed prior to destroying instance" . as_bytes ( ) ;
+        pub const VUID_vkDestroyInstance_instance_00630 : & 'static [ u8 ] = "If VkAllocationCallbacks were provided when instance was created, a compatible set of callbacks must be provided here" . as_bytes ( ) ;
+        pub const VUID_vkDestroyInstance_instance_00631 : & 'static [ u8 ] = "If no VkAllocationCallbacks were provided when instance was created, pAllocator must be NULL" . as_bytes ( ) ;
+        pub const VUID_vkDestroyInstance_instance_parameter: &'static [u8] =
+            "If instance is not NULL, instance must be a valid VkInstance handle".as_bytes();
+        pub const VUID_vkDestroyInstance_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
+    );
 }
 
 mod command_impl_prelude {
