@@ -23,7 +23,8 @@ impl<'a> VkStr<'a> {
 
 #[macro_export]
 macro_rules! vk_str {
-    ( $str:literal ) => {
+    ( $str:literal ) => {{
+        let _: &str = $str;
         unsafe { $crate::VkStr::new(concat!($str, "\0")) }
-    };
+    }};
 }
