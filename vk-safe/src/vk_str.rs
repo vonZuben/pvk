@@ -6,6 +6,7 @@ use std::ffi::c_char;
 /// vulkan also need null terminated strings.
 ///
 /// this type combines the guarantees of str anc CStr
+#[derive(Debug, Clone, Copy)]
 pub struct VkStr<'a>(&'a str);
 
 impl<'a> VkStr<'a> {
