@@ -7,7 +7,6 @@ use crate::vk_str::VkStr;
 
 use std::mem::MaybeUninit;
 use std::marker::PhantomData;
-use std::ffi::CStr;
 
 #[derive(Debug)]
 pub struct TempError;
