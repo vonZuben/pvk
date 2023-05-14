@@ -57,32 +57,7 @@ impl<C: InstanceConfig> Instance<C> {
 }
 
 /*
-SAFETY (https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInstance.html)
-
-VUID-vkDestroyInstance-instance-00629
-All child objects created using instance must have been destroyed prior to destroying instance
-
-- child objects borrow the Instance, so they should all be dropped (destroyed) before it is possible to Drop the Instance
-
-VUID-vkDestroyInstance-instance-00630
-If VkAllocationCallbacks were provided when instance was created, a compatible set of callbacks must be provided here
-
-- the allocation callbacks from creation should be held by Instance, and used here
-
-VUID-vkDestroyInstance-instance-00631
-If no VkAllocationCallbacks were provided when instance was created, pAllocator must be NULL
-
-- this follows from holding the allocation callbacks from creation
-
-VUID-vkDestroyInstance-instance-parameter
-If instance is not NULL, instance must be a valid VkInstance handle
-
-- taken by rust ref so valid, and creation of all safe interface types should only make valid types
-
-VUID-vkDestroyInstance-pAllocator-parameter
-If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure
-
-- taken by rust ref so valid
+https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInstance.html
 */
 impl<C: InstanceConfig> Drop for Instance<C> {
     fn drop(&mut self) {
