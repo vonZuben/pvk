@@ -13,6 +13,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 */
 impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceFeatures> {
     pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures {
+        validate(Validation);
         let mut features = MaybeUninit::uninit();
         unsafe {
             self.instance.feature_commands.get().get_fptr()(self.handle, features.as_mut_ptr());
