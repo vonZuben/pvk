@@ -67,5 +67,7 @@ fn main() {
             krs_hlist::End,
         ).unwrap();
         println!("{tst_image_format_properties:#?}");
+        println!("-------");
+        println!("{:#?}", pd.get_physical_device_queue_family_properties(Vec::new()));
     }
 }
