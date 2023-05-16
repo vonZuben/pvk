@@ -16,6 +16,7 @@ where
     C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceProperties>,
 {
     pub fn get_physical_device_properties(&self) -> PhysicalDeviceProperties {
+        validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
             self.instance.feature_commands.get().get_fptr()(
