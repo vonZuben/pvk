@@ -69,5 +69,7 @@ fn main() {
         println!("{tst_image_format_properties:#?}");
         println!("-------");
         println!("{:#?}", pd.get_physical_device_queue_family_properties(Vec::new()));
+        println!("-------");
+        println!("{:#?}", pd.get_physical_device_memory_properties());
     }
 }
