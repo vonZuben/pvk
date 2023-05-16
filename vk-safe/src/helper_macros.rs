@@ -125,6 +125,29 @@ macro_rules! verify_params {
     };
 }
 
+macro_rules! verify_params2 {
+    ( $vis:vis $name:ident( $( $param:ident : $trait:path ),* ) { $($code:tt)* } ) => {
+        $vis struct $name<$($param: $trait),*>( $( std::marker::PhantomData<$param> ),* );
+
+        impl<$($param: $trait),*> $name<$($param),*> {
+            fn new() -> Self {
+                Self (
+                    $(std::marker::PhantomData::<$param>::default()),*
+                )
+            }
+            #[track_caller]
+            $vis fn verify($(_: $param),*){
+                validate(Self::new()); // validate should be imported in the scope for the type being validated
+            }
+        }
+
+        #[allow(non_upper_case_globals)]
+        impl<$($param: $trait),*> Vuids for $name<$($param),*> { // Vuids should be in the scope
+            $($code)*
+        }
+    };
+}
+
 
 // TODO, exported macro probably belong somewhere else
 #[macro_export]
