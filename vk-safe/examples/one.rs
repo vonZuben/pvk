@@ -49,6 +49,9 @@ fn main() {
 
     println!("-------");
     for pd in physical_devices.iter() {
+        println!("{:#?}", pd.get_physical_device_properties());
+        println!("-------");
+
         println!("{:#?}", pd.get_physical_device_features());
 
         //test getting format properties
