@@ -1,3 +1,5 @@
+use crate::handle::Handle;
+
 use vk_safe_sys as vk;
 
 use std::fmt;
@@ -11,7 +13,7 @@ pub struct PhysicalDevices<'i, C: InstanceConfig, S: EnumeratorStorage<vk::Physi
 }
 
 impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDevices<'i, C, S> {
-    pub fn new(handles: S::InitStorage, instance: &'i Instance<C>) -> Self {
+    pub(crate) fn new(handles: S::InitStorage, instance: &'i Instance<C>) -> Self {
         Self { instance, handles }
     }
 
@@ -26,6 +28,12 @@ impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDe
 pub struct PhysicalDevice<'i, C: InstanceConfig> {
     instance: &'i Instance<C>,
     handle: vk::PhysicalDevice,
+}
+
+impl<'i, C: InstanceConfig> PhysicalDevice<'i, C> {
+    pub(crate) fn new(instance: &'i Instance<C>, handle: vk::PhysicalDevice) -> Self {
+        Self { instance, handle }
+    }
 }
 
 impl<C: InstanceConfig> fmt::Debug for PhysicalDevice<'_, C> {
@@ -53,12 +61,11 @@ impl<C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> fmt::Debug
 impl<'i, C: InstanceConfig> Iterator
     for PhysicalDeviceIter<'i, '_, C>
 {
-    type Item = PhysicalDevice<'i, C>;
+    type Item = Handle<PhysicalDevice<'i, C>>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|pd| PhysicalDevice {
-            instance: self.instance,
-            handle: pd,
+        self.iter.next().map(|pd| {
+            Handle::new(PhysicalDevice::new(self.instance, pd))
         })
     }
 }
@@ -66,7 +73,7 @@ impl<'i, C: InstanceConfig> Iterator
 impl<'s, 'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> IntoIterator
     for &'s PhysicalDevices<'i, C, S>
 {
-    type Item = PhysicalDevice<'i, C>;
+    type Item = Handle<PhysicalDevice<'i, C>>;
 
     type IntoIter =
         PhysicalDeviceIter<'i, 's, C>;
@@ -85,6 +92,7 @@ mod get_physical_device_image_format_properties;
 mod get_physical_device_properties;
 mod get_physical_device_queue_family_properties;
 mod get_physical_device_memory_properties;
+mod create_device;
 
 use get_physical_device_features::*;
 use get_physical_device_format_properties::*;
@@ -92,3 +100,4 @@ use get_physical_device_image_format_properties::*;
 use get_physical_device_properties::*;
 use get_physical_device_queue_family_properties::*;
 use get_physical_device_memory_properties::*;
+use create_device::*;
