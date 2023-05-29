@@ -4,6 +4,7 @@ use crate::instance as safe_instance;
 use crate::instance::InstanceConfig;
 use crate::pretty_version::VkVersion;
 use crate::vk_str::VkStr;
+use crate::handle::Handle;
 
 use std::mem::MaybeUninit;
 use std::marker::PhantomData;
@@ -19,7 +20,7 @@ CreateInstance {
     pub fn create_instance<C: InstanceConfig>(
         &self,
         create_info: &InstanceCreateInfo<C>,
-    ) -> std::result::Result<safe_instance::Instance<C>, TempError> {
+    ) -> std::result::Result<Handle<safe_instance::Instance<C>>, TempError> {
         validate_create_instance::Validation::validate();
         let mut instance = MaybeUninit::uninit();
         unsafe {
@@ -27,7 +28,7 @@ CreateInstance {
             if res.is_err() {
                 return Err(TempError);
             }
-            Ok(safe_instance::Instance::load_commands(instance.assume_init()).map_err(|_|TempError)?)
+            Ok(Handle::new(safe_instance::Instance::load_commands(instance.assume_init()).map_err(|_|TempError)?))
         }
     }
 }}
