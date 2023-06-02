@@ -43,3 +43,17 @@ impl<'a, P> ToC<*const P> for Option<&'a P> {
         unsafe { std::mem::transmute(self) }
     }
 }
+
+pub unsafe trait SafeTransmute<T> {}
+
+unsafe impl<T, U> SafeTransmute<T> for &[U] where U: SafeTransmute<T> {}
+
+pub trait TransmuteArray<T> : SafeTransmute<T> {
+    fn safe_transmute(&self) -> &[T];
+}
+
+impl<T, U> TransmuteArray<T> for &[U] where U: SafeTransmute<T> {
+    fn safe_transmute(&self) -> &[T] {
+        unsafe { std::mem::transmute(*self) }
+    }
+}
