@@ -21,7 +21,11 @@ unsafe impl<C1: vk::VulkanCommand, C2: vk::VulkanCommand> krs_hlist::Comparator<
     const EQUAL: bool = unsafe { cmd_name_equal(C1::VK_NAME, C2::VK_NAME) };
 }
 
-pub trait GetCommand<C> : krs_hlist::Get<C, private::CommandComparator> {}
+pub trait GetCommand<C> : krs_hlist::Get<C, private::CommandComparator> {
+    fn get(&self) -> &C {
+        <Self as krs_hlist::Get<C, private::CommandComparator>>::get(self)
+    }
+}
 impl<C, L> GetCommand<C> for L where L: krs_hlist::Get<C, private::CommandComparator> {}
 
 
