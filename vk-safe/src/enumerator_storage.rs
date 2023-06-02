@@ -28,6 +28,39 @@ pub trait EnumeratorStorage<T> {
     fn finalize(self, len: usize) -> Self::InitStorage;
 }
 
+pub(crate) struct UninitArrayInitializer<'a, T> {
+    initialized_count: usize,
+    array_iter: std::slice::IterMut<'a, MaybeUninit<T>>,
+}
+
+#[derive(Debug)]
+pub struct ArrayFullError;
+
+pub type InitResult = std::result::Result<(), ArrayFullError>;
+
+impl std::fmt::Display for ArrayFullError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(self, f)
+    }
+}
+
+impl std::error::Error for ArrayFullError {}
+
+impl<'a, T> UninitArrayInitializer<'a, T> {
+    pub(crate) fn new(array_iter: std::slice::IterMut<'a, MaybeUninit<T>>) -> Self {
+        Self { initialized_count: 0, array_iter }
+    }
+    pub(crate) fn push(&mut self, t: T) -> InitResult {
+        let to_write = self.array_iter.next().ok_or(ArrayFullError)?;
+        to_write.write(t);
+        self.initialized_count += 1;
+        Ok(())
+    }
+    pub(crate) fn initialized_count(&self) -> usize {
+        self.initialized_count
+    }
+}
+
 impl<T> EnumeratorStorage<T> for Vec<MaybeUninit<T>> {
     type InitStorage = Vec<T>;
     fn query_len(&mut self, query_len: impl FnOnce() -> Result<usize>) -> Result<()> {
