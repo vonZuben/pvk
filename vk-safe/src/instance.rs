@@ -126,7 +126,6 @@ mod command_impl_prelude {
     pub use super::Instance;
     pub use crate::enumerator_storage::{EnumeratorStorage, VulkanLenType};
     pub use crate::safe_interface::type_conversions::*;
-    pub use krs_hlist::Get;
     pub use vk_safe_sys as vk;
     pub use vk_safe_sys::{GetCommand, VulkanExtension, VulkanVersion};
 }
