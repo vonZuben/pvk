@@ -15,6 +15,10 @@ extern "system" {
     #[link_name = "vkGetInstanceProcAddr"]
     pub fn GetInstanceProcAddr(instance: generated::Instance, p_name: *const std::ffi::c_char)
             -> Option<generated::PFN_vkVoidFunction>;
+
+    #[link_name = "vkGetDeviceProcAddr"]
+    pub fn GetDeviceProcAddr(instance: generated::Device, p_name: *const std::ffi::c_char)
+        -> Option<generated::PFN_vkVoidFunction>;
 }
 
 
