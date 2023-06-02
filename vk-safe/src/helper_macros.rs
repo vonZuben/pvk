@@ -133,8 +133,19 @@ macro_rules! pretty_version {
     };
 }
 
+macro_rules! array {
+    (
+        $name:ident, $array_ptr:ident, $array_len:ident, $ty:ty
+    ) => {
+        pub fn $name(&self) -> &[$ty] {
+            unsafe { std::slice::from_raw_parts(self.inner.$array_ptr, self.inner.$array_len as usize) }
+        }
+    };
+}
+
 macro_rules! verify_params {
     ( $name:ident( $( $param:ident : $trait:path ),* ) { $($code:tt)* } ) => {
+        #[allow(non_camel_case_types)]
         struct $name<$($param: $trait),*>( $( std::marker::PhantomData<$param> ),* );
 
         impl<$($param: $trait),*> $name<$($param),*> {
