@@ -105,7 +105,7 @@ impl<I: Iterator<Item = char>> Iterator for HtmlFilter<I> {
         if c == '<' {
             while let Some(c) = self.0.next() {
                 if c == '>' {
-                    return self.0.next();
+                    return self.next(); // this intentionally recursively call Self::next since we need to continue to check for '<'
                 }
             }
             panic!("error: HtmlFilter did not find end og html tag")
