@@ -52,6 +52,7 @@ impl ToTokens for TargetVuids<'_> {
         let target = self.target;
         let vuid_names = self.vuid_pairs.iter().map(|p| p.name().replace("-", "_").as_code());
         let descriptions = self.vuid_pairs.iter().map(|p| p.description());
+        let docs = descriptions.clone().map(|desc| DocFormatFilter::new(desc).into_iter().collect::<String>());
 
         krs_quote_with!(tokens <-
 
@@ -60,7 +61,7 @@ impl ToTokens for TargetVuids<'_> {
                 // output trait that should be implemented for vuid checks
                 pub trait Vuids {
                     {@*
-                        #[doc = {@descriptions}]
+                        #[doc = {@docs}]
                         const {@vuid_names}: ();
                     }
                 }
@@ -75,5 +76,78 @@ impl ToTokens for TargetVuids<'_> {
             }
 
         );
+    }
+}
+
+/// Need to ensure proper format in docs
+///
+/// for now, this just replaces [text] with [[text]()] to render properly and not be a broken link
+struct DocFormatFilter<'a>{
+    text: &'a str,
+    brackets: Brackets,
+}
+
+impl<'a> DocFormatFilter<'a> {
+    fn new(text: &'a str) -> Self {
+        Self { text, brackets: Brackets::No }
+    }
+}
+
+enum Brackets {
+    No,
+    Start,
+    In,
+    End,
+}
+
+impl<'a> Iterator for DocFormatFilter<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.text.len() == 0 {
+            None
+        }
+        else {
+            match self.brackets {
+                Brackets::No => {
+                    match self.text.find('[') {
+                        Some(until) => {
+                            self.brackets = Brackets::Start;
+                            let ret = &self.text[..until];
+                            self.text = &self.text[until..];
+                            Some(ret)
+                        }
+                        None => {
+                            let ret = self.text;
+                            self.text = &"";
+                            Some(ret)
+                        }
+                    }
+                }
+                Brackets::Start => {
+                    self.text = &self.text[1..]; // represent consuming '['
+                    self.brackets = Brackets::In;
+                    Some("[[")
+                }
+                Brackets::In => {
+                    match self.text.find(']') {
+                        Some(until) => {
+                            self.brackets = Brackets::End;
+                            let ret = &self.text[..until];
+                            self.text = &self.text[until..];
+                            Some(ret)
+                        }
+                        None => {
+                            panic!("error: DocFormatFilter can't find ']'")
+                        }
+                    }
+                }
+                Brackets::End => {
+                    self.text = &self.text[1..]; // represent consuming ']'
+                    self.brackets = Brackets::No;
+                    Some("]()]")
+                }
+            }
+        }
     }
 }
