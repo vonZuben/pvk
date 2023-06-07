@@ -1,5 +1,5 @@
 
-- [ ] change the raw_flags! macro in the generated bitmask_traits to flags_from_type!
+- [x] change the raw_flags! macro in the generated bitmask_traits to flags_from_type! (also const_enum! to enum_from_type!)
 
 - [ ] make better way to make enum of bitflags value from the respective type
 

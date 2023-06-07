@@ -423,11 +423,11 @@ impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfigur
 }
 
 verify_params!(MUST_NOT_USE_PROTECTED_BIT(Flags: vk::DeviceQueueCreateFlagsConst) {
-    let flags = vk::raw_flags!(Flags);
+    let flags = vk::flags_from_type!(Flags);
     assert!(!flags.contains(vk::device_queue_create_flag_bits::PROTECTED_BIT), "flags_for_non_protected should not include PROTECTED_BIT");
 });
 
 verify_params!(MUST_USE_PROTECTED_BIT(Flags: vk::DeviceQueueCreateFlagsConst) {
-    let flags = vk::raw_flags!(Flags);
+    let flags = vk::flags_from_type!(Flags);
     assert!(flags.contains(vk::device_queue_create_flag_bits::PROTECTED_BIT), "flags_for_protected must include PROTECTED_BIT");
 });
