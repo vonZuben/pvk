@@ -1,4 +1,5 @@
 // trace_macros!(true);
+#![recursion_limit = "256"]
 
 use vk_safe::entry::*;
 use vk_safe::instance::Config;
@@ -70,9 +71,29 @@ fn main() {
                 ).unwrap();
                 println!("{tst_image_format_properties:#?}");
                 println!("-------");
-                println!("{:#?}", pd.get_physical_device_queue_family_properties(Vec::new()));
+                let queue_family_properties = pd.get_physical_device_queue_family_properties(Vec::new());
+                println!("{:#?}", queue_family_properties);
                 println!("-------");
                 println!("{:#?}", pd.get_physical_device_memory_properties());
+
+                // just assume that 10 is the max number of queues we will see fo now
+                let standard_queue_priorities = unsafe { vk_safe::physical_device::QueuePriorities::new_unchecked([1.0;10]) };
+
+                let queue_family_configurations = queue_family_properties.configure_create_info(Vec::new(), |config| {
+                    let queue_count = config.family_properties.queue_count;
+                    config.push_config(&standard_queue_priorities.with_num_queues(queue_count as _), Some(krs_hlist::End)).expect("problem writing queue config");
+                });
+
+                println!("{:#?}", queue_family_configurations);
+
+                let device_config = vk_safe::device::Config::new(vk_safe_sys::VERSION_1_1, ());
+
+                let device_create_info = vk_safe::physical_device::DeviceCreateInfo::new(device_config, &queue_family_configurations);
+
+                let device = pd.create_device(&device_create_info).unwrap();
+
+                println!("-------");
+                println!("{device:#?}");
             });
         }
     });

@@ -14,6 +14,7 @@ pub mod handle;
 pub mod entry; // not finalized on if this should be pub
 pub mod instance;
 pub mod physical_device;
+pub mod device;
 
 pub mod bitflags;
 
