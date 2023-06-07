@@ -1,0 +1,28 @@
+
+- [ ] change the raw_flags! macro in the generated bitmask_traits to flags_from_type!
+
+- [ ] make better way to make enum of bitflags value from the respective type
+
+- [ ] change verify2 macro verify_vuids! ??
+
+- [ ] fix bitflags! macro to allow full path name rather than just ident
+
+- [ ] change EnumeratorStorage to ArrayStorage and query_len to allocate
+
+- [ ] EnumeratorStorage Result should be dyn Error??
+
+- [ ] QueueFamilies::configure_create_info should return Result??
+
+- [ ] ensure selected versions for instance/device are actually supported
+
+- [ ] make zero bitflags safe again, since we just do verification at use site if zero is not allowed
+
+- [ ] make proper ErrorTypes for Instance and Device creation
+
+- [ ] info structs obtained from handles such as PhysicalDevice should borrow the handle to ensure they are tied to the same scope as the handle
+
+- [ ] combine feature and extension commands in the Device and Instance configs (if an extension command is promoted, then the actual function pointer won't be in the extension commands anymore and the GetComments impl will not work)
+
+- [ ] handles like Device require child objects to be destroyed before they are destroyed. There is a borrow relationship for child objects, and the Drop impl calls appropriate Destroy method. However, objects can be forgotten and never destroyed. How bad is this really? can we ensure objects are Destroyed and not forgotten (maybe using the scope)?
+
+- [ ] fix so krs_hlist::Get or vk_safe_sys::GetCommand is not needed to be imported directly (since it is part of the bound it should be inherent)
