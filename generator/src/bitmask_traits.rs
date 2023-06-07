@@ -48,7 +48,7 @@ impl ToTokens for BitmaskTraits {
             #[derive(Clone, Copy)]
             pub struct RawFlags<R, F, T: BitList<R, F>>(R, std::marker::PhantomData<F>, std::marker::PhantomData<T>);
             #[macro_export]
-            macro_rules! flags_from_type {
+            macro_rules! raw_bitmask_from_type {
                 ( $ty:ident ) => {
                     $crate::RawFlags::<_, _, $ty>::new()
                 }

@@ -86,7 +86,7 @@ impl ToTokens for EnumTraits {
             }
 
             #[macro_export]
-            macro_rules! enum_from_type {
+            macro_rules! raw_enum_from_type {
                 ( $ty:ident ) => {
                     $crate::ConstVariant::<_, $ty>::new()
                 }
