@@ -363,6 +363,9 @@ impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfigur
         priorities: &QueuePriorities<A>,
         flags: Option<impl vk::DeviceQueueCreateFlagsConst>
     ) -> crate::enumerator_storage::InitResult {
+        if let Some(flags) = flags {
+            CHECK_FLAGS::verify(flags);
+        }
         assert!(priorities.len() <= self.family_properties.queue_count as usize);
         let info = DeviceQueueCreateInfo {
             inner: vk::DeviceQueueCreateInfo {
@@ -397,33 +400,44 @@ impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfigur
         assert!(self.family_properties.queue_flags.contains(bitmask!(vk::queue_flag_bits: PROTECTED_BIT).bitmask()));
         assert!(priorities_for_non_protected.len() + priorities_for_protected.len() <= self.family_properties.queue_count as usize);
 
-        let non_protected_info = DeviceQueueCreateInfo {
-            inner: vk::DeviceQueueCreateInfo {
-                s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                flags: flags_for_non_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
-                p_next: std::ptr::null(),
-                queue_family_index: self.family_index,
-                queue_count: priorities_for_non_protected.len() as u32, // the assert already confirms no overflow from conversion
-                p_queue_priorities:priorities_for_non_protected.as_ptr(),
-            },
-            _refs: PhantomData
-        };
-        self.to_write.push(non_protected_info)?;
+        if priorities_for_non_protected.len() > 0 {
+            let non_protected_info = DeviceQueueCreateInfo {
+                inner: vk::DeviceQueueCreateInfo {
+                    s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
+                    flags: flags_for_non_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
+                    p_next: std::ptr::null(),
+                    queue_family_index: self.family_index,
+                    queue_count: priorities_for_non_protected.len() as u32, // the assert already confirms no overflow from conversion
+                    p_queue_priorities:priorities_for_non_protected.as_ptr(),
+                },
+                _refs: PhantomData
+            };
+            self.to_write.push(non_protected_info)?;
+        }
 
-        let protected_info = DeviceQueueCreateInfo {
-            inner: vk::DeviceQueueCreateInfo {
-                s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                flags: flags_for_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
-                p_next: std::ptr::null(),
-                queue_family_index: self.family_index,
-                queue_count: priorities_for_protected.len() as u32, // the assert already confirms no overflow from conversion
-                p_queue_priorities:priorities_for_protected.as_ptr(),
-            },
-            _refs: PhantomData
-        };
-        self.to_write.push(protected_info)
+        if priorities_for_protected.len() > 0 {
+            let protected_info = DeviceQueueCreateInfo {
+                inner: vk::DeviceQueueCreateInfo {
+                    s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
+                    flags: flags_for_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
+                    p_next: std::ptr::null(),
+                    queue_family_index: self.family_index,
+                    queue_count: priorities_for_protected.len() as u32, // the assert already confirms no overflow from conversion
+                    p_queue_priorities:priorities_for_protected.as_ptr(),
+                },
+                _refs: PhantomData
+            };
+            self.to_write.push(protected_info)?;
+        }
+
+        Ok(())
     }
 }
+
+verify_params!(CHECK_FLAGS(Flags: vk::DeviceQueueCreateFlagsConst) {
+    let flags = vk::raw_bitmask_from_type!(Flags);
+    assert!(!flags.contains(vk::device_queue_create_flag_bits::PROTECTED_BIT), "must not push_config with PROTECTED_BIT. use push_config_with_protected instead");
+});
 
 verify_params!(MUST_NOT_USE_PROTECTED_BIT(Flags: vk::DeviceQueueCreateFlagsConst) {
     let flags = vk::raw_bitmask_from_type!(Flags);

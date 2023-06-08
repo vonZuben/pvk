@@ -81,7 +81,7 @@ fn main() {
 
                 let queue_family_configurations = queue_family_properties.configure_create_info(Vec::new(), |config| {
                     let queue_count = config.family_properties.queue_count;
-                    config.push_config(&standard_queue_priorities.with_num_queues(queue_count as _), Some(krs_hlist::End)).expect("problem writing queue config");
+                    config.push_config(&standard_queue_priorities.with_num_queues(queue_count as _), Some(vk_safe::bitmask!())).expect("problem writing queue config");
                 });
 
                 println!("{:#?}", queue_family_configurations);
