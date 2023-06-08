@@ -158,7 +158,7 @@ macro_rules! verify_params {
     };
 }
 
-macro_rules! verify_params2 {
+macro_rules! verify_vuids {
     ( $vis:vis $name:ident( $( $param:ident : $trait:path ),* ) { $($code:tt)* } ) => {
         $vis struct $name<$($param: $trait),*>( $( std::marker::PhantomData<$param> ),* );
 

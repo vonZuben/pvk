@@ -51,7 +51,7 @@ mod get_physical_device_image_format_properties_validation {
     use vk::image_tiling::*;
     use vk::image_type::*;
 
-    verify_params2!(
+    verify_vuids!(
         pub Validation(
             Tiling: vk::ImageTilingConst,
             Usage: vk::ImageUsageFlagsConst,

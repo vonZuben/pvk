@@ -5,7 +5,7 @@
 
 - [x] make better way to make bitmask value from the respective type
 
-- [ ] change verify2 macro verify_vuids! ??
+- [x] change verify2 macro verify_vuids! ??
 
 - [ ] fix bitflags! macro to allow full path name rather than just ident
 
