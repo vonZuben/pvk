@@ -72,11 +72,7 @@ impl krs_quote::ToTokens for Bitmask {
                     Self(L::FLAGS)
                 }
             }
-            pub trait {@trait_name} : BitList<{@ty}, {@name}> + Sized + Copy {
-                fn bitmask(self) -> {@name} {
-                    <{@name} as VkBitmaskType>::from_bit_type_list(self)
-                }
-            }
+            pub trait {@trait_name} : BitList<{@ty}, {@name}> + Sized + Copy {}
             impl<T> {@trait_name} for T where T: BitList<{@ty}, {@name}> + Sized + Copy {}
             vk_bitflags_wrapped!({@name}, {@ty});
         );

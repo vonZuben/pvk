@@ -31,8 +31,11 @@ impl ToTokens for BitmaskTraits {
             ///
             /// we need to implements this per raw type which rust can perform BitOr with in const eval
             /// Also, it should be implemented for a specific FlagType
-            pub unsafe trait BitList<RawType, FlagsType> {
+            pub unsafe trait BitList<RawType, FlagsType: VkBitmaskType<RawType = RawType>> : Sized {
                 const FLAGS: RawType;
+                fn bitmask(self) -> FlagsType {
+                    <FlagsType as VkBitmaskType>::from_bit_type_list(self)
+                }
             }
 
             /// This is always safe since it just marks the end of the list and does not contribute the the FlagsType value
@@ -46,7 +49,7 @@ impl ToTokens for BitmaskTraits {
 
             /// This type is to allow using convenient methods in const context for the known raw bitmask types
             #[derive(Clone, Copy)]
-            pub struct RawFlags<R, F, T: BitList<R, F>>(R, std::marker::PhantomData<F>, std::marker::PhantomData<T>);
+            pub struct RawFlags<R, F, T>(R, std::marker::PhantomData<F>, std::marker::PhantomData<T>);
             #[macro_export]
             macro_rules! raw_bitmask_from_type {
                 ( $ty:ident ) => {

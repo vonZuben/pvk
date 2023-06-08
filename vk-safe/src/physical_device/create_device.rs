@@ -5,6 +5,7 @@ use crate::instance::{InstanceConfig, Instance};
 use crate::device::{Device, DeviceConfig};
 
 use vk::VkEnumVariant;
+use vk::BitList;
 
 use crate::safe_interface::type_conversions::TransmuteArray;
 
@@ -393,7 +394,7 @@ impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfigur
         if let Some(flags_for_protected) = flags_for_protected {
             MUST_USE_PROTECTED_BIT::verify(flags_for_protected);
         }
-        assert!(self.family_properties.queue_flags.contains(vk::VkBitmaskType::from_bit_type_list(bitmask!(vk::queue_flag_bits: PROTECTED_BIT))));
+        assert!(self.family_properties.queue_flags.contains(bitmask!(vk::queue_flag_bits: PROTECTED_BIT).bitmask()));
         assert!(priorities_for_non_protected.len() + priorities_for_protected.len() <= self.family_properties.queue_count as usize);
 
         let non_protected_info = DeviceQueueCreateInfo {
