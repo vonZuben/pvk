@@ -1,7 +1,9 @@
 
 - [x] change the raw_flags! macro in the generated bitmask_traits to flags_from_type! (also const_enum! to enum_from_type!)
 
-- [ ] make better way to make enum of bitflags value from the respective type
+- [x] make better way to make enum value from the respective type
+
+- [ ] make better way to make bitmask value from the respective type
 
 - [ ] change verify2 macro verify_vuids! ??
 

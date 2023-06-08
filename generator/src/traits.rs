@@ -68,9 +68,12 @@ impl ToTokens for EnumTraits {
                 fn from_variant_type<V: VkEnumVariant<Enum=Self>>(_: V) -> Self;
             }
             /// All Vk Enums are C enums, which means they are i32
-            pub trait VkEnumVariant {
-                type Enum;
+            pub trait VkEnumVariant : Sized {
+                type Enum: VkEnum;
                 const VARIANT: i32;
+                fn as_enum(self) -> Self::Enum {
+                    Self::Enum::from_variant_type(self)
+                }
             }
 
             #[derive(Copy, Clone)]

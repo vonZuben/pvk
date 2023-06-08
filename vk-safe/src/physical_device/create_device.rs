@@ -4,6 +4,8 @@ use krs_hlist::Get;
 use crate::instance::{InstanceConfig, Instance};
 use crate::device::{Device, DeviceConfig};
 
+use vk::VkEnumVariant;
+
 use crate::safe_interface::type_conversions::TransmuteArray;
 
 use std::mem::MaybeUninit;
@@ -51,7 +53,7 @@ impl<'a, C: DeviceConfig> DeviceCreateInfo<'a, C> {
         validate_device_create_info::Validation::validate();
         Self {
             inner: vk::DeviceCreateInfo {
-                s_type: vk::VkEnum::from_variant_type(vk::structure_type::DEVICE_CREATE_INFO),
+                s_type: vk::structure_type::DEVICE_CREATE_INFO.as_enum(),
                 p_next: std::ptr::null(),
                 flags: unsafe { vk::DeviceCreateFlags::empty() }, // VUID_VkDeviceCreateInfo_flags_zerobitmask
                 queue_create_info_count: queue_create_info.len() as u32,
@@ -363,7 +365,7 @@ impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfigur
         assert!(priorities.len() <= self.family_properties.queue_count as usize);
         let info = DeviceQueueCreateInfo {
             inner: vk::DeviceQueueCreateInfo {
-                s_type: vk::VkEnum::from_variant_type(vk::structure_type::DEVICE_QUEUE_CREATE_INFO),
+                s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
                 flags: flags.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
                 p_next: std::ptr::null(),
                 queue_family_index: self.family_index,
@@ -396,7 +398,7 @@ impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfigur
 
         let non_protected_info = DeviceQueueCreateInfo {
             inner: vk::DeviceQueueCreateInfo {
-                s_type: vk::VkEnum::from_variant_type(vk::structure_type::DEVICE_QUEUE_CREATE_INFO),
+                s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
                 flags: flags_for_non_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
                 p_next: std::ptr::null(),
                 queue_family_index: self.family_index,
@@ -409,7 +411,7 @@ impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfigur
 
         let protected_info = DeviceQueueCreateInfo {
             inner: vk::DeviceQueueCreateInfo {
-                s_type: vk::VkEnum::from_variant_type(vk::structure_type::DEVICE_QUEUE_CREATE_INFO),
+                s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
                 flags: flags_for_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
                 p_next: std::ptr::null(),
                 queue_family_index: self.family_index,
