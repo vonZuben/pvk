@@ -41,7 +41,7 @@ fn main() {
     println!("-------");
     println!("{instance:?}");
 
-    instance.scope(|instance| {
+    instance.scoped_task(|instance| {
         let physical_devices = instance
         .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
         .unwrap();
@@ -51,7 +51,7 @@ fn main() {
 
         println!("-------");
         for pd in physical_devices.iter() {
-            pd.scope(|pd| {
+            pd.scoped_task(|pd| {
                 println!("{:#?}", pd.get_physical_device_properties());
                 println!("-------");
 
@@ -94,7 +94,7 @@ fn main() {
 
                 println!("-------");
                 println!("{device:#?}");
-            });
+            })();
         }
-    });
+    })();
 }

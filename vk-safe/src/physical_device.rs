@@ -1,4 +1,4 @@
-use crate::handle::Handle;
+use crate::scope::*;
 
 use vk_safe_sys as vk;
 
@@ -24,6 +24,8 @@ impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDe
         self.into_iter()
     }
 }
+
+pub type ScopedPhysicalDevice<'scope, C> = ScopedHandle<'scope, PhysicalDevice<'scope, C>>;
 
 pub struct PhysicalDevice<'i, C: InstanceConfig> {
     instance: &'i Instance<C>,
@@ -61,11 +63,11 @@ impl<C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> fmt::Debug
 impl<'i, C: InstanceConfig> Iterator
     for PhysicalDeviceIter<'i, '_, C>
 {
-    type Item = Handle<PhysicalDevice<'i, C>>;
+    type Item = ProtectedHandle<PhysicalDevice<'i, C>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|pd| {
-            Handle::new(PhysicalDevice::new(self.instance, pd))
+            ProtectedHandle::new(PhysicalDevice::new(self.instance, pd))
         })
     }
 }
@@ -73,7 +75,7 @@ impl<'i, C: InstanceConfig> Iterator
 impl<'s, 'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> IntoIterator
     for &'s PhysicalDevices<'i, C, S>
 {
-    type Item = Handle<PhysicalDevice<'i, C>>;
+    type Item = ProtectedHandle<PhysicalDevice<'i, C>>;
 
     type IntoIter =
         PhysicalDeviceIter<'i, 's, C>;

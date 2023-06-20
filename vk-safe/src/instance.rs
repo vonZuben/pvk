@@ -2,6 +2,8 @@ use crate::safe_interface::type_conversions::ToC;
 use krs_hlist::Get;
 use vk_safe_sys as vk;
 
+use crate::scope::ScopedHandle;
+
 use crate::pretty_version::VkVersion;
 
 use std::marker::PhantomData;
@@ -37,6 +39,8 @@ where
 
     type InstanceExtensions = E::InstanceCommands;
 }
+
+pub type ScopedInstance<'scope, C> = ScopedHandle<'scope, &'scope Instance<C>>;
 
 #[derive(Debug)]
 pub struct Instance<C: InstanceConfig> {
@@ -123,7 +127,7 @@ mod destroy_instance_validation {
 }
 
 mod command_impl_prelude {
-    pub use super::Instance;
+    pub use super::ScopedInstance;
     pub use crate::enumerator_storage::{EnumeratorStorage, VulkanLenType};
     pub use crate::safe_interface::type_conversions::*;
     pub use vk_safe_sys as vk;
@@ -133,7 +137,7 @@ mod command_impl_prelude {
 // This is how each safe command can be implemented on top of each raw command
 macro_rules! impl_safe_instance_interface {
     ( $interface:ident { $($code:tt)* }) => {
-        impl<C: InstanceConfig> Instance<C>
+        impl<'scope, C: InstanceConfig> ScopedInstance<'scope, C>
         where
             C::InstanceCommands: GetCommand<vk::$interface> {
             $($code)*

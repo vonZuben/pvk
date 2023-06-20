@@ -10,7 +10,7 @@ mod enumerator_storage;
 mod vk_str;
 
 pub mod safe_interface;
-pub mod handle;
+pub mod scope;
 pub mod entry; // not finalized on if this should be pub
 pub mod instance;
 pub mod physical_device;
