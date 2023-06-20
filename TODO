@@ -28,3 +28,5 @@
 - [ ] handles like Device require child objects to be destroyed before they are destroyed. There is a borrow relationship for child objects, and the Drop impl calls appropriate Destroy method. However, objects can be forgotten and never destroyed. How bad is this really? can we ensure objects are Destroyed and not forgotten (maybe using the scope)?
 
 - [ ] fix so krs_hlist::Get or vk_safe_sys::GetCommand is not needed to be imported directly (since it is part of the bound it should be inherent)
+
+- [ ] in safe method wrappers, separate the step of getting the fptr, and calling the fptr
