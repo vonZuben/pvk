@@ -40,7 +40,7 @@ where
     type InstanceExtensions = E::InstanceCommands;
 }
 
-pub type ScopedInstance<'scope, C> = ScopedHandle<'scope, &'scope Instance<C>>;
+pub type ScopedInstance<'scope, C> = ScopedHandle<'scope, Instance<C>>;
 
 #[derive(Debug)]
 pub struct Instance<C: InstanceConfig> {

@@ -10,11 +10,12 @@ use crate::instance::{Instance, InstanceConfig};
 pub struct PhysicalDevices<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> {
     instance: &'i Instance<C>,
     handles: S::InitStorage,
+    _instance_scope: ScopeId<'i>,
 }
 
 impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDevices<'i, C, S> {
     pub(crate) fn new(handles: S::InitStorage, instance: &'i Instance<C>) -> Self {
-        Self { instance, handles }
+        Self { instance, handles, _instance_scope: Default::default() }
     }
 
     pub fn iter<'s>(
@@ -25,16 +26,22 @@ impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDe
     }
 }
 
-pub type ScopedPhysicalDevice<'scope, C> = ScopedHandle<'scope, PhysicalDevice<'scope, C>>;
+/// A scoped PhysicalDevice
+///
+/// when you want to start using a PhysicalDevice, the PhysicalDevice defines a new scope
+/// the PhysicalDevice new scope is itself limited with respect to the associated Instance scope
+pub type ScopedPhysicalDevice<'pd, 'i, C> = ScopedHandle<'pd, &'pd PhysicalDevice<'i, C>>;
 
+/// A PhysicalDevice handle that is limited to the scope of the associated Instance
 pub struct PhysicalDevice<'i, C: InstanceConfig> {
     instance: &'i Instance<C>,
     handle: vk::PhysicalDevice,
+    _instance_scope: ScopeId<'i>,
 }
 
 impl<'i, C: InstanceConfig> PhysicalDevice<'i, C> {
     pub(crate) fn new(instance: &'i Instance<C>, handle: vk::PhysicalDevice) -> Self {
-        Self { instance, handle }
+        Self { instance, handle, _instance_scope: Default::default() }
     }
 }
 

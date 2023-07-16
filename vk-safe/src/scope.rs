@@ -43,13 +43,12 @@ impl<H> std::ops::Deref for ScopedHandle<'_, H> {
 ///
 /// O needs to be an input to the trait (rather than accessing from associate type Future::Output),
 /// since O should not be generic over the 'scope
-pub trait ScopedAsyncFn<'scope, H: 'scope, O> : FnOnce(ScopedHandle<'scope, &'scope H>) -> Self::Future {
+pub trait ScopedAsyncFn<'scope, H, O> : FnOnce(ScopedHandle<'scope, H>) -> Self::Future {
     type Future: Future<Output = O> + 'scope;
 }
 impl<'scope, H, A, F, O> ScopedAsyncFn<'scope, H, O> for A
 where
-    A: FnOnce(ScopedHandle<'scope, &'scope H>) -> F,
-    H: 'scope,
+    A: FnOnce(ScopedHandle<'scope, H>) -> F,
     F: Future<Output = O> + 'scope
 {
     type Future = F;
@@ -70,18 +69,24 @@ impl<H> ProtectedHandle<H> {
         Self { handle }
     }
 
-    pub fn scoped_task<'a, F, R>(&'a self, f: F) -> impl FnOnce() -> R + 'a
+    pub fn scoped_task<'a, F, R>(self, f: F) -> impl FnOnce() -> R + 'a
     where
-        for<'scope> F: FnOnce(ScopedHandle<'scope, &'scope H>) -> R + 'a,
+        for<'scope> F: FnOnce(ScopedHandle<'scope, H>) -> R + 'a,
+        H: 'a
     {
-        move || f(ScopedHandle::new_scope(&self.handle))
+        move || f(ScopedHandle::new_scope(self.handle))
     }
 
     ///
-    pub fn scoped_async_task<'a, A, R>(&'a self, a: A) -> impl Future<Output = R> + 'a
+    pub fn scoped_async_task<'a, A, R>(self, a: A) -> impl Future<Output = R> + 'a
     where
         for<'scope> A: ScopedAsyncFn<'scope, H, R> + 'a,
+        H: 'a
     {
-        async move { a(ScopedHandle::new_scope(&self.handle)).await }
+        async move { a(ScopedHandle::new_scope(self.handle)).await }
+    }
+
+    pub fn as_ref(&self) -> ProtectedHandle<&H> {
+        ProtectedHandle { handle: &self.handle }
     }
 }
