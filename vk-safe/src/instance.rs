@@ -2,7 +2,7 @@ use crate::safe_interface::type_conversions::ToC;
 use krs_hlist::Get;
 use vk_safe_sys as vk;
 
-use crate::scope::ScopedHandle;
+use crate::scope::Scope;
 
 use crate::pretty_version::VkVersion;
 
@@ -40,7 +40,7 @@ where
     type InstanceExtensions = E::InstanceCommands;
 }
 
-pub type ScopedInstance<'scope, C> = ScopedHandle<'scope, Instance<C>>;
+pub type ScopedInstance<'scope, C> = Scope<'scope, Instance<C>>;
 
 #[derive(Debug)]
 pub struct Instance<C: InstanceConfig> {

@@ -30,7 +30,7 @@ impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDe
 ///
 /// when you want to start using a PhysicalDevice, the PhysicalDevice defines a new scope
 /// the PhysicalDevice new scope is itself limited with respect to the associated Instance scope
-pub type ScopedPhysicalDevice<'pd, 'i, C> = ScopedHandle<'pd, &'pd PhysicalDevice<'i, C>>;
+pub type ScopedPhysicalDevice<'pd, 'i, C> = Scope<'pd, &'pd PhysicalDevice<'i, C>>;
 
 /// A PhysicalDevice handle that is limited to the scope of the associated Instance
 pub struct PhysicalDevice<'i, C: InstanceConfig> {
@@ -70,11 +70,11 @@ impl<C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> fmt::Debug
 impl<'i, C: InstanceConfig> Iterator
     for PhysicalDeviceIter<'i, '_, C>
 {
-    type Item = ProtectedHandle<PhysicalDevice<'i, C>>;
+    type Item = PhysicalDevice<'i, C>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next().map(|pd| {
-            ProtectedHandle::new(PhysicalDevice::new(self.instance, pd))
+            PhysicalDevice::new(self.instance, pd)
         })
     }
 }
@@ -82,7 +82,7 @@ impl<'i, C: InstanceConfig> Iterator
 impl<'s, 'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> IntoIterator
     for &'s PhysicalDevices<'i, C, S>
 {
-    type Item = ProtectedHandle<PhysicalDevice<'i, C>>;
+    type Item = PhysicalDevice<'i, C>;
 
     type IntoIter =
         PhysicalDeviceIter<'i, 's, C>;

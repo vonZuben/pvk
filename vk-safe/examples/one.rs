@@ -4,6 +4,7 @@
 use vk_safe::entry::*;
 use vk_safe::instance::Config;
 use vk_safe::instance::*;
+use vk_safe::scope::{scope};
 
 use vk_safe_sys as vk;
 use vk_safe::vk_str;
@@ -41,7 +42,7 @@ fn main() {
     println!("-------");
     println!("{instance:?}");
 
-    instance.scoped_task(|instance| {
+    scope(instance, |instance| {
         let physical_devices = instance
         .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
         .unwrap();
@@ -51,7 +52,7 @@ fn main() {
 
         println!("-------");
         for pd in physical_devices.iter() {
-            pd.scoped_task(|pd| {
+            scope(pd, |pd| {
                 println!("{:#?}", pd.get_physical_device_properties());
                 println!("-------");
 

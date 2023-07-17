@@ -14,24 +14,24 @@ pub struct ScopeId<'id>(PhantomData<*mut &'id ()>);
 ///
 /// types which are only safe within a scope implement their methods through this wrapper
 /// (e.g. impl Scope<'id, Instance> {fn enumerate_physical_devices()})
-pub struct ScopedHandle<'scope, H>{
+pub struct Scope<'scope, H>{
     handle: H,
     _id: ScopeId<'scope>,
 }
 
-impl<H: std::fmt::Debug> std::fmt::Debug for ScopedHandle<'_, H> {
+impl<H: std::fmt::Debug> std::fmt::Debug for Scope<'_, H> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.handle.fmt(f)
     }
 }
 
-impl<'id, H> ScopedHandle<'id, H> {
+impl<'id, H> Scope<'id, H> {
     pub(crate) fn new_scope(handle: H) -> Self {
         Self { handle, _id: Default::default() }
     }
 }
 
-impl<H> std::ops::Deref for ScopedHandle<'_, H> {
+impl<H> std::ops::Deref for Scope<'_, H> {
     type Target = H;
     fn deref(&self) -> &Self::Target {
         &self.handle
@@ -41,52 +41,42 @@ impl<H> std::ops::Deref for ScopedHandle<'_, H> {
 /// Represents an async fn which produces a Future that is restricted to 'scope
 /// but can produce an output O that is not limited to 'scope
 ///
-/// O needs to be an input to the trait (rather than accessing from associate type Future::Output),
-/// since O should not be generic over the 'scope
-pub trait ScopedAsyncFn<'scope, H, O> : FnOnce(ScopedHandle<'scope, H>) -> Self::Future {
+/// #Note
+/// The main purpose of this is to represent for<'a> FnOnce(I) -> O where O: 'a
+/// it is not possible to write where O: 'a in this way. It is also not possible to
+/// restrict the output to 'a otherwise because we cannot name
+/// the type of O which is an anonymous type implementing Future
+pub trait ScopedAsyncFn<'scope, H, O> : FnOnce(Scope<'scope, H>) -> Self::Future {
     type Future: Future<Output = O> + 'scope;
 }
 impl<'scope, H, A, F, O> ScopedAsyncFn<'scope, H, O> for A
 where
-    A: FnOnce(ScopedHandle<'scope, H>) -> F,
+    A: FnOnce(Scope<'scope, H>) -> F,
     F: Future<Output = O> + 'scope
 {
     type Future = F;
 }
 
-/// Represent an owned handle (e.g. vk::Instance) with restricted capability
-///
-/// Most (if not all) functionality of handles is only safe when used within a limited scope
-/// This type provides a way to create such safe scopes where the real functionality of the handles
-/// can be used
-#[derive(Debug)]
-pub struct ProtectedHandle<H> {
-    handle: H,
+/// Create a task scope for a give T, by passing a scoped T to a given function or closure
+pub fn scope<'a, F, R, T>(this: T, f: F) -> impl FnOnce() -> R + 'a
+where
+    for<'scope> F: FnOnce(Scope<'scope, T>) -> R + 'a,
+    T: 'a
+{
+    move || f(Scope::new_scope(this))
 }
 
-impl<H> ProtectedHandle<H> {
-    pub(crate) fn new(handle: H) -> Self {
-        Self { handle }
-    }
-
-    pub fn scoped_task<'a, F, R>(self, f: F) -> impl FnOnce() -> R + 'a
-    where
-        for<'scope> F: FnOnce(ScopedHandle<'scope, H>) -> R + 'a,
-        H: 'a
-    {
-        move || f(ScopedHandle::new_scope(self.handle))
-    }
-
-    ///
-    pub fn scoped_async_task<'a, A, R>(self, a: A) -> impl Future<Output = R> + 'a
-    where
-        for<'scope> A: ScopedAsyncFn<'scope, H, R> + 'a,
-        H: 'a
-    {
-        async move { a(ScopedHandle::new_scope(self.handle)).await }
-    }
-
-    pub fn as_ref(&self) -> ProtectedHandle<&H> {
-        ProtectedHandle { handle: &self.handle }
-    }
+/// Create an async task scope for a given T, by passing a scoped T to a given async function or closure
+///
+/// #Note
+/// this is currently limited by rust compiler because of lifetime issues with closures
+/// 1) Higher ranked trait bound (used for scope lifetime) implies closure needs to live for statice
+/// 2) I can change the trait bounds to avoid the static issue, but then the compiler appears to have
+///     a hard time determining appropriate lifetime bounds for the Future returned by the closure.
+pub fn async_scope<'a, A, R, T>(this: T, a: A) -> impl Future<Output = R> + 'a
+where
+    for<'scope> A: ScopedAsyncFn<'scope, T, R> + 'a,
+    T: 'a
+{
+    async move { a(Scope::new_scope(this)).await }
 }
