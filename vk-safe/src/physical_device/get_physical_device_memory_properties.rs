@@ -19,7 +19,7 @@ where
         validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance.feature_commands.get().get_fptr()(
+            self.instance.commands.get().get_fptr()(
                 self.handle,
                 properties.as_mut_ptr()
             );

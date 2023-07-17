@@ -19,7 +19,7 @@ EnumeratePhysicalDevices {
         mut storage: S
     ) -> Result<PhysicalDevices<'a, C, S>, vk::Result> {
         validate(Validation);
-        let handles = enumerator_code2!(self.handle, self.feature_commands; () -> storage);
+        let handles = enumerator_code2!(self.handle, self.commands; () -> storage);
         Ok(PhysicalDevices::new(handles, self))
     }
 }}

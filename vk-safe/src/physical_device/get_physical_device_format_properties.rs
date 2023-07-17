@@ -16,7 +16,7 @@ impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::Get
         validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance.feature_commands.get().get_fptr()(self.handle, format.variant(), properties.as_mut_ptr());
+            self.instance.commands.get().get_fptr()(self.handle, format.variant(), properties.as_mut_ptr());
             FormatProperties { inner: properties.assume_init() }
         }
     }

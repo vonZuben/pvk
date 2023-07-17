@@ -1,15 +1,15 @@
-macro_rules! result_getter_code {
-    ( $fn_name:ident $(<$generic:ident>)? ( $($param:ident : $param_t:ident $(<$($gp:tt)*>)? ),* ) -> $getting:ty ) => {
-        fn $fn_name(&self, $($param : $param_t ,)*) -> Result<$getting> {
-            let mut get = MaybeUninit::uninit();
-            unsafe {
-                let res = self.commands.get()($($param.to_c(),)* None.to_c(), get.as_mut_ptr());
-                check_raw_err!(res);
-                Ok(get.assume_init())
-            }
-        }
-    };
-}
+// macro_rules! result_getter_code {
+//     ( $fn_name:ident $(<$generic:ident>)? ( $($param:ident : $param_t:ident $(<$($gp:tt)*>)? ),* ) -> $getting:ty ) => {
+//         fn $fn_name(&self, $($param : $param_t ,)*) -> Result<$getting> {
+//             let mut get = MaybeUninit::uninit();
+//             unsafe {
+//                 let res = self.commands.get()($($param.to_c(),)* None.to_c(), get.as_mut_ptr());
+//                 check_raw_err!(res);
+//                 Ok(get.assume_init())
+//             }
+//         }
+//     };
+// }
 
 // enumerators are all very similar, so why repeat ourselves
 macro_rules! enumerator_code {
@@ -75,7 +75,7 @@ macro_rules! enumerator_code_non_fail {
             }
             Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
         };
-        $storage.query_len(query_len);
+        let _ = $storage.query_len(query_len);
         let uninit_slice = $storage.uninit_slice();
         let mut len = crate::enumerator_storage::VulkanLenType::from_usize(uninit_slice.len());
         unsafe {

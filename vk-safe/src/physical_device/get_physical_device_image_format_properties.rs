@@ -25,7 +25,7 @@ where
         get_physical_device_image_format_properties_validation::Validation::verify(image_tiling, usage_flags, create_flags, image_type, format);
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            let res = self.instance.feature_commands.get().get_fptr()(
+            let res = self.instance.commands.get().get_fptr()(
                 self.handle,
                 format.variant(),
                 image_type.variant(),
@@ -61,7 +61,7 @@ mod get_physical_device_image_format_properties_validation {
         ) {
             const VUID_vkGetPhysicalDeviceImageFormatProperties_flags_parameter: () = {
                 let image_tiling = vk::raw_enum_from_type!(Tiling);
-                let usage_flags = vk::raw_bitmask_from_type!(Usage);
+                // let usage_flags = vk::raw_bitmask_from_type!(Usage);
                 let create_flags = vk::raw_bitmask_from_type!(Create);
                 let image_ty = vk::raw_enum_from_type!(Type);
 
@@ -89,10 +89,10 @@ mod get_physical_device_image_format_properties_validation {
                 }
             };
             const VUID_vkGetPhysicalDeviceImageFormatProperties_format_parameter: () = {
-                let image_tiling = vk::raw_enum_from_type!(Tiling);
-                let usage_flags = vk::raw_bitmask_from_type!(Usage);
+                // let image_tiling = vk::raw_enum_from_type!(Tiling);
+                // let usage_flags = vk::raw_bitmask_from_type!(Usage);
                 let create_flags = vk::raw_bitmask_from_type!(Create);
-                let image_ty = vk::raw_enum_from_type!(Type);
+                // let image_ty = vk::raw_enum_from_type!(Type);
 
                 if !Format::MULTI_PLANAR && !create_flags.contains(ALIAS_BIT) {
                     assert!(!create_flags.contains(DISJOINT_BIT), "VUID-VkImageCreateInfo-format-01577")
@@ -114,17 +114,17 @@ mod get_physical_device_image_format_properties_validation {
             };
             const VUID_vkGetPhysicalDeviceImageFormatProperties_tiling_parameter: () = {
                 let image_tiling = vk::raw_enum_from_type!(Tiling);
-                let usage_flags = vk::raw_bitmask_from_type!(Usage);
+                // let usage_flags = vk::raw_bitmask_from_type!(Usage);
                 let create_flags = vk::raw_bitmask_from_type!(Create);
-                let image_ty = vk::raw_enum_from_type!(Type);
+                // let image_ty = vk::raw_enum_from_type!(Type);
 
                 if image_tiling.is(LINEAR) {
                     assert!(!create_flags.contains(SPARSE_RESIDENCY_BIT), "VUID-VkImageCreateInfo-tiling-04121")
                 }
             };
             const VUID_vkGetPhysicalDeviceImageFormatProperties_type_parameter: () = {
-                let image_tiling = vk::raw_enum_from_type!(Tiling);
-                let usage_flags = vk::raw_bitmask_from_type!(Usage);
+                // let image_tiling = vk::raw_enum_from_type!(Tiling);
+                // let usage_flags = vk::raw_bitmask_from_type!(Usage);
                 let create_flags = vk::raw_bitmask_from_type!(Create);
                 let image_ty = vk::raw_enum_from_type!(Type);
 

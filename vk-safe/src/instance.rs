@@ -45,8 +45,7 @@ pub type ScopedInstance<'scope, C> = Scope<'scope, Instance<C>>;
 #[derive(Debug)]
 pub struct Instance<C: InstanceConfig> {
     handle: vk::Instance,
-    pub(crate) feature_commands: C::InstanceCommands,
-    pub(crate) extension_commands: C::InstanceExtensions,
+    pub(crate) commands: C::InstanceCommands,
 }
 
 impl<C: InstanceConfig> Instance<C> {
@@ -54,8 +53,7 @@ impl<C: InstanceConfig> Instance<C> {
         let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
-            feature_commands: C::InstanceCommands::load(loader)?,
-            extension_commands: C::InstanceExtensions::load(loader)?,
+            commands: C::InstanceCommands::load(loader)?,
         })
     }
 }
@@ -66,7 +64,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInsta
 impl<C: InstanceConfig> Drop for Instance<C> {
     fn drop(&mut self) {
         destroy_instance_validation::Validation::validate();
-        unsafe { self.feature_commands.get().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.commands.get().get_fptr()(self.handle, None.to_c()) }
     }
 }
 

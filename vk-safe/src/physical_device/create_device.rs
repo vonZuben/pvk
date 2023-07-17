@@ -23,7 +23,7 @@ impl<'instance, IC: InstanceConfig> PhysicalDevice<'instance, IC> where IC::Inst
     pub fn create_device<DC: DeviceConfig>(&self, create_info: &DeviceCreateInfo<'_, DC>) -> Result<Device<'instance, Instance<IC>, DC>, TempError> {
         let mut device = MaybeUninit::uninit();
         unsafe {
-            let res = self.instance.feature_commands.get().get_fptr()(
+            let res = self.instance.commands.get().get_fptr()(
                 self.handle,
                 &create_info.inner,
                 std::ptr::null(),

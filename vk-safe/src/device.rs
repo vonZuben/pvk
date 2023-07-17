@@ -41,8 +41,7 @@ where
 #[derive(Debug)]
 pub struct Device<'instance, I, C: DeviceConfig> {
     handle: vk::Device,
-    pub(crate) feature_commands: C::DeviceCommands,
-    pub(crate) extension_commands: C::DeviceExtensions,
+    pub(crate) commands: C::DeviceCommands,
     _instance: std::marker::PhantomData<&'instance I>,
 }
 
@@ -54,8 +53,7 @@ impl<'instance, I, C: DeviceConfig> Device<'instance, I, C> {
         let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
-            feature_commands: C::DeviceCommands::load(loader)?,
-            extension_commands: C::DeviceExtensions::load(loader)?,
+            commands: C::DeviceCommands::load(loader)?,
             _instance: PhantomData,
         })
     }
@@ -67,7 +65,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyDevic
 impl<'instance, I, C: DeviceConfig> Drop for Device<'instance, I, C> {
     fn drop(&mut self) {
         validate(Validation);
-        unsafe { self.feature_commands.get().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.commands.get().get_fptr()(self.handle, None.to_c()) }
     }
 }
 

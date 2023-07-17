@@ -15,7 +15,7 @@ where
     C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceQueueFamilyProperties>,
 {
     pub fn get_physical_device_queue_family_properties<S: EnumeratorStorage<QueueFamilyProperties>>(&self, mut storage: S) -> QueueFamilies<S> {
-        let families = enumerator_code_non_fail!(self.handle, self.instance.feature_commands; () -> storage);
+        let families = enumerator_code_non_fail!(self.handle, self.instance.commands; () -> storage);
         QueueFamilies { families }
     }
 }

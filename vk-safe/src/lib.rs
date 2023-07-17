@@ -16,7 +16,5 @@ pub mod instance;
 pub mod physical_device;
 pub mod device;
 
-pub mod bitflags;
-
 pub use pretty_version::VkVersion;
 pub use vk_str::VkStr;
