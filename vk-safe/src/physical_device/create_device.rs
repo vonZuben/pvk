@@ -19,7 +19,7 @@ pub struct TempError;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<'instance, IC: InstanceConfig> PhysicalDevice<'instance, IC> where IC::InstanceCommands: vk::GetCommand<vk::CreateDevice> {
+impl<'instance, IC: InstanceConfig> PhysicalDevice<'instance, IC> where IC::Commands: vk::GetCommand<vk::CreateDevice> {
     pub fn create_device<DC: DeviceConfig>(&self, create_info: &DeviceCreateInfo<'_, DC>) -> Result<Device<'instance, Instance<IC>, DC>, TempError> {
         let mut device = MaybeUninit::uninit();
         unsafe {

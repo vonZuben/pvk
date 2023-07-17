@@ -12,7 +12,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 */
 impl<C: InstanceConfig> PhysicalDevice<'_, C>
 where
-    C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceQueueFamilyProperties>,
+    C::Commands: vk::GetCommand<vk::GetPhysicalDeviceQueueFamilyProperties>,
 {
     pub fn get_physical_device_queue_family_properties<S: EnumeratorStorage<QueueFamilyProperties>>(&self, mut storage: S) -> QueueFamilies<S> {
         let families = enumerator_code_non_fail!(self.handle, self.instance.commands; () -> storage);

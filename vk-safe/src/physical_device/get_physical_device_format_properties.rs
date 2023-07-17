@@ -11,7 +11,7 @@ use vk_safe_sys::validation::GetPhysicalDeviceFormatProperties::*;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html
 */
-impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceFormatProperties> {
+impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::Commands: vk::GetCommand<vk::GetPhysicalDeviceFormatProperties> {
     pub fn get_physical_device_format_properties(&self, format: impl vk::FormatConst) -> FormatProperties {
         validate(Validation);
         let mut properties = MaybeUninit::uninit();

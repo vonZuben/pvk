@@ -13,7 +13,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 */
 impl<C: InstanceConfig> PhysicalDevice<'_, C>
 where
-    C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceProperties>,
+    C::Commands: vk::GetCommand<vk::GetPhysicalDeviceProperties>,
 {
     pub fn get_physical_device_properties(&self) -> PhysicalDeviceProperties {
         validate(Validation);

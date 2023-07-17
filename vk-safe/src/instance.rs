@@ -12,8 +12,7 @@ use vk::commands::{CommandLoadError, LoadCommands};
 
 pub trait InstanceConfig {
     const VERSION: VkVersion;
-    type InstanceCommands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>;
-    type InstanceExtensions : vk::commands::LoadCommands;
+    type Commands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>;
 }
 
 #[derive(Debug)]
@@ -35,17 +34,19 @@ where
 {
     const VERSION: VkVersion = VkVersion::new(V::VersionTriple.0, V::VersionTriple.1, V::VersionTriple.2);
 
-    type InstanceCommands = V::InstanceCommands;
-
-    type InstanceExtensions = E::InstanceCommands;
+    type Commands = V::InstanceCommands;
 }
 
 pub type ScopedInstance<'scope, C> = Scope<'scope, Instance<C>>;
 
+// pub trait ScopedInstance<'scope, C: InstanceConfig> {
+//     type Commands: C::
+// }
+
 #[derive(Debug)]
 pub struct Instance<C: InstanceConfig> {
     handle: vk::Instance,
-    pub(crate) commands: C::InstanceCommands,
+    pub(crate) commands: C::Commands,
 }
 
 impl<C: InstanceConfig> Instance<C> {
@@ -53,7 +54,7 @@ impl<C: InstanceConfig> Instance<C> {
         let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
-            commands: C::InstanceCommands::load(loader)?,
+            commands: C::Commands::load(loader)?,
         })
     }
 }
@@ -137,7 +138,7 @@ macro_rules! impl_safe_instance_interface {
     ( $interface:ident { $($code:tt)* }) => {
         impl<'scope, C: InstanceConfig> ScopedInstance<'scope, C>
         where
-            C::InstanceCommands: GetCommand<vk::$interface> {
+            C::Commands: GetCommand<vk::$interface> {
             $($code)*
         }
     };

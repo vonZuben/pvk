@@ -11,7 +11,7 @@ use vk_safe_sys::validation::GetPhysicalDeviceFeatures::*;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html
 */
-impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceFeatures> {
+impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::Commands: vk::GetCommand<vk::GetPhysicalDeviceFeatures> {
     pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures {
         validate(Validation);
         let mut features = MaybeUninit::uninit();

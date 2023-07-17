@@ -11,7 +11,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 */
 impl<C: InstanceConfig> PhysicalDevice<'_, C>
 where
-    C::InstanceCommands: vk::GetCommand<vk::GetPhysicalDeviceImageFormatProperties>,
+    C::Commands: vk::GetCommand<vk::GetPhysicalDeviceImageFormatProperties>,
 {
     #[track_caller]
     pub fn get_physical_device_image_format_properties(
