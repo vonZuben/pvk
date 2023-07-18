@@ -29,7 +29,7 @@ impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDe
 ///
 /// when you want to start using a PhysicalDevice, the PhysicalDevice defines a new scope
 /// the PhysicalDevice new scope is itself limited with respect to the associated Instance scope
-pub type ScopedPhysicalDevice<'pd, 'i, C> = Scope<'pd, &'pd PhysicalDevice<'i, C>>;
+pub type ScopedPhysicalDevice<'pd, 'i, C> = Scope<'pd, PhysicalDevice<'i, C>>;
 
 /// A PhysicalDevice handle that is limited to the scope of the associated Instance
 pub struct PhysicalDevice<'i, C: InstanceConfig> {

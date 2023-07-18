@@ -9,7 +9,7 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
-impl<C: InstanceConfig> PhysicalDevice<'_, C>
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
 where
     C::Commands: vk::GetCommand<vk::GetPhysicalDeviceImageFormatProperties>,
 {
@@ -21,7 +21,7 @@ where
         image_tiling: impl vk::ImageTilingConst,
         usage_flags: impl vk::ImageUsageFlagsConst,
         create_flags: impl vk::ImageCreateFlagsConst,//vk::ImageCreateFlags,
-    ) -> Result<ImageFormatProperties, vk::Result> {
+    ) -> Result<ImageFormatProperties<'scope>, vk::Result> {
         get_physical_device_image_format_properties_validation::Validation::verify(image_tiling, usage_flags, create_flags, image_type, format);
         let mut properties = MaybeUninit::uninit();
         unsafe {
@@ -35,9 +35,7 @@ where
                 properties.as_mut_ptr(),
             );
             check_raw_err!(res);
-            Ok(ImageFormatProperties {
-                inner: properties.assume_init(),
-            })
+            Ok(ImageFormatProperties::new(properties.assume_init()))
         }
     }
 }
@@ -201,9 +199,9 @@ mod get_physical_device_image_format_properties_validation {
     );
 }
 
-simple_struct_wrapper!(ImageFormatProperties);
+simple_struct_wrapper_scoped!(ImageFormatProperties);
 
-impl fmt::Debug for ImageFormatProperties {
+impl fmt::Debug for ImageFormatProperties<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }

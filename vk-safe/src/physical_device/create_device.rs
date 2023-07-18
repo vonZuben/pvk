@@ -337,19 +337,19 @@ impl<A: AsRef<[f32]>> QueuePriorities<A> {
 /// Builder for [DeviceQueueCreateInfo]
 /// initially created with sane defaults
 /// user must provide their own p_queue_priorities
-pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage> {
+pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope> {
     family_index: u32,
     to_write: &'initializer mut crate::enumerator_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
-    pub family_properties: &'properties QueueFamilyProperties,
+    pub family_properties: &'properties QueueFamilyProperties<'scope>,
 }
 
-impl<'params, 'properties, 'initializer, 'storage> DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage> {
+impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope> {
     /// internal only method to be called from [QueueFamilies::create_info_builder_iter]
     /// should pass the current queue_family_index, and set queue_count to max possible
     pub(crate) fn new(
         family_index: u32,
         to_write: &'initializer mut crate::enumerator_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
-        family_properties: &'properties QueueFamilyProperties) -> Self
+        family_properties: &'properties QueueFamilyProperties<'scope>) -> Self
     {
         Self {
             family_index,

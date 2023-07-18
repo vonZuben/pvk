@@ -11,20 +11,20 @@ use vk_safe_sys::validation::GetPhysicalDeviceFormatProperties::*;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html
 */
-impl<C: InstanceConfig> PhysicalDevice<'_, C> where C::Commands: vk::GetCommand<vk::GetPhysicalDeviceFormatProperties> {
-    pub fn get_physical_device_format_properties(&self, format: impl vk::FormatConst) -> FormatProperties {
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> where C::Commands: vk::GetCommand<vk::GetPhysicalDeviceFormatProperties> {
+    pub fn get_physical_device_format_properties(&self, format: impl vk::FormatConst) -> FormatProperties<'scope> {
         validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
             self.instance.commands.get().get_fptr()(self.handle, format.variant(), properties.as_mut_ptr());
-            FormatProperties { inner: properties.assume_init() }
+            FormatProperties::new(properties.assume_init())
         }
     }
 }
 
-simple_struct_wrapper!(FormatProperties);
+simple_struct_wrapper_scoped!(FormatProperties);
 
-impl fmt::Debug for FormatProperties {
+impl fmt::Debug for FormatProperties<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }

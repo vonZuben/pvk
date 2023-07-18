@@ -11,11 +11,11 @@ use vk_safe_sys::validation::GetPhysicalDeviceMemoryProperties::*;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
-impl<C: InstanceConfig> PhysicalDevice<'_, C>
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
 where
     C::Commands: vk::GetCommand<vk::GetPhysicalDeviceMemoryProperties>,
 {
-    pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties {
+    pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<'scope> {
         validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
@@ -23,7 +23,7 @@ where
                 self.handle,
                 properties.as_mut_ptr()
             );
-            PhysicalDeviceMemoryProperties { inner: properties.assume_init() }
+            PhysicalDeviceMemoryProperties::new(properties.assume_init())
         }
     }
 }
@@ -47,22 +47,28 @@ check_vuid_defs!(
         pub const VUID_vkGetPhysicalDeviceMemoryProperties_pMemoryProperties_parameter : & 'static [ u8 ] = "pMemoryProperties must be a valid pointer to a VkPhysicalDeviceMemoryProperties structure" . as_bytes ( ) ;
 );
 
-pub struct PhysicalDeviceMemoryProperties {
+pub struct PhysicalDeviceMemoryProperties<'scope> {
     inner: vk::PhysicalDeviceMemoryProperties,
+    _scope: ScopeId<'scope>,
 }
 
-impl PhysicalDeviceMemoryProperties {
+impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
+    fn new(inner: vk::PhysicalDeviceMemoryProperties) -> Self {
+        Self { inner, _scope: Default::default() }
+    }
+    // TODO, I think the MemoryType should als be scoped
     pub fn memory_types(&self) -> &[vk::MemoryType] {
         assert!(self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _, "error: vulkan implementation reporting invalid memory_type_count");
         &self.inner.memory_types[..self.inner.memory_type_count as _]
     }
+    // TODO, I think the MemoryHeap should als be scoped
     pub fn memory_heaps(&self) -> &[vk::MemoryHeap] {
         assert!(self.inner.memory_heap_count < vk::MAX_MEMORY_HEAPS as _, "error: vulkan implementation reporting invalid memory_heap_count");
         &self.inner.memory_heaps[..self.inner.memory_heap_count as _]
     }
 }
 
-impl fmt::Debug for PhysicalDeviceMemoryProperties {
+impl fmt::Debug for PhysicalDeviceMemoryProperties<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PhysicalDeviceMemoryProperties")
             .field("memory_types", &self.memory_types())

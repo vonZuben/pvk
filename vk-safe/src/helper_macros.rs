@@ -110,6 +110,36 @@ pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
     s.iter().take_while(|&&c| c != 0).count()
 }
 
+// Use this to create wrappers around simple structs that are scoped
+macro_rules! simple_struct_wrapper_scoped {
+    (
+        $name:ident
+    ) => {
+        #[repr(transparent)]
+        pub struct $name<'scope> {
+            inner: vk_safe_sys::$name,
+            _scope: crate::scope::ScopeId<'scope>,
+        }
+
+        impl<'scope> $name<'scope> {
+            #[allow(unused)]
+            pub(crate) fn new(inner: vk_safe_sys::$name) -> Self {
+                Self {
+                    inner,
+                    _scope: Default::default(),
+                }
+            }
+        }
+
+        impl std::ops::Deref for $name<'_> {
+            type Target = vk_safe_sys::$name;
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
+    };
+}
+
 macro_rules! get_str {
     (
         $name:ident

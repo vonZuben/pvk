@@ -11,11 +11,11 @@ use vk_safe_sys::validation::GetPhysicalDeviceProperties::*;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
-impl<C: InstanceConfig> PhysicalDevice<'_, C>
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
 where
     C::Commands: vk::GetCommand<vk::GetPhysicalDeviceProperties>,
 {
-    pub fn get_physical_device_properties(&self) -> PhysicalDeviceProperties {
+    pub fn get_physical_device_properties(&self) -> PhysicalDeviceProperties<'scope> {
         validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
@@ -23,7 +23,7 @@ where
                 self.handle,
                 properties.as_mut_ptr()
             );
-            PhysicalDeviceProperties { inner:  properties.assume_init() }
+            PhysicalDeviceProperties::new(properties.assume_init())
         }
     }
 }
@@ -49,14 +49,14 @@ check_vuid_defs!(
                 .as_bytes();
 );
 
-simple_struct_wrapper!(PhysicalDeviceProperties);
+simple_struct_wrapper_scoped!(PhysicalDeviceProperties);
 
-impl PhysicalDeviceProperties {
+impl PhysicalDeviceProperties<'_> {
     pretty_version!(api_version);
     get_str!(device_name);
 }
 
-impl fmt::Debug for PhysicalDeviceProperties {
+impl fmt::Debug for PhysicalDeviceProperties<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PhysicalDeviceProperties")
             .field("api_version", &self.api_version())

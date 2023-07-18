@@ -10,11 +10,11 @@ use vk_safe_sys::validation::GetPhysicalDeviceQueueFamilyProperties::*;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
-impl<C: InstanceConfig> PhysicalDevice<'_, C>
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
 where
     C::Commands: vk::GetCommand<vk::GetPhysicalDeviceQueueFamilyProperties>,
 {
-    pub fn get_physical_device_queue_family_properties<S: EnumeratorStorage<QueueFamilyProperties>>(&self, mut storage: S) -> QueueFamilies<S> {
+    pub fn get_physical_device_queue_family_properties<S: EnumeratorStorage<QueueFamilyProperties<'scope>>>(&self, mut storage: S) -> QueueFamilies<'scope, S> {
         let families = enumerator_code_non_fail!(self.handle, self.instance.commands; () -> storage);
         QueueFamilies { families }
     }
@@ -44,9 +44,9 @@ check_vuid_defs!(
         pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyProperties_parameter : & 'static [ u8 ] = "If the value referenced by pQueueFamilyPropertyCount is not 0, and pQueueFamilyProperties is not NULL, pQueueFamilyProperties must be a valid pointer to an array of pQueueFamilyPropertyCount VkQueueFamilyProperties structures" . as_bytes ( ) ;
 );
 
-simple_struct_wrapper!(QueueFamilyProperties);
+simple_struct_wrapper_scoped!(QueueFamilyProperties);
 
-impl fmt::Debug for QueueFamilyProperties {
+impl fmt::Debug for QueueFamilyProperties<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
@@ -59,29 +59,29 @@ impl fmt::Debug for QueueFamilyProperties {
 ///
 /// this is a wrapper type to ensure that the array of QueueFamilyProperties is not mutated
 /// since the relationship between the properties and family index is an important invariant
-pub struct QueueFamilies<S: EnumeratorStorage<QueueFamilyProperties>> {
+pub struct QueueFamilies<'scope, S: EnumeratorStorage<QueueFamilyProperties<'scope>>> {
     families: S::InitStorage,
 }
 
-impl<S: EnumeratorStorage<QueueFamilyProperties>> std::ops::Deref for QueueFamilies<S> {
-    type Target = [QueueFamilyProperties];
+impl<'scope, S: EnumeratorStorage<QueueFamilyProperties<'scope>>> std::ops::Deref for QueueFamilies<'scope, S> {
+    type Target = [QueueFamilyProperties<'scope>];
 
     fn deref(&self) -> &Self::Target {
         self.families.as_ref()
     }
 }
 
-impl<S: EnumeratorStorage<QueueFamilyProperties>> fmt::Debug for QueueFamilies<S> {
+impl<'scope, S: EnumeratorStorage<QueueFamilyProperties<'scope>>> fmt::Debug for QueueFamilies<'scope, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.families.as_ref().iter()).finish()
     }
 }
 
-impl<QS: EnumeratorStorage<QueueFamilyProperties>> QueueFamilies<QS> {
+impl<'scope, QS: EnumeratorStorage<QueueFamilyProperties<'scope>>> QueueFamilies<'scope, QS> {
     pub fn configure_create_info<'params, IS: EnumeratorStorage<DeviceQueueCreateInfo<'params>>>(
         &self,
         mut storage: IS,
-        mut filter: impl for<'properties, 'initializer, 'storage> FnMut(DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage>)
+        mut filter: impl for<'properties, 'initializer, 'storage> FnMut(DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, '_>)
     ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IS>
     {
         let query_len = || {
