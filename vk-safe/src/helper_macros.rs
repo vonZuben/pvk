@@ -42,6 +42,7 @@ macro_rules! enumerator_code {
 macro_rules! enumerator_code2 {
     ( $handle:expr, $commands:expr; ( $($param:ident : $param_t:ty),* ) -> $storage:ident ) => {{
         use std::convert::TryInto;
+        use crate::enumerator_storage::VulkanLenType;
         let query_len = || {
             let mut num = 0;
             let res;
