@@ -48,12 +48,12 @@ pub unsafe trait SafeTransmute<T> {}
 
 unsafe impl<T, U> SafeTransmute<T> for &[U] where U: SafeTransmute<T> {}
 
-pub trait TransmuteArray<T> : SafeTransmute<T> {
-    fn safe_transmute(&self) -> &[T];
+pub trait TransmuteArray<'a, T> : SafeTransmute<T> {
+    fn safe_transmute(self) -> &'a [T];
 }
 
-impl<T, U> TransmuteArray<T> for &[U] where U: SafeTransmute<T> {
-    fn safe_transmute(&self) -> &[T] {
-        unsafe { std::mem::transmute(*self) }
+impl<'a, T, U> TransmuteArray<'a, T> for &'a [U] where U: SafeTransmute<T> {
+    fn safe_transmute(self) -> &'a [T] {
+        unsafe { std::mem::transmute(self) }
     }
 }

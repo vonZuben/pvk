@@ -1,5 +1,6 @@
 use super::*;
 use crate::instance::InstanceConfig;
+use crate::safe_interface::type_conversions::TransmuteArray;
 use krs_hlist::Get;
 use vk_safe_sys as vk;
 
@@ -52,19 +53,35 @@ pub struct PhysicalDeviceMemoryProperties<'scope> {
     _scope: ScopeId<'scope>,
 }
 
+simple_struct_wrapper_scoped!(MemoryType);
+
+impl std::fmt::Debug for MemoryType<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
+simple_struct_wrapper_scoped!(MemoryHeap);
+
+impl std::fmt::Debug for MemoryHeap<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
 impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
     fn new(inner: vk::PhysicalDeviceMemoryProperties) -> Self {
         Self { inner, _scope: Default::default() }
     }
     // TODO, I think the MemoryType should als be scoped
-    pub fn memory_types(&self) -> &[vk::MemoryType] {
+    pub fn memory_types(&self) -> &[MemoryType<'scope>] {
         assert!(self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _, "error: vulkan implementation reporting invalid memory_type_count");
-        &self.inner.memory_types[..self.inner.memory_type_count as _]
+        (&self.inner.memory_types[..self.inner.memory_type_count as _]).safe_transmute()
     }
     // TODO, I think the MemoryHeap should als be scoped
-    pub fn memory_heaps(&self) -> &[vk::MemoryHeap] {
+    pub fn memory_heaps(&self) -> &[MemoryHeap<'scope>] {
         assert!(self.inner.memory_heap_count < vk::MAX_MEMORY_HEAPS as _, "error: vulkan implementation reporting invalid memory_heap_count");
-        &self.inner.memory_heaps[..self.inner.memory_heap_count as _]
+        (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute()
     }
 }
 

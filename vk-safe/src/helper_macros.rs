@@ -121,6 +121,8 @@ macro_rules! simple_struct_wrapper_scoped {
             _scope: crate::scope::ScopeId<'scope>,
         }
 
+        unsafe impl crate::safe_interface::type_conversions::SafeTransmute<$name<'_>> for vk_safe_sys::$name {}
+
         impl<'scope> $name<'scope> {
             #[allow(unused)]
             pub(crate) fn new(inner: vk_safe_sys::$name) -> Self {
