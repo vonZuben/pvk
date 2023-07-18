@@ -5,17 +5,16 @@ use vk_safe_sys as vk;
 use std::fmt;
 
 use crate::enumerator_storage::EnumeratorStorage;
-use crate::instance::{Instance, InstanceConfig};
+use crate::instance::{InstanceConfig, ScopedInstance};
 
 pub struct PhysicalDevices<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> {
-    instance: &'i Instance<C>,
+    instance: ScopedInstance<'i, C>,
     handles: S::InitStorage,
-    _instance_scope: ScopeId<'i>,
 }
 
 impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDevices<'i, C, S> {
-    pub(crate) fn new(handles: S::InitStorage, instance: &'i Instance<C>) -> Self {
-        Self { instance, handles, _instance_scope: Default::default() }
+    pub(crate) fn new(handles: S::InitStorage, instance: ScopedInstance<'i, C>) -> Self {
+        Self { instance, handles }
     }
 
     pub fn iter<'s>(
@@ -34,14 +33,13 @@ pub type ScopedPhysicalDevice<'pd, 'i, C> = Scope<'pd, &'pd PhysicalDevice<'i, C
 
 /// A PhysicalDevice handle that is limited to the scope of the associated Instance
 pub struct PhysicalDevice<'i, C: InstanceConfig> {
-    instance: &'i Instance<C>,
+    instance: ScopedInstance<'i, C>,
     handle: vk::PhysicalDevice,
-    _instance_scope: ScopeId<'i>,
 }
 
 impl<'i, C: InstanceConfig> PhysicalDevice<'i, C> {
-    pub(crate) fn new(instance: &'i Instance<C>, handle: vk::PhysicalDevice) -> Self {
-        Self { instance, handle, _instance_scope: Default::default() }
+    pub(crate) fn new(instance: ScopedInstance<'i, C>, handle: vk::PhysicalDevice) -> Self {
+        Self { instance, handle }
     }
 }
 
@@ -52,7 +50,7 @@ impl<C: InstanceConfig> fmt::Debug for PhysicalDevice<'_, C> {
 }
 
 pub struct PhysicalDeviceIter<'i, 's, C: InstanceConfig> {
-    instance: &'i Instance<C>,
+    instance: ScopedInstance<'i, C>,
     iter: std::iter::Copied<std::slice::Iter<'s, vk::PhysicalDevice>>,
 }
 

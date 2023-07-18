@@ -12,15 +12,14 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhy
 impl_safe_instance_interface!{
 EnumeratePhysicalDevices {
     pub fn enumerate_physical_devices<
-        'a,
         S: EnumeratorStorage<vk::PhysicalDevice>,
     >(
-        &'a self,
+        &self,
         mut storage: S
-    ) -> Result<PhysicalDevices<'a, C, S>, vk::Result> {
+    ) -> Result<PhysicalDevices<'scope, C, S>, vk::Result> {
         validate(Validation);
         let handles = enumerator_code2!(self.handle, self.commands; () -> storage);
-        Ok(PhysicalDevices::new(handles, self))
+        Ok(PhysicalDevices::new(handles, *self))
     }
 }}
 
