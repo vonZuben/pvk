@@ -11,12 +11,12 @@ type Result<T> = std::result::Result<T, vk_safe_sys::Result>;
 /// Implementations are provided for basic std type that are [T] like.
 ///
 /// Users can implement for custom types.
-pub trait EnumeratorStorage<T> {
+pub trait ArrayStorage<T> {
     /// The final initialized storage type.
     type InitStorage : AsRef<[T]>;
     /// Allow control of querying len of items to be returned.
     /// If preallocated space is provided, then there is no reason to query (e.g. for a slice).
-    fn query_len(&mut self, _query_len: impl FnOnce() -> Result<usize>) -> Result<()> {Ok(())}
+    fn allocate(&mut self, _query_len: impl FnOnce() -> Result<usize>) -> Result<()> {Ok(())}
     /// Provide the uninitialized space to which the Vulkan command will write to.
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>];
     /// Finalize len amount of initialized memory.
@@ -61,9 +61,9 @@ impl<'a, T> UninitArrayInitializer<'a, T> {
     }
 }
 
-impl<T> EnumeratorStorage<T> for Vec<MaybeUninit<T>> {
+impl<T> ArrayStorage<T> for Vec<MaybeUninit<T>> {
     type InitStorage = Vec<T>;
-    fn query_len(&mut self, query_len: impl FnOnce() -> Result<usize>) -> Result<()> {
+    fn allocate(&mut self, query_len: impl FnOnce() -> Result<usize>) -> Result<()> {
         self.clear();
         self.reserve_exact(query_len()?);
         Ok(())
@@ -80,7 +80,7 @@ impl<T> EnumeratorStorage<T> for Vec<MaybeUninit<T>> {
     }
 }
 
-impl<'a, T> EnumeratorStorage<T> for &'a mut [MaybeUninit<T>] {
+impl<'a, T> ArrayStorage<T> for &'a mut [MaybeUninit<T>] {
     type InitStorage = &'a mut [T];
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>]  {
         self
@@ -136,7 +136,7 @@ impl<const LEN: usize, T> AsRef<[T]> for InitArray<LEN, T> {
     }
 }
 
-impl<'a, const LEN: usize, T> EnumeratorStorage<T> for [MaybeUninit<T>; LEN] {
+impl<'a, const LEN: usize, T> ArrayStorage<T> for [MaybeUninit<T>; LEN] {
     type InitStorage = InitArray<LEN, T>;
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>] {
         self

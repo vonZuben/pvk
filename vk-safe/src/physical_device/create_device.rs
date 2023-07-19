@@ -281,18 +281,18 @@ mod validate_device_queue_create_info {
     );
 }
 
-pub struct DeviceQueueCreateInfoArray<'a, S: EnumeratorStorage<DeviceQueueCreateInfo<'a>>> {
+pub struct DeviceQueueCreateInfoArray<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> {
     infos: S::InitStorage,
     _a: PhantomData<&'a ()>,
 }
 
-impl<'a, S: EnumeratorStorage<DeviceQueueCreateInfo<'a>>> fmt::Debug for DeviceQueueCreateInfoArray<'a, S> {
+impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> fmt::Debug for DeviceQueueCreateInfoArray<'a, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.infos.as_ref().iter()).finish()
     }
 }
 
-impl<'a, S: EnumeratorStorage<DeviceQueueCreateInfo<'a>>> std::ops::Deref for DeviceQueueCreateInfoArray<'a, S> {
+impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> std::ops::Deref for DeviceQueueCreateInfoArray<'a, S> {
     type Target = [DeviceQueueCreateInfo<'a>];
 
     fn deref(&self) -> &Self::Target {
@@ -300,7 +300,7 @@ impl<'a, S: EnumeratorStorage<DeviceQueueCreateInfo<'a>>> std::ops::Deref for De
     }
 }
 
-impl<'a, S: EnumeratorStorage<DeviceQueueCreateInfo<'a>>> DeviceQueueCreateInfoArray<'a, S> {
+impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> DeviceQueueCreateInfoArray<'a, S> {
     pub(crate) fn new(infos: S::InitStorage) -> Self {
         Self {
             infos,
@@ -339,7 +339,7 @@ impl<A: AsRef<[f32]>> QueuePriorities<A> {
 /// user must provide their own p_queue_priorities
 pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope> {
     family_index: u32,
-    to_write: &'initializer mut crate::enumerator_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
+    to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
     pub family_properties: &'properties QueueFamilyProperties<'scope>,
 }
 
@@ -348,7 +348,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
     /// should pass the current queue_family_index, and set queue_count to max possible
     pub(crate) fn new(
         family_index: u32,
-        to_write: &'initializer mut crate::enumerator_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
+        to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
         family_properties: &'properties QueueFamilyProperties<'scope>) -> Self
     {
         Self {
@@ -362,7 +362,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
         self,
         priorities: &QueuePriorities<A>,
         flags: Option<impl vk::DeviceQueueCreateFlagsConst>
-    ) -> crate::enumerator_storage::InitResult {
+    ) -> crate::array_storage::InitResult {
         if let Some(flags) = flags {
             CHECK_FLAGS::verify(flags);
         }
@@ -390,7 +390,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
         flags_for_non_protected: Option<impl vk::DeviceQueueCreateFlagsConst>,
         priorities_for_protected: &QueuePriorities<A>,
         flags_for_protected: Option<impl vk::DeviceQueueCreateFlagsConst>
-    ) -> crate::enumerator_storage::InitResult {
+    ) -> crate::array_storage::InitResult {
         if let Some(flags_for_non_protected) = flags_for_non_protected {
             MUST_NOT_USE_PROTECTED_BIT::verify(flags_for_non_protected);
         }

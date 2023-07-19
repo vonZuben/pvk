@@ -36,7 +36,7 @@ impl<V: VulkanVersion> Entry<V> {
 // The following is imported by each command impl module
 mod command_impl_prelude {
     pub use super::Entry;
-    pub use crate::enumerator_storage::{EnumeratorStorage, VulkanLenType};
+    pub use crate::array_storage::{ArrayStorage, VulkanLenType};
     pub use crate::safe_interface::type_conversions::*;
     pub use vk_safe_sys as vk;
     pub use vk_safe_sys::{GetCommand, VulkanExtension, VulkanVersion};

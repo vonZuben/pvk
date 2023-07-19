@@ -14,7 +14,7 @@ impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
 where
     C::Commands: vk::GetCommand<vk::GetPhysicalDeviceQueueFamilyProperties>,
 {
-    pub fn get_physical_device_queue_family_properties<S: EnumeratorStorage<QueueFamilyProperties<'scope>>>(&self, mut storage: S) -> QueueFamilies<'scope, S> {
+    pub fn get_physical_device_queue_family_properties<S: ArrayStorage<QueueFamilyProperties<'scope>>>(&self, mut storage: S) -> QueueFamilies<'scope, S> {
         let families = enumerator_code_non_fail!(self.handle, self.instance.commands; () -> storage);
         QueueFamilies { families }
     }
@@ -53,11 +53,11 @@ simple_struct_wrapper_scoped!(QueueFamilyProperties impl Deref, Debug);
 ///
 /// this is a wrapper type to ensure that the array of QueueFamilyProperties is not mutated
 /// since the relationship between the properties and family index is an important invariant
-pub struct QueueFamilies<'scope, S: EnumeratorStorage<QueueFamilyProperties<'scope>>> {
+pub struct QueueFamilies<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> {
     families: S::InitStorage,
 }
 
-impl<'scope, S: EnumeratorStorage<QueueFamilyProperties<'scope>>> std::ops::Deref for QueueFamilies<'scope, S> {
+impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> std::ops::Deref for QueueFamilies<'scope, S> {
     type Target = [QueueFamilyProperties<'scope>];
 
     fn deref(&self) -> &Self::Target {
@@ -65,20 +65,20 @@ impl<'scope, S: EnumeratorStorage<QueueFamilyProperties<'scope>>> std::ops::Dere
     }
 }
 
-impl<'scope, S: EnumeratorStorage<QueueFamilyProperties<'scope>>> fmt::Debug for QueueFamilies<'scope, S> {
+impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> fmt::Debug for QueueFamilies<'scope, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.families.as_ref().iter()).finish()
     }
 }
 
-impl<'scope, QS: EnumeratorStorage<QueueFamilyProperties<'scope>>> QueueFamilies<'scope, QS> {
-    pub fn configure_create_info<'params, IS: EnumeratorStorage<DeviceQueueCreateInfo<'params>>>(
+impl<'scope, QS: ArrayStorage<QueueFamilyProperties<'scope>>> QueueFamilies<'scope, QS> {
+    pub fn configure_create_info<'params, IS: ArrayStorage<DeviceQueueCreateInfo<'params>>>(
         &self,
         mut storage: IS,
         mut filter: impl for<'properties, 'initializer, 'storage> FnMut(DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, '_>)
     ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IS>
     {
-        let query_len = || {
+        let len = || {
             let mut protected_count = 0;
             for properties in self.families.as_ref().iter() {
                 use vk::queue_flag_bits::*;
@@ -88,9 +88,9 @@ impl<'scope, QS: EnumeratorStorage<QueueFamilyProperties<'scope>>> QueueFamilies
             }
             Ok(self.families.as_ref().len() + protected_count)
         };
-        storage.query_len(query_len).expect("error in configure_create_info: could not allocate storage");
+        storage.allocate(len).expect("error in configure_create_info: could not allocate storage");
 
-        let mut initializer = crate::enumerator_storage::UninitArrayInitializer::new(storage.uninit_slice().iter_mut());
+        let mut initializer = crate::array_storage::UninitArrayInitializer::new(storage.uninit_slice().iter_mut());
         for (index, properties) in self.families.as_ref().iter().enumerate() {
             filter(DeviceQueueCreateInfoConfiguration::new(index as u32, &mut initializer, properties));
         }

@@ -6,7 +6,7 @@ mod pretty_version;
 #[macro_use]
 mod helper_macros;
 
-mod enumerator_storage;
+mod array_storage;
 mod vk_str;
 
 pub mod safe_interface;

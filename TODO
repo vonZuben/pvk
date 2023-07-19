@@ -10,7 +10,7 @@
 - [x] fix bitflags! macro to allow full path name rather than just ident
     (I think I fixed it, but I'll come back to it later if I find a need to)
 
-- [ ] change EnumeratorStorage to ArrayStorage and query_len to allocate
+- [x] change EnumeratorStorage to ArrayStorage and query_len to allocate
 
 - [ ] EnumeratorStorage Result should be dyn Error??
 

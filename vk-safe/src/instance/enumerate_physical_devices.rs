@@ -1,6 +1,6 @@
 use super::command_impl_prelude::*;
 
-use crate::enumerator_storage::EnumeratorStorage;
+use crate::array_storage::ArrayStorage;
 use crate::instance::InstanceConfig;
 use crate::physical_device::PhysicalDevices;
 
@@ -12,7 +12,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhy
 impl_safe_instance_interface!{
 EnumeratePhysicalDevices {
     pub fn enumerate_physical_devices<
-        S: EnumeratorStorage<vk::PhysicalDevice>,
+        S: ArrayStorage<vk::PhysicalDevice>,
     >(
         &self,
         mut storage: S

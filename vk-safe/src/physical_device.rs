@@ -4,15 +4,15 @@ use vk_safe_sys as vk;
 
 use std::fmt;
 
-use crate::enumerator_storage::EnumeratorStorage;
+use crate::array_storage::ArrayStorage;
 use crate::instance::{InstanceConfig, ScopedInstance};
 
-pub struct PhysicalDevices<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> {
+pub struct PhysicalDevices<'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> {
     instance: ScopedInstance<'i, C>,
     handles: S::InitStorage,
 }
 
-impl<'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> PhysicalDevices<'i, C, S> {
+impl<'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<'i, C, S> {
     pub(crate) fn new(handles: S::InitStorage, instance: ScopedInstance<'i, C>) -> Self {
         Self { instance, handles }
     }
@@ -54,7 +54,7 @@ pub struct PhysicalDeviceIter<'i, 's, C: InstanceConfig> {
     iter: std::iter::Copied<std::slice::Iter<'s, vk::PhysicalDevice>>,
 }
 
-impl<C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> fmt::Debug
+impl<C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> fmt::Debug
     for PhysicalDevices<'_, C, S>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -77,7 +77,7 @@ impl<'i, C: InstanceConfig> Iterator
     }
 }
 
-impl<'s, 'i, C: InstanceConfig, S: EnumeratorStorage<vk::PhysicalDevice>> IntoIterator
+impl<'s, 'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
     for &'s PhysicalDevices<'i, C, S>
 {
     type Item = PhysicalDevice<'i, C>;
