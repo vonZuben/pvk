@@ -230,7 +230,7 @@ macro_rules! verify_vuids {
 // TODO, exported macro probably belong somewhere else
 #[macro_export]
 macro_rules! bitmask {
-    ( $($bit:ident)|* ) => {
+    ( $($bit:path)|* ) => {
         krs_hlist::hlist!( $( $bit ),* )
     };
     ( $path:path : $($bit:ident)|* ) => {

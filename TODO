@@ -7,7 +7,8 @@
 
 - [x] change verify2 macro verify_vuids! ??
 
-- [ ] fix bitflags! macro to allow full path name rather than just ident
+- [x] fix bitflags! macro to allow full path name rather than just ident
+    (I think I fixed it, but I'll come back to it later if I find a need to)
 
 - [ ] change EnumeratorStorage to ArrayStorage and query_len to allocate
 
