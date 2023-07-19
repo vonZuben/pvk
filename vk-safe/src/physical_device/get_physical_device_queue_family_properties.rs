@@ -44,13 +44,7 @@ check_vuid_defs!(
         pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyProperties_parameter : & 'static [ u8 ] = "If the value referenced by pQueueFamilyPropertyCount is not 0, and pQueueFamilyProperties is not NULL, pQueueFamilyProperties must be a valid pointer to an array of pQueueFamilyPropertyCount VkQueueFamilyProperties structures" . as_bytes ( ) ;
 );
 
-simple_struct_wrapper_scoped!(QueueFamilyProperties);
-
-impl fmt::Debug for QueueFamilyProperties<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.fmt(f)
-    }
-}
+simple_struct_wrapper_scoped!(QueueFamilyProperties impl Deref, Debug);
 
 /// Properties for queue families by family index
 ///

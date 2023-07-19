@@ -113,7 +113,7 @@ pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
 // Use this to create wrappers around simple structs that are scoped
 macro_rules! simple_struct_wrapper_scoped {
     (
-        $name:ident
+        $name:ident $(impl $($t:ident),+ $(,)?)?
     ) => {
         #[repr(transparent)]
         pub struct $name<'scope> {
@@ -133,10 +133,22 @@ macro_rules! simple_struct_wrapper_scoped {
             }
         }
 
+        $( $( simple_struct_wrapper_scoped!( @IMPL $t $name ); )+ )?
+    };
+
+    ( @IMPL Deref $name:ident ) => {
         impl std::ops::Deref for $name<'_> {
             type Target = vk_safe_sys::$name;
             fn deref(&self) -> &Self::Target {
                 &self.inner
+            }
+        }
+    };
+
+    ( @IMPL Debug $name:ident ) => {
+        impl std::fmt::Debug for $name<'_> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                self.inner.fmt(f)
             }
         }
     };

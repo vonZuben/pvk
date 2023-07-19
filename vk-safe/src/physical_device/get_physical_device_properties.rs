@@ -49,7 +49,7 @@ check_vuid_defs!(
                 .as_bytes();
 );
 
-simple_struct_wrapper_scoped!(PhysicalDeviceProperties);
+simple_struct_wrapper_scoped!(PhysicalDeviceProperties impl Deref);
 
 impl PhysicalDeviceProperties<'_> {
     pretty_version!(api_version);

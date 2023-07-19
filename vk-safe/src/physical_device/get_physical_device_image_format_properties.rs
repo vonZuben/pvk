@@ -199,10 +199,4 @@ mod get_physical_device_image_format_properties_validation {
     );
 }
 
-simple_struct_wrapper_scoped!(ImageFormatProperties);
-
-impl fmt::Debug for ImageFormatProperties<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.fmt(f)
-    }
-}
+simple_struct_wrapper_scoped!(ImageFormatProperties impl Debug);

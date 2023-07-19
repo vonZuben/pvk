@@ -22,13 +22,7 @@ impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> where C::Com
     }
 }
 
-simple_struct_wrapper_scoped!(PhysicalDeviceFeatures);
-
-impl fmt::Debug for PhysicalDeviceFeatures<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.fmt(f)
-    }
-}
+simple_struct_wrapper_scoped!(PhysicalDeviceFeatures impl Debug);
 
 struct Validation;
 

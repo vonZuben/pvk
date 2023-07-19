@@ -48,31 +48,13 @@ check_vuid_defs!(
         pub const VUID_vkGetPhysicalDeviceMemoryProperties_pMemoryProperties_parameter : & 'static [ u8 ] = "pMemoryProperties must be a valid pointer to a VkPhysicalDeviceMemoryProperties structure" . as_bytes ( ) ;
 );
 
-pub struct PhysicalDeviceMemoryProperties<'scope> {
-    inner: vk::PhysicalDeviceMemoryProperties,
-    _scope: ScopeId<'scope>,
-}
+simple_struct_wrapper_scoped!(PhysicalDeviceMemoryProperties);
 
-simple_struct_wrapper_scoped!(MemoryType);
+simple_struct_wrapper_scoped!(MemoryType impl Debug);
 
-impl std::fmt::Debug for MemoryType<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.fmt(f)
-    }
-}
-
-simple_struct_wrapper_scoped!(MemoryHeap);
-
-impl std::fmt::Debug for MemoryHeap<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.inner.fmt(f)
-    }
-}
+simple_struct_wrapper_scoped!(MemoryHeap impl Debug);
 
 impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
-    fn new(inner: vk::PhysicalDeviceMemoryProperties) -> Self {
-        Self { inner, _scope: Default::default() }
-    }
     // TODO, I think the MemoryType should als be scoped
     pub fn memory_types(&self) -> &[MemoryType<'scope>] {
         assert!(self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _, "error: vulkan implementation reporting invalid memory_type_count");
