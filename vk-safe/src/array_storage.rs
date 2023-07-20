@@ -14,9 +14,9 @@ type Result<T> = std::result::Result<T, vk_safe_sys::Result>;
 pub trait ArrayStorage<T> {
     /// The final initialized storage type.
     type InitStorage : AsRef<[T]>;
-    /// Allow control of querying len of items to be returned.
-    /// If preallocated space is provided, then there is no reason to query (e.g. for a slice).
-    fn allocate(&mut self, _query_len: impl FnOnce() -> Result<usize>) -> Result<()> {Ok(())}
+    /// Allow control of len of items to be returned.
+    /// If preallocated space is provided, then there is no reason to get len (e.g. for a slice).
+    fn allocate(&mut self, _len: impl FnOnce() -> Result<usize>) -> Result<()> {Ok(())}
     /// Provide the uninitialized space to which the Vulkan command will write to.
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>];
     /// Finalize len amount of initialized memory.
@@ -63,9 +63,9 @@ impl<'a, T> UninitArrayInitializer<'a, T> {
 
 impl<T> ArrayStorage<T> for Vec<MaybeUninit<T>> {
     type InitStorage = Vec<T>;
-    fn allocate(&mut self, query_len: impl FnOnce() -> Result<usize>) -> Result<()> {
+    fn allocate(&mut self, len: impl FnOnce() -> Result<usize>) -> Result<()> {
         self.clear();
-        self.reserve_exact(query_len()?);
+        self.reserve_exact(len()?);
         Ok(())
     }
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>] {
