@@ -56,7 +56,7 @@ impl<'a, C: DeviceConfig> DeviceCreateInfo<'a, C> {
             inner: vk::DeviceCreateInfo {
                 s_type: vk::structure_type::DEVICE_CREATE_INFO.as_enum(),
                 p_next: std::ptr::null(),
-                flags: unsafe { vk::DeviceCreateFlags::empty() }, // VUID_VkDeviceCreateInfo_flags_zerobitmask
+                flags: vk::DeviceCreateFlags::empty(),
                 queue_create_info_count: queue_create_info.len() as u32,
                 p_queue_create_infos: queue_create_info.safe_transmute().as_ptr(),
                 enabled_layer_count: 0,
@@ -248,10 +248,7 @@ mod validate_device_queue_create_info {
         };
 
         const VUID_VkDeviceQueueCreateInfo_flags_parameter: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when add flags support
+            // ensured by ensured by QueuePriorities and DeviceQueueCreateInfoConfiguration::push_config/push_config_with_protected
         };
 
         const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: () = {
@@ -370,7 +367,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
         let info = DeviceQueueCreateInfo {
             inner: vk::DeviceQueueCreateInfo {
                 s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                flags: flags.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
+                flags: flags.map_or(vk::DeviceQueueCreateFlags::empty(), |f|f.bitmask()),
                 p_next: std::ptr::null(),
                 queue_family_index: self.family_index,
                 queue_count: priorities.len() as u32, // the assert already confirms no overflow from conversion
@@ -404,7 +401,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
             let non_protected_info = DeviceQueueCreateInfo {
                 inner: vk::DeviceQueueCreateInfo {
                     s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                    flags: flags_for_non_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
+                    flags: flags_for_non_protected.map_or(vk::DeviceQueueCreateFlags::empty(), |f|f.bitmask()),
                     p_next: std::ptr::null(),
                     queue_family_index: self.family_index,
                     queue_count: priorities_for_non_protected.len() as u32, // the assert already confirms no overflow from conversion
@@ -419,7 +416,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
             let protected_info = DeviceQueueCreateInfo {
                 inner: vk::DeviceQueueCreateInfo {
                     s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                    flags: flags_for_protected.map_or(unsafe{vk::DeviceQueueCreateFlags::empty()}, |f|f.bitmask()),
+                    flags: flags_for_protected.map_or(vk::DeviceQueueCreateFlags::empty(), |f|f.bitmask()),
                     p_next: std::ptr::null(),
                     queue_family_index: self.family_index,
                     queue_count: priorities_for_protected.len() as u32, // the assert already confirms no overflow from conversion

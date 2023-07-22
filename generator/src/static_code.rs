@@ -25,7 +25,7 @@ impl krs_quote::ToTokens for StaticCode {
 
                     impl $name {
                         #[inline]
-                        pub unsafe fn empty() -> $name {
+                        pub fn empty() -> $name {
                             $name(0)
                         }
 

@@ -16,9 +16,9 @@
 
 - [ ] QueueFamilies::configure_create_info should return Result??
 
-- [ ] ensure selected versions for instance/device are actually supported
+- [?] ensure selected versions for instance/device are actually supported (actually, I think this may not be necessary, since the instance should just fail to create in a safe way)
 
-- [ ] make zero bitflags safe again, since we just do verification at use site if zero is not allowed
+- [x] make zero bitflags safe again, since we just do verification at use site if zero is not allowed
 
 - [ ] make proper ErrorTypes for Instance and Device creation
 
