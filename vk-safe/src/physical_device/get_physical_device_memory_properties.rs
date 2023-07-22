@@ -50,9 +50,9 @@ check_vuid_defs!(
 
 simple_struct_wrapper_scoped!(PhysicalDeviceMemoryProperties);
 
-simple_struct_wrapper_scoped!(MemoryType impl Debug);
+simple_struct_wrapper_scoped!(MemoryType impl Debug, Deref);
 
-simple_struct_wrapper_scoped!(MemoryHeap impl Debug);
+simple_struct_wrapper_scoped!(MemoryHeap impl Debug, Deref);
 
 impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
     // TODO, I think the MemoryType should als be scoped
