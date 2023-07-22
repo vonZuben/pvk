@@ -22,9 +22,9 @@
 
 - [ ] make proper ErrorTypes for Instance and Device creation
 
-- [ ] info structs obtained from handles such as PhysicalDevice should borrow the handle to ensure they are tied to the same scope as the handle
+- [x] info structs obtained from handles such as PhysicalDevice should borrow the handle to ensure they are tied to the same scope as the handle
 
-- [ ] combine feature and extension commands in the Device and Instance configs (if an extension command is promoted, then the actual function pointer won't be in the extension commands anymore and the GetComments impl will not work)
+- [x] combine feature and extension commands in the Device and Instance configs (if an extension command is promoted, then the actual function pointer won't be in the extension commands anymore and the GetComments impl will not work)
 
 - [ ] handles like Device require child objects to be destroyed before they are destroyed. There is a borrow relationship for child objects, and the Drop impl calls appropriate Destroy method. However, objects can be forgotten and never destroyed. How bad is this really? can we ensure objects are Destroyed and not forgotten (maybe using the scope)?
 
