@@ -23,7 +23,7 @@ CreateInstance {
         validate_create_instance::Validation::validate();
         let mut instance = MaybeUninit::uninit();
         unsafe {
-            let res = self.commands.get().get_fptr()(&create_info.inner, None.to_c(), instance.as_mut_ptr());
+            let res = self.commands.get_command().get_fptr()(&create_info.inner, None.to_c(), instance.as_mut_ptr());
             if res.is_err() {
                 return Err(TempError);
             }

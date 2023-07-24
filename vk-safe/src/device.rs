@@ -65,7 +65,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyDevic
 impl<'instance, I, C: DeviceConfig> Drop for Device<'instance, I, C> {
     fn drop(&mut self) {
         validate(Validation);
-        unsafe { self.commands.get().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.commands.get_command().get_fptr()(self.handle, None.to_c()) }
     }
 }
 

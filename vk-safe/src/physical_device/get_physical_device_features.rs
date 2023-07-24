@@ -1,6 +1,6 @@
 use super::*;
 use vk_safe_sys as vk;
-use krs_hlist::Get;
+use vk::GetCommand;
 use crate::instance::InstanceConfig;
 
 use std::mem::MaybeUninit;
@@ -11,12 +11,12 @@ use vk_safe_sys::validation::GetPhysicalDeviceFeatures::*;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html
 */
-impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> where C::Commands: vk::GetCommand<vk::GetPhysicalDeviceFeatures> {
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> where C::Commands: GetCommand<vk::GetPhysicalDeviceFeatures> {
     pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures<'scope> {
         validate(Validation);
         let mut features = MaybeUninit::uninit();
         unsafe {
-            self.instance.commands.get().get_fptr()(self.handle, features.as_mut_ptr());
+            self.instance.commands.get_command().get_fptr()(self.handle, features.as_mut_ptr());
             PhysicalDeviceFeatures::new(features.assume_init())
         }
     }

@@ -22,7 +22,7 @@ unsafe impl<C1: vk::VulkanCommand, C2: vk::VulkanCommand> krs_hlist::Comparator<
 }
 
 pub trait GetCommand<C> : krs_hlist::Get<C, private::CommandComparator> {
-    fn get(&self) -> &C {
+    fn get_command(&self) -> &C {
         <Self as krs_hlist::Get<C, private::CommandComparator>>::get(self)
     }
 }

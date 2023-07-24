@@ -1,7 +1,7 @@
 use super::*;
 use crate::instance::InstanceConfig;
 use crate::safe_interface::type_conversions::TransmuteArray;
-use krs_hlist::Get;
+use vk::GetCommand;
 use vk_safe_sys as vk;
 
 use std::fmt;
@@ -14,13 +14,13 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 */
 impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
 where
-    C::Commands: vk::GetCommand<vk::GetPhysicalDeviceMemoryProperties>,
+    C::Commands: GetCommand<vk::GetPhysicalDeviceMemoryProperties>,
 {
     pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<'scope> {
         validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance.commands.get().get_fptr()(
+            self.instance.commands.get_command().get_fptr()(
                 self.handle,
                 properties.as_mut_ptr()
             );
