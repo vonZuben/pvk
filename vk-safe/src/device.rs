@@ -10,8 +10,7 @@ use vk::validation::DestroyDevice::*;
 
 pub trait DeviceConfig {
     const VERSION: VkVersion;
-    type DeviceCommands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyDevice>;
-    type DeviceExtensions : vk::commands::LoadCommands;
+    type Commands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyDevice>;
 }
 
 #[derive(Debug)]
@@ -33,15 +32,13 @@ where
 {
     const VERSION: VkVersion = VkVersion::new(V::VersionTriple.0, V::VersionTriple.1, V::VersionTriple.2);
 
-    type DeviceCommands = V::DeviceCommands;
-
-    type DeviceExtensions = E::DeviceCommands;
+    type Commands = V::DeviceCommands;
 }
 
 #[derive(Debug)]
 pub struct Device<'instance, I, C: DeviceConfig> {
     handle: vk::Device,
-    pub(crate) commands: C::DeviceCommands,
+    pub(crate) commands: C::Commands,
     _instance: std::marker::PhantomData<&'instance I>,
 }
 
@@ -53,7 +50,7 @@ impl<'instance, I, C: DeviceConfig> Device<'instance, I, C> {
         let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
-            commands: C::DeviceCommands::load(loader)?,
+            commands: C::Commands::load(loader)?,
             _instance: PhantomData,
         })
     }
