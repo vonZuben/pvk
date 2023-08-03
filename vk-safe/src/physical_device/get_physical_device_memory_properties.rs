@@ -55,16 +55,28 @@ simple_struct_wrapper_scoped!(MemoryType impl Debug, Deref);
 simple_struct_wrapper_scoped!(MemoryHeap impl Debug, Deref);
 
 impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
-    // TODO, I think the MemoryType should als be scoped
+
     pub fn memory_types(&self) -> &[MemoryType<'scope>] {
         assert!(self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _, "error: vulkan implementation reporting invalid memory_type_count");
         (&self.inner.memory_types[..self.inner.memory_type_count as _]).safe_transmute()
     }
-    // TODO, I think the MemoryHeap should als be scoped
+
     pub fn memory_heaps(&self) -> &[MemoryHeap<'scope>] {
         assert!(self.inner.memory_heap_count < vk::MAX_MEMORY_HEAPS as _, "error: vulkan implementation reporting invalid memory_heap_count");
         (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute()
     }
+
+    pub fn choose_type<'a>(&'a self, index: u32) -> MemoryTypeChoice<'a, 'scope> {
+        let memory_types = self.memory_types();
+        assert!((index as usize) < memory_types.len());
+        MemoryTypeChoice { ty: &self.memory_types()[index as usize], index }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct MemoryTypeChoice<'a, 'scope> {
+    pub(crate) ty: &'a MemoryType<'scope>,
+    pub(crate) index: u32,
 }
 
 impl fmt::Debug for PhysicalDeviceMemoryProperties<'_> {

@@ -1,3 +1,20 @@
+#Still Todo
+
+- [ ] current bitmask!() macro should be named bitmask_type!(), and separate bitmask!() macro should be added to generate a value
+also, thee macros makes more sense as part of the generated code utils
+
+- [ ] modify the verify impls to allow static and dynamic checks
+
+- [ ] when using scope() with a &T, type inference has trouble, making it necessary to specify the type in the closure which si VERY ugly
+
+- [ ] add vuid checks for freeing memory
+
+- [ ] I think having bitmasks and enums as types is more trouble than its worth. Instead, just make everything a normal value, and try to do as much checking
+as possible in const fn. Then it is up to the sure to use const context if they care about reducing runtime work
+
+- [ ] when abstracting scoped handles which are held when we only care about using th lifetime sometimes, just get rid of the "Scoped" trait since it doesn't really do anything
+
+##older stuff
 
 - [x] change the raw_flags! macro in the generated bitmask_traits to flags_from_type! (also const_enum! to enum_from_type!)
 
@@ -16,7 +33,7 @@
 
 - [ ] make proper ErrorTypes for Instance and Device creation
 
-##TODO
+##Errors
     I think the whole api needs Errors more carefully considered
 
 - [ ] QueueFamilies::configure_create_info should return Result??
@@ -30,8 +47,8 @@
 - [x] combine feature and extension commands in the Device and Instance configs (if an extension command is promoted, then the actual function pointer won't be in the extension commands anymore and the GetComments impl will not work)
 
 ---
+###Regarding object destruction
 - [ ] handles like Device require child objects to be destroyed before they are destroyed. There is a borrow relationship for child objects, and the Drop impl calls appropriate Destroy method. However, objects can be forgotten and never destroyed. How bad is this really? can we ensure objects are Destroyed and not forgotten (maybe using the scope)?
-###TODO
     FYI this is only a problem because a user can forget() a handle and it will not be dropped/destroyed
     I should test if not destroying child objects before destroying Device can cause problems (memory issue? crash?).
     If the only problem is leaking resources, then it is fine as far as "Rust" api goes, even if it violates the Vulkan specs

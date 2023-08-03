@@ -89,3 +89,16 @@ where
 {
     async move { a(Scope::new_scope(this.borrow())).await }
 }
+
+//===============================
+// traits to abstract over scoped objects
+
+/// used to get the lifetime of a scoped object back for generic impls
+pub trait ScopeLife<'l> : Scoped {}
+
+impl<'l, T> ScopeLife<'l> for Scope<'l, T> {}
+
+/// Simplify holding a scoped object when we don't care about the lifetime
+pub trait Scoped { }
+
+impl<'l, T> Scoped for Scope<'l, T> {}

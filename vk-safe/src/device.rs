@@ -3,6 +3,8 @@ use crate::pretty_version::VkVersion;
 use vk_safe_sys as vk;
 use crate::safe_interface::type_conversions::ToC;
 
+use crate::scope::{Scope, Scoped};
+
 use vk::commands::{CommandLoadError, LoadCommands};
 use vk::GetCommand;
 
@@ -35,14 +37,16 @@ where
     type Commands = V::DeviceCommands;
 }
 
+pub type ScopeDevice<'d, C, Pd> = Scope<'d, Device<C, Pd>>;
+
 #[derive(Debug)]
-pub struct Device<'instance, I, C: DeviceConfig> {
-    handle: vk::Device,
+pub struct Device<C: DeviceConfig, Pd: Scoped> {
+    pub(crate) handle: vk::Device,
     pub(crate) commands: C::Commands,
-    _instance: std::marker::PhantomData<&'instance I>,
+    _pd: std::marker::PhantomData<Pd>,
 }
 
-impl<'instance, I, C: DeviceConfig> Device<'instance, I, C> {
+impl<C: DeviceConfig, Pd: Scoped> Device<C, Pd> {
     pub(crate) fn load_commands(
         handle: vk::Device,
     ) -> Result<Self, CommandLoadError>
@@ -51,7 +55,7 @@ impl<'instance, I, C: DeviceConfig> Device<'instance, I, C> {
         Ok(Self {
             handle,
             commands: C::Commands::load(loader)?,
-            _instance: PhantomData,
+            _pd: PhantomData,
         })
     }
 }
@@ -59,7 +63,7 @@ impl<'instance, I, C: DeviceConfig> Device<'instance, I, C> {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyDevice.html
 */
-impl<'instance, I, C: DeviceConfig> Drop for Device<'instance, I, C> {
+impl<C: DeviceConfig, Pd: Scoped> Drop for Device<C, Pd> {
     fn drop(&mut self) {
         validate(Validation);
         unsafe { self.commands.get_command().get_fptr()(self.handle, None.to_c()) }
@@ -72,6 +76,9 @@ struct Validation;
 impl Vuids for Validation {
     const VUID_vkDestroyDevice_device_00378: () = {
         // all child objects borrow the device, so rust ensures they are Dropped (and dropping destroys)
+        // **actually** it is possible to forget child objects so that they are not Destroyed
+        // However, it is understood that this can at worst cause resource/memory leaks, and is not "unsound"
+        // Therefore, I accept that this rule is broken until "unsound" behavior can be observed
     };
 
     const VUID_vkDestroyDevice_device_00379: () = {
@@ -99,3 +106,5 @@ check_vuid_defs!(
             "If device is not NULL, device must be a valid VkDevice handle".as_bytes();
         pub const VUID_vkDestroyDevice_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
 );
+
+pub mod allocate_memory;

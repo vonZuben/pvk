@@ -1,7 +1,7 @@
 use super::*;
 use vk_safe_sys as vk;
 use vk::GetCommand;
-use crate::instance::{InstanceConfig, Instance};
+use crate::instance::InstanceConfig;
 use crate::device::{Device, DeviceConfig};
 
 use vk::VkEnumVariant;
@@ -19,8 +19,8 @@ pub struct TempError;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<'instance, IC: InstanceConfig> PhysicalDevice<'instance, IC> where IC::Commands: GetCommand<vk::CreateDevice> {
-    pub fn create_device<DC: DeviceConfig>(&self, create_info: &DeviceCreateInfo<'_, DC>) -> Result<Device<'instance, Instance<IC>, DC>, TempError> {
+impl<'pd, 'instance, IConfig: InstanceConfig> ScopedPhysicalDevice<'pd, 'instance, IConfig> where IConfig::Commands: GetCommand<vk::CreateDevice> {
+    pub fn create_device<DConfig: DeviceConfig>(&self, create_info: &DeviceCreateInfo<'_, DConfig>) -> Result<Device<DConfig, Self>, TempError> {
         let mut device = MaybeUninit::uninit();
         unsafe {
             let res = self.instance.commands.get_command().get_fptr()(

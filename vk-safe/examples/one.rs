@@ -75,7 +75,8 @@ fn main() {
                 let queue_family_properties = pd.get_physical_device_queue_family_properties(Vec::new());
                 println!("{:#?}", queue_family_properties);
                 println!("-------");
-                println!("{:#?}", pd.get_physical_device_memory_properties());
+                let mem_props = pd.get_physical_device_memory_properties();
+                println!("{:#?}", mem_props);
 
                 // just assume that 10 is the max number of queues we will see fo now
                 let standard_queue_priorities = unsafe { vk_safe::physical_device::QueuePriorities::new_unchecked([1.0;10]) };
@@ -92,6 +93,13 @@ fn main() {
                 let device_create_info = vk_safe::physical_device::DeviceCreateInfo::new(device_config, &queue_family_configurations);
 
                 let device = pd.create_device(&device_create_info).unwrap();
+
+                scope(&device, |device: vk_safe::scope::Scope<'_, vk_safe::device::Device<vk_safe::device::Config<vk::VERSION_1_1, ()>, vk_safe::scope::Scope<'_, vk_safe::physical_device::PhysicalDevice<'_, Config<vk::VERSION_1_1, ()>>>>>| {
+                    let mem_type = mem_props.choose_type(0);
+                    let alloc_info = vk_safe::device::allocate_memory::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
+                    let mem = device.allocate_memory(&alloc_info);
+                    println!("{mem:?}");
+                })();
 
                 println!("-------");
                 println!("{device:#?}");

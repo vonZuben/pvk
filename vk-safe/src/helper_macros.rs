@@ -147,7 +147,7 @@ macro_rules! simple_struct_wrapper_scoped {
 
     ( @IMPL Debug $name:ident ) => {
         impl std::fmt::Debug for $name<'_> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.inner.fmt(f)
             }
         }
@@ -253,5 +253,11 @@ macro_rules! check_vuid_defs {
                 }
             )*
         };
+    };
+}
+
+macro_rules! get_fptr {
+    ( $from_ty:ident $get:path, $from:expr ) => {
+        <$from_ty::Commands as GetCommand<$get>>::get_command(&$from.commands).get_fptr()
     };
 }
