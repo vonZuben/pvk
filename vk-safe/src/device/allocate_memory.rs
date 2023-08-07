@@ -26,7 +26,7 @@ impl<'d, C: DeviceConfig, Pd: Scoped> std::fmt::Debug for DeviceMemory<'_, C, Pd
 }
 
 impl<'d, 'pd, C: DeviceConfig, Pd: ScopeLife<'pd>> ScopeDevice<'d, C, Pd> where C::Commands: GetCommand<vk::AllocateMemory> + GetCommand<vk::FreeMemory> {
-    pub fn allocate_memory(&self, info: &MemoryAllocateInfo) -> Result<DeviceMemory<'d, C, Pd>, vk::Result> {
+    pub fn allocate_memory(&self, info: &MemoryAllocateInfo<'pd>) -> Result<DeviceMemory<'d, C, Pd>, vk::Result> {
         let fptr = get_fptr!(C vk::AllocateMemory, self);
         let mut memory = MaybeUninit::uninit();
         unsafe {
