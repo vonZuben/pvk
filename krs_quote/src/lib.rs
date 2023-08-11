@@ -54,8 +54,10 @@ pub use to_tokens::{ Token, TokenStream, ToTokens, ToTokensClosure };
 pub mod __private {
     pub use super::to_tokens::*;
     pub use super::runtime::*;
-    pub use krs_hlist;
-    pub use krs_hlist_pm::hlist;
+
+    pub fn coerce<'a, const N: usize>(a: [Box<dyn GenerateTokens + 'a>; N]) -> [Box<dyn GenerateTokens + 'a>; N] {
+        a
+    }
 }
 
 /// The whole point!
@@ -67,7 +69,7 @@ macro_rules! krs_quote {
     ( $($tt:tt)* ) => {{
         use $crate::__private::*;
         let mut ts = TokenStream::new();
-        let mut to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
+        let mut to_tokens = coerce([$(Box::new($crate::quote_each_tt!($tt))),*]);
         to_tokens.init();
         to_tokens.advance_token();
         to_tokens.to_tokens(&mut ts);
@@ -97,7 +99,7 @@ macro_rules! krs_quote_with {
     ( $ts:ident <- $($tt:tt)* ) => {{
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
-        let mut to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
+        let mut to_tokens = coerce([$(Box::new($crate::quote_each_tt!($tt))),*]);
         to_tokens.init();
         to_tokens.advance_token();
         to_tokens.to_tokens(ts);
@@ -110,31 +112,31 @@ macro_rules! quote_each_tt {
 
     // expand repetition with comma
     ( {@,* $($tt:tt)* } ) => {{
-        Repeat(hlist!(
-            SkipFirst::new(Comma),
-            $($crate::quote_each_tt!($tt)),*
-        ))
+        Repeat(coerce([
+            Box::new(SkipFirst::new(Comma)),
+            $(Box::new($crate::quote_each_tt!($tt))),*
+        ]))
     }};
 
     // expand repetition with semi colon
     ( {@;* $($tt:tt)* } ) => {{
-        Repeat(hlist!(
-            SkipFirst::new(SemiColon),
-            $($crate::quote_each_tt!($tt)),*
-        ))
+        Repeat(coerce([
+            Box::new(SkipFirst::new(SemiColon)),
+            $(Box::new($crate::quote_each_tt!($tt))),*
+        ]))
     }};
 
     // expand repetition with any separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
-        Repeat(hlist!(
-            SkipFirst::new(RawToken($sep)),
-            $($crate::quote_each_tt!($tt)),*
-        ))
+        Repeat(coerce([
+            Box::new(SkipFirst::new(RawToken($sep))),
+            $(Box::new($crate::quote_each_tt!($tt))),*
+        ]))
     }};
 
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
-        Repeat(hlist!($($crate::quote_each_tt!($tt)),*))
+        Repeat(coerce([$(Box::new($crate::quote_each_tt!($tt))),*]))
     }};
 
     // expand token
@@ -144,29 +146,29 @@ macro_rules! quote_each_tt {
 
     // extract braces
     ( { $($tt:tt)* } ) => {{
-        hlist!(
-            TokenAdvancer::new(LeftBrace.input()),
-            $($crate::quote_each_tt!($tt),)*
-            TokenAdvancer::new(RightBrace.input()),
-        )
+        coerce([
+            Box::new(TokenAdvancer::new(LeftBrace.input())),
+            $(Box::new($crate::quote_each_tt!($tt)),)*
+            Box::new(TokenAdvancer::new(RightBrace.input())),
+        ])
     }};
 
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
-        hlist!(
-            TokenAdvancer::new(RawToken("(").input()),
-            $($crate::quote_each_tt!($tt),)*
-            TokenAdvancer::new(RawToken(")").input()),
-        )
+        coerce([
+            Box::new(TokenAdvancer::new(RawToken("(").input())),
+            $(Box::new($crate::quote_each_tt!($tt)),)*
+            Box::new(TokenAdvancer::new(RawToken(")").input())),
+        ])
     }};
 
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
-        hlist!(
-            TokenAdvancer::new(RawToken("[").input()),
-            $($crate::quote_each_tt!($tt),)*
-            TokenAdvancer::new(RawToken("]").input()),
-        )
+        coerce([
+            Box::new(TokenAdvancer::new(RawToken("[").input())),
+            $(Box::new($crate::quote_each_tt!($tt)),)*
+            Box::new(TokenAdvancer::new(RawToken("]").input())),
+        ])
     }};
 
     // special case fo comma

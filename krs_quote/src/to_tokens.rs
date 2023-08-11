@@ -1,8 +1,6 @@
 use std::fmt;
 use std::rc::Rc;
 
-use krs_hlist::{Cons, End};
-
 use crate::runtime::GetTokenIter;
 
 /// Single token for a [TokenStream]
@@ -248,29 +246,25 @@ impl<S: GetTokenIter> GenerateTokens for TokenAdvancer<S, S::TokenIter, S::Item>
     }
 }
 
-impl<H: GenerateTokens, T: GenerateTokens> GenerateTokens for Cons<H, T> {
+impl<'a, const N: usize> GenerateTokens for [Box<dyn GenerateTokens + 'a>; N] {
     fn init(&mut self) {
-        self.head.init();
-        self.tail.init();
+        for x in self.iter_mut() {
+            x.init();
+        }
     }
 
     fn advance_token(&mut self) -> Signal {
-        self.head.advance_token()?;
-        self.tail.advance_token()
+        for x in self.iter_mut() {
+            x.advance_token()?;
+        }
+        Some(())
     }
 
     fn to_tokens(&mut self, ts: &mut TokenStream) {
-        self.head.to_tokens(ts);
-        self.tail.to_tokens(ts);
+        for x in self.iter_mut() {
+            x.to_tokens(ts);
+        }
     }
-}
-
-impl GenerateTokens for End {
-    fn init(&mut self) { }
-
-    fn advance_token(&mut self) -> Signal { Some(()) }
-
-    fn to_tokens(&mut self, _ts: &mut TokenStream) { }
 }
 
 enum Skip {
