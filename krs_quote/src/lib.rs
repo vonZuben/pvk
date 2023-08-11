@@ -68,7 +68,9 @@ macro_rules! krs_quote {
         use $crate::__private::*;
         let mut ts = TokenStream::new();
         let mut to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        to_tokens.next_token().expect("expected at least one token").to_tokens(&mut ts);
+        to_tokens.init();
+        to_tokens.advance_token();
+        to_tokens.to_tokens(&mut ts);
         ts
     }}
 }
@@ -96,7 +98,9 @@ macro_rules! krs_quote_with {
         use $crate::__private::*;
         let ts: &mut TokenStream = $ts;
         let mut to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        to_tokens.next_token().to_tokens(ts);
+        to_tokens.init();
+        to_tokens.advance_token();
+        to_tokens.to_tokens(ts);
     }}
 }
 
@@ -104,67 +108,80 @@ macro_rules! krs_quote_with {
 #[macro_export]
 macro_rules! quote_each_tt {
 
-    // expand repetition wth separator
+    // expand repetition with comma
+    ( {@,* $($tt:tt)* } ) => {{
+        Repeat(hlist!(
+            SkipFirst::new(Comma),
+            $($crate::quote_each_tt!($tt)),*
+        ))
+    }};
+
+    // expand repetition with semi colon
+    ( {@;* $($tt:tt)* } ) => {{
+        Repeat(hlist!(
+            SkipFirst::new(SemiColon),
+            $($crate::quote_each_tt!($tt)),*
+        ))
+    }};
+
+    // expand repetition with any separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
-        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        match stringify!($sep) {
-            "," => InnerRepWithSeparator::new(to_tokens, Comma.into()),
-            ";" => InnerRepWithSeparator::new(to_tokens, SemiColon.into()),
-            x => InnerRepWithSeparator::new(to_tokens, RawToken(x)),
-        }
+        Repeat(hlist!(
+            SkipFirst::new(RawToken($sep)),
+            $($crate::quote_each_tt!($tt)),*
+        ))
     }};
 
     // expand repetition
     ( {@* $($tt:tt)* } ) => {{
-        let to_tokens = hlist!($($crate::quote_each_tt!($tt)),*);
-        InnerRep::new(to_tokens)
+        Repeat(hlist!($($crate::quote_each_tt!($tt)),*))
     }};
 
     // expand token
     ( {@$item:ident} ) => {{
-        (&$item).input()
+        TokenAdvancer::new((&$item).input())
     }};
 
     // extract braces
     ( { $($tt:tt)* } ) => {{
         hlist!(
-            LeftBrace.input(),
+            TokenAdvancer::new(LeftBrace.input()),
             $($crate::quote_each_tt!($tt),)*
-            RightBrace.input(),
+            TokenAdvancer::new(RightBrace.input()),
         )
     }};
 
     // extract parens
     ( ( $($tt:tt)* ) ) => {{
         hlist!(
-            RawToken("(").input(),
+            TokenAdvancer::new(RawToken("(").input()),
             $($crate::quote_each_tt!($tt),)*
-            RawToken(")").input(),
+            TokenAdvancer::new(RawToken(")").input()),
         )
     }};
 
     // extract bracket
     ( [ $($tt:tt)* ] ) => {{
         hlist!(
-            RawToken("[").input(),
+            TokenAdvancer::new(RawToken("[").input()),
             $($crate::quote_each_tt!($tt),)*
-            RawToken("]").input(),
+            TokenAdvancer::new(RawToken("]").input()),
         )
     }};
 
     // special case fo comma
     ( , ) => {{
-        Comma.input()
+        TokenAdvancer::new(Comma.input())
     }};
 
     // special case fo semicolon
     ( ; ) => {{
-        SemiColon.input()
+        TokenAdvancer::new(SemiColon.input())
     }};
 
     // Regular token
     ( $tt:tt ) => {{
-        RawToken(stringify!($tt)).input()
+        TokenAdvancer::new(RawToken(stringify!($tt)).input())
     }};
 
 }

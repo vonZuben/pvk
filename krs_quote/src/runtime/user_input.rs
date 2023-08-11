@@ -21,41 +21,82 @@
 //!
 //! This is all internal implementations details, and these docs are just for internal use.
 
-use std::iter::Repeat;
-
-use crate::to_tokens::{ToTokens, IterWrapper};
+use crate::to_tokens::ToTokens;
 
 #[doc(hidden)]
-pub trait IterInput {
-    fn input(&self) -> IterWrapper<Self> where Self: Sized;
+pub struct IsIter;
+#[doc(hidden)]
+pub struct IsIntoIter;
+#[doc(hidden)]
+pub struct IsToTokens;
+#[doc(hidden)]
+pub struct InputWrapper<'a, I: ?Sized, Kind>(&'a I, std::marker::PhantomData<Kind>);
+#[doc(hidden)]
+pub trait GetTokenIter {
+    type Item: ToTokens;
+    type TokenIter: Iterator<Item = Self::Item>;
+    fn get_token_iter(&self) -> Self::TokenIter;
 }
 
-impl<T: ?Sized> IterInput for T where T: Clone + Iterator {
-    fn input(&self) -> IterWrapper<Self> {
-        IterWrapper(self.clone())
+impl<'a, I: Clone + Iterator> GetTokenIter for InputWrapper<'a, I, IsIter> where I::Item: ToTokens {
+    type Item = I::Item;
+
+    type TokenIter = I;
+
+    fn get_token_iter(&self) -> Self::TokenIter {
+        self.0.clone()
+    }
+}
+
+impl<'a, I: ?Sized, T: ToTokens, Iter: Iterator<Item = T>> GetTokenIter for InputWrapper<'a, I, IsIntoIter> where &'a I: IntoIterator<Item = T, IntoIter = Iter> {
+    type Item = T;
+
+    type TokenIter = Iter;
+
+    fn get_token_iter(&self) -> Self::TokenIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a, I: ToTokens> GetTokenIter for InputWrapper<'a, I, IsToTokens> {
+    type Item = &'a I;
+
+    type TokenIter = std::iter::Repeat<&'a I>;
+
+    fn get_token_iter(&self) -> Self::TokenIter {
+        std::iter::repeat(self.0)
     }
 }
 
 #[doc(hidden)]
-pub trait IntoIterInput {
-    type Iter;
-    fn input(&self) -> IterWrapper<Self::Iter>;
+pub trait IterInput {
+    fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsIter>;
 }
 
-impl<'a, T: ?Sized> IntoIterInput for &'a T where Self: IntoIterator {
-    type Iter = <Self as IntoIterator>::IntoIter;
-    fn input(&self) -> IterWrapper<Self::Iter> {
-        IterWrapper(self.into_iter())
+impl<T: ?Sized> IterInput for T where T: Clone + Iterator {
+    fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsIter> {
+        InputWrapper(self, Default::default())
+    }
+}
+
+#[doc(hidden)]
+pub trait IntoIterInput<'a, T: ?Sized> {
+    fn input(&self) -> InputWrapper<'a, T, IsIntoIter>;
+}
+
+impl<'a, T: ?Sized> IntoIterInput<'a, T> for &'a T where Self: IntoIterator {
+    fn input(&self) -> InputWrapper<'a, T, IsIntoIter> {
+        InputWrapper(*self, Default::default())
     }
 }
 
 #[doc(hidden)]
 pub trait TokenInput {
-    fn input<'a>(&'a self) -> IterWrapper<Repeat<&'a Self>>;
+    fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsToTokens>;
 }
 
 impl<T: ?Sized> TokenInput for T where T: ToTokens {
-    fn input<'a>(&'a self) -> IterWrapper<Repeat<&'a Self>> {
-        IterWrapper(std::iter::repeat(self))
+    fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsToTokens> {
+        InputWrapper(self, Default::default())
     }
 }
