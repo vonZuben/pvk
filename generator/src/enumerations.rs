@@ -45,13 +45,12 @@ impl<'a> EnumVariants<'a> {
         }
     }
 
-    pub fn push_variant_once(&mut self, mut variant: constants::Constant3<'a>) {
-        let name = variant.name;
-        variant.private();
+    pub fn push_variant_once(&mut self, variant: constants::Constant3<'a>) {
+        let name = *variant.name();
         match self.variants.get(name) {
             // the vulkan spec includes redundant enum definitions
             // we only want to generate one, but we should ensure they are all consistent
-            Some(already) => assert_eq!(*already, variant),
+            Some(already) => assert!(already.eq(&variant)),
             None => self.variants.push(name, variant),
         }
     }
@@ -65,42 +64,28 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
 
         let mod_name = ModName::new(target);
 
-        let properties = crate::enum_properties::get_properties(target);
+        let variant_name_strings = self.variants.iter().map(|c| c.name().normalize());
 
-        let properties_name = properties.map(|p|p.name(target));
-        let properties_name = properties_name.iter(); // Option iter yields one element, so I can use as poor mans optional expansion in repeat syntax
+        let variant_names = self.variants.iter().map(|c|*c.name());
 
-        let variant_name_strings: Vec<_> = self.variants.iter()
-            .map(|c| {
-                make_variant_name(target_string, utils::ctype_to_rtype(c.name.as_str()))
-            }).collect();
-
-        let variant_names: Vec<_> = variant_name_strings.iter().map(VkTyName::from).collect();
-
-        let variant_properties = variant_names.iter()
-            .map(|&name| crate::enum_properties::variant_properties(name, target));
+        let properties = crate::enum_properties::properties(target, variant_names.clone());
 
         krs_quote_with!(tokens <-
             impl {@target} {
                 {@* {@variants} }
             }
+            // add this to allow easily importing all names for the given type, since Rust does not currently allow importing const names from impl
+            pub mod {@mod_name} {
+                use super::{@target};
+                {@* pub const {@variant_names}: {@target} = {@target}::{@variant_names}; }
+            }
+
+            {@properties}
         );
 
         match self.kind {
             EnumKind::Normal => {
                 krs_quote_with!(tokens <-
-                    pub mod {@mod_name} {
-                        use super::{VkEnumVariant, {@target} {@* , {@properties_name}}};
-                        {@*
-                            #[derive(Copy, Clone)]
-                            pub struct {@variant_names};
-                            impl VkEnumVariant for {@variant_names} {
-                                type Enum = {@target};
-                                const VARIANT: i32 = {@target}::{@variant_names}.0;
-                            }
-                            {@variant_properties}
-                        }
-                    }
                     impl std::fmt::Debug for {@target} {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                         let to_print = match *self {
@@ -116,18 +101,6 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
             }
             EnumKind::BitFlags => {
                 krs_quote_with!(tokens <-
-                    pub mod {@mod_name} {
-                        use super::{VkFlagBitType, VkBitmaskType, {@target}};
-                        {@*
-                            #[derive(Copy, Clone)]
-                            pub struct {@variant_names};
-                            impl VkFlagBitType for {@variant_names} {
-                                type FlagType = {@target};
-                                const FLAG: <Self::FlagType as VkBitmaskType>::RawType = {@target}::{@variant_names}.0;
-                            }
-                        }
-                    }
-
                     impl std::fmt::Debug for {@target} {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                         let mut self_copy = *self;

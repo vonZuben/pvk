@@ -31,7 +31,6 @@ mod vk_parse_visitor;
 mod code_generator;
 mod static_code;
 mod traits;
-mod bitmask_traits;
 mod enum_properties;
 mod vuid_visitor;
 mod vuid;

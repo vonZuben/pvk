@@ -7,9 +7,9 @@ use crate::vk_parse_visitor;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct Constant3<'a> {
-    pub name: VkTyName,
-    pub ty: ctype::Ctype,
-    pub val: ConstValue2<'a>,
+    name: VkTyName,
+    ty: ctype::Ctype,
+    val: ConstValue2<'a>,
     visibility: Visibility,
     target: Option<VkTyName>,
 }
@@ -17,22 +17,24 @@ pub struct Constant3<'a> {
 impl<'a> Constant3<'a> {
     pub fn new(name: impl Into<VkTyName>, ty: ctype::Ctype, val: ConstValue2<'a>, target: Option<VkTyName>) -> Self {
         let name = name.into();
+        let name = match target {
+            Some(target) => crate::enumerations::make_variant_name(&target, name.as_str()).into(),
+            None => name,
+        };
         // at first, visibility was assumed to always be public, but there are some times we want private now
         // keep public as default so everything still works and set private when needed
         let visibility = Visibility::Public;
         Self { name, ty, val, target, visibility }
     }
-    pub fn private(&mut self) {
-        self.visibility = Visibility::Private;
+
+    pub fn name(&self) -> &VkTyName {
+        &self.name
     }
 }
 
 impl krs_quote::ToTokens for Constant3<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let name = match self.target {
-            Some(target) => crate::enumerations::make_variant_name(&target, &self.name).as_code(),
-            None => self.name.as_code(),
-        };
+        let name = self.name;
         let ty = &self.ty;
         let val = &self.val;
         let visibility = self.visibility;

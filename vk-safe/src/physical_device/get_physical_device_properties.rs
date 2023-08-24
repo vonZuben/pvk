@@ -6,8 +6,6 @@ use vk_safe_sys as vk;
 use std::fmt;
 use std::mem::MaybeUninit;
 
-use vk_safe_sys::validation::GetPhysicalDeviceProperties::*;
-
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
@@ -16,7 +14,6 @@ where
     C::Commands: GetCommand<vk::GetPhysicalDeviceProperties>,
 {
     pub fn get_physical_device_properties(&self) -> PhysicalDeviceProperties<'scope> {
-        validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
             self.instance.commands.get_command().get_fptr()(
@@ -28,26 +25,17 @@ where
     }
 }
 
-struct Validation;
-
-#[allow(non_upper_case_globals)]
-impl Vuids for Validation {
-    const VUID_vkGetPhysicalDeviceProperties_physicalDevice_parameter: () = {
-        // ensured by PhysicalDevice creation
-    };
-
-    const VUID_vkGetPhysicalDeviceProperties_pProperties_parameter: () = {
-        // MaybeUninit
-    };
-}
-
-check_vuid_defs!(
-    pub const VUID_vkGetPhysicalDeviceProperties_physicalDevice_parameter: &'static [u8] =
+const _VUID: () = {
+    check_vuid_defs2!( GetPhysicalDeviceProperties
+        pub const VUID_vkGetPhysicalDeviceProperties_physicalDevice_parameter: &'static [u8] =
             "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
+        // ensured by PhysicalDevice creation
         pub const VUID_vkGetPhysicalDeviceProperties_pProperties_parameter: &'static [u8] =
             "pProperties must be a valid pointer to a VkPhysicalDeviceProperties structure"
                 .as_bytes();
-);
+        // MaybeUninit
+    )
+};
 
 simple_struct_wrapper_scoped!(PhysicalDeviceProperties impl Deref);
 

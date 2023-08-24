@@ -7,8 +7,6 @@ use vk_safe_sys as vk;
 use std::fmt;
 use std::mem::MaybeUninit;
 
-use vk_safe_sys::validation::GetPhysicalDeviceMemoryProperties::*;
-
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
@@ -17,7 +15,6 @@ where
     C::Commands: GetCommand<vk::GetPhysicalDeviceMemoryProperties>,
 {
     pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<'scope> {
-        validate(Validation);
         let mut properties = MaybeUninit::uninit();
         unsafe {
             self.instance.commands.get_command().get_fptr()(
@@ -29,28 +26,27 @@ where
     }
 }
 
-struct Validation;
-
-#[allow(non_upper_case_globals)]
-impl Vuids for Validation {
-    const VUID_vkGetPhysicalDeviceMemoryProperties_physicalDevice_parameter: () ={
-        // PhysicalDevice
-    };
-
-    const VUID_vkGetPhysicalDeviceMemoryProperties_pMemoryProperties_parameter: () = {
-        // MaybeUninit
-    };
-}
-
-check_vuid_defs!(
-    pub const VUID_vkGetPhysicalDeviceMemoryProperties_physicalDevice_parameter:
+const _VUID: () = {
+    check_vuid_defs2!( GetPhysicalDeviceMemoryProperties
+        pub const VUID_vkGetPhysicalDeviceMemoryProperties_physicalDevice_parameter:
             &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
+        // PhysicalDevice
         pub const VUID_vkGetPhysicalDeviceMemoryProperties_pMemoryProperties_parameter : & 'static [ u8 ] = "pMemoryProperties must be a valid pointer to a VkPhysicalDeviceMemoryProperties structure" . as_bytes ( ) ;
-);
+        // MaybeUninit
+    )
+};
 
 simple_struct_wrapper_scoped!(PhysicalDeviceMemoryProperties);
 
 simple_struct_wrapper_scoped!(MemoryType impl Debug, Deref);
+
+impl MemoryType<'_> {
+    // helper method since the only way to get the property_flags normally
+    // is through Deref trait which is not possible const context
+    pub(crate) const fn property_flags(&self) -> vk::MemoryPropertyFlags {
+        self.inner.property_flags
+    }
+}
 
 simple_struct_wrapper_scoped!(MemoryHeap impl Debug, Deref);
 

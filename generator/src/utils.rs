@@ -162,7 +162,7 @@ impl VkTyName {
         // let this = self;
         // quote!( #this )
     }
-    fn normalize(&self) -> &str {
+    pub fn normalize(&self) -> &str {
         ctype_to_rtype(self.name.get())
     }
 }

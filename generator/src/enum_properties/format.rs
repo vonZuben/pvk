@@ -1,51 +1,47 @@
 use super::*;
 
-pub struct FormatPropertiesDef;
+pub struct FormatProperties;
 
-impl EnumProperties for FormatPropertiesDef {
-    fn name(&self, name: VkTyName) -> DynToTokens {
-        Box::new(ToTokensClosure(move |tokens: &mut TokenStream| {
-            let p_name = trait_name(name);
-            tokens.push(p_name)
-        }))
-    }
+impl<I: Iterator<Item = VkTyName> + Clone> ToTokensDelegate<I> for FormatProperties {
+    fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream) {
+        let target = params.target;
+        let variants = &params.variants;
 
-    fn def(&self, name: VkTyName) -> DynToTokens {
-        Box::new(ToTokensClosure(move |tokens: &mut TokenStream| {
-            let p_name = trait_name(name);
-            krs_quote_with!(tokens <-
-                pub trait {@p_name} {
-                    const COMPRESSED_FORMAT: bool;
-                    const MULTI_PLANAR: bool;
-                    const HAS_DEPTH_COMPONENT: bool;
-                    const HAS_STENCIL_COMPONENT: bool;
+        let is_compressed = variants.clone().map(|v|v.contains("_BLOCK"));
+        let is_multi_planar = variants.clone().map(|v|v.contains("PLANE_"));
+        let has_depth_stencil: Vec<_> = variants.clone().map(|v| has_depth_stencil(v.as_str())).collect();
+        let has_depth = has_depth_stencil.iter().map(|t|t.0);
+        let has_stencil = has_depth_stencil.iter().map(|t|t.1);
+
+        krs_quote_with!(tokens <-
+            impl {@target} {
+                pub const fn is_compressed_format(self) -> bool {
+                    match self {
+                        {@* Self::{@variants} => {@is_compressed}, }
+                        _ => panic!("invalid Format"),
+                    }
                 }
-            )
-        }))
-    }
-
-    fn variant(&self, name: VkTyName, target: VkTyName) -> DynToTokens {
-        Box::new(ToTokensClosure(move |tokens: &mut TokenStream| {
-            let p_name = trait_name(target);
-
-            let compressed = name.contains("_BLOCK");
-            let multi_planar = name.contains("PLANE_");
-            let (has_depth, has_stencil) = has_depth_stencil(&name);
-
-            krs_quote_with!(tokens <-
-                impl {@p_name} for {@name} {
-                    const COMPRESSED_FORMAT: bool = {@compressed};
-                    const MULTI_PLANAR: bool = {@multi_planar};
-                    const HAS_DEPTH_COMPONENT: bool = {@has_depth};
-                    const HAS_STENCIL_COMPONENT: bool = {@has_stencil};
+                pub const fn is_multi_planar_format(self) -> bool {
+                    match self {
+                        {@* Self::{@variants} => {@is_multi_planar}, }
+                        _ => panic!("invalid Format"),
+                    }
                 }
-            )
-        }))
+                pub const fn has_depth_component(self) -> bool {
+                    match self {
+                        {@* Self::{@variants} => {@has_depth}, }
+                        _ => panic!("invalid Format"),
+                    }
+                }
+                pub const fn has_stencil_component(self) -> bool {
+                    match self {
+                        {@* Self::{@variants} => {@has_stencil}, }
+                        _ => panic!("invalid Format"),
+                    }
+                }
+            }
+        );
     }
-}
-
-fn trait_name(name: VkTyName) -> Token {
-    Token::from(format!("{name}EnumProperties"))
 }
 
 // return (has_depth, has_stencil)
@@ -53,7 +49,7 @@ fn has_depth_stencil(name: &str) -> (bool, bool) {
     let mut has_depth = false;
     let mut has_stencil = false;
 
-    let mut chars = name.chars().peekable();
+    let mut chars = name.chars();
 
     while let Some(c) = chars.next() {
         // look for D##_

@@ -4,10 +4,7 @@ use vk::GetCommand;
 use crate::instance::InstanceConfig;
 use crate::device::{Device, DeviceConfig};
 
-use vk::VkEnumVariant;
-use vk::BitList;
-
-use crate::safe_interface::type_conversions::TransmuteArray;
+use crate::safe_interface::type_conversions::transmute_array;
 
 use std::mem::MaybeUninit;
 use std::fmt;
@@ -48,17 +45,95 @@ pub struct DeviceCreateInfo <'a, C: DeviceConfig> {
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, C: DeviceConfig> DeviceCreateInfo<'a, C> {
-    pub fn new(_config: C, queue_create_info: &'a [DeviceQueueCreateInfo]) -> Self {
-        assert!(queue_create_info.len() > 0);
-        validate_device_create_info::Validation::validate();
+impl<'a, C: DeviceConfig + Copy> DeviceCreateInfo<'a, C> {
+    pub const fn new(_config: C, queue_create_info: &'a [DeviceQueueCreateInfo]) -> Self {
+
+        check_vuid_defs2!( DeviceCreateInfo
+            pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372: &'static [u8] = "".as_bytes();
+            // VUID_VkDeviceCreateInfo_queueFamilyIndex_00372 appears to be a mistake since no definition is provided
+            pub const VUID_VkDeviceCreateInfo_sType_sType: &'static [u8] =
+                "sType must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO".as_bytes();
+            // s_type is set below
+            pub const VUID_VkDeviceCreateInfo_pNext_pNext : & 'static [ u8 ] = "Each pNext member of any structure (including this one) in the pNext chain must be either NULL or a pointer to a valid instance of VkDeviceGroupDeviceCreateInfo, VkDeviceMemoryOverallocationCreateInfoAMD, VkPhysicalDevice16BitStorageFeatures, VkPhysicalDevice8BitStorageFeaturesKHR, VkPhysicalDeviceASTCDecodeFeaturesEXT, VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT, VkPhysicalDeviceBufferAddressFeaturesEXT, VkPhysicalDeviceComputeShaderDerivativesFeaturesNV, VkPhysicalDeviceConditionalRenderingFeaturesEXT, VkPhysicalDeviceCornerSampledImageFeaturesNV, VkPhysicalDeviceDescriptorIndexingFeaturesEXT, VkPhysicalDeviceExclusiveScissorFeaturesNV, VkPhysicalDeviceFeatures2, VkPhysicalDeviceFloat16Int8FeaturesKHR, VkPhysicalDeviceFragmentDensityMapFeaturesEXT, VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV, VkPhysicalDeviceInlineUniformBlockFeaturesEXT, VkPhysicalDeviceMemoryPriorityFeaturesEXT, VkPhysicalDeviceMeshShaderFeaturesNV, VkPhysicalDeviceMultiviewFeatures, VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV, VkPhysicalDeviceSamplerYcbcrConversionFeatures, VkPhysicalDeviceScalarBlockLayoutFeaturesEXT, VkPhysicalDeviceShaderAtomicInt64FeaturesKHR, VkPhysicalDeviceShaderDrawParameterFeatures, VkPhysicalDeviceShaderImageFootprintFeaturesNV, VkPhysicalDeviceShadingRateImageFeaturesNV, VkPhysicalDeviceTransformFeedbackFeaturesEXT, VkPhysicalDeviceVariablePointerFeatures, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT, or VkPhysicalDeviceVulkanMemoryModelFeaturesKHR" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when add p_next support
+            }
+            pub const VUID_VkDeviceCreateInfo_sType_unique: &'static [u8] =
+                "Each sType member in the pNext chain must be unique".as_bytes();
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when add p_next support
+            }
+            pub const VUID_VkDeviceCreateInfo_flags_zerobitmask: &'static [u8] =
+                "flags must be 0".as_bytes();
+            // flags is set below
+            pub const VUID_VkDeviceCreateInfo_pQueueCreateInfos_parameter : & 'static [ u8 ] = "pQueueCreateInfos must be a valid pointer to an array of queueCreateInfoCount valid VkDeviceQueueCreateInfo structures" . as_bytes ( ) ;
+            CHECK {
+                // the queue create infos are created in a DeviceQueueCreateInfoArray via DeviceQueueCreateInfoConfiguration which ensure valid infos
+                // also rust references are used and are valid, and the array len is used for count
+            }
+            pub const VUID_VkDeviceCreateInfo_ppEnabledLayerNames_parameter : & 'static [ u8 ] = "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array of enabledLayerCount null-terminated UTF-8 strings" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when support layers
+            }
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_parameter : & 'static [ u8 ] = "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer to an array of enabledExtensionCount null-terminated UTF-8 strings" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when support extensions
+            }
+            pub const VUID_VkDeviceCreateInfo_pEnabledFeatures_parameter : & 'static [ u8 ] = "If pEnabledFeatures is not NULL, pEnabledFeatures must be a valid pointer to a valid VkPhysicalDeviceFeatures structure" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when support features
+            }
+            pub const VUID_VkDeviceCreateInfo_queueCreateInfoCount_arraylength: &'static [u8] =
+                "queueCreateInfoCount must be greater than 0".as_bytes();
+            CHECK {
+                assert!(queue_create_info.len() > 0);
+            }
+            pub const VUID_VkDeviceCreateInfo_pNext_00373 : & 'static [ u8 ] = "If the pNext chain includes a VkPhysicalDeviceFeatures2 structure, then pEnabledFeatures must be NULL" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when add p_next support
+            }
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_01840: &'static [u8] =
+                "ppEnabledExtensionNames must not contain VK_AMD_negative_viewport_height".as_bytes();
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when support extensions
+            }
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_00374 : & 'static [ u8 ] = "ppEnabledExtensionNames must not contain both VK_KHR_maintenance1 and VK_AMD_negative_viewport_height" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when support extensions
+            }
+        );
+
         Self {
             inner: vk::DeviceCreateInfo {
-                s_type: vk::structure_type::DEVICE_CREATE_INFO.as_enum(),
+                s_type: vk::StructureType::DEVICE_CREATE_INFO,
                 p_next: std::ptr::null(),
                 flags: vk::DeviceCreateFlags::empty(),
                 queue_create_info_count: queue_create_info.len() as u32,
-                p_queue_create_infos: queue_create_info.safe_transmute().as_ptr(),
+                p_queue_create_infos: transmute_array(queue_create_info).as_ptr(),
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),
                 enabled_extension_count: 0,
@@ -69,119 +144,6 @@ impl<'a, C: DeviceConfig> DeviceCreateInfo<'a, C> {
             _refs: PhantomData,
         }
     }
-}
-
-mod validate_device_create_info {
-    use vk_safe_sys::validation::DeviceCreateInfo::*;
-
-    pub struct Validation;
-
-    impl Validation {
-        pub(crate) fn validate() {
-            validate(Self)
-        }
-    }
-
-    #[allow(non_upper_case_globals)]
-    impl Vuids for Validation {
-        const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372: () = {
-            // This VUID has no description in the current vuid json file
-        };
-
-        const VUID_VkDeviceCreateInfo_sType_sType: () = {
-            // handled in new()
-        };
-
-        const VUID_VkDeviceCreateInfo_pNext_pNext: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when add p_next support
-        };
-
-        const VUID_VkDeviceCreateInfo_sType_unique: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when add p_next support
-        };
-
-        const VUID_VkDeviceCreateInfo_flags_zerobitmask: () = {
-            // set in new()
-        };
-
-        const VUID_VkDeviceCreateInfo_pQueueCreateInfos_parameter: () = {
-            // the queue create infos are created in a DeviceQueueCreateInfoArray via DeviceQueueCreateInfoConfiguration which ensure valid infos
-            // also rust references are used and are valid, and the array len is used for count
-        };
-
-        const VUID_VkDeviceCreateInfo_ppEnabledLayerNames_parameter: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when support layers
-        };
-
-        const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_parameter: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when support extensions
-        };
-
-        const VUID_VkDeviceCreateInfo_pEnabledFeatures_parameter: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when support features
-        };
-
-        const VUID_VkDeviceCreateInfo_queueCreateInfoCount_arraylength: () = {
-            // checked via assert!()
-        };
-
-        const VUID_VkDeviceCreateInfo_pNext_00373: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when add p_next support
-        };
-
-        const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_01840: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when support extensions
-        };
-
-        const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_00374: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when support extensions
-        };
-    }
-
-    check_vuid_defs!(
-        pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372: &'static [u8] = "".as_bytes();
-        pub const VUID_VkDeviceCreateInfo_sType_sType: &'static [u8] =
-            "sType must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO".as_bytes();
-        pub const VUID_VkDeviceCreateInfo_pNext_pNext : & 'static [ u8 ] = "Each pNext member of any structure (including this one) in the pNext chain must be either NULL or a pointer to a valid instance of VkDeviceGroupDeviceCreateInfo, VkDeviceMemoryOverallocationCreateInfoAMD, VkPhysicalDevice16BitStorageFeatures, VkPhysicalDevice8BitStorageFeaturesKHR, VkPhysicalDeviceASTCDecodeFeaturesEXT, VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT, VkPhysicalDeviceBufferAddressFeaturesEXT, VkPhysicalDeviceComputeShaderDerivativesFeaturesNV, VkPhysicalDeviceConditionalRenderingFeaturesEXT, VkPhysicalDeviceCornerSampledImageFeaturesNV, VkPhysicalDeviceDescriptorIndexingFeaturesEXT, VkPhysicalDeviceExclusiveScissorFeaturesNV, VkPhysicalDeviceFeatures2, VkPhysicalDeviceFloat16Int8FeaturesKHR, VkPhysicalDeviceFragmentDensityMapFeaturesEXT, VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV, VkPhysicalDeviceInlineUniformBlockFeaturesEXT, VkPhysicalDeviceMemoryPriorityFeaturesEXT, VkPhysicalDeviceMeshShaderFeaturesNV, VkPhysicalDeviceMultiviewFeatures, VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV, VkPhysicalDeviceSamplerYcbcrConversionFeatures, VkPhysicalDeviceScalarBlockLayoutFeaturesEXT, VkPhysicalDeviceShaderAtomicInt64FeaturesKHR, VkPhysicalDeviceShaderDrawParameterFeatures, VkPhysicalDeviceShaderImageFootprintFeaturesNV, VkPhysicalDeviceShadingRateImageFeaturesNV, VkPhysicalDeviceTransformFeedbackFeaturesEXT, VkPhysicalDeviceVariablePointerFeatures, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT, or VkPhysicalDeviceVulkanMemoryModelFeaturesKHR" . as_bytes ( ) ;
-        pub const VUID_VkDeviceCreateInfo_sType_unique: &'static [u8] =
-            "Each sType member in the pNext chain must be unique".as_bytes();
-        pub const VUID_VkDeviceCreateInfo_flags_zerobitmask: &'static [u8] =
-            "flags must be 0".as_bytes();
-        pub const VUID_VkDeviceCreateInfo_pQueueCreateInfos_parameter : & 'static [ u8 ] = "pQueueCreateInfos must be a valid pointer to an array of queueCreateInfoCount valid VkDeviceQueueCreateInfo structures" . as_bytes ( ) ;
-        pub const VUID_VkDeviceCreateInfo_ppEnabledLayerNames_parameter : & 'static [ u8 ] = "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array of enabledLayerCount null-terminated UTF-8 strings" . as_bytes ( ) ;
-        pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_parameter : & 'static [ u8 ] = "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer to an array of enabledExtensionCount null-terminated UTF-8 strings" . as_bytes ( ) ;
-        pub const VUID_VkDeviceCreateInfo_pEnabledFeatures_parameter : & 'static [ u8 ] = "If pEnabledFeatures is not NULL, pEnabledFeatures must be a valid pointer to a valid VkPhysicalDeviceFeatures structure" . as_bytes ( ) ;
-        pub const VUID_VkDeviceCreateInfo_queueCreateInfoCount_arraylength: &'static [u8] =
-            "queueCreateInfoCount must be greater than 0".as_bytes();
-        pub const VUID_VkDeviceCreateInfo_pNext_00373 : & 'static [ u8 ] = "If the pNext chain includes a VkPhysicalDeviceFeatures2 structure, then pEnabledFeatures must be NULL" . as_bytes ( ) ;
-        pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_01840: &'static [u8] =
-            "ppEnabledExtensionNames must not contain VK_AMD_negative_viewport_height".as_bytes();
-            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_00374 : & 'static [ u8 ] = "ppEnabledExtensionNames must not contain both VK_KHR_maintenance1 and VK_AMD_negative_viewport_height" . as_bytes ( ) ;
-    );
 }
 
 /// A safe to use [vk::DeviceQueueCreateInfo]
@@ -217,67 +179,6 @@ impl fmt::Debug for DeviceQueueCreateInfo<'_> {
     }
 }
 
-mod validate_device_queue_create_info {
-    use vk_safe_sys::validation::DeviceQueueCreateInfo::*;
-
-    pub struct Validation;
-
-    #[allow(non_upper_case_globals)]
-    impl Vuids for Validation {
-        const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: () = {
-            // QueueFamilies::configure_create_info api ensures valid queue family index
-        };
-
-        const VUID_VkDeviceQueueCreateInfo_queueCount_00382: () = {
-            // assert!() in DeviceQueueCreateInfoConfiguration::configure
-        };
-
-        const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: () = {
-            // ensured by QueuePriorities
-        };
-
-        const VUID_VkDeviceQueueCreateInfo_sType_sType: () = {
-            // new()
-        };
-
-        const VUID_VkDeviceQueueCreateInfo_pNext_pNext: () = {
-            // ******************************************
-            // *****************TODO*********************
-            // ******************************************
-            // need check when add p_next support
-        };
-
-        const VUID_VkDeviceQueueCreateInfo_flags_parameter: () = {
-            // ensured by ensured by QueuePriorities and DeviceQueueCreateInfoConfiguration::push_config/push_config_with_protected
-        };
-
-        const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: () = {
-            // ensured by ensured by QueuePriorities and DeviceQueueCreateInfoConfiguration::push_config/push_config_with_protected
-        };
-
-        const VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: () = {
-            // ensured in QueueFamilies::configure_create_info
-        };
-    }
-
-    check_vuid_defs!(
-        pub const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381 : & 'static [ u8 ] = "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties" . as_bytes ( ) ;
-        pub const VUID_VkDeviceQueueCreateInfo_queueCount_00382 : & 'static [ u8 ] = "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]" . as_bytes ( ) ;
-        pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: &'static [u8] =
-            "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive".as_bytes();
-        pub const VUID_VkDeviceQueueCreateInfo_sType_sType: &'static [u8] =
-            "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO".as_bytes();
-        pub const VUID_VkDeviceQueueCreateInfo_pNext_pNext : & 'static [ u8 ] = "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoEXT" . as_bytes ( ) ;
-        pub const VUID_VkDeviceQueueCreateInfo_flags_parameter: &'static [u8] =
-            "flags must be a valid combination of VkDeviceQueueCreateFlagBits values".as_bytes();
-        pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: &'static [u8] =
-            "pQueuePriorities must be a valid pointer to an array of queueCount float values"
-                .as_bytes();
-        pub const VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: &'static [u8] =
-            "queueCount must be greater than 0".as_bytes();
-    );
-}
-
 pub struct DeviceQueueCreateInfoArray<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> {
     infos: S::InitStorage,
     _a: PhantomData<&'a ()>,
@@ -306,21 +207,29 @@ impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> DeviceQueueCreateInfoArray<
     }
 }
 
-pub struct QueuePriorities<A> {
-    priorities: A,
+/// an array of queue priorities
+/// len must be > 0
+/// all values must fall in 0.0..=1.0
+#[derive(Clone, Copy)]
+pub struct QueuePriorities<'a> {
+    priorities: &'a [f32],
 }
 
-impl<A: AsRef<[f32]>> QueuePriorities<A> {
-    pub fn new(priorities: A) -> Self {
+impl<'a> QueuePriorities<'a> {
+    pub fn new(priorities: &'a [f32]) -> Self {
+        assert!(priorities.as_ref().len() > 0);
         for p in priorities.as_ref().iter().copied() {
             assert!(0.0 <= p && p <= 1.0)
         }
         unsafe { Self::new_unchecked(priorities) }
     }
-    pub unsafe fn new_unchecked(priorities: A) -> Self {
+    /// Safety
+    /// must ensure that priorities.as_ref().len() > 0, and all values are in the range 0.0..=1.0
+    pub unsafe fn new_unchecked(priorities: &'a [f32]) -> Self {
         Self { priorities }
     }
-    pub fn with_num_queues(&self, num_queues: usize) -> QueuePriorities<&[f32]> {
+    pub fn with_num_queues(&self, num_queues: usize) -> Self {
+        assert!(num_queues > 0);
         unsafe { QueuePriorities::new_unchecked(&self.priorities.as_ref()[..num_queues]) }
     }
     pub fn len(&self) -> usize {
@@ -355,19 +264,57 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
         }
     }
     /// configure DeviceQueueCreateInfo for this family to use priorities.len queues with the given priorities, and with given flag
-    pub fn push_config<A: AsRef<[f32]> + 'params>(
+    pub fn push_config(
         self,
-        priorities: &QueuePriorities<A>,
-        flags: Option<impl vk::DeviceQueueCreateFlagsConst>
+        priorities: QueuePriorities,
+        flags: vk::DeviceQueueCreateFlags
     ) -> crate::array_storage::InitResult {
-        if let Some(flags) = flags {
-            CHECK_FLAGS::verify(flags);
-        }
-        assert!(priorities.len() <= self.family_properties.queue_count as usize);
+        check_vuid_defs2!( DeviceQueueCreateInfo
+            pub const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381 : & 'static [ u8 ] = "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties" . as_bytes ( ) ;
+            CHECK {
+                // Self.family_index should be valid
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_queueCount_00382 : & 'static [ u8 ] = "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]" . as_bytes ( ) ;
+            CHECK {
+                assert!(priorities.len() <= self.family_properties.queue_count as usize);
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: &'static [u8] =
+                "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive".as_bytes();
+            CHECK {
+                // this is verified by QueuePriorities::new()
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_sType_sType: &'static [u8] =
+                "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO".as_bytes();
+            // s_type set below
+            pub const VUID_VkDeviceQueueCreateInfo_pNext_pNext : & 'static [ u8 ] = "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoEXT" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when add p_next support
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_flags_parameter: &'static [u8] =
+                "flags must be a valid combination of VkDeviceQueueCreateFlagBits values".as_bytes();
+            CHECK {
+                assert!(!flags.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT), "must not push_config with PROTECTED_BIT. use push_config_with_protected instead");
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: &'static [u8] =
+                "pQueuePriorities must be a valid pointer to an array of queueCount float values"
+                    .as_bytes();
+            CHECK {
+                // guaranteed by QueuePriorities
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: &'static [u8] =
+                "queueCount must be greater than 0".as_bytes();
+            CHECK {
+                // guaranteed by QueuePriorities
+            }
+        );
+
         let info = DeviceQueueCreateInfo {
             inner: vk::DeviceQueueCreateInfo {
-                s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                flags: flags.map_or(vk::DeviceQueueCreateFlags::empty(), |f|f.bitmask()),
+                s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
+                flags: flags,
                 p_next: std::ptr::null(),
                 queue_family_index: self.family_index,
                 queue_count: priorities.len() as u32, // the assert already confirms no overflow from conversion
@@ -383,25 +330,61 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
     /// VUID-VkDeviceCreateInfo-pQueueCreateInfos-06755
     pub fn push_config_with_protected<A: AsRef<[f32]> + 'params>(
         self,
-        priorities_for_non_protected: &QueuePriorities<A>,
-        flags_for_non_protected: Option<impl vk::DeviceQueueCreateFlagsConst>,
-        priorities_for_protected: &QueuePriorities<A>,
-        flags_for_protected: Option<impl vk::DeviceQueueCreateFlagsConst>
+        priorities_for_non_protected: QueuePriorities,
+        flags_for_non_protected: vk::DeviceQueueCreateFlags,
+        priorities_for_protected: QueuePriorities,
+        flags_for_protected: vk::DeviceQueueCreateFlags
     ) -> crate::array_storage::InitResult {
-        if let Some(flags_for_non_protected) = flags_for_non_protected {
-            MUST_NOT_USE_PROTECTED_BIT::verify(flags_for_non_protected);
-        }
-        if let Some(flags_for_protected) = flags_for_protected {
-            MUST_USE_PROTECTED_BIT::verify(flags_for_protected);
-        }
-        assert!(self.family_properties.queue_flags.contains(bitmask!(vk::queue_flag_bits: PROTECTED_BIT).bitmask()));
-        assert!(priorities_for_non_protected.len() + priorities_for_protected.len() <= self.family_properties.queue_count as usize);
+
+        check_vuid_defs2!( DeviceQueueCreateInfo
+            pub const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381 : & 'static [ u8 ] = "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties" . as_bytes ( ) ;
+            CHECK {
+                // Self.family_index should be valid
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_queueCount_00382 : & 'static [ u8 ] = "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]" . as_bytes ( ) ;
+            CHECK {
+                assert!(priorities_for_non_protected.len() + priorities_for_protected.len() <= self.family_properties.queue_count as usize);
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: &'static [u8] =
+                "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive".as_bytes();
+            CHECK {
+                // guaranteed by QueuePriorities
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_sType_sType: &'static [u8] =
+                "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO".as_bytes();
+            // s_type set below
+            pub const VUID_VkDeviceQueueCreateInfo_pNext_pNext : & 'static [ u8 ] = "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoEXT" . as_bytes ( ) ;
+            CHECK {
+                // ******************************************
+                // *****************TODO*********************
+                // ******************************************
+                // need check when add p_next support
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_flags_parameter: &'static [u8] =
+                "flags must be a valid combination of VkDeviceQueueCreateFlagBits values".as_bytes();
+            CHECK {
+                assert!(self.family_properties.queue_flags.contains(vk::QueueFlags::PROTECTED_BIT));
+                assert!(!flags_for_non_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT), "flags_for_non_protected should not include PROTECTED_BIT");
+                assert!(flags_for_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT), "flags_for_protected must include PROTECTED_BIT");
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: &'static [u8] =
+                "pQueuePriorities must be a valid pointer to an array of queueCount float values"
+                    .as_bytes();
+            CHECK {
+                // guaranteed by QueuePriorities
+            }
+            pub const VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: &'static [u8] =
+                "queueCount must be greater than 0".as_bytes();
+            CHECK {
+                // guaranteed by QueuePriorities
+            }
+        );
 
         if priorities_for_non_protected.len() > 0 {
             let non_protected_info = DeviceQueueCreateInfo {
                 inner: vk::DeviceQueueCreateInfo {
-                    s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                    flags: flags_for_non_protected.map_or(vk::DeviceQueueCreateFlags::empty(), |f|f.bitmask()),
+                    s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
+                    flags: flags_for_non_protected,
                     p_next: std::ptr::null(),
                     queue_family_index: self.family_index,
                     queue_count: priorities_for_non_protected.len() as u32, // the assert already confirms no overflow from conversion
@@ -415,8 +398,8 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
         if priorities_for_protected.len() > 0 {
             let protected_info = DeviceQueueCreateInfo {
                 inner: vk::DeviceQueueCreateInfo {
-                    s_type: vk::structure_type::DEVICE_QUEUE_CREATE_INFO.as_enum(),
-                    flags: flags_for_protected.map_or(vk::DeviceQueueCreateFlags::empty(), |f|f.bitmask()),
+                    s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
+                    flags: flags_for_protected,
                     p_next: std::ptr::null(),
                     queue_family_index: self.family_index,
                     queue_count: priorities_for_protected.len() as u32, // the assert already confirms no overflow from conversion
@@ -430,18 +413,3 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
         Ok(())
     }
 }
-
-verify_params!(CHECK_FLAGS(Flags: vk::DeviceQueueCreateFlagsConst) {
-    let flags = vk::raw_bitmask_from_type!(Flags);
-    assert!(!flags.contains(vk::device_queue_create_flag_bits::PROTECTED_BIT), "must not push_config with PROTECTED_BIT. use push_config_with_protected instead");
-});
-
-verify_params!(MUST_NOT_USE_PROTECTED_BIT(Flags: vk::DeviceQueueCreateFlagsConst) {
-    let flags = vk::raw_bitmask_from_type!(Flags);
-    assert!(!flags.contains(vk::device_queue_create_flag_bits::PROTECTED_BIT), "flags_for_non_protected should not include PROTECTED_BIT");
-});
-
-verify_params!(MUST_USE_PROTECTED_BIT(Flags: vk::DeviceQueueCreateFlagsConst) {
-    let flags = vk::raw_bitmask_from_type!(Flags);
-    assert!(flags.contains(vk::device_queue_create_flag_bits::PROTECTED_BIT), "flags_for_protected must include PROTECTED_BIT");
-});

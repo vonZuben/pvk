@@ -57,3 +57,8 @@ impl<'a, T, U> TransmuteArray<'a, T> for &'a [U] where U: SafeTransmute<T> {
         unsafe { std::mem::transmute(self) }
     }
 }
+
+// added this plain function to allow using the trait benefits in const context
+pub const fn transmute_array<A, B>(a: &[A]) -> &[B] where A: SafeTransmute<B> {
+    unsafe { std::mem::transmute(a) }
+}

@@ -103,7 +103,7 @@ mod create_device;
 
 // use get_physical_device_features::*;
 // use get_physical_device_format_properties::*;
-// use get_physical_device_image_format_properties::*;
+pub use get_physical_device_image_format_properties::GetPhysicalDeviceImageFormatPropertiesParams;
 // use get_physical_device_properties::*;
 use get_physical_device_queue_family_properties::*;
 pub use get_physical_device_memory_properties::*;

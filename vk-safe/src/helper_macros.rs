@@ -188,45 +188,6 @@ macro_rules! array {
     };
 }
 
-macro_rules! verify_params {
-    ( $name:ident( $( $param:ident : $trait:path ),* ) { $($code:tt)* } ) => {
-        #[allow(non_camel_case_types)]
-        struct $name<$($param: $trait),*>( $( std::marker::PhantomData<$param> ),* );
-
-        impl<$($param: $trait),*> $name<$($param),*> {
-            const VERIFY: () = {
-                $($code)*
-            };
-            #[track_caller]
-            fn verify($(_: $param),*){ let _ = Self::VERIFY; }
-        }
-    };
-}
-
-macro_rules! verify_vuids {
-    ( $vis:vis $name:ident( $( $param:ident : $trait:path ),* ) { $($code:tt)* } ) => {
-        $vis struct $name<$($param: $trait),*>( $( std::marker::PhantomData<$param> ),* );
-
-        impl<$($param: $trait),*> $name<$($param),*> {
-            fn new() -> Self {
-                Self (
-                    $(std::marker::PhantomData::<$param>::default()),*
-                )
-            }
-            #[track_caller]
-            $vis fn verify($(_: $param),*){
-                validate(Self::new()); // validate should be imported in the scope for the type being validated
-            }
-        }
-
-        #[allow(non_upper_case_globals)]
-        impl<$($param: $trait),*> Vuids for $name<$($param),*> { // Vuids should be in the scope
-            $($code)*
-        }
-    };
-}
-
-
 // TODO, exported macro probably belong somewhere else
 #[macro_export]
 macro_rules! bitmask {
@@ -238,21 +199,51 @@ macro_rules! bitmask {
     };
 }
 
+// // check things that looks like this from where they are defined
+// // const VUID_vkEnumeratePhysicalDevices_instance_parameter: &'static str = "instance must be a valid VkInstance handle";
+// // when implementing vuid checks, create definitions checkers to ensure that if the definition changes later, we know to update our check
+// macro_rules! check_vuid_defs {
+//     ( $( pub const $vuid:ident : &'static [u8] = $def:expr ;)* ) => {
+//         #[allow(non_upper_case_globals)]
+//         #[allow(unused)]
+//         const CHECK_DEF: () = {
+//             $(
+//                 match $def {
+//                     $vuid => {}
+//                     _ => panic!(concat!("definition for ", stringify!($vuid), " has been updated")),
+//                 }
+//             )*
+//         };
+//     };
+// }
+
 // check things that looks like this from where they are defined
 // const VUID_vkEnumeratePhysicalDevices_instance_parameter: &'static str = "instance must be a valid VkInstance handle";
 // when implementing vuid checks, create definitions checkers to ensure that if the definition changes later, we know to update our check
-macro_rules! check_vuid_defs {
-    ( $( pub const $vuid:ident : &'static [u8] = $def:expr ;)* ) => {
+macro_rules! check_vuid_defs2 {
+    ( $target:ident $( pub const $vuid:ident : &'static [u8] = $def:expr ; $( CHECK { $($check_code:tt)* } )? )* ) => {
         #[allow(non_upper_case_globals)]
-        #[allow(unused)]
-        const CHECK_DEF: () = {
+        {
+            use vk_safe_sys::validation::$target::*;
+
+            struct _CheckMissingVuids;
+
+            impl Vuids for _CheckMissingVuids {
+                $(
+                    const $vuid: () = {};
+                )*
+            }
+
             $(
                 match $def {
                     $vuid => {}
-                    _ => panic!(concat!("definition for ", stringify!($vuid), " has been updated")),
+                    _ => panic!(concat!(stringify!($vuid), " has different definition")),
                 }
+                $(
+                    $($check_code)*
+                )?
             )*
-        };
+        }
     };
 }
 

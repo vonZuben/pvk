@@ -62,14 +62,15 @@ fn main() {
                 let srgb_properties = pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
                 println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
 
+                const PARAMS: vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParams = vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParams::new(
+                    vk::Format::R8G8B8A8_SRGB,
+                    vk::ImageType::TYPE_2D,
+                    vk::ImageTiling::OPTIMAL,
+                    vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
+                    vk::ImageCreateFlags::empty()
+                );
                 //test image format properties
-                let tst_image_format_properties = pd.get_physical_device_image_format_properties(
-                    vk::format::R8G8B8A8_SRGB,
-                    vk::image_type::TYPE_2D,
-                    vk::image_tiling::OPTIMAL,
-                    vk_safe::bitmask!(vk::image_usage_flag_bits : COLOR_ATTACHMENT_BIT | TRANSFER_DST_BIT ),
-                    krs_hlist::End,
-                ).unwrap();
+                let tst_image_format_properties = pd.get_physical_device_image_format_properties(PARAMS).unwrap();
                 println!("{tst_image_format_properties:#?}");
                 println!("-------");
                 let queue_family_properties = pd.get_physical_device_queue_family_properties(Vec::new());
@@ -79,11 +80,11 @@ fn main() {
                 println!("{:#?}", mem_props);
 
                 // just assume that 10 is the max number of queues we will see fo now
-                let standard_queue_priorities = unsafe { vk_safe::physical_device::QueuePriorities::new_unchecked([1.0;10]) };
+                let standard_queue_priorities = unsafe { vk_safe::physical_device::QueuePriorities::new_unchecked(&[1.0;10]) };
 
                 let queue_family_configurations = queue_family_properties.configure_create_info(Vec::new(), |config| {
                     let queue_count = config.family_properties.queue_count;
-                    config.push_config(&standard_queue_priorities.with_num_queues(queue_count as _), Some(vk_safe::bitmask!())).expect("problem writing queue config");
+                    config.push_config(standard_queue_priorities.with_num_queues(queue_count as _), vk::DeviceQueueCreateFlags::empty()).expect("problem writing queue config");
                 });
 
                 println!("{:#?}", queue_family_configurations);

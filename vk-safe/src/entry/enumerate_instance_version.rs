@@ -19,20 +19,10 @@ EnumerateInstanceVersion {
     }
 }}
 
-mod enumerate_instance_version_validation {
-    use vk_safe_sys::validation::EnumerateInstanceVersion::*;
-
-    pub struct Validation;
-
-    #[allow(non_upper_case_globals)]
-    impl Vuids for Validation {
-        const VUID_vkEnumerateInstanceVersion_pApiVersion_parameter: () = {
-            // using MaybeUninit::as_mut_ptr
-        };
-    }
-
-    check_vuid_defs!(
+const _VUIDS: () = {
+    check_vuid_defs2!(EnumerateInstanceVersion
         pub const VUID_vkEnumerateInstanceVersion_pApiVersion_parameter: &'static [u8] =
             "pApiVersion must be a valid pointer to a uint32_t value".as_bytes();
-    );
-}
+            // using MaybeUninit::as_mut_ptr
+    )
+};

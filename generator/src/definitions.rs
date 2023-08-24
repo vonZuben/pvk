@@ -59,21 +59,10 @@ impl krs_quote::ToTokens for Bitmask {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let ty = self.ty;
-        let trait_name = krs_quote::Token::from(format!("{name}Const"));
         krs_quote_with!(tokens <-
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub struct {@name}(pub(crate) {@ty});
-            impl VkBitmaskType for {@name} {
-                /// the underling type of the flags e.g. VkFlags (uint32_t) or VkFlags64 (uint64_t)
-                type RawType = {@ty};
-                // type Verifier: VerifyBits;
-                fn from_bit_type_list<L: BitList<Self::RawType, Self>>(_: L) -> Self {
-                    Self(L::FLAGS)
-                }
-            }
-            pub trait {@trait_name} : BitList<{@ty}, {@name}> + Sized + Copy {}
-            impl<T> {@trait_name} for T where T: BitList<{@ty}, {@name}> + Sized + Copy {}
             vk_bitflags_wrapped!({@name}, {@ty});
         );
     }
@@ -322,8 +311,12 @@ impl krs_quote::ToTokens for Enum2 {
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             #[repr(transparent)]
             pub struct {@name}(pub(crate) i32);
+            impl {@name} {
+                pub const fn is(self, other: Self) -> bool {
+                    self.0 == other.0
+                }
+            }
         );
-        crate::enum_properties::add_enum_properties(name, tokens);
     }
 }
 

@@ -90,18 +90,11 @@ impl<'a> Generator<'a> {
         let commands_trait = crate::traits::VulkanCommand;
         let version_trait = crate::traits::VulkanVersion;
         let extension_traits = crate::traits::VulkanExtension;
-        let enum_traits = crate::traits::EnumTraits;
         krs_quote!(
             {@commands_trait}
             {@version_trait}
             {@extension_traits}
-            {@enum_traits}
         ).to_string()
-    }
-
-    pub fn bitmask_traits(&self) -> String {
-        let bitmask_traits = crate::bitmask_traits::BitmaskTraits;
-        krs_quote!({@bitmask_traits}).to_string()
     }
 
     pub fn c_type_defs(&self) -> String {

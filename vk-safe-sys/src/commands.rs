@@ -81,9 +81,7 @@ mod test {
         let instance_commands = ToLoad::load(loader).unwrap();
 
         let mut info = unsafe { std::mem::MaybeUninit::<crate::generated::InstanceCreateInfo>::zeroed().assume_init() };
-        use crate::generated::VkEnum;
-        info.s_type = VkEnum::from_variant_type(crate::generated::structure_type::INSTANCE_CREATE_INFO);
-        // info.p_application_info = &app_info;
+        info.s_type = crate::generated::StructureType::INSTANCE_CREATE_INFO;
 
         unsafe { (&instance_commands.head.get_fptr())(&info, std::ptr::null(), &mut instance) };
 

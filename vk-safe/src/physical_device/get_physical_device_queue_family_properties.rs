@@ -5,8 +5,6 @@ use vk_safe_sys as vk;
 
 use std::fmt;
 
-use vk_safe_sys::validation::GetPhysicalDeviceQueueFamilyProperties::*;
-
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
@@ -20,29 +18,15 @@ where
     }
 }
 
-struct Validation;
-
-#[allow(non_upper_case_globals)]
-impl Vuids for Validation {
-    const VUID_vkGetPhysicalDeviceQueueFamilyProperties_physicalDevice_parameter: () = {
-        // PhysicalDevice
-    };
-
-    const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyPropertyCount_parameter : ( ) = {
-        // enumerator_code2
-    };
-
-    const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyProperties_parameter: () = {
-        // enumerator_code2
-    };
-}
-
-check_vuid_defs!(
-    pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_physicalDevice_parameter:
+// ensured by PhysicalDevice and enumerator_code2!()
+const _VUID: () = {
+    check_vuid_defs2!( GetPhysicalDeviceQueueFamilyProperties
+        pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_physicalDevice_parameter:
             &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
         pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyPropertyCount_parameter : & 'static [ u8 ] = "pQueueFamilyPropertyCount must be a valid pointer to a uint32_t value" . as_bytes ( ) ;
         pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyProperties_parameter : & 'static [ u8 ] = "If the value referenced by pQueueFamilyPropertyCount is not 0, and pQueueFamilyProperties is not NULL, pQueueFamilyProperties must be a valid pointer to an array of pQueueFamilyPropertyCount VkQueueFamilyProperties structures" . as_bytes ( ) ;
-);
+    )
+};
 
 simple_struct_wrapper_scoped!(QueueFamilyProperties impl Deref, Debug);
 
@@ -82,7 +66,7 @@ impl<'scope, QS: ArrayStorage<QueueFamilyProperties<'scope>>> QueueFamilies<'sco
             let mut protected_count = 0;
             for properties in self.families.as_ref().iter() {
                 use vk::queue_flag_bits::*;
-                if properties.queue_flags.contains(vk::VkBitmaskType::from_bit_type_list(bitmask!(PROTECTED_BIT))) && properties.queue_count > 1 {
+                if properties.queue_flags.contains(PROTECTED_BIT) && properties.queue_count > 1 {
                     protected_count += 1;
                 }
             }

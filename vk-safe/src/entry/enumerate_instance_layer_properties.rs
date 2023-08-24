@@ -30,25 +30,11 @@ EnumerateInstanceLayerProperties {
     enumerator_code!(enumerate_instance_layer_properties() -> LayerProperties);
 }}
 
-mod enumerate_instance_layer_properties_validation {
-    use vk_safe_sys::validation::EnumerateInstanceLayerProperties::*;
-
-    pub struct Validation;
-
-    #[allow(non_upper_case_globals)]
-    impl Vuids for Validation {
-        const VUID_vkEnumerateInstanceLayerProperties_pPropertyCount_parameter: () = {
-            // handled by enumerator_code!()
-        };
-
-        const VUID_vkEnumerateInstanceLayerProperties_pProperties_parameter: () = {
-            // handled by enumerator_code!()
-        };
-    }
-
-    check_vuid_defs!(
+// all verified by enumerator_code!()
+const _VUIDS: () = {
+    check_vuid_defs2!(EnumerateInstanceLayerProperties
         pub const VUID_vkEnumerateInstanceLayerProperties_pPropertyCount_parameter:
             &'static [u8] = "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
         pub const VUID_vkEnumerateInstanceLayerProperties_pProperties_parameter : & 'static [ u8 ] = "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkLayerProperties structures" . as_bytes ( ) ;
-    );
-}
+    )
+};

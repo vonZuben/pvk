@@ -25,7 +25,7 @@ impl krs_quote::ToTokens for StaticCode {
 
                     impl $name {
                         #[inline]
-                        pub fn empty() -> $name {
+                        pub const fn empty() -> $name {
                             $name(0)
                         }
 
@@ -46,20 +46,50 @@ impl krs_quote::ToTokens for StaticCode {
                         }
 
                         #[inline]
-                        pub unsafe fn from_raw(x: $ty_name) -> Self { $name(x) }
+                        pub const unsafe fn from_raw(x: $ty_name) -> Self { $name(x) }
 
                         #[inline]
-                        pub fn as_raw(self) -> $ty_name { self.0 }
+                        pub const fn as_raw(self) -> $ty_name { self.0 }
 
                         #[inline]
-                        pub fn is_empty(self) -> bool {
-                            self == unsafe { $name::empty() }
+                        pub const fn is_empty(self) -> bool {
+                            self.eq(Self::empty())
                         }
 
                         #[doc = r" Returns whether `other` is a subset of `self`"]
                         #[inline]
-                        pub fn contains(self, other: $name) -> bool {
-                            self & other == other
+                        pub const fn contains(self, other: $name) -> bool {
+                            self.and(other).eq(other)
+                        }
+
+                        #[doc = r" Returns whether `self` includes any bits from `other`"]
+                        #[inline]
+                        pub const fn any_of(self, other: $name) -> bool {
+                            !self.and(other).eq(Self::empty())
+                        }
+
+                        #[doc = r" Returns whether `self` includes bits only from `other`"]
+                        #[inline]
+                        pub const fn subset_of(self, other: $name) -> bool {
+                            self.0 | other.0 == other.0
+                        }
+
+                        /// compare equal for const
+                        #[inline]
+                        pub const fn eq(self, other: $name) -> bool {
+                            self.0 == other.0
+                        }
+
+                        /// bitwise AND for const
+                        #[inline]
+                        pub const fn and(self, other: $name) -> Self {
+                            Self(self.0 & other.0)
+                        }
+
+                        /// bitwise OR for const
+                        #[inline]
+                        pub const fn or(self, other: $name) -> Self {
+                            Self(self.0 | other.0)
                         }
                     }
 
