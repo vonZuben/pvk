@@ -1,6 +1,6 @@
 use std::ffi::c_char;
 
-/// UTF9 c string
+/// UTF8 c string
 ///
 /// rust std::ffi::CStr is not guaranteed to be UTF8, but vulkan interfaces need UTF8
 /// vulkan also need null terminated strings.
@@ -13,19 +13,22 @@ impl<'a> VkStr<'a> {
 
     /// create a VkStr from a regular &str
     /// unsafe since the caller must ensure it is null terminated
-    pub unsafe fn new(s: &'a str) -> Self {
+    pub const unsafe fn new(s: &'a str) -> Self {
         Self(s)
     }
 
-    pub fn as_ptr(&self) -> *const c_char {
+    /// get the raw pointer to the c style string
+    pub const fn as_ptr(&self) -> *const c_char {
         self.0.as_ptr().cast()
     }
 }
 
+/// convenience macro to safely create a VkStr with a reference to a normal rust string
+/// will concat!() a null ending to ensure it is a proper c string
 #[macro_export]
 macro_rules! vk_str {
     ( $str:literal ) => {{
-        let _: &str = $str;
+        let _: &str = $str; // just to confirm that a &str is provided
         unsafe { $crate::VkStr::new(concat!($str, "\0")) }
     }};
 }
