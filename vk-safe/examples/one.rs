@@ -34,7 +34,9 @@ fn main() {
     }
 
     let instance_config = Config::new(vk_safe_sys::VERSION_1_1, ());
-    let app_info = ApplicationInfo::new(instance_config).app_name_and_version(vk_str!("My App"), vk_safe::VkVersion::new(0, 0, 0));
+    let app_info = ApplicationInfo::new(instance_config)
+        .app_name(vk_str!("My App"))
+        .app_version(vk_safe::VkVersion::new(0, 0, 1));
     let instance_info = InstanceCreateInfo::new(&app_info);
 
     let instance = entry.create_instance(&instance_info).unwrap();

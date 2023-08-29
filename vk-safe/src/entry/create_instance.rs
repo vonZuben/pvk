@@ -62,7 +62,7 @@ pub struct InstanceCreateInfo<'a, C: InstanceConfig> {
 }
 
 impl<'a, C: InstanceConfig> InstanceCreateInfo<'a, C> {
-    pub fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
+    pub const fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
 
         check_vuid_defs2!( InstanceCreateInfo
             pub const VUID_VkInstanceCreateInfo_sType_sType: &'static [u8] =
@@ -142,8 +142,8 @@ pub struct ApplicationInfo<'a, C: InstanceConfig> {
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, C: InstanceConfig> ApplicationInfo<'a, C> {
-    pub fn new(_config: C) -> Self {
+impl<'a, C: InstanceConfig + Copy> ApplicationInfo<'a, C> {
+    pub const fn new(_config: C) -> Self {
 
         check_vuid_defs2!( ApplicationInfo
             pub const VUID_VkApplicationInfo_sType_sType: &'static [u8] =
@@ -184,14 +184,22 @@ impl<'a, C: InstanceConfig> ApplicationInfo<'a, C> {
         }
     }
 
-    pub fn app_name_and_version(mut self, name: VkStr<'a>, version: VkVersion) -> Self {
+    pub const fn app_name(mut self, name: VkStr<'a>) -> Self {
         self.inner.p_application_name = name.as_ptr();
+        self
+    }
+
+    pub const fn app_version(mut self, version: VkVersion) -> Self {
         self.inner.application_version = version.raw();
         self
     }
 
-    pub fn engine_name_and_version(mut self, name: VkStr<'a>, version: VkVersion) -> Self {
+    pub const fn engine_name(mut self, name: VkStr<'a>) -> Self {
         self.inner.p_engine_name = name.as_ptr();
+        self
+    }
+
+    pub const fn engine_version(mut self, version: VkVersion) -> Self {
         self.inner.engine_version = version.raw();
         self
     }
