@@ -65,11 +65,6 @@ impl ToTokens for TargetVuids<'_> {
                         const {@vuid_names}: ();
                     }
                 }
-                pub fn validate<V: Vuids>(_: V) {
-                    {@*
-                        let _ = V::{@vuid_names};
-                    }
-                }
                 {@*
                     pub const {@vuid_names}: &'static [u8] = {@descriptions}.as_bytes();
                 }
