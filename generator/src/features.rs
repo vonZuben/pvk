@@ -38,10 +38,19 @@ impl krs_quote::ToTokens for FeatureCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let versions = self.versions.iter();
 
-        let v_name = versions.clone().map(|v|v.version);
-        let instance_structs = versions.clone().map(|v|VersionStruct{name: v.version, commands: &v.instance_command_names});
-        let device_structs = versions.clone().map(|v|VersionStruct{name: v.version, commands: &v.device_command_names});
-        let entry_structs = versions.clone().map(|v|VersionStruct{name: v.version, commands: &v.entry_command_names});
+        let v_name = versions.clone().map(|v| v.version);
+        let instance_structs = versions.clone().map(|v| VersionStruct {
+            name: v.version,
+            commands: &v.instance_command_names,
+        });
+        let device_structs = versions.clone().map(|v| VersionStruct {
+            name: v.version,
+            commands: &v.device_command_names,
+        });
+        let entry_structs = versions.clone().map(|v| VersionStruct {
+            name: v.version,
+            commands: &v.entry_command_names,
+        });
 
         krs_quote_with!(tokens <-
             {@* {@versions}}
@@ -90,13 +99,13 @@ impl krs_quote::ToTokens for FeatureCollection {
 
 struct VersionStruct<'a> {
     name: VkTyName,
-    commands: &'a[RequireRemove],
+    commands: &'a [RequireRemove],
 }
 
 impl krs_quote::ToTokens for VersionStruct<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
-        let command = self.commands.iter().filter(|r|r.is_require());
+        let command = self.commands.iter().filter(|r| r.is_require());
 
         krs_quote_with!(tokens <-
             pub struct {@name} {
@@ -198,20 +207,32 @@ impl Feature {
     pub fn push_instance_command(&mut self, command: impl Into<VkTyName>) {
         // insert index of to-be-inserted instance command and ensure not already there
         let command = command.into();
-        assert!(self.vec_map.insert(command, List::Instance(self.instance_command_names.len())).is_none());
-        self.instance_command_names.push(RequireRemove::require(command));
+        assert!(self
+            .vec_map
+            .insert(command, List::Instance(self.instance_command_names.len()))
+            .is_none());
+        self.instance_command_names
+            .push(RequireRemove::require(command));
     }
     pub fn push_device_command(&mut self, command: impl Into<VkTyName>) {
         // insert index of to-be-inserted instance command and ensure not already there
         let command = command.into();
-        assert!(self.vec_map.insert(command, List::Device(self.device_command_names.len())).is_none());
-        self.device_command_names.push(RequireRemove::require(command));
+        assert!(self
+            .vec_map
+            .insert(command, List::Device(self.device_command_names.len()))
+            .is_none());
+        self.device_command_names
+            .push(RequireRemove::require(command));
     }
     pub fn push_entry_command(&mut self, command: impl Into<VkTyName>) {
         // insert index of to-be-inserted instance command and ensure not already there
         let command = command.into();
-        assert!(self.vec_map.insert(command, List::Entry(self.entry_command_names.len())).is_none());
-        self.entry_command_names.push(RequireRemove::require(command));
+        assert!(self
+            .vec_map
+            .insert(command, List::Entry(self.entry_command_names.len()))
+            .is_none());
+        self.entry_command_names
+            .push(RequireRemove::require(command));
     }
     pub fn remove_command(&mut self, command: impl Into<VkTyName>) {
         let command = command.into();
@@ -244,22 +265,30 @@ impl krs_quote::ToTokens for Feature {
 }
 
 fn parse_version(ver: &str) -> FeatureVersion {
-
     let mut tokens = ver.split('_');
 
     // assert that first text is equal to VK and VERSION
-    tokens.next().map(|version|assert_eq!(version, "VK")).expect("Error parsing version, no 'VK' ...");
-    tokens.next().map(|version|assert_eq!(version, "VERSION")).expect("Error parsing version, no 'VERSION' ...");
-    let major = tokens.next().expect("error: parsing version can't get major number");
-    let minor = tokens.next().expect("error: parsing version can't get minor number");
+    tokens
+        .next()
+        .map(|version| assert_eq!(version, "VK"))
+        .expect("Error parsing version, no 'VK' ...");
+    tokens
+        .next()
+        .map(|version| assert_eq!(version, "VERSION"))
+        .expect("Error parsing version, no 'VERSION' ...");
+    let major = tokens
+        .next()
+        .expect("error: parsing version can't get major number");
+    let minor = tokens
+        .next()
+        .expect("error: parsing version can't get minor number");
 
     // Note: I am assuming that the major and minor that are parsed are integers
 
     FeatureVersion {
         major: major.parse().expect("error: major not number"),
-        minor: minor.parse().expect("error: minor not number")
+        minor: minor.parse().expect("error: minor not number"),
     }
-
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

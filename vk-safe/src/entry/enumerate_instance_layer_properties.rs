@@ -27,8 +27,12 @@ impl fmt::Debug for LayerProperties {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceLayerProperties.html
 */
-pub fn enumerate_instance_layer_properties<S: ArrayStorage<LayerProperties>>(mut storage: S) -> Result<S::InitStorage, Error> {
-    let command = super::entry_fn_loader::<vk::EnumerateInstanceLayerProperties>().unwrap().get_fptr();
+pub fn enumerate_instance_layer_properties<S: ArrayStorage<LayerProperties>>(
+    mut storage: S,
+) -> Result<S::InitStorage, Error> {
+    let command = super::entry_fn_loader::<vk::EnumerateInstanceLayerProperties>()
+        .unwrap()
+        .get_fptr();
     enumerator_code2!(command; () -> storage)
 }
 

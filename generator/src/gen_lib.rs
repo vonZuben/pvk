@@ -2,9 +2,12 @@
 program for creating setting up a vk library with all generated code
 Takes vk.xml path and output directory as arguments in that order
 */
-use std::{io::{Read, Write}, process::{Command, Stdio}};
 use std::fs::OpenOptions;
 use std::path::Path;
+use std::{
+    io::{Read, Write},
+    process::{Command, Stdio},
+};
 
 use krs_quote::krs_quote;
 
@@ -18,10 +21,16 @@ fn create_file(out_dir: &Path, name: &str, code: &str) -> Result<()> {
         .stdout(Stdio::piped())
         .spawn()?;
 
-    formatter.stdin.ok_or("Error: no stdin for rustfmt")?.write(code.as_bytes())?;
+    formatter
+        .stdin
+        .ok_or("Error: no stdin for rustfmt")?
+        .write(code.as_bytes())?;
 
     let mut formatted_code = Vec::new();
-    formatter.stdout.ok_or("Error: failed to get formatted code")?.read_to_end(&mut formatted_code)?;
+    formatter
+        .stdout
+        .ok_or("Error: failed to get formatted code")?
+        .read_to_end(&mut formatted_code)?;
 
     let dest_path = Path::new(out_dir).join(name);
 
@@ -39,7 +48,6 @@ fn make_output_directory(path: &Path) -> Result<()> {
 }
 
 fn make_lib_file(out_dir: &Path) -> Result<()> {
-
     macro_rules! make_module_names {
         ( $($name:ident,)* ) => {
             [ $(stringify!($name)),* ]
@@ -56,7 +64,8 @@ fn make_lib_file(out_dir: &Path) -> Result<()> {
         {@* pub use {@module_names}::*;}
 
         use std::ffi::{c_char, c_int, c_void, c_ulong, c_uint};
-    ).to_string();
+    )
+    .to_string();
 
     create_file(out_dir, "lib.rs", &code)
 }

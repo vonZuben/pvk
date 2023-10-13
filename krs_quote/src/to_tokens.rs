@@ -126,7 +126,7 @@ macro_rules! impl_to_tokens_for_numbers {
     }
 }
 
-impl_to_tokens_for_numbers!{
+impl_to_tokens_for_numbers! {
     i8, u8,
     i16, u16,
     i32, u32,
@@ -159,7 +159,7 @@ macro_rules! make_special_token {
     };
 }
 
-make_special_token!{
+make_special_token! {
     Comma => ",\n",
     SemiColon => ";\n",
     LeftBrace => "{\n",
@@ -220,7 +220,11 @@ pub struct TokenAdvancer<S, I, T> {
 
 impl<S: GetTokenIter> TokenAdvancer<S, S::TokenIter, S::Item> {
     pub fn new(source: S) -> Self {
-        Self { source, iter: None, to_tokens: None }
+        Self {
+            source,
+            iter: None,
+            to_tokens: None,
+        }
     }
 }
 
@@ -281,7 +285,10 @@ pub struct SkipFirst<T> {
 
 impl<T> SkipFirst<T> {
     pub fn new(t: T) -> Self {
-        Self { to_tokens: t, skip: Skip::Init }
+        Self {
+            to_tokens: t,
+            skip: Skip::Init,
+        }
     }
 }
 
@@ -320,7 +327,10 @@ pub struct One<T> {
 
 impl<T> One<T> {
     pub fn new(t: T) -> Self {
-        One { to_tokens: t, state: OneState::One }
+        One {
+            to_tokens: t,
+            state: OneState::One,
+        }
     }
 }
 
@@ -335,9 +345,7 @@ impl<T: ToTokens> GenerateTokens for One<T> {
                 self.state = OneState::Done;
                 Some(())
             }
-            OneState::Done => {
-                None
-            }
+            OneState::Done => None,
         }
     }
 
@@ -352,7 +360,9 @@ pub struct Repeat<R>(pub R);
 impl<R: GenerateTokens> GenerateTokens for Repeat<R> {
     fn init(&mut self) {}
 
-    fn advance_token(&mut self) -> Signal { Some(()) }
+    fn advance_token(&mut self) -> Signal {
+        Some(())
+    }
 
     fn to_tokens(&mut self, ts: &mut TokenStream) {
         self.0.init();

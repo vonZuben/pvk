@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use krs_quote::krs_quote;
 
-use crate::vk_parse_visitor::{VisitVkParse};
+use crate::vk_parse_visitor::VisitVkParse;
 use crate::vuid_visitor::VuidVisitor;
 
 use crate::utils::{self, VecMap};
@@ -29,7 +29,13 @@ fn command_type(command: &vk_parse::CommandDefinition) -> CommandType {
     match name {
         "vkGetInstanceProcAddr" | "vkGetDeviceProcAddr" => CommandType::Static,
         // "vkEnumerateInstanceVersion" => CommandType::DoNotGenerate, // this function is manually created in lib.rs in order to support VK 1.0
-        _ => match command.params[0].definition.type_name.as_ref().expect("error: command param with no type").as_str() {
+        _ => match command.params[0]
+            .definition
+            .type_name
+            .as_ref()
+            .expect("error: command param with no type")
+            .as_str()
+        {
             "VkDevice" | "VkCommandBuffer" | "VkQueue" => CommandType::Device,
             "VkInstance" | "VkPhysicalDevice" => CommandType::Instance,
             _ => CommandType::Entry,
@@ -66,7 +72,7 @@ impl<'a> Generator<'a> {
             Some(cmd_type) => Some(*cmd_type),
             None => {
                 let alias_name = self.aliases.get(cmd)?.ty;
-                self.command_types.get(&alias_name).map(|ct|*ct)
+                self.command_types.get(&alias_name).map(|ct| *ct)
             }
         }
     }
@@ -94,7 +100,8 @@ impl<'a> Generator<'a> {
             {@commands_trait}
             {@version_trait}
             {@extension_traits}
-        ).to_string()
+        )
+        .to_string()
     }
 
     pub fn c_type_defs(&self) -> String {
@@ -176,10 +183,10 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {
         if name.contains("FlagBits") {
             return;
-        }
-        else {
+        } else {
             let name = utils::VkTyName::new(name);
-            self.aliases.push(name, definitions::TypeDef::new(name, alias));
+            self.aliases
+                .push(name, definitions::TypeDef::new(name, alias));
         }
     }
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {
@@ -214,8 +221,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         let kind;
         if spec_target.contains("FlagBits") {
             kind = enumerations::EnumKind::BitFlags;
-        }
-        else {
+        } else {
             kind = enumerations::EnumKind::Normal;
         }
 
@@ -224,18 +230,23 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             .get_mut_or_default(target, enumerations::EnumVariants::new(target, kind));
 
         let name = enm.name.as_str();
-        let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::Enum, Some(target));
+        let val = constants::ConstValue2::from_vk_parse(
+            spec,
+            constants::ConstantContext::Enum,
+            Some(target),
+        );
         let ty = ctype::Ctype::new("Self");
 
-        enum_variants.push_variant_once(constants::Constant3::new(
-            name,
-            ty,
-            val,
-            Some(target),
-        ));
+        enum_variants.push_variant_once(constants::Constant3::new(name, ty, val, Some(target)));
     }
-    fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: crate::vk_parse_visitor::ExtensionInfo<'a, I>) {
-        let ex_name = extensions::ExtensionName::new(info.name_parts.extension_name, info.name_parts.further_extended);
+    fn visit_ex_require_node<I: Iterator<Item = &'a str>>(
+        &mut self,
+        info: crate::vk_parse_visitor::ExtensionInfo<'a, I>,
+    ) {
+        let ex_name = extensions::ExtensionName::new(
+            info.name_parts.extension_name,
+            info.name_parts.further_extended,
+        );
 
         let kind = match info.kind {
             "instance" => extensions::ExtensionKind::Instance,
@@ -252,7 +263,11 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 
         self.extensions.push(ex_name, extension_commands);
     }
-    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
+    fn visit_ex_cmd_ref(
+        &mut self,
+        cmd_name: &'a str,
+        parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>,
+    ) {
         let cmd_name = utils::VkTyName::new(cmd_name);
         let cmd_name = self.get_alias_or_name(cmd_name);
         let cmd_type = self
@@ -278,7 +293,10 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_struct_def(&mut self, def: crate::vk_parse_visitor::StructDef<'a>) {
         let struct_name = utils::VkTyName::new(def.name);
-        let stct = self.definitions.structs.get_mut_or_default(struct_name, definitions::Struct2::new(def.name));
+        let stct = self
+            .definitions
+            .structs
+            .get_mut_or_default(struct_name, definitions::Struct2::new(def.name));
         let mut generic_struct = false;
         for member in def.members {
             use crate::vk_parse_visitor::MemberKind;
@@ -304,26 +322,27 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     }
     fn visit_union(&mut self, def: crate::vk_parse_visitor::UnionDef<'a>) {
         let mut uni = definitions::Union::new(def.name);
-        let fields = def
-            .members
-            .filter_map(|member| match member {
-                crate::vk_parse_visitor::MemberKind::Comment(_) => {
-                    None
-                }
-                crate::vk_parse_visitor::MemberKind::Member(mut member) => {
-                    member.set_public();
-                    Some(member)
-                }
-            });
+        let fields = def.members.filter_map(|member| match member {
+            crate::vk_parse_visitor::MemberKind::Comment(_) => None,
+            crate::vk_parse_visitor::MemberKind::Member(mut member) => {
+                member.set_public();
+                Some(member)
+            }
+        });
         uni.extend_fields(fields);
         self.definitions.unions.push(uni);
     }
     fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let name = utils::VkTyName::new(spec.enm.name.as_str());
-        let val = constants::ConstValue2::from_vk_parse(spec, constants::ConstantContext::GlobalConstant, None);
+        let val = constants::ConstValue2::from_vk_parse(
+            spec,
+            constants::ConstantContext::GlobalConstant,
+            None,
+        );
         let ty = val.type_of(&self.constants);
 
-        self.constants.push(name, constants::Constant3::new(name, ty, val, None));
+        self.constants
+            .push(name, constants::Constant3::new(name, ty, val, None));
     }
     fn visit_basetype(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
         let type_def = definitions::TypeDef::new(basetype.name, basetype.ty);
@@ -332,12 +351,15 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
     fn visit_bitmask(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
         let name = utils::VkTyName::new(basetype.name);
         assert!(name.contains("Flags"));
-        self.enum_variants.contains_or_default(name, enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags));
+        self.enum_variants.contains_or_default(
+            name,
+            enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags),
+        );
         let bitmask = definitions::Bitmask::new(name, basetype.ty);
         self.definitions.bitmasks.push(bitmask);
     }
     fn visit_handle(&mut self, def: crate::vk_parse_visitor::HandleDef<'a>) {
-        let dispatch = match def.kind{
+        let dispatch = match def.kind {
             crate::vk_parse_visitor::HandleKind::Dispatchable => true,
             crate::vk_parse_visitor::HandleKind::NonDispatchable => false,
         };
@@ -353,9 +375,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         fptr.set_return_type(def.return_type);
         self.definitions.function_pointers.push(fptr);
     }
-    fn visit_feature_name(&mut self, _name: utils::VkTyName) {
-
-    }
+    fn visit_feature_name(&mut self, _name: utils::VkTyName) {}
     fn visit_require_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
         let cmd_name = utils::VkTyName::new(def.name);
         let fcc = &mut self.feature_collection;
@@ -364,24 +384,27 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             .get(&cmd_name)
             .expect("error: feature identifies unknown command")
         {
-            CommandType::Instance => fcc.modify_with(def.version, |fc| fc.push_instance_command(cmd_name)),
-            CommandType::Device => fcc.modify_with(def.version, |fc| fc.push_device_command(cmd_name)),
-            CommandType::Entry => fcc.modify_with(def.version, |fc| fc.push_entry_command(cmd_name)),
+            CommandType::Instance => {
+                fcc.modify_with(def.version, |fc| fc.push_instance_command(cmd_name))
+            }
+            CommandType::Device => {
+                fcc.modify_with(def.version, |fc| fc.push_device_command(cmd_name))
+            }
+            CommandType::Entry => {
+                fcc.modify_with(def.version, |fc| fc.push_entry_command(cmd_name))
+            }
             CommandType::Static => {}
         }
     }
     fn visit_remove_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
-        self.feature_collection.modify_with(def.version, |fc| fc.remove_command(def.name));
+        self.feature_collection
+            .modify_with(def.version, |fc| fc.remove_command(def.name));
     }
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
         self.generic_types.insert(name);
     }
-    fn visit_api_version(&mut self, _version: (u32, u32)) {
-
-    }
-    fn visit_header_version(&mut self, _version: u32) {
-
-    }
+    fn visit_api_version(&mut self, _version: (u32, u32)) {}
+    fn visit_header_version(&mut self, _version: u32) {}
 }
 
 // =================================================================
@@ -395,7 +418,10 @@ impl<'a> VuidVisitor<'a> for Generator<'a> {
         // vuid name format should be "VUID-Target-parameter_of_target-info"
         // we just need target
         assert_eq!(name_parts.next(), Some("VUID"));
-        let target: utils::VkTyName = name_parts.next().expect("error: could not get vuid target").into();
+        let target: utils::VkTyName = name_parts
+            .next()
+            .expect("error: could not get vuid target")
+            .into();
 
         self.vuids.insert_vuid(target, vuid);
     }

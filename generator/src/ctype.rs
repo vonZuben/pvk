@@ -44,7 +44,7 @@ impl krs_quote::ToTokens for Pointer {
 
 #[derive(Clone, Debug)]
 struct Basetype {
-    pointers: Vec::<Pointer>,
+    pointers: Vec<Pointer>,
     name: utils::VkTyName,
 }
 
@@ -71,7 +71,6 @@ impl krs_quote::ToTokens for Basetype {
         );
     }
 }
-
 
 impl PartialEq for Basetype {
     fn eq(&self, other: &Self) -> bool {
@@ -100,7 +99,7 @@ impl krs_quote::ToTokens for Size {
 #[derive(Clone, Debug)]
 struct CtypeInner {
     basetype: Basetype,
-    array: Vec<Size>
+    array: Vec<Size>,
 }
 
 impl CtypeInner {
@@ -124,8 +123,7 @@ impl krs_quote::ToTokens for CtypeInner {
 
         if let Some(size) = array.iter().next() {
             krs_quote_with!(tokens <- [ {@bt} ; {@size}] );
-        }
-        else {
+        } else {
             krs_quote_with!(tokens <- {@bt} );
         }
     }

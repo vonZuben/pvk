@@ -1,14 +1,13 @@
 use std::ffi::c_char;
 use std::fmt;
 
-use crate::generated::{VulkanCommand, FunctionLoader};
-pub use crate::generated::{LoadCommands, CommandLoadError};
 pub use crate::generated::PFN_vkVoidFunction as VoidFunction;
+pub use crate::generated::{CommandLoadError, LoadCommands};
+use crate::generated::{FunctionLoader, VulkanCommand};
 
 pub trait Version {
     const VersionTriple: (u32, u32, u32);
 }
-
 
 #[macro_export]
 macro_rules! instance_context {
@@ -107,17 +106,21 @@ mod test {
         use crate::generated::command::DestroyInstance;
         use crate::generated::version::instance::provider::VERSION_1_0;
 
-        let mut instance = crate::generated::Instance { handle: std::ptr::null() };
+        let mut instance = crate::generated::Instance {
+            handle: std::ptr::null(),
+        };
         let loader = |name| {
             // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
             unsafe { crate::GetInstanceProcAddr(instance, name) }
         };
 
-        instance_context!(MyCx : VERSION_1_0);
+        instance_context!(MyCx: VERSION_1_0);
 
         let create_instance = crate::generated::CreateInstance::load(loader).unwrap();
 
-        let mut info = unsafe { std::mem::MaybeUninit::<crate::generated::InstanceCreateInfo>::zeroed().assume_init() };
+        let mut info = unsafe {
+            std::mem::MaybeUninit::<crate::generated::InstanceCreateInfo>::zeroed().assume_init()
+        };
         info.s_type = crate::generated::StructureType::INSTANCE_CREATE_INFO;
 
         unsafe { create_instance.get_fptr()(&info, std::ptr::null(), &mut instance) };

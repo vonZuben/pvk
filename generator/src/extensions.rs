@@ -1,7 +1,7 @@
 use krs_quote::krs_quote_with;
 
-use crate::utils::VkTyName;
 use crate::utils::VecMap;
+use crate::utils::VkTyName;
 
 use std::ops::{Deref, DerefMut};
 
@@ -29,9 +29,15 @@ impl krs_quote::ToTokens for ExtensionCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let extensions = self.extensions.iter();
 
-        let e_name = extensions.clone().map(|e|e.extension_name);
-        let instance_structs = extensions.clone().map(|e|ExtensionStruct{name: e.extension_name, commands: &e.instance_command_names});
-        let device_structs = extensions.clone().map(|e|ExtensionStruct{name: e.extension_name, commands: &e.device_command_names});
+        let e_name = extensions.clone().map(|e| e.extension_name);
+        let instance_structs = extensions.clone().map(|e| ExtensionStruct {
+            name: e.extension_name,
+            commands: &e.instance_command_names,
+        });
+        let device_structs = extensions.clone().map(|e| ExtensionStruct {
+            name: e.extension_name,
+            commands: &e.device_command_names,
+        });
 
         krs_quote_with!(tokens <-
             {@* {@extensions}}
@@ -106,7 +112,7 @@ impl krs_quote::ToTokens for ExtensionStruct<'_> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtensionName {
     Base {
-        name: VkTyName
+        name: VkTyName,
     },
     Extra {
         name: VkTyName,
@@ -121,26 +127,28 @@ impl ExtensionName {
         match extra {
             Some(extra) => {
                 let extra = VkTyName::new(extra);
-                ExtensionName::Extra{ name: format!("{}_WITH_{}", base, extra).into(), base, extra }
+                ExtensionName::Extra {
+                    name: format!("{}_WITH_{}", base, extra).into(),
+                    base,
+                    extra,
+                }
             }
-            None => {
-                ExtensionName::Base{ name: base }
-            }
+            None => ExtensionName::Base { name: base },
         }
     }
     fn is_base(&self) -> bool {
-        matches!(self, ExtensionName::Base{ .. })
+        matches!(self, ExtensionName::Base { .. })
     }
     fn name_as_str(&self) -> &str {
         match self {
-            ExtensionName::Base{name} => name,
-            ExtensionName::Extra{name, .. } => name,
+            ExtensionName::Base { name } => name,
+            ExtensionName::Extra { name, .. } => name,
         }
     }
     fn name(&self) -> VkTyName {
         match self {
-            ExtensionName::Base{name} => *name,
-            ExtensionName::Extra{name, .. } => *name,
+            ExtensionName::Base { name } => *name,
+            ExtensionName::Extra { name, .. } => *name,
         }
     }
 }
@@ -195,7 +203,7 @@ impl ExtensionInfo {
         self.device_command_names.push(command);
     }
     pub fn require<'a>(&mut self, require: impl Iterator<Item = &'a str>) {
-        let require = require.map(|r|VkTyName::new(r));
+        let require = require.map(|r| VkTyName::new(r));
         self.required.extend(require);
     }
 }
@@ -207,8 +215,11 @@ impl krs_quote::ToTokens for ExtensionInfo {
         let raw_name = self.extension_name.name_as_str();
         let tmp;
         let required = match self.extension_name {
-            ExtensionName::Base{ .. } => self.required.as_slice(),
-            ExtensionName::Extra{ base, extra, .. } => { tmp = [base, extra]; &tmp },
+            ExtensionName::Base { .. } => self.required.as_slice(),
+            ExtensionName::Extra { base, extra, .. } => {
+                tmp = [base, extra];
+                &tmp
+            }
         };
 
         if self.extension_name.is_base() {
@@ -223,8 +234,7 @@ impl krs_quote::ToTokens for ExtensionInfo {
                     type DeviceCommands = extension::device::{@extension_name};
                 }
             )
-        }
-        else {
+        } else {
             krs_quote_with!(tokens <-
                 #[derive(Debug)]
                 pub struct {@extension_name};

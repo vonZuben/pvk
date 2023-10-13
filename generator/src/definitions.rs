@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use krs_quote::krs_quote_with;
 
-use crate::utils::{VkTyName, VecMap, case};
+use crate::utils::{case, VecMap, VkTyName};
 
 use crate::ctype;
 
@@ -19,10 +19,7 @@ impl TypeDef {
     pub fn new(name: impl Into<VkTyName>, ty: impl Into<VkTyName>) -> Self {
         let name = name.into();
         let ty = ty.into();
-        Self {
-            name,
-            ty,
-        }
+        Self { name, ty }
     }
 }
 
@@ -48,10 +45,7 @@ impl Bitmask {
     pub fn new(name: impl Into<VkTyName>, ty: impl Into<VkTyName>) -> Self {
         let name = name.into();
         let ty = ty.into();
-        Self {
-            name,
-            ty,
-        }
+        Self { name, ty }
     }
 }
 
@@ -101,8 +95,7 @@ impl krs_quote::ToTokens for Struct2 {
         let generics = self.fields.iter().filter_map(|field| {
             if field.ty.is_external() {
                 Some(field.ty.name())
-            }
-            else {
+            } else {
                 None
             }
         });
@@ -137,13 +130,13 @@ impl krs_quote::ToTokens for Struct2 {
 // this iterates over potential bitfields and emits one field for all bit fields that should fit within the one field
 // we assume that the vulkan spec only uses bit fields efficiently and tightly packs and uses all space
 #[derive(Clone)]
-struct BitFieldIter<'a, I: Iterator<Item=&'a ctype::Cfield>> {
+struct BitFieldIter<'a, I: Iterator<Item = &'a ctype::Cfield>> {
     fields: I,
     _p: PhantomData<&'a I::Item>,
 }
 
-impl<'a, I: Iterator<Item=&'a ctype::Cfield>> BitFieldIter<'a, I> {
-    fn new(i: impl IntoIterator<IntoIter=I>) -> Self {
+impl<'a, I: Iterator<Item = &'a ctype::Cfield>> BitFieldIter<'a, I> {
+    fn new(i: impl IntoIterator<IntoIter = I>) -> Self {
         Self {
             fields: i.into_iter(),
             _p: PhantomData,
@@ -151,7 +144,7 @@ impl<'a, I: Iterator<Item=&'a ctype::Cfield>> BitFieldIter<'a, I> {
     }
 }
 
-impl<'a, I: Iterator<Item=&'a ctype::Cfield>> Iterator for BitFieldIter<'a, I> {
+impl<'a, I: Iterator<Item = &'a ctype::Cfield>> Iterator for BitFieldIter<'a, I> {
     type Item = ctype::Cfield;
     fn next(&mut self) -> Option<Self::Item> {
         let field = self.fields.next()?;
@@ -169,24 +162,37 @@ impl<'a, I: Iterator<Item=&'a ctype::Cfield>> Iterator for BitFieldIter<'a, I> {
             };
 
             // check how many bit_fields fit within one field
-            let mut name =  field.name.to_string();
+            let mut name = field.name.to_string();
             while bits < field_bit_size {
                 let next_field = self.fields.next().expect("error: expected another field");
                 // assert_eq!(basetype, next_field.ty.basetype(), "error: expect that neighbor bitfields have same basetype");
-                assert_eq!(next_field.ty.is_array(), false, "error: expect non array type for bit fields");
-                assert_eq!(next_field.ty.is_pointer(), false, "error: expect non pointer type for bit fields");
-                bits += next_field.ty.bit_width().expect("error: expected next field to have bit_width");
+                assert_eq!(
+                    next_field.ty.is_array(),
+                    false,
+                    "error: expect non array type for bit fields"
+                );
+                assert_eq!(
+                    next_field.ty.is_pointer(),
+                    false,
+                    "error: expect non pointer type for bit fields"
+                );
+                bits += next_field
+                    .ty
+                    .bit_width()
+                    .expect("error: expected next field to have bit_width");
                 name = format!("{}_and_{}", name, next_field.name);
             }
 
-            assert_eq!(bits, field_bit_size, "error: expected total bits to be equal to field bit size");
+            assert_eq!(
+                bits, field_bit_size,
+                "error: expected total bits to be equal to field bit size"
+            );
 
             let ty = field.ty.clone();
             let field = ctype::Cfield::new(name, ty);
 
             Some(field)
-        }
-        else {
+        } else {
             Some(field.clone())
         }
     }
@@ -208,7 +214,7 @@ impl Union {
             fields: Default::default(),
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item = ctype::Cfield>) {
         self.fields.extend(fields);
     }
 }
@@ -219,7 +225,9 @@ impl krs_quote::ToTokens for Union {
 
         let name = self.name;
         let fields = &self.fields;
-        let field_names = fields.iter().map(|field| case::camel_to_snake(field.name.as_ref()).as_code());
+        let field_names = fields
+            .iter()
+            .map(|field| case::camel_to_snake(field.name.as_ref()).as_code());
 
         krs_quote_with!(tokens <-
             #[repr(C)]
@@ -251,10 +259,7 @@ pub struct Handle2 {
 impl Handle2 {
     pub fn new(name: impl Into<VkTyName>, dispatch: bool) -> Self {
         let name = name.into();
-        Self {
-            name,
-            dispatch,
-        }
+        Self { name, dispatch }
     }
 }
 
@@ -298,9 +303,7 @@ pub struct Enum2 {
 impl Enum2 {
     pub fn new(name: impl Into<VkTyName>) -> Self {
         let name = name.into();
-        Self {
-            name
-        }
+        Self { name }
     }
 }
 
@@ -338,7 +341,7 @@ impl FunctionPointer {
             return_type: Default::default(),
         }
     }
-    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item=ctype::Cfield>) {
+    pub fn extend_fields(&mut self, fields: impl IntoIterator<Item = ctype::Cfield>) {
         self.fields.extend(fields);
     }
     pub fn set_return_type(&mut self, return_type: impl Into<ctype::ReturnType>) {
@@ -356,20 +359,22 @@ impl krs_quote::ToTokens for FunctionPointer {
         let fields = &self.fields;
         let return_type = &self.return_type;
 
-        let generics: Vec<_> = self.fields.iter().filter_map(|field|{
-            if field.ty.is_external() {
-                Some(field.ty.name())
-            }
-            else {
-                None
-            }
-        }).collect();
+        let generics: Vec<_> = self
+            .fields
+            .iter()
+            .filter_map(|field| {
+                if field.ty.is_external() {
+                    Some(field.ty.name())
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         let unsafe_get = if generics.len() == 0 {
             None
-        }
-        else {
-            Some( krs_quote::Token::from("unsafe") )
+        } else {
+            Some(krs_quote::Token::from("unsafe"))
         };
 
         krs_quote_with!(tokens <-

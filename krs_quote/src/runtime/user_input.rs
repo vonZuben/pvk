@@ -38,7 +38,10 @@ pub trait GetTokenIter {
     fn get_token_iter(&self) -> Self::TokenIter;
 }
 
-impl<'a, I: Clone + Iterator> GetTokenIter for InputWrapper<'a, I, IsIter> where I::Item: ToTokens {
+impl<'a, I: Clone + Iterator> GetTokenIter for InputWrapper<'a, I, IsIter>
+where
+    I::Item: ToTokens,
+{
     type Item = I::Item;
 
     type TokenIter = I;
@@ -48,7 +51,11 @@ impl<'a, I: Clone + Iterator> GetTokenIter for InputWrapper<'a, I, IsIter> where
     }
 }
 
-impl<'a, I: ?Sized, T: ToTokens, Iter: Iterator<Item = T>> GetTokenIter for InputWrapper<'a, I, IsIntoIter> where &'a I: IntoIterator<Item = T, IntoIter = Iter> {
+impl<'a, I: ?Sized, T: ToTokens, Iter: Iterator<Item = T>> GetTokenIter
+    for InputWrapper<'a, I, IsIntoIter>
+where
+    &'a I: IntoIterator<Item = T, IntoIter = Iter>,
+{
     type Item = T;
 
     type TokenIter = Iter;
@@ -73,7 +80,10 @@ pub trait IterInput {
     fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsIter>;
 }
 
-impl<T: ?Sized> IterInput for T where T: Clone + Iterator {
+impl<T: ?Sized> IterInput for T
+where
+    T: Clone + Iterator,
+{
     fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsIter> {
         InputWrapper(self, Default::default())
     }
@@ -84,7 +94,10 @@ pub trait IntoIterInput<'a, T: ?Sized> {
     fn input(&self) -> InputWrapper<'a, T, IsIntoIter>;
 }
 
-impl<'a, T: ?Sized> IntoIterInput<'a, T> for &'a T where Self: IntoIterator {
+impl<'a, T: ?Sized> IntoIterInput<'a, T> for &'a T
+where
+    Self: IntoIterator,
+{
     fn input(&self) -> InputWrapper<'a, T, IsIntoIter> {
         InputWrapper(*self, Default::default())
     }
@@ -95,7 +108,10 @@ pub trait TokenInput {
     fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsToTokens>;
 }
 
-impl<T: ?Sized> TokenInput for T where T: ToTokens {
+impl<T: ?Sized> TokenInput for T
+where
+    T: ToTokens,
+{
     fn input<'a>(&'a self) -> InputWrapper<'a, Self, IsToTokens> {
         InputWrapper(self, Default::default())
     }

@@ -1,6 +1,6 @@
 use crate::array_storage::ArrayStorage;
-use crate::physical_device::PhysicalDevices;
 use crate::error::Error;
+use crate::physical_device::PhysicalDevices;
 
 use super::InstanceConfig;
 use super::ScopedInstance;

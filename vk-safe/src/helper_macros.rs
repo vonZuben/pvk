@@ -136,7 +136,9 @@ macro_rules! array {
         $name:ident, $array_ptr:ident, $array_len:ident, $ty:ty
     ) => {
         pub fn $name(&self) -> &[$ty] {
-            unsafe { std::slice::from_raw_parts(self.inner.$array_ptr, self.inner.$array_len as usize) }
+            unsafe {
+                std::slice::from_raw_parts(self.inner.$array_ptr, self.inner.$array_len as usize)
+            }
         }
     };
 }

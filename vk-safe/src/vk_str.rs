@@ -10,7 +10,6 @@ use std::ffi::c_char;
 pub struct VkStr<'a>(&'a str);
 
 impl<'a> VkStr<'a> {
-
     /// create a VkStr from a regular &str
     /// unsafe since the caller must ensure it is null terminated
     pub const unsafe fn new(s: &'a str) -> Self {

@@ -5,7 +5,7 @@ pub trait VisitVkParse<'a> {
     fn visit_enum(&mut self, enm: &'a vk_parse::Type);
     fn visit_command(&mut self, def_wrapper: CommandDefWrapper<'a>);
     fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>);
-    fn visit_ex_require_node<I: Iterator<Item=&'a str>>(&mut self, info: ExtensionInfo<'a, I>);
+    fn visit_ex_require_node<I: Iterator<Item = &'a str>>(&mut self, info: ExtensionInfo<'a, I>);
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>);
     fn visit_struct_def(&mut self, def: StructDef<'a>);
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>);
@@ -41,82 +41,90 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     ty.name.as_ref().unwrap(),
                                     ty.alias.as_ref().unwrap(),
                                 );
-                            }
-                            else {
+                            } else {
                                 match ty.category.as_deref() {
                                     Some("enum") => {
-                                        if ty.name.as_ref().expect("error: enum with no name").contains("FlagBits") {
+                                        if ty
+                                            .name
+                                            .as_ref()
+                                            .expect("error: enum with no name")
+                                            .contains("FlagBits")
+                                        {
                                             continue;
                                         }
                                         visitor.visit_enum(ty);
                                     }
-                                    Some("struct") => {
-                                        match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref _ty_code) => {}
-                                            vk_parse::TypeSpec::Members(ref members) => {
-                                                visitor.visit_struct_def(StructDef {
-                                                    name: ty.name.as_deref().expect("error: struct with no name"),
-                                                    members: Members { members: members.iter() },
-                                                });
-                                            }
-                                            vk_parse::TypeSpec::None => {}
-                                            _ => panic!("error: unhandled struct TypSpec node"),
+                                    Some("struct") => match ty.spec {
+                                        vk_parse::TypeSpec::Code(ref _ty_code) => {}
+                                        vk_parse::TypeSpec::Members(ref members) => {
+                                            visitor.visit_struct_def(StructDef {
+                                                name: ty
+                                                    .name
+                                                    .as_deref()
+                                                    .expect("error: struct with no name"),
+                                                members: Members {
+                                                    members: members.iter(),
+                                                },
+                                            });
                                         }
-                                    }
-                                    Some("basetype") => {
-                                        match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref code) => {
-                                                let basetype = parse_basetype(&code.code).expect("error: can't parse basetype in vk_parse");
-                                                visitor.visit_basetype(basetype);
-                                            }
-                                            _ => panic!("unexpected basetype spec"),
+                                        vk_parse::TypeSpec::None => {}
+                                        _ => panic!("error: unhandled struct TypSpec node"),
+                                    },
+                                    Some("basetype") => match ty.spec {
+                                        vk_parse::TypeSpec::Code(ref code) => {
+                                            let basetype = parse_basetype(&code.code)
+                                                .expect("error: can't parse basetype in vk_parse");
+                                            visitor.visit_basetype(basetype);
                                         }
-                                    }
-                                    Some("bitmask") => {
-                                        match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref code) => {
-                                                let basetype = parse_basetype(&code.code).expect("error: can't parse bitmask in vk_parse");
-                                                visitor.visit_bitmask(basetype);
-                                            }
-                                            _ => panic!("unexpected bitmask spec"),
+                                        _ => panic!("unexpected basetype spec"),
+                                    },
+                                    Some("bitmask") => match ty.spec {
+                                        vk_parse::TypeSpec::Code(ref code) => {
+                                            let basetype = parse_basetype(&code.code)
+                                                .expect("error: can't parse bitmask in vk_parse");
+                                            visitor.visit_bitmask(basetype);
                                         }
-                                    }
-                                    Some("union") => {
-                                        match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref _ty_code) => {}
-                                            vk_parse::TypeSpec::Members(ref members) => {
-                                                visitor.visit_union(UnionDef {
-                                                    name: ty.name.as_deref().expect("error: union with no name"),
-                                                    members: Members { members: members.iter() },
-                                                });
-                                            }
-                                            vk_parse::TypeSpec::None => {}
-                                            _ => panic!("error: unhandled union TypSpec node"),
+                                        _ => panic!("unexpected bitmask spec"),
+                                    },
+                                    Some("union") => match ty.spec {
+                                        vk_parse::TypeSpec::Code(ref _ty_code) => {}
+                                        vk_parse::TypeSpec::Members(ref members) => {
+                                            visitor.visit_union(UnionDef {
+                                                name: ty
+                                                    .name
+                                                    .as_deref()
+                                                    .expect("error: union with no name"),
+                                                members: Members {
+                                                    members: members.iter(),
+                                                },
+                                            });
                                         }
-                                    }
-                                    Some("handle") => {
-                                        match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref ty_code) => {
-                                                let handle_def = parse_handle(&ty_code.code).expect("error: can't parse handle");
-                                                visitor.visit_handle(handle_def);
-                                            }
-                                            _ => panic!("error: unhandled handle TypSpec node"),
+                                        vk_parse::TypeSpec::None => {}
+                                        _ => panic!("error: unhandled union TypSpec node"),
+                                    },
+                                    Some("handle") => match ty.spec {
+                                        vk_parse::TypeSpec::Code(ref ty_code) => {
+                                            let handle_def = parse_handle(&ty_code.code)
+                                                .expect("error: can't parse handle");
+                                            visitor.visit_handle(handle_def);
                                         }
-                                    }
-                                    Some("funcpointer") => {
-                                        match ty.spec {
-                                            vk_parse::TypeSpec::Code(ref ty_code) => {
-                                                let fptr_def = parse_fptr(&ty_code.code).expect("error: can't parse fptr");
-                                                visitor.visit_fptr(fptr_def);
-                                            }
-                                            _ => panic!("error: unhandled handle TypSpec node"),
+                                        _ => panic!("error: unhandled handle TypSpec node"),
+                                    },
+                                    Some("funcpointer") => match ty.spec {
+                                        vk_parse::TypeSpec::Code(ref ty_code) => {
+                                            let fptr_def = parse_fptr(&ty_code.code)
+                                                .expect("error: can't parse fptr");
+                                            visitor.visit_fptr(fptr_def);
                                         }
-                                    }
+                                        _ => panic!("error: unhandled handle TypSpec node"),
+                                    },
                                     Some("define") => {
                                         match ty.spec {
                                             vk_parse::TypeSpec::Code(ref code) => {
                                                 let code = code.code.as_str();
-                                                if let Ok(extern_ty) = parse_external_opaque_type(code) {
+                                                if let Ok(extern_ty) =
+                                                    parse_external_opaque_type(code)
+                                                {
                                                     visitor.visit_external_type(extern_ty);
                                                 }
                                                 // else if let Ok(api_version) = parse_api_version(code) {
@@ -128,14 +136,17 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             }
                                             vk_parse::TypeSpec::Members(_) => {}
                                             vk_parse::TypeSpec::None => {}
-                                            _ => panic!("unhandled type spec kind")
+                                            _ => panic!("unhandled type spec kind"),
                                         }
                                     }
                                     None => {
                                         match ty.requires.as_deref() {
                                             Some("vk_platform") => {} // this defines normal types like uint32_t which we already know
-                                            Some(_) => { // this should be types that are defined in an external library
-                                                visitor.visit_external_type(ty.name.as_ref().unwrap().into())
+                                            Some(_) => {
+                                                // this should be types that are defined in an external library
+                                                visitor.visit_external_type(
+                                                    ty.name.as_ref().unwrap().into(),
+                                                )
                                             }
                                             None => {}
                                         }
@@ -150,7 +161,8 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
             }
             Enums(enms) => {
                 match enms.kind.as_deref() {
-                    None => { // API Constant or the like
+                    None => {
+                        // API Constant or the like
                         for enum_child in enms.children.iter() {
                             use vk_parse::EnumsChild;
                             match enum_child {
@@ -168,7 +180,8 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                             }
                         }
                     }
-                    Some("enum" | "bitmask") => { // enum variants
+                    Some("enum" | "bitmask") => {
+                        // enum variants
                         for enum_child in enms.children.iter() {
                             use vk_parse::EnumsChild;
                             match enum_child {
@@ -199,10 +212,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 Ok(def) => def,
                                 Err(_) => panic!("error: can't parse command"),
                             };
-                            let def_wrapper = CommandDefWrapper {
-                                def,
-                                raw: cmd_def,
-                            };
+                            let def_wrapper = CommandDefWrapper { def, raw: cmd_def };
                             visitor.visit_command(def_wrapper);
                         }
                         _ => panic!("unexpected Command node"),
@@ -227,7 +237,10 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 use vk_parse::InterfaceItem::*;
                                 match item {
                                     Comment(_) => {}
-                                    Type { name: _, comment: _ } => {}
+                                    Type {
+                                        name: _,
+                                        comment: _,
+                                    } => {}
                                     Enum(enm) => {
                                         let extends = enm.spec.extends();
                                         if extends.is_some() {
@@ -239,8 +252,14 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             });
                                         }
                                     }
-                                    Command { name: cmd_name, comment: _ } => {
-                                        visitor.visit_require_command(CommandRef { name: &cmd_name, version: feature_name });
+                                    Command {
+                                        name: cmd_name,
+                                        comment: _,
+                                    } => {
+                                        visitor.visit_require_command(CommandRef {
+                                            name: &cmd_name,
+                                            version: feature_name,
+                                        });
                                     }
                                     _ => panic!("unexpected InterfaceItem node"),
                                 }
@@ -256,10 +275,19 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 use vk_parse::InterfaceItem::*;
                                 match item {
                                     Comment(_) => {}
-                                    Type { name: _, comment: _ } => {}
+                                    Type {
+                                        name: _,
+                                        comment: _,
+                                    } => {}
                                     Enum(_) => {}
-                                    Command { name: cmd_name, comment: _ } => {
-                                        visitor.visit_remove_command(CommandRef { name: &cmd_name, version: feature_name });
+                                    Command {
+                                        name: cmd_name,
+                                        comment: _,
+                                    } => {
+                                        visitor.visit_remove_command(CommandRef {
+                                            name: &cmd_name,
+                                            version: feature_name,
+                                        });
                                     }
                                     _ => panic!("unexpected InterfaceItem node"),
                                 }
@@ -298,15 +326,21 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 };
                                 visitor.visit_ex_require_node(ExtensionInfo {
                                     name_parts: parts,
-                                    required: extension.requires.as_ref().map(|req|req.split(',')),
-                                    kind: extension.ext_type.as_deref().expect("error: expected ex_type"),
+                                    required: extension.requires.as_ref().map(|req| req.split(',')),
+                                    kind: extension
+                                        .ext_type
+                                        .as_deref()
+                                        .expect("error: expected ex_type"),
                                 });
 
                                 for item in items.iter() {
                                     use vk_parse::InterfaceItem::*;
                                     match item {
                                         Comment(_) => {}
-                                        Type { name: _, comment: _ } => {}
+                                        Type {
+                                            name: _,
+                                            comment: _,
+                                        } => {}
                                         Enum(enm) => {
                                             let extends = enm.spec.extends();
                                             if extends.is_some() {
@@ -316,8 +350,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                     target: extends,
                                                     is_alias: enm.spec.is_alias(),
                                                 });
-                                            }
-                                            else if enm.spec.is_some() {
+                                            } else if enm.spec.is_some() {
                                                 visitor.visit_constant(VkParseEnumConstant {
                                                     number: extension.number,
                                                     enm,
@@ -359,7 +392,7 @@ trait EnumSpecEx {
 
 impl EnumSpecEx for vk_parse::EnumSpec {
     fn is_some(&self) -> bool {
-        ! matches!(self, Self::None)
+        !matches!(self, Self::None)
     }
     fn is_alias(&self) -> bool {
         matches!(self, Self::Alias { .. })
@@ -419,9 +452,7 @@ impl<'a> Iterator for Members<'a> {
                     .expect("error: failed to parse struct member code");
                 Some(MemberKind::Member(field))
             }
-            TypeMember::Comment(ref comment) => {
-                Some(MemberKind::Comment(comment))
-            }
+            TypeMember::Comment(ref comment) => Some(MemberKind::Comment(comment)),
             _ => panic!("error: unexpected TypeMember node"),
         }
     }
@@ -429,7 +460,7 @@ impl<'a> Iterator for Members<'a> {
 
 pub enum MemberKind<'a> {
     Member(ctype::Cfield),
-    Comment(&'a str)
+    Comment(&'a str),
 }
 
 pub struct ExtensionInfo<'a, I> {
@@ -484,17 +515,16 @@ impl<'a> Iterator for Parameters<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         use crate::simple_parse::*;
 
-        let (_input, end1) = opt(followed(tag(")"), tag(";")))(self.members.clone())
-            .expect("opt can't fail");
+        let (_input, end1) =
+            opt(followed(tag(")"), tag(";")))(self.members.clone()).expect("opt can't fail");
 
-        let (input, end2) = opt(followed(tag("void"), tag(")")))(self.members.clone())
-            .expect("opt can't fail");
+        let (input, end2) =
+            opt(followed(tag("void"), tag(")")))(self.members.clone()).expect("opt can't fail");
 
         if end1.is_some() || end2.is_some() {
             self.members = input;
             return None;
-        }
-        else {
+        } else {
             let parse_cfield = || -> Result<(crate::simple_parse::TokenIter, ctype::Cfield), ()> {
                 let (input, c) = opt(tag("const"))(input)?;
                 let (input, _) = opt(tag("struct"))(input)?;
@@ -505,35 +535,30 @@ impl<'a> Iterator for Parameters<'a> {
 
                 if p.is_some() && c.is_some() {
                     ty.push_pointer(ctype::Pointer::Const);
-                }
-                else if p.is_some() {
+                } else if p.is_some() {
                     ty.push_pointer(ctype::Pointer::Mut);
                 }
 
-                let (input, _) = repeat(
-                    input,
-                    followed(opt(tag("const")), tag("*")),
-                    |(c, _)| {
-                        if c.is_some() {
-                            ty.push_pointer(ctype::Pointer::Const);
-                        }
-                        else {
-                            ty.push_pointer(ctype::Pointer::Mut);
-                        }
+                let (input, _) = repeat(input, followed(opt(tag("const")), tag("*")), |(c, _)| {
+                    if c.is_some() {
+                        ty.push_pointer(ctype::Pointer::Const);
+                    } else {
+                        ty.push_pointer(ctype::Pointer::Mut);
                     }
-                )?;
+                })?;
 
                 let (input, name) = token()(input)?;
 
                 let (input, _) = repeat(
                     input,
                     delimited(tag("["), token(), tag("]")),
-                    |(_, _size, _)| if c.is_some() {
-                        ty.push_pointer(ctype::Pointer::Const);
-                    }
-                    else {
-                        ty.push_pointer(ctype::Pointer::Mut);
-                    }
+                    |(_, _size, _)| {
+                        if c.is_some() {
+                            ty.push_pointer(ctype::Pointer::Const);
+                        } else {
+                            ty.push_pointer(ctype::Pointer::Mut);
+                        }
+                    },
                 )?;
 
                 let (input, _) = opt(tag(","))(input)?;
@@ -541,7 +566,9 @@ impl<'a> Iterator for Parameters<'a> {
                 Ok((input, ctype::Cfield::new(name, ty)))
             };
 
-            let (input, param) = parse_cfield().expect(format!("error: can parse param from: {}", self.members.inner_str()).as_str());
+            let (input, param) = parse_cfield().expect(
+                format!("error: can parse param from: {}", self.members.inner_str()).as_str(),
+            );
 
             self.members = input;
 
@@ -558,10 +585,7 @@ fn parse_basetype<'a>(code: &'a str) -> Result<VkBasetype, ()> {
     let (input, ty) = token()(input)?;
     let (input, name) = token()(input)?;
     let (_input, _) = tag(";")(input)?;
-    Ok(VkBasetype {
-        name,
-        ty,
-    })
+    Ok(VkBasetype { name, ty })
 }
 
 fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
@@ -578,23 +602,17 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
 
     if p.is_some() && c.is_some() {
         ty.push_pointer(ctype::Pointer::Const);
-    }
-    else if p.is_some() {
+    } else if p.is_some() {
         ty.push_pointer(ctype::Pointer::Mut);
     }
 
-    let (input, _) = repeat(
-        input,
-        followed(opt(tag("const")), tag("*")),
-        |(c, _)| {
-            if c.is_some() {
-                ty.push_pointer(ctype::Pointer::Const);
-            }
-            else {
-                ty.push_pointer(ctype::Pointer::Mut);
-            }
+    let (input, _) = repeat(input, followed(opt(tag("const")), tag("*")), |(c, _)| {
+        if c.is_some() {
+            ty.push_pointer(ctype::Pointer::Const);
+        } else {
+            ty.push_pointer(ctype::Pointer::Mut);
         }
-    )?;
+    })?;
 
     let (input, name) = token()(input)?;
 
@@ -608,14 +626,13 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
     let (mut input, _) = repeat(
         input,
         delimited(tag("["), token(), tag("]")),
-        |(_, size, _)| ty.push_array(size)
+        |(_, size, _)| ty.push_array(size),
     )?;
 
     // this is expected to consume all tokens
     if input.next().is_some() {
         Err(())
-    }
-    else {
+    } else {
         Ok(ctype::Cfield::new(name, ty))
     }
 }
@@ -625,21 +642,18 @@ fn parse_handle<'a>(code: &'a str) -> Result<HandleDef<'a>, ()> {
 
     let input = crate::simple_parse::TokenIter::new(code);
 
-    let (_input, (kind, (_, name, _))) = followed(token(), delimited(tag("("), token(), tag(")")))(input)?;
+    let (_input, (kind, (_, name, _))) =
+        followed(token(), delimited(tag("("), token(), tag(")")))(input)?;
 
     match kind {
-        "VK_DEFINE_HANDLE" => {
-            Ok(HandleDef {
-                name,
-                kind: HandleKind::Dispatchable,
-            })
-        }
-        "VK_DEFINE_NON_DISPATCHABLE_HANDLE" => {
-            Ok(HandleDef {
-                name,
-                kind: HandleKind::NonDispatchable,
-            })
-        }
+        "VK_DEFINE_HANDLE" => Ok(HandleDef {
+            name,
+            kind: HandleKind::Dispatchable,
+        }),
+        "VK_DEFINE_NON_DISPATCHABLE_HANDLE" => Ok(HandleDef {
+            name,
+            kind: HandleKind::NonDispatchable,
+        }),
         _ => panic!("error: unknown handle kind"),
     }
 }
@@ -662,8 +676,7 @@ fn parse_fptr<'a>(code: &'a str) -> Result<FptrDef<'a>, ()> {
 
     let mut return_type = if return_base_type == "void" && ptr.is_none() {
         ctype::Ctype::new("()")
-    }
-    else {
+    } else {
         ctype::Ctype::new(return_base_type)
     };
 
@@ -690,30 +703,23 @@ fn parse_command<'a>(code: &'a str) -> Result<CommandDef<'a>, ()> {
 
     let mut return_type = if bt == "void" && p.is_none() {
         ctype::Ctype::new("()")
-    }
-    else {
+    } else {
         ctype::Ctype::new(bt)
     };
 
     if p.is_some() && c.is_some() {
         return_type.push_pointer(ctype::Pointer::Const);
-    }
-    else if p.is_some() {
+    } else if p.is_some() {
         return_type.push_pointer(ctype::Pointer::Mut);
     }
 
-    let (input, _) = repeat(
-        input,
-        followed(opt(tag("const")), tag("*")),
-        |(c, _)| {
-            if c.is_some() {
-                return_type.push_pointer(ctype::Pointer::Const);
-            }
-            else {
-                return_type.push_pointer(ctype::Pointer::Mut);
-            }
+    let (input, _) = repeat(input, followed(opt(tag("const")), tag("*")), |(c, _)| {
+        if c.is_some() {
+            return_type.push_pointer(ctype::Pointer::Const);
+        } else {
+            return_type.push_pointer(ctype::Pointer::Mut);
         }
-    )?;
+    })?;
 
     let (input, name) = token()(input)?;
 
@@ -737,8 +743,7 @@ fn parse_external_opaque_type(code: &str) -> Result<utils::VkTyName, ()> {
 
     if input.next().is_some() {
         Err(())
-    }
-    else {
+    } else {
         Ok(name.into())
     }
 }

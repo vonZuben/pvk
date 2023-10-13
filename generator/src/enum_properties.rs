@@ -9,7 +9,7 @@ if applicable
 
 mod format;
 
-use krs_quote::{ToTokens, TokenStream, krs_quote_with};
+use krs_quote::{krs_quote_with, ToTokens, TokenStream};
 
 use crate::utils::VkTyName;
 
@@ -39,6 +39,9 @@ trait ToTokensDelegate<I> {
     fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream);
 }
 
-pub fn properties<I: Iterator<Item = VkTyName> + Clone>(target: VkTyName, variants: I) -> impl ToTokens {
+pub fn properties<I: Iterator<Item = VkTyName> + Clone>(
+    target: VkTyName,
+    variants: I,
+) -> impl ToTokens {
     Properties::new(target, variants)
 }

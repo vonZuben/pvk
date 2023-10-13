@@ -1,4 +1,3 @@
-
 /// I call this "static" code because it is not dynamically generated from vk.xml
 ///
 /// it is basic utility code used by other code that is generated based on vk.xml
@@ -6,8 +5,7 @@ pub struct StaticCode;
 
 impl krs_quote::ToTokens for StaticCode {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        tokens.push(
-        stringify!(
+        tokens.push(stringify!(
             pub(crate) struct DbgStringAsDisplay<'a>(pub(crate) &'a str);
 
             impl std::fmt::Debug for DbgStringAsDisplay<'_> {

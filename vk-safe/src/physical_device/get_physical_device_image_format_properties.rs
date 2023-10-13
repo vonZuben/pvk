@@ -14,10 +14,17 @@ impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
     pub fn get_physical_device_image_format_properties<P>(
         &self,
         params: GetPhysicalDeviceImageFormatPropertiesParams,
-    ) -> Result<ImageFormatProperties<'scope>, vk::Result> where C::Commands: GetPhysicalDeviceImageFormatProperties<P> {
+    ) -> Result<ImageFormatProperties<'scope>, vk::Result>
+    where
+        C::Commands: GetPhysicalDeviceImageFormatProperties<P>,
+    {
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            let res = self.instance.commands.GetPhysicalDeviceImageFormatProperties().get_fptr()(
+            let res = self
+                .instance
+                .commands
+                .GetPhysicalDeviceImageFormatProperties()
+                .get_fptr()(
                 self.handle,
                 params.format,
                 params.image_type,
@@ -41,15 +48,21 @@ pub struct GetPhysicalDeviceImageFormatPropertiesParams {
 }
 
 impl GetPhysicalDeviceImageFormatPropertiesParams {
-    pub const fn new(format: vk::Format, image_type: vk::ImageType, image_tiling: vk::ImageTiling, usage_flags: vk::ImageUsageFlags, create_flags: vk::ImageCreateFlags) -> Self {
+    pub const fn new(
+        format: vk::Format,
+        image_type: vk::ImageType,
+        image_tiling: vk::ImageTiling,
+        usage_flags: vk::ImageUsageFlags,
+        create_flags: vk::ImageCreateFlags,
+    ) -> Self {
         // Verify params per the Vuids
 
-        use vk::image_usage_flag_bits::*;
         use vk::image_create_flag_bits::*;
         use vk::image_tiling::*;
         use vk::image_type::*;
+        use vk::image_usage_flag_bits::*;
 
-        check_vuid_defs2!{ GetPhysicalDeviceImageFormatProperties
+        check_vuid_defs2! { GetPhysicalDeviceImageFormatProperties
             pub const VUID_vkGetPhysicalDeviceImageFormatProperties_tiling_02248 : & 'static [ u8 ] = "tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)." . as_bytes ( ) ;
             CHECK {
                 assert!(!image_tiling.is(DRM_FORMAT_MODIFIER_EXT));
@@ -168,7 +181,13 @@ impl GetPhysicalDeviceImageFormatPropertiesParams {
             }
         };
 
-        Self { format, image_type, image_tiling, usage_flags, create_flags}
+        Self {
+            format,
+            image_type,
+            image_tiling,
+            usage_flags,
+            create_flags,
+        }
     }
 }
 

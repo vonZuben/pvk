@@ -17,10 +17,7 @@ impl<'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices
         Self { instance, handles }
     }
 
-    pub fn iter<'s>(
-        &'s self,
-    ) -> PhysicalDeviceIter<'i, 's, C>
-    {
+    pub fn iter<'s>(&'s self) -> PhysicalDeviceIter<'i, 's, C> {
         self.into_iter()
     }
 }
@@ -65,15 +62,13 @@ impl<C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> fmt::Debug
     }
 }
 
-impl<'i, C: InstanceConfig> Iterator
-    for PhysicalDeviceIter<'i, '_, C>
-{
+impl<'i, C: InstanceConfig> Iterator for PhysicalDeviceIter<'i, '_, C> {
     type Item = PhysicalDevice<'i, C>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|pd| {
-            PhysicalDevice::new(self.instance, pd)
-        })
+        self.iter
+            .next()
+            .map(|pd| PhysicalDevice::new(self.instance, pd))
     }
 }
 
@@ -82,8 +77,7 @@ impl<'s, 'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> IntoIterato
 {
     type Item = PhysicalDevice<'i, C>;
 
-    type IntoIter =
-        PhysicalDeviceIter<'i, 's, C>;
+    type IntoIter = PhysicalDeviceIter<'i, 's, C>;
 
     fn into_iter(self) -> Self::IntoIter {
         PhysicalDeviceIter {
@@ -93,19 +87,19 @@ impl<'s, 'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> IntoIterato
     }
 }
 
+mod create_device;
 mod get_physical_device_features;
 mod get_physical_device_format_properties;
 mod get_physical_device_image_format_properties;
+mod get_physical_device_memory_properties;
 mod get_physical_device_properties;
 mod get_physical_device_queue_family_properties;
-mod get_physical_device_memory_properties;
-mod create_device;
 
 // use get_physical_device_features::*;
 // use get_physical_device_format_properties::*;
 pub use get_physical_device_image_format_properties::GetPhysicalDeviceImageFormatPropertiesParams;
 // use get_physical_device_properties::*;
-use get_physical_device_queue_family_properties::*;
-pub use get_physical_device_memory_properties::*;
 use create_device::*;
 pub use create_device::{DeviceCreateInfo, QueuePriorities};
+pub use get_physical_device_memory_properties::*;
+use get_physical_device_queue_family_properties::*;

@@ -1,7 +1,7 @@
-use std::marker::PhantomData;
 use crate::pretty_version::VkVersion;
-use vk_safe_sys as vk;
 use crate::safe_interface::type_conversions::ToC;
+use std::marker::PhantomData;
+use vk_safe_sys as vk;
 
 use crate::scope::{Scope, Scoped};
 
@@ -12,7 +12,7 @@ use vk::commands::{CommandLoadError, LoadCommands, Version};
 pub trait DeviceConfig {
     const VERSION: VkVersion;
     type DropProvider;
-    type Commands : LoadCommands + DestroyDevice<Self::DropProvider>;
+    type Commands: LoadCommands + DestroyDevice<Self::DropProvider>;
 }
 
 pub struct Config<P, Cmd> {
@@ -22,21 +22,36 @@ pub struct Config<P, Cmd> {
 
 impl<P, Cmd> Clone for Config<P, Cmd> {
     fn clone(&self) -> Self {
-        Self { _drop_provider: PhantomData, _commands: PhantomData }
+        Self {
+            _drop_provider: PhantomData,
+            _commands: PhantomData,
+        }
     }
 }
 
 impl<P, Cmd> Copy for Config<P, Cmd> {}
 
 impl<P> Config<P, ()> {
-    pub fn new<Cmd>() -> Config<P, Cmd> where Cmd: DestroyDevice<P> {
-        Config { _drop_provider: PhantomData, _commands: PhantomData }
+    pub fn new<Cmd>() -> Config<P, Cmd>
+    where
+        Cmd: DestroyDevice<P>,
+    {
+        Config {
+            _drop_provider: PhantomData,
+            _commands: PhantomData,
+        }
     }
 }
 
-impl<P, Cmd> DeviceConfig for Config<P, Cmd> where Cmd: LoadCommands + DestroyDevice<P> + Version
+impl<P, Cmd> DeviceConfig for Config<P, Cmd>
+where
+    Cmd: LoadCommands + DestroyDevice<P> + Version,
 {
-    const VERSION: VkVersion = VkVersion::new(Cmd::VersionTriple.0, Cmd::VersionTriple.1, Cmd::VersionTriple.2);
+    const VERSION: VkVersion = VkVersion::new(
+        Cmd::VersionTriple.0,
+        Cmd::VersionTriple.1,
+        Cmd::VersionTriple.2,
+    );
     type DropProvider = P;
     type Commands = Cmd;
 }
@@ -51,15 +66,15 @@ pub struct Device<C: DeviceConfig, Pd: Scoped> {
 
 impl<C: DeviceConfig, Pd: Scoped> std::fmt::Debug for Device<C, Pd> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Device").field("handle", &self.handle).field("version", &C::VERSION).finish()
+        f.debug_struct("Device")
+            .field("handle", &self.handle)
+            .field("version", &C::VERSION)
+            .finish()
     }
 }
 
 impl<C: DeviceConfig, Pd: Scoped> Device<C, Pd> {
-    pub(crate) fn load_commands(
-        handle: vk::Device,
-    ) -> Result<Self, CommandLoadError>
-    {
+    pub(crate) fn load_commands(handle: vk::Device) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
         Ok(Self {
             handle,

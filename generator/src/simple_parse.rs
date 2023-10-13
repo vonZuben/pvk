@@ -5,9 +5,7 @@ pub struct TokenIter<'a> {
 
 impl<'a> TokenIter<'a> {
     pub fn new(s: &'a str) -> Self {
-        Self {
-            s,
-        }
+        Self { s }
     }
     pub fn inner_str(&self) -> &str {
         &self.s
@@ -20,9 +18,10 @@ impl<'a> Iterator for TokenIter<'a> {
         // base case, empty s
         if self.s.len() == 0 {
             return None;
-        }
-        else {
-            const SPECIAL_CHARS: &[char] = &['[', ']', '{', '}', '(', ')', ':', ';', ',', '*', '&', '|', '=', '\'', '\"'];
+        } else {
+            const SPECIAL_CHARS: &[char] = &[
+                '[', ']', '{', '}', '(', ')', ':', ';', ',', '*', '&', '|', '=', '\'', '\"',
+            ];
 
             // find start of next token
             // let mut start = self.cursor;
@@ -55,8 +54,7 @@ impl<'a> Iterator for TokenIter<'a> {
             // check if start hit end of s, e.g. if the remaining chars were all white space
             if start >= self.s.len() {
                 return None;
-            }
-            else {
+            } else {
                 // find end of next token
                 // let mut end = start + s[];
                 let chars = self.s[end..].chars();
@@ -64,8 +62,7 @@ impl<'a> Iterator for TokenIter<'a> {
                     // found boundary for end of next token
                     if c.is_ascii_whitespace() || SPECIAL_CHARS.contains(&c) {
                         break;
-                    }
-                    else {
+                    } else {
                         end += c.len_utf8();
                     }
                 }
@@ -83,8 +80,8 @@ type MyErr<'a> = ();
 
 type Res<I, O> = Result<(I, O), MyErr<'static>>;
 
-pub trait ParseFn<I, O> : FnMut(I) -> Res<I, O> {}
-impl<F, I, O>  ParseFn<I, O> for F where F: FnMut(I) -> Res<I, O> {}
+pub trait ParseFn<I, O>: FnMut(I) -> Res<I, O> {}
+impl<F, I, O> ParseFn<I, O> for F where F: FnMut(I) -> Res<I, O> {}
 
 pub trait Parse<I, O> {
     fn parse(&mut self, input: I) -> Res<I, O>;
@@ -151,7 +148,11 @@ pub fn opt<I: Clone, O>(mut p: impl Parse<I, O>) -> impl ParseFn<I, Option<O>> {
     }
 }
 
-pub fn repeat<I: Clone, O>(mut input: I, mut p: impl Parse<I, O>, mut f: impl FnMut(O)) -> Res<I, ()> {
+pub fn repeat<I: Clone, O>(
+    mut input: I,
+    mut p: impl Parse<I, O>,
+    mut f: impl FnMut(O),
+) -> Res<I, ()> {
     loop {
         let oldi = input.clone();
         match p.parse(input) {
@@ -159,9 +160,7 @@ pub fn repeat<I: Clone, O>(mut input: I, mut p: impl Parse<I, O>, mut f: impl Fn
                 input = rest;
                 f(o);
             }
-            Err(_) => {
-                return Ok((oldi, ()))
-            }
+            Err(_) => return Ok((oldi, ())),
         }
     }
 }
@@ -171,7 +170,7 @@ pub fn until<'a, T: Eq, I: Iterator<Item = T> + 'a>(tag: T) -> impl ParseFn<I, T
     move |mut input: I| {
         while let Some(t) = input.next() {
             if t == tag {
-                return Ok((input, t))
+                return Ok((input, t));
             }
         }
         Err(())

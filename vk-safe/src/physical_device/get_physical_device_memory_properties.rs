@@ -12,13 +12,16 @@ use std::mem::MaybeUninit;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
 impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
-    pub fn get_physical_device_memory_properties<P>(&self) -> PhysicalDeviceMemoryProperties<'scope> where C::Commands: GetPhysicalDeviceMemoryProperties<P> {
+    pub fn get_physical_device_memory_properties<P>(&self) -> PhysicalDeviceMemoryProperties<'scope>
+    where
+        C::Commands: GetPhysicalDeviceMemoryProperties<P>,
+    {
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance.commands.GetPhysicalDeviceMemoryProperties().get_fptr()(
-                self.handle,
-                properties.as_mut_ptr()
-            );
+            self.instance
+                .commands
+                .GetPhysicalDeviceMemoryProperties()
+                .get_fptr()(self.handle, properties.as_mut_ptr());
             PhysicalDeviceMemoryProperties::new(properties.assume_init())
         }
     }
@@ -49,21 +52,29 @@ impl MemoryType<'_> {
 simple_struct_wrapper_scoped!(MemoryHeap impl Debug, Deref);
 
 impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
-
     pub fn memory_types(&self) -> &[MemoryType<'scope>] {
-        assert!(self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _, "error: vulkan implementation reporting invalid memory_type_count");
+        assert!(
+            self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _,
+            "error: vulkan implementation reporting invalid memory_type_count"
+        );
         (&self.inner.memory_types[..self.inner.memory_type_count as _]).safe_transmute()
     }
 
     pub fn memory_heaps(&self) -> &[MemoryHeap<'scope>] {
-        assert!(self.inner.memory_heap_count < vk::MAX_MEMORY_HEAPS as _, "error: vulkan implementation reporting invalid memory_heap_count");
+        assert!(
+            self.inner.memory_heap_count < vk::MAX_MEMORY_HEAPS as _,
+            "error: vulkan implementation reporting invalid memory_heap_count"
+        );
         (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute()
     }
 
     pub fn choose_type<'a>(&'a self, index: u32) -> MemoryTypeChoice<'a, 'scope> {
         let memory_types = self.memory_types();
         assert!((index as usize) < memory_types.len());
-        MemoryTypeChoice { ty: &self.memory_types()[index as usize], index }
+        MemoryTypeChoice {
+            ty: &self.memory_types()[index as usize],
+            index,
+        }
     }
 }
 

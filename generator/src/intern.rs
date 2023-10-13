@@ -1,9 +1,9 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt;
-use std::borrow::Cow;
 use std::sync::atomic::{self, AtomicBool};
 
-use std::cmp::{PartialEq, Eq};
+use std::cmp::{Eq, PartialEq};
 
 use std::hash::Hash;
 
@@ -17,15 +17,25 @@ pub struct Interner {
 impl Interner {
     // should only be called once by one thread
     pub unsafe fn init() {
-        INTERNER = Some(Interner{ strings: HashSet::new() });
+        INTERNER = Some(Interner {
+            strings: HashSet::new(),
+        });
     }
     // should only be called by one thread at a time, and should ensure init called before
     pub fn intern<'a>(s: impl Into<Cow<'a, str>>) -> Istring {
-
         // This is using some sketchy cheap method of ensuring only one thread is interning at a time
         // panic if already being used
         // this is only intended to be used in single thread anyway, but better safe than sorry (who knows whats in future)
-        unsafe { LOCKED.compare_exchange(false, true, atomic::Ordering::Acquire, atomic::Ordering::Acquire).unwrap(); }
+        unsafe {
+            LOCKED
+                .compare_exchange(
+                    false,
+                    true,
+                    atomic::Ordering::Acquire,
+                    atomic::Ordering::Acquire,
+                )
+                .unwrap();
+        }
 
         let s = s.into();
         let inner;
@@ -42,7 +52,16 @@ impl Interner {
             }
         };
 
-        unsafe { LOCKED.compare_exchange(true, false, atomic::Ordering::Release, atomic::Ordering::Relaxed).unwrap(); }
+        unsafe {
+            LOCKED
+                .compare_exchange(
+                    true,
+                    false,
+                    atomic::Ordering::Release,
+                    atomic::Ordering::Relaxed,
+                )
+                .unwrap();
+        }
 
         ret
     }
@@ -55,9 +74,7 @@ pub struct Istring {
 
 impl Istring {
     fn new(ptr: *const str) -> Self {
-        Self {
-            ptr,
-        }
+        Self { ptr }
     }
     pub fn get(&self) -> &str {
         unsafe { &*self.ptr }
@@ -84,7 +101,9 @@ mod test {
     use super::*;
     #[test]
     fn t1() {
-        unsafe { Interner::init(); }
+        unsafe {
+            Interner::init();
+        }
         let i1 = Interner::intern("hey");
         let i2 = Interner::intern("hey");
         assert_eq!(i1, i2);

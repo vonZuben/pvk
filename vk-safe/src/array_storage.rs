@@ -1,6 +1,6 @@
+use crate::error::Error;
 use core::ops::{Deref, DerefMut};
 use std::mem::MaybeUninit;
-use crate::error::Error;
 
 use vk_safe_sys as vk;
 
@@ -14,10 +14,12 @@ use vk_safe_sys as vk;
 /// Users can implement for custom types.
 pub trait ArrayStorage<T> {
     /// The final initialized storage type.
-    type InitStorage : AsRef<[T]>;
+    type InitStorage: AsRef<[T]>;
     /// Allow control of len of items to be returned.
     /// If preallocated space is provided, then there is no reason to get len (e.g. for a slice).
-    fn allocate(&mut self, _len: impl FnOnce() -> Result<usize, vk::Result>) -> Result<(), Error> {Ok(())}
+    fn allocate(&mut self, _len: impl FnOnce() -> Result<usize, vk::Result>) -> Result<(), Error> {
+        Ok(())
+    }
     /// Provide the uninitialized space to which the Vulkan command will write to.
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>];
     /// Finalize len amount of initialized memory.
@@ -49,7 +51,10 @@ impl std::error::Error for ArrayFullError {}
 
 impl<'a, T> UninitArrayInitializer<'a, T> {
     pub(crate) fn new(array_iter: std::slice::IterMut<'a, MaybeUninit<T>>) -> Self {
-        Self { initialized_count: 0, array_iter }
+        Self {
+            initialized_count: 0,
+            array_iter,
+        }
     }
     pub(crate) fn push(&mut self, t: T) -> InitResult {
         let to_write = self.array_iter.next().ok_or(ArrayFullError)?;
@@ -83,7 +88,7 @@ impl<T> ArrayStorage<T> for Vec<MaybeUninit<T>> {
 
 impl<'a, T> ArrayStorage<T> for &'a mut [MaybeUninit<T>] {
     type InitStorage = &'a mut [T];
-    fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>]  {
+    fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>] {
         self
     }
     fn finalize(self, len: usize) -> Self::InitStorage {
@@ -112,7 +117,9 @@ impl<const LEN: usize, T> Drop for InitArray<LEN, T> {
     fn drop(&mut self) {
         if std::mem::needs_drop::<T>() {
             for t in self.get_initialized_mut() {
-                unsafe { std::ptr::drop_in_place(t); }
+                unsafe {
+                    std::ptr::drop_in_place(t);
+                }
             }
         }
     }
@@ -169,8 +176,7 @@ impl VulkanLenType for u32 {
     fn from_usize(len: usize) -> Self {
         if len > u32::MAX as usize {
             u32::MAX
-        }
-        else {
+        } else {
             len as _
         }
     }

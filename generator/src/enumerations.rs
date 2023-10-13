@@ -15,7 +15,8 @@ struct ModName {
 
 impl ModName {
     fn new(name: VkTyName) -> Self {
-        let name = crate::utils::case::camel_to_snake(crate::utils::ctype_to_rtype(name.as_str())).replace("_flags", "_flag_bits");
+        let name = crate::utils::case::camel_to_snake(crate::utils::ctype_to_rtype(name.as_str()))
+            .replace("_flags", "_flag_bits");
         Self { name }
     }
 }
@@ -66,7 +67,7 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
 
         let variant_name_strings = self.variants.iter().map(|c| c.name().normalize());
 
-        let variant_names = self.variants.iter().map(|c|*c.name());
+        let variant_names = self.variants.iter().map(|c| *c.name());
 
         let properties = crate::enum_properties::properties(target, variant_names.clone());
 

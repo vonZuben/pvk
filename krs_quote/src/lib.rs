@@ -45,17 +45,19 @@
 
 #![warn(missing_docs)]
 
-mod to_tokens;
 mod runtime;
+mod to_tokens;
 
-pub use to_tokens::{ Token, TokenStream, ToTokens, ToTokensClosure };
+pub use to_tokens::{ToTokens, ToTokensClosure, Token, TokenStream};
 
 #[doc(hidden)]
 pub mod __private {
-    pub use super::to_tokens::*;
     pub use super::runtime::*;
+    pub use super::to_tokens::*;
 
-    pub fn coerce<'a, const N: usize>(a: [Box<dyn GenerateTokens + 'a>; N]) -> [Box<dyn GenerateTokens + 'a>; N] {
+    pub fn coerce<'a, const N: usize>(
+        a: [Box<dyn GenerateTokens + 'a>; N],
+    ) -> [Box<dyn GenerateTokens + 'a>; N] {
         a
     }
 }
@@ -231,7 +233,7 @@ mod krs_quote_test {
     fn with_map() {
         println!("=========with_map============");
         let v = vec![1, 2, 3];
-        let m = v.iter().map(|x|x+1);
+        let m = v.iter().map(|x| x + 1);
         let q = krs_quote!({@,* {@m} });
         println!("{}", q);
     }

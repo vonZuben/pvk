@@ -9,13 +9,13 @@ fn main() -> Result<()> {
         let arg = args.next()?;
         if current_exe.contains(&arg) {
             args.next()
-        }
-        else {
+        } else {
             Some(arg)
         }
     };
 
-    const INPUT_ERROR_MSG: &str = "please provide paths to vk.xml, validusage.json, and output directory";
+    const INPUT_ERROR_MSG: &str =
+        "please provide paths to vk.xml, validusage.json, and output directory";
     let vk_xml = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
     let vuid = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
     let out_dir = get_input_arg().ok_or(INPUT_ERROR_MSG)?;

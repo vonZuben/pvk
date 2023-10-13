@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::hash::Hash;
 use std::fmt;
+use std::hash::Hash;
 
 use crate::intern::{Interner, Istring};
 
@@ -25,7 +25,10 @@ pub trait StrAsCode {
 // This implementation is intended to convert any string
 // into valid tokens
 // If you simply want a literal string then don't use this
-impl<T> StrAsCode for T where T: AsRef<str> {
+impl<T> StrAsCode for T
+where
+    T: AsRef<str>,
+{
     fn as_code(&self) -> TokenWrapper {
         let rstr = ctype_to_rtype(self.as_ref());
         // rstr.parse()
@@ -57,7 +60,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
         self.vec.push(val);
     }
     #[allow(unused)]
-    pub fn extend(&mut self, items: impl IntoIterator<Item=(K, V)>) {
+    pub fn extend(&mut self, items: impl IntoIterator<Item = (K, V)>) {
         for (key, value) in items.into_iter() {
             self.push(key, value);
         }
@@ -72,9 +75,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     }
     pub fn get_mut_or_default(&mut self, key: K, default: V) -> &mut V {
         match self.map.get(&key) {
-            Some(index) => {
-                unsafe { self.vec.get_unchecked_mut(*index) }
-            }
+            Some(index) => unsafe { self.vec.get_unchecked_mut(*index) },
             None => {
                 self.push(key, default);
                 self.vec.last_mut().unwrap() // unwrap since we know we just pushed a value
@@ -84,9 +85,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     #[allow(unused)]
     pub fn get_mut_or_default_with(&mut self, key: K, default: impl FnOnce() -> V) -> &mut V {
         match self.map.get(&key) {
-            Some(index) => {
-                unsafe { self.vec.get_unchecked_mut(*index) }
-            }
+            Some(index) => unsafe { self.vec.get_unchecked_mut(*index) },
             None => {
                 self.push(key, default());
                 self.vec.last_mut().unwrap() // unwrap since we know we just pushed a value
@@ -96,7 +95,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     pub fn contains_or_default(&mut self, key: K, default: V) {
         let _ = self.get_mut_or_default(key, default);
     }
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item=&'a V> + Clone {
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a V> + Clone {
         self.vec.iter()
     }
     pub fn last(&self) -> Option<&V> {
@@ -147,8 +146,7 @@ impl VkTyName {
             Self {
                 name: Interner::intern(name),
             }
-        }
-        else {
+        } else {
             Self {
                 name: Interner::intern(name),
             }
@@ -222,7 +220,6 @@ pub fn ctype_to_rtype(type_name: &str) -> &str {
 pub mod case {
 
     pub fn camel_to_snake(s: &str) -> String {
-
         let mut out = String::new();
         let mut chars = s.chars().peekable();
 
@@ -230,18 +227,16 @@ pub mod case {
             if c.is_lowercase() && chars.peek().map_or(false, |c| c.is_uppercase()) {
                 out.extend(c.to_lowercase());
                 out.push('_');
-            }
-            else if c.is_alphabetic() && chars.peek().map_or(false, |c| c.is_numeric()) {
+            } else if c.is_alphabetic() && chars.peek().map_or(false, |c| c.is_numeric()) {
                 out.extend(c.to_lowercase());
                 out.push('_');
-            }
-            else if c.is_numeric() && chars.peek().map_or(false, |c| c.is_alphabetic())
+            } else if c.is_numeric()
+                && chars.peek().map_or(false, |c| c.is_alphabetic())
                 && chars.peek().map_or(false, |c| *c != 'D')
-                {
+            {
                 out.push(c);
                 out.push('_');
-            }
-            else {
+            } else {
                 out.extend(c.to_lowercase());
             }
         }

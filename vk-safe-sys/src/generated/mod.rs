@@ -1,13 +1,13 @@
-#[cfg(not(feature = "generate"))]
-#[macro_use]
-mod pre_built;
+// #[cfg(not(feature = "generate"))]
+// #[macro_use]
+// mod pre_built;
 
 // TODO currently there is no pre_built code, so should fix this in future
-#[cfg(not(feature = "generate"))]
-pub use pre_built::*;
+// #[cfg(not(feature = "generate"))]
+// pub use pre_built::*;
 
 #[cfg(feature = "generate")]
-include!{concat!(env!("OUT_DIR"), "/lib.rs")}
+include! {concat!(env!("OUT_DIR"), "/lib.rs")}
 
 impl Result {
     pub fn is_err(&self) -> bool {

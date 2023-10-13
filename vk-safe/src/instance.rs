@@ -23,21 +23,36 @@ pub struct Config<P, Cmd> {
 
 impl<P, Cmd> Clone for Config<P, Cmd> {
     fn clone(&self) -> Self {
-        Self { _drop_provider: PhantomData, _commands: PhantomData }
+        Self {
+            _drop_provider: PhantomData,
+            _commands: PhantomData,
+        }
     }
 }
 
 impl<P, Cmd> Copy for Config<P, Cmd> {}
 
 impl<P> Config<P, ()> {
-    pub fn new<Cmd>() -> Config<P, Cmd> where Cmd: DestroyInstance<P> {
-        Config { _drop_provider: PhantomData, _commands: PhantomData }
+    pub fn new<Cmd>() -> Config<P, Cmd>
+    where
+        Cmd: DestroyInstance<P>,
+    {
+        Config {
+            _drop_provider: PhantomData,
+            _commands: PhantomData,
+        }
     }
 }
 
-impl<P, Cmd> InstanceConfig for Config<P, Cmd> where Cmd: LoadCommands + DestroyInstance<P> + Version
+impl<P, Cmd> InstanceConfig for Config<P, Cmd>
+where
+    Cmd: LoadCommands + DestroyInstance<P> + Version,
 {
-    const VERSION: VkVersion = VkVersion::new(Cmd::VersionTriple.0, Cmd::VersionTriple.1, Cmd::VersionTriple.2);
+    const VERSION: VkVersion = VkVersion::new(
+        Cmd::VersionTriple.0,
+        Cmd::VersionTriple.1,
+        Cmd::VersionTriple.2,
+    );
     type DropProvider = P;
     type Commands = Cmd;
 }
@@ -61,7 +76,10 @@ impl<C: InstanceConfig> Instance<C> {
 
 impl<C: InstanceConfig> std::fmt::Debug for Instance<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Instance").field("handle", &self.handle).field("version", &C::VERSION).finish()
+        f.debug_struct("Instance")
+            .field("handle", &self.handle)
+            .field("version", &C::VERSION)
+            .finish()
     }
 }
 

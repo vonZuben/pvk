@@ -1,6 +1,6 @@
+use std::borrow::Borrow;
 use std::future::Future;
 use std::marker::PhantomData;
-use std::borrow::Borrow;
 
 /// This represents an ID for a scope based on an invariant lifetime
 ///
@@ -21,7 +21,7 @@ impl ScopeId<'_> {
 ///
 /// types which are only safe within a scope implement their methods through this wrapper
 /// (e.g. impl Scope<'id, Instance> {fn enumerate_physical_devices()})
-pub struct Scope<'scope, H>{
+pub struct Scope<'scope, H> {
     handle: &'scope H,
     _id: ScopeId<'scope>,
 }
@@ -42,7 +42,10 @@ impl<H: std::fmt::Debug> std::fmt::Debug for Scope<'_, H> {
 
 impl<'id, H> Scope<'id, H> {
     pub(crate) fn new_scope(handle: &'id H) -> Self {
-        Self { handle, _id: Default::default() }
+        Self {
+            handle,
+            _id: Default::default(),
+        }
     }
 }
 
@@ -61,13 +64,13 @@ impl<H> std::ops::Deref for Scope<'_, H> {
 /// it is not possible to write where O: 'a in this way. It is also not possible to
 /// restrict the output to 'a otherwise because we cannot name
 /// the type of O which is an anonymous type implementing Future
-pub trait ScopedAsyncFn<'scope, H: 'scope, O> : FnOnce(Scope<'scope, H>) -> Self::Future {
+pub trait ScopedAsyncFn<'scope, H: 'scope, O>: FnOnce(Scope<'scope, H>) -> Self::Future {
     type Future: Future<Output = O> + 'scope;
 }
 impl<'scope, H: 'scope, A, F, O> ScopedAsyncFn<'scope, H, O> for A
 where
     A: FnOnce(Scope<'scope, H>) -> F,
-    F: Future<Output = O> + 'scope
+    F: Future<Output = O> + 'scope,
 {
     type Future = F;
 }
@@ -76,7 +79,7 @@ where
 pub fn scope<'a, F, R, T>(this: impl Borrow<T> + 'a, f: F) -> impl FnOnce() -> R + 'a
 where
     for<'scope> F: FnOnce(Scope<'scope, T>) -> R + 'a,
-    T: 'a
+    T: 'a,
 {
     move || f(Scope::new_scope(this.borrow()))
 }
@@ -91,7 +94,7 @@ where
 pub fn async_scope<'a, A, R, T>(this: impl Borrow<T> + 'a, a: A) -> impl Future<Output = R> + 'a
 where
     for<'scope> A: ScopedAsyncFn<'scope, T, R> + 'a,
-    T: 'a
+    T: 'a,
 {
     async move { a(Scope::new_scope(this.borrow())).await }
 }
@@ -100,11 +103,11 @@ where
 // traits to abstract over scoped objects
 
 /// used to get the lifetime of a scoped object back for generic impls
-pub trait ScopeLife<'l> : Scoped {}
+pub trait ScopeLife<'l>: Scoped {}
 
 impl<'l, T> ScopeLife<'l> for Scope<'l, T> {}
 
 /// Simplify holding a scoped object when we don't care about the lifetime
-pub trait Scoped { }
+pub trait Scoped {}
 
 impl<'l, T> Scoped for Scope<'l, T> {}

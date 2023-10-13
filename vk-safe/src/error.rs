@@ -1,6 +1,6 @@
 use vk_safe_sys as vk;
 
-use std::fmt::{Display, Debug};
+use std::fmt::{Debug, Display};
 
 /// custom error type for this crate
 /// may consider using the 'anyhow' crate at some point, but I want to keep dependencies at minimum for now

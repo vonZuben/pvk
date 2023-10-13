@@ -21,8 +21,8 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
             for (i, c) in self.json.chars().enumerate() {
                 if c == '\n' {
                     let line = &self.json[..i];
-                    self.json = &self.json[i+1..];
-                    return Some(line)
+                    self.json = &self.json[i + 1..];
+                    return Some(line);
                 }
             }
             None
@@ -42,7 +42,7 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
             // when find vuid line
             if line.starts_with(VUID_TAG) {
                 // get "vuid" value which is the name of the vuid
-                let vuid_name = &line[VUID_TAG.len()+1..line.len()-2]; // this takes the value without the quotation marks and ending comma
+                let vuid_name = &line[VUID_TAG.len() + 1..line.len() - 2]; // this takes the value without the quotation marks and ending comma
 
                 // then get next line and assert that it is the "text" value, which is the description
                 let line = get_line()
@@ -51,7 +51,7 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
                     .strip_prefix(TEXT_TAG)
                     .expect("error: line after 'vuid' is not 'text'");
 
-                let vuid_description = line[1..line.len()-1].trim(); // remove quotation marks and whitespace leading/trailing
+                let vuid_description = line[1..line.len() - 1].trim(); // remove quotation marks and whitespace leading/trailing
 
                 // remove HTML from the description
                 let filtered_description: String = HtmlFilter(vuid_description.chars()).collect();
@@ -62,24 +62,35 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
                 };
 
                 visitor.visit_vuid(vuid_pair);
-            }
-            else if line.starts_with(SCHEMA_TAG) {
-                let schema_version: u32 = line[SCHEMA_TAG.len()..line.len()-1].parse().expect("error: can't parse json schema version");
+            } else if line.starts_with(SCHEMA_TAG) {
+                let schema_version: u32 = line[SCHEMA_TAG.len()..line.len() - 1]
+                    .parse()
+                    .expect("error: can't parse json schema version");
                 if schema_version == 2 {
                     supported_schema = true;
-                }
-                else {
+                } else {
                     panic!("unsupported validusage.json schema version");
                 }
-            }
-            else if line.starts_with(API_VER_TAG) {
-                let api_version_str = &line[API_VER_TAG.len()+1..line.len()-2];
+            } else if line.starts_with(API_VER_TAG) {
+                let api_version_str = &line[API_VER_TAG.len() + 1..line.len() - 2];
 
                 let mut version_parts = api_version_str.split(".");
 
-                let major = version_parts.next().expect("error: api version - no major").parse().expect("error: can't parse major");
-                let minor = version_parts.next().expect("error: api version - no minor").parse().expect("error: can't parse minor");
-                let patch = version_parts.next().expect("error: api version - no patch").parse().expect("error: can't parse patch");
+                let major = version_parts
+                    .next()
+                    .expect("error: api version - no major")
+                    .parse()
+                    .expect("error: can't parse major");
+                let minor = version_parts
+                    .next()
+                    .expect("error: api version - no minor")
+                    .parse()
+                    .expect("error: can't parse minor");
+                let patch = version_parts
+                    .next()
+                    .expect("error: api version - no patch")
+                    .parse()
+                    .expect("error: can't parse patch");
 
                 visitor.visit_vuid_version((major, minor, patch));
             }
@@ -109,8 +120,7 @@ impl<I: Iterator<Item = char>> Iterator for HtmlFilter<I> {
                 }
             }
             panic!("error: HtmlFilter did not find end og html tag")
-        }
-        else {
+        } else {
             Some(c)
         }
     }

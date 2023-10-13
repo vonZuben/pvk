@@ -11,13 +11,16 @@ use std::mem::MaybeUninit;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
 impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
-    pub fn get_physical_device_properties<P>(&self) -> PhysicalDeviceProperties<'scope> where C::Commands: GetPhysicalDeviceProperties<P> {
+    pub fn get_physical_device_properties<P>(&self) -> PhysicalDeviceProperties<'scope>
+    where
+        C::Commands: GetPhysicalDeviceProperties<P>,
+    {
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance.commands.GetPhysicalDeviceProperties().get_fptr()(
-                self.handle,
-                properties.as_mut_ptr()
-            );
+            self.instance
+                .commands
+                .GetPhysicalDeviceProperties()
+                .get_fptr()(self.handle, properties.as_mut_ptr());
             PhysicalDeviceProperties::new(properties.assume_init())
         }
     }

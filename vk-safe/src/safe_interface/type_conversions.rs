@@ -1,5 +1,5 @@
-use std::os::raw::c_char;
 use std::ffi::CStr;
+use std::os::raw::c_char;
 
 pub trait ToC<C> {
     fn to_c(self) -> C;
@@ -48,17 +48,23 @@ pub unsafe trait SafeTransmute<T> {}
 
 unsafe impl<T, U> SafeTransmute<T> for &[U] where U: SafeTransmute<T> {}
 
-pub trait TransmuteArray<'a, T> : SafeTransmute<T> {
+pub trait TransmuteArray<'a, T>: SafeTransmute<T> {
     fn safe_transmute(self) -> &'a [T];
 }
 
-impl<'a, T, U> TransmuteArray<'a, T> for &'a [U] where U: SafeTransmute<T> {
+impl<'a, T, U> TransmuteArray<'a, T> for &'a [U]
+where
+    U: SafeTransmute<T>,
+{
     fn safe_transmute(self) -> &'a [T] {
         unsafe { std::mem::transmute(self) }
     }
 }
 
 // added this plain function to allow using the trait benefits in const context
-pub const fn transmute_array<A, B>(a: &[A]) -> &[B] where A: SafeTransmute<B> {
+pub const fn transmute_array<A, B>(a: &[A]) -> &[B]
+where
+    A: SafeTransmute<B>,
+{
     unsafe { std::mem::transmute(a) }
 }

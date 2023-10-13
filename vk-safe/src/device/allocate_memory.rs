@@ -1,47 +1,76 @@
 use super::*;
 use vk_safe_sys as vk;
 
-use crate::scope::{ScopeLife, ScopeId};
 use crate::physical_device::MemoryTypeChoice;
+use crate::scope::{ScopeId, ScopeLife};
 
-use vk::has_command::{FreeMemory, AllocateMemory};
+use vk::has_command::{AllocateMemory, FreeMemory};
 
 use std::mem::MaybeUninit;
 
-pub struct DeviceMemory<'d, C: DeviceConfig, Pd: Scoped, F> where C::Commands: FreeMemory<F> {
+pub struct DeviceMemory<'d, C: DeviceConfig, Pd: Scoped, F>
+where
+    C::Commands: FreeMemory<F>,
+{
     pub(crate) handle: vk::DeviceMemory,
     pub(crate) device: ScopeDevice<'d, C, Pd>,
-    _drop_provider: PhantomData<F>
+    _drop_provider: PhantomData<F>,
 }
 
-impl<'d, C: DeviceConfig, Pd: Scoped, F> DeviceMemory<'d, C, Pd, F> where C::Commands: FreeMemory<F> {
+impl<'d, C: DeviceConfig, Pd: Scoped, F> DeviceMemory<'d, C, Pd, F>
+where
+    C::Commands: FreeMemory<F>,
+{
     fn new(handle: vk::DeviceMemory, device: ScopeDevice<'d, C, Pd>) -> Self {
-        Self { handle, device, _drop_provider: PhantomData }
+        Self {
+            handle,
+            device,
+            _drop_provider: PhantomData,
+        }
     }
 }
 
-impl<'d, C: DeviceConfig, Pd: Scoped, F> std::fmt::Debug for DeviceMemory<'_, C, Pd, F> where C::Commands: FreeMemory<F> {
+impl<'d, C: DeviceConfig, Pd: Scoped, F> std::fmt::Debug for DeviceMemory<'_, C, Pd, F>
+where
+    C::Commands: FreeMemory<F>,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.handle.fmt(f)
     }
 }
 
 impl<'d, 'pd, C: DeviceConfig, Pd: ScopeLife<'pd>> ScopeDevice<'d, C, Pd> {
-    pub fn allocate_memory<P, F>(&self, info: &MemoryAllocateInfo<'pd>) -> Result<DeviceMemory<'d, C, Pd, F>, vk::Result> where C::Commands: AllocateMemory<P> + FreeMemory<F> {
+    pub fn allocate_memory<P, F>(
+        &self,
+        info: &MemoryAllocateInfo<'pd>,
+    ) -> Result<DeviceMemory<'d, C, Pd, F>, vk::Result>
+    where
+        C::Commands: AllocateMemory<P> + FreeMemory<F>,
+    {
         let fptr = self.commands.AllocateMemory().get_fptr();
         let mut memory = MaybeUninit::uninit();
         unsafe {
-            let ret = fptr(self.handle, &info.inner, std::ptr::null(), memory.as_mut_ptr());
+            let ret = fptr(
+                self.handle,
+                &info.inner,
+                std::ptr::null(),
+                memory.as_mut_ptr(),
+            );
             check_raw_err!(ret);
             Ok(DeviceMemory::new(memory.assume_init(), *self))
         }
     }
 }
 
-impl<C: DeviceConfig, Pd: Scoped, F> Drop for DeviceMemory<'_, C, Pd, F> where C::Commands: FreeMemory<F> {
+impl<C: DeviceConfig, Pd: Scoped, F> Drop for DeviceMemory<'_, C, Pd, F>
+where
+    C::Commands: FreeMemory<F>,
+{
     fn drop(&mut self) {
         let fptr = self.device.commands.FreeMemory().get_fptr();
-        unsafe { fptr((*self.device).handle, self.handle, std::ptr::null()); }
+        unsafe {
+            fptr((*self.device).handle, self.handle, std::ptr::null());
+        }
     }
 }
 
@@ -51,7 +80,10 @@ pub struct MemoryAllocateInfo<'pd> {
 }
 
 impl<'pd> MemoryAllocateInfo<'pd> {
-    pub const fn new(size: std::num::NonZeroU64, memory_type_choice: MemoryTypeChoice<'_, 'pd>) -> Self {
+    pub const fn new(
+        size: std::num::NonZeroU64,
+        memory_type_choice: MemoryTypeChoice<'_, 'pd>,
+    ) -> Self {
         check_vuid_defs2!( MemoryAllocateInfo
             pub const VUID_VkMemoryAllocateInfo_allocationSize_00638: &'static [u8] =
                 "allocationSize must be greater than 0".as_bytes();
@@ -250,6 +282,9 @@ impl<'pd> MemoryAllocateInfo<'pd> {
             memory_type_index: memory_type_choice.index,
         };
 
-        Self { inner, _pd: ScopeId::new() }
+        Self {
+            inner,
+            _pd: ScopeId::new(),
+        }
     }
 }

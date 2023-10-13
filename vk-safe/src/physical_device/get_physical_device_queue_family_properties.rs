@@ -1,6 +1,6 @@
 use super::*;
-use crate::instance::InstanceConfig;
 use crate::error::Error;
+use crate::instance::InstanceConfig;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
@@ -11,9 +11,18 @@ use std::fmt;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
 impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
-    pub fn get_physical_device_queue_family_properties<P, S: ArrayStorage<QueueFamilyProperties<'scope>>>(&self, mut storage: S) -> Result<QueueFamilies<'scope, S>, Error> where C::Commands: GetPhysicalDeviceQueueFamilyProperties<P> {
+    pub fn get_physical_device_queue_family_properties<
+        P,
+        S: ArrayStorage<QueueFamilyProperties<'scope>>,
+    >(
+        &self,
+        mut storage: S,
+    ) -> Result<QueueFamilies<'scope, S>, Error>
+    where
+        C::Commands: GetPhysicalDeviceQueueFamilyProperties<P>,
+    {
         let families = enumerator_code2!(self.instance.commands.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
-        Ok( QueueFamilies { families } )
+        Ok(QueueFamilies { families })
     }
 }
 
@@ -40,7 +49,9 @@ pub struct QueueFamilies<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>>
     families: S::InitStorage,
 }
 
-impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> std::ops::Deref for QueueFamilies<'scope, S> {
+impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> std::ops::Deref
+    for QueueFamilies<'scope, S>
+{
     type Target = [QueueFamilyProperties<'scope>];
 
     fn deref(&self) -> &Self::Target {
@@ -48,9 +59,13 @@ impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> std::ops::Deref for
     }
 }
 
-impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> fmt::Debug for QueueFamilies<'scope, S> {
+impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> fmt::Debug
+    for QueueFamilies<'scope, S>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.families.as_ref().iter()).finish()
+        f.debug_list()
+            .entries(self.families.as_ref().iter())
+            .finish()
     }
 }
 
@@ -58,9 +73,10 @@ impl<'scope, QS: ArrayStorage<QueueFamilyProperties<'scope>>> QueueFamilies<'sco
     pub fn configure_create_info<'params, IS: ArrayStorage<DeviceQueueCreateInfo<'params>>>(
         &self,
         mut storage: IS,
-        mut filter: impl for<'properties, 'initializer, 'storage> FnMut(DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, '_>)
-    ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IS>
-    {
+        mut filter: impl for<'properties, 'initializer, 'storage> FnMut(
+            DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, '_>,
+        ),
+    ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IS> {
         let len = || {
             let mut protected_count = 0;
             for properties in self.families.as_ref().iter() {
@@ -71,11 +87,18 @@ impl<'scope, QS: ArrayStorage<QueueFamilyProperties<'scope>>> QueueFamilies<'sco
             }
             Ok(self.families.as_ref().len() + protected_count)
         };
-        storage.allocate(len).expect("error in configure_create_info: could not allocate storage");
+        storage
+            .allocate(len)
+            .expect("error in configure_create_info: could not allocate storage");
 
-        let mut initializer = crate::array_storage::UninitArrayInitializer::new(storage.uninit_slice().iter_mut());
+        let mut initializer =
+            crate::array_storage::UninitArrayInitializer::new(storage.uninit_slice().iter_mut());
         for (index, properties) in self.families.as_ref().iter().enumerate() {
-            filter(DeviceQueueCreateInfoConfiguration::new(index as u32, &mut initializer, properties));
+            filter(DeviceQueueCreateInfoConfiguration::new(
+                index as u32,
+                &mut initializer,
+                properties,
+            ));
         }
 
         let init_count = initializer.initialized_count();

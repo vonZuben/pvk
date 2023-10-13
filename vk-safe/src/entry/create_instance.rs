@@ -1,11 +1,11 @@
 use super::command_impl_prelude::*;
 
-use crate::instance::{InstanceConfig, Instance};
+use crate::instance::{Instance, InstanceConfig};
 use crate::pretty_version::VkVersion;
 use crate::vk_str::VkStr;
 
-use std::mem::MaybeUninit;
 use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
@@ -15,7 +15,9 @@ pub struct TempError;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
 */
-pub fn create_instance<C: InstanceConfig>(create_info: &InstanceCreateInfo<C>) -> Result<Instance<C>, TempError> {
+pub fn create_instance<C: InstanceConfig>(
+    create_info: &InstanceCreateInfo<C>,
+) -> Result<Instance<C>, TempError> {
     check_vuid_defs2!(CreateInstance
         pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list." . as_bytes ( ) ;
         CHECK {
@@ -39,7 +41,9 @@ pub fn create_instance<C: InstanceConfig>(create_info: &InstanceCreateInfo<C>) -
     );
 
     // TODO: return proper error for failing to load the command
-    let command = super::entry_fn_loader::<vk::CreateInstance>().unwrap().get_fptr();
+    let command = super::entry_fn_loader::<vk::CreateInstance>()
+        .unwrap()
+        .get_fptr();
 
     let mut instance = MaybeUninit::uninit();
     unsafe {
@@ -47,7 +51,7 @@ pub fn create_instance<C: InstanceConfig>(create_info: &InstanceCreateInfo<C>) -
         if res.is_err() {
             return Err(TempError);
         }
-        Ok(Instance::load_commands(instance.assume_init()).map_err(|_|TempError)?)
+        Ok(Instance::load_commands(instance.assume_init()).map_err(|_| TempError)?)
     }
 }
 
@@ -60,7 +64,6 @@ pub struct InstanceCreateInfo<'a, C: InstanceConfig> {
 
 impl<'a, C: InstanceConfig> InstanceCreateInfo<'a, C> {
     pub const fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
-
         check_vuid_defs2!( InstanceCreateInfo
             pub const VUID_VkInstanceCreateInfo_sType_sType: &'static [u8] =
                 "sType must be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO".as_bytes();
@@ -141,7 +144,6 @@ pub struct ApplicationInfo<'a, C: InstanceConfig> {
 
 impl<'a, C: InstanceConfig + Copy> ApplicationInfo<'a, C> {
     pub const fn new(_config: C) -> Self {
-
         check_vuid_defs2!( ApplicationInfo
             pub const VUID_VkApplicationInfo_sType_sType: &'static [u8] =
                 "sType must be VK_STRUCTURE_TYPE_APPLICATION_INFO".as_bytes();

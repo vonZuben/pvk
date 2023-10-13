@@ -16,10 +16,8 @@ pub fn enumerate_instance_version() -> Result<VkVersion, vk::Result> {
                 check_raw_err!(res);
                 Ok(VkVersion::from_raw(version.assume_init()))
             }
-        },
-        None => {
-            Ok(VkVersion::new(1, 0, 0))
         }
+        None => Ok(VkVersion::new(1, 0, 0)),
     }
 }
 

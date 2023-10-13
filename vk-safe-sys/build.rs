@@ -1,11 +1,11 @@
-
 #[cfg(target_os = "windows")]
 fn target_env() {
     let vk_skd_path = std::env::var("VK_SDK_PATH");
     let vulkan_sdk = std::env::var("VULKAN_SDK");
     let options = [vk_skd_path, vulkan_sdk];
 
-    let vk_lib_path = first_option(&options).expect("Error: make sure VK_SDK_PATH or VULKAN_SDK are set properly");
+    let vk_lib_path = first_option(&options)
+        .expect("Error: make sure VK_SDK_PATH or VULKAN_SDK are set properly");
 
     let vk_lib_path = vk_lib_path.to_owned() + "\\Lib";
 

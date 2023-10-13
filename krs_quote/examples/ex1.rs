@@ -1,5 +1,5 @@
-use krs_quote::Token;
 use krs_quote::krs_quote;
+use krs_quote::Token;
 
 fn main() {
     let name: Token = "A".into();
@@ -14,7 +14,7 @@ fn main() {
 
     let o3 = Some(1);
 
-    let code = krs_quote!{
+    let code = krs_quote! {
         struct {@name} {
             {@,* {@members} : i32 }
         }
@@ -44,5 +44,4 @@ fn main() {
     };
 
     println!("{code}");
-
 }

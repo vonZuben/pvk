@@ -1,13 +1,13 @@
 use super::*;
-use vk_safe_sys as vk;
-use crate::instance::InstanceConfig;
 use crate::device::{Device, DeviceConfig};
+use crate::instance::InstanceConfig;
+use vk_safe_sys as vk;
 
 use crate::safe_interface::type_conversions::transmute_array;
 
-use std::mem::MaybeUninit;
 use std::fmt;
 use std::marker::PhantomData;
+use std::mem::MaybeUninit;
 
 use vk::has_command::CreateDevice;
 
@@ -18,8 +18,12 @@ pub struct TempError;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
 impl<'pd, 'instance, IConfig: InstanceConfig> ScopedPhysicalDevice<'pd, 'instance, IConfig> {
-    pub fn create_device<P, DConfig: DeviceConfig>(&self, create_info: &DeviceCreateInfo<'_, DConfig>) -> Result<Device<DConfig, Self>, TempError>
-    where IConfig::Commands: CreateDevice<P>
+    pub fn create_device<P, DConfig: DeviceConfig>(
+        &self,
+        create_info: &DeviceCreateInfo<'_, DConfig>,
+    ) -> Result<Device<DConfig, Self>, TempError>
+    where
+        IConfig::Commands: CreateDevice<P>,
     {
         let mut device = MaybeUninit::uninit();
         unsafe {
@@ -27,22 +31,19 @@ impl<'pd, 'instance, IConfig: InstanceConfig> ScopedPhysicalDevice<'pd, 'instanc
                 self.handle,
                 &create_info.inner,
                 std::ptr::null(),
-                device.as_mut_ptr()
+                device.as_mut_ptr(),
             );
             if res.is_err() {
                 Err(TempError)
-            }
-            else {
-                Ok(
-                    Device::load_commands(device.assume_init()).map_err(|_|TempError)?
-                )
+            } else {
+                Ok(Device::load_commands(device.assume_init()).map_err(|_| TempError)?)
             }
         }
     }
 }
 
 //===========InstanceCreateInfo
-pub struct DeviceCreateInfo <'a, C: DeviceConfig> {
+pub struct DeviceCreateInfo<'a, C: DeviceConfig> {
     pub(crate) inner: vk::DeviceCreateInfo,
     _config: PhantomData<C>,
     _refs: PhantomData<&'a ()>,
@@ -50,7 +51,6 @@ pub struct DeviceCreateInfo <'a, C: DeviceConfig> {
 
 impl<'a, C: DeviceConfig + Copy> DeviceCreateInfo<'a, C> {
     pub const fn new(_config: C, queue_create_info: &'a [DeviceQueueCreateInfo]) -> Self {
-
         check_vuid_defs2!( DeviceCreateInfo
             pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372: &'static [u8] = "".as_bytes();
             // VUID_VkDeviceCreateInfo_queueFamilyIndex_00372 appears to be a mistake since no definition is provided
@@ -156,7 +156,10 @@ pub struct DeviceQueueCreateInfo<'a> {
     _refs: PhantomData<&'a ()>,
 }
 
-unsafe impl crate::safe_interface::type_conversions::SafeTransmute<vk::DeviceQueueCreateInfo> for DeviceQueueCreateInfo<'_> {}
+unsafe impl crate::safe_interface::type_conversions::SafeTransmute<vk::DeviceQueueCreateInfo>
+    for DeviceQueueCreateInfo<'_>
+{
+}
 
 impl DeviceQueueCreateInfo<'_> {
     array!(queue_priorities, p_queue_priorities, queue_count, f32);
@@ -187,13 +190,17 @@ pub struct DeviceQueueCreateInfoArray<'a, S: ArrayStorage<DeviceQueueCreateInfo<
     _a: PhantomData<&'a ()>,
 }
 
-impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> fmt::Debug for DeviceQueueCreateInfoArray<'a, S> {
+impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> fmt::Debug
+    for DeviceQueueCreateInfoArray<'a, S>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.infos.as_ref().iter()).finish()
     }
 }
 
-impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> std::ops::Deref for DeviceQueueCreateInfoArray<'a, S> {
+impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> std::ops::Deref
+    for DeviceQueueCreateInfoArray<'a, S>
+{
     type Target = [DeviceQueueCreateInfo<'a>];
 
     fn deref(&self) -> &Self::Target {
@@ -246,20 +253,29 @@ impl<'a> QueuePriorities<'a> {
 /// Builder for [DeviceQueueCreateInfo]
 /// initially created with sane defaults
 /// user must provide their own p_queue_priorities
-pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope> {
+pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope>
+{
     family_index: u32,
-    to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
+    to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<
+        'storage,
+        DeviceQueueCreateInfo<'params>,
+    >,
     pub family_properties: &'properties QueueFamilyProperties<'scope>,
 }
 
-impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope> {
+impl<'params, 'properties, 'initializer, 'storage, 'scope>
+    DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope>
+{
     /// internal only method to be called from [QueueFamilies::create_info_builder_iter]
     /// should pass the current queue_family_index, and set queue_count to max possible
     pub(crate) fn new(
         family_index: u32,
-        to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<'storage, DeviceQueueCreateInfo<'params>>,
-        family_properties: &'properties QueueFamilyProperties<'scope>) -> Self
-    {
+        to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<
+            'storage,
+            DeviceQueueCreateInfo<'params>,
+        >,
+        family_properties: &'properties QueueFamilyProperties<'scope>,
+    ) -> Self {
         Self {
             family_index,
             to_write,
@@ -270,7 +286,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
     pub fn push_config(
         self,
         priorities: QueuePriorities,
-        flags: vk::DeviceQueueCreateFlags
+        flags: vk::DeviceQueueCreateFlags,
     ) -> crate::array_storage::InitResult {
         check_vuid_defs2!( DeviceQueueCreateInfo
             pub const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381 : & 'static [ u8 ] = "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties" . as_bytes ( ) ;
@@ -321,9 +337,9 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
                 p_next: std::ptr::null(),
                 queue_family_index: self.family_index,
                 queue_count: priorities.len() as u32, // the assert already confirms no overflow from conversion
-                p_queue_priorities:priorities.as_ptr(),
+                p_queue_priorities: priorities.as_ptr(),
             },
-            _refs: PhantomData
+            _refs: PhantomData,
         };
         self.to_write.push(info)
     }
@@ -336,9 +352,8 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
         priorities_for_non_protected: QueuePriorities,
         flags_for_non_protected: vk::DeviceQueueCreateFlags,
         priorities_for_protected: QueuePriorities,
-        flags_for_protected: vk::DeviceQueueCreateFlags
+        flags_for_protected: vk::DeviceQueueCreateFlags,
     ) -> crate::array_storage::InitResult {
-
         check_vuid_defs2!( DeviceQueueCreateInfo
             pub const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381 : & 'static [ u8 ] = "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties" . as_bytes ( ) ;
             CHECK {
@@ -391,9 +406,9 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
                     p_next: std::ptr::null(),
                     queue_family_index: self.family_index,
                     queue_count: priorities_for_non_protected.len() as u32, // the assert already confirms no overflow from conversion
-                    p_queue_priorities:priorities_for_non_protected.as_ptr(),
+                    p_queue_priorities: priorities_for_non_protected.as_ptr(),
                 },
-                _refs: PhantomData
+                _refs: PhantomData,
             };
             self.to_write.push(non_protected_info)?;
         }
@@ -406,9 +421,9 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope> DeviceQueueCreateInfo
                     p_next: std::ptr::null(),
                     queue_family_index: self.family_index,
                     queue_count: priorities_for_protected.len() as u32, // the assert already confirms no overflow from conversion
-                    p_queue_priorities:priorities_for_protected.as_ptr(),
+                    p_queue_priorities: priorities_for_protected.as_ptr(),
                 },
-                _refs: PhantomData
+                _refs: PhantomData,
             };
             self.to_write.push(protected_info)?;
         }

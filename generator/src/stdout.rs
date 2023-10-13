@@ -14,8 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let arg = args.next()?;
         if current_exe.contains(&arg) {
             args.next()
-        }
-        else {
+        } else {
             Some(arg)
         }
     };
@@ -40,8 +39,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn prelude() -> String {
-    krs_quote!{
+    krs_quote! {
         use std::ffi::*;
         fn main(){println!("Success")}
-    }.to_string()
+    }
+    .to_string()
 }

@@ -7,11 +7,14 @@ impl<I: Iterator<Item = VkTyName> + Clone> ToTokensDelegate<I> for FormatPropert
         let target = params.target;
         let variants = &params.variants;
 
-        let is_compressed = variants.clone().map(|v|v.contains("_BLOCK"));
-        let is_multi_planar = variants.clone().map(|v|v.contains("PLANE_"));
-        let has_depth_stencil: Vec<_> = variants.clone().map(|v| has_depth_stencil(v.as_str())).collect();
-        let has_depth = has_depth_stencil.iter().map(|t|t.0);
-        let has_stencil = has_depth_stencil.iter().map(|t|t.1);
+        let is_compressed = variants.clone().map(|v| v.contains("_BLOCK"));
+        let is_multi_planar = variants.clone().map(|v| v.contains("PLANE_"));
+        let has_depth_stencil: Vec<_> = variants
+            .clone()
+            .map(|v| has_depth_stencil(v.as_str()))
+            .collect();
+        let has_depth = has_depth_stencil.iter().map(|t| t.0);
+        let has_stencil = has_depth_stencil.iter().map(|t| t.1);
 
         krs_quote_with!(tokens <-
             impl {@target} {
@@ -63,7 +66,7 @@ fn has_depth_stencil(name: &str) -> (bool, bool) {
                     if has_num {
                         has_depth = true;
                     }
-                    break
+                    break;
                 }
             }
         }
@@ -79,7 +82,7 @@ fn has_depth_stencil(name: &str) -> (bool, bool) {
                     if has_num {
                         has_stencil = true;
                     }
-                    break
+                    break;
                 }
             }
         }
