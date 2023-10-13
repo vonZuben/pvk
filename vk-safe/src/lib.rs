@@ -1,5 +1,5 @@
 #[macro_use]
-mod utils;
+mod error;
 
 mod pretty_version;
 
@@ -18,3 +18,7 @@ pub mod device;
 
 pub use pretty_version::VkVersion;
 pub use vk_str::VkStr;
+
+pub use vk_safe_sys::{instance_context, device_context};
+
+pub use entry::*;

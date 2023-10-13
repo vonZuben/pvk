@@ -2,27 +2,26 @@
 #[macro_use]
 mod pre_built;
 
+// TODO currently there is no pre_built code, so should fix this in future
 #[cfg(not(feature = "generate"))]
 pub use pre_built::*;
 
 #[cfg(feature = "generate")]
-#[macro_use]
-mod generated {
-    include!{concat!(env!("OUT_DIR"), "/lib.rs")}
+include!{concat!(env!("OUT_DIR"), "/lib.rs")}
 
-    // temp
-    impl VulkanExtension for () {
-        type Require = krs_hlist::hlist_ty!();
-
-        const VK_NAME: *const c_char = b"\0".as_ptr().cast();
-
-        type ExtensionType = krs_hlist::hlist_ty!();
-
-        type InstanceCommands = krs_hlist::hlist_ty!();
-
-        type DeviceCommands = krs_hlist::hlist_ty!();
+impl Result {
+    pub fn is_err(&self) -> bool {
+        self.0 < 0
+    }
+    pub fn is_success(&self) -> bool {
+        self.0 >= 0
     }
 }
 
-#[cfg(feature = "generate")]
-pub use generated::*;
+impl std::fmt::Display for Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        <Self as std::fmt::Debug>::fmt(self, f)
+    }
+}
+
+impl std::error::Error for Result {}

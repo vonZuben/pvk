@@ -11,17 +11,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "krs_hlist"
-version = "0.1.0"
-dependencies = [
- "krs_hlist_pm",
-]
-
-[[package]]
-name = "krs_hlist_pm"
-version = "0.1.0"
-
-[[package]]
 name = "krs_quote"
 version = "0.1.0"
 
@@ -38,7 +27,6 @@ dependencies = [
 name = "vk-safe"
 version = "0.1.0"
 dependencies = [
- "krs_hlist",
  "vk-safe-sys",
 ]
 
@@ -47,7 +35,6 @@ name = "vk-safe-sys"
 version = "0.1.0"
 dependencies = [
  "generator",
- "krs_hlist",
 ]
 
 [[package]]

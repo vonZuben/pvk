@@ -1,25 +1,23 @@
 use super::*;
 use crate::instance::InstanceConfig;
-use vk::GetCommand;
 use vk_safe_sys as vk;
+
+use vk::has_command::GetPhysicalDeviceImageFormatProperties;
 
 use std::mem::MaybeUninit;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
-impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
-where
-    C::Commands: GetCommand<vk::GetPhysicalDeviceImageFormatProperties>,
-{
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
     #[track_caller]
-    pub fn get_physical_device_image_format_properties(
+    pub fn get_physical_device_image_format_properties<P>(
         &self,
         params: GetPhysicalDeviceImageFormatPropertiesParams,
-    ) -> Result<ImageFormatProperties<'scope>, vk::Result> {
+    ) -> Result<ImageFormatProperties<'scope>, vk::Result> where C::Commands: GetPhysicalDeviceImageFormatProperties<P> {
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            let res = self.instance.commands.get_command().get_fptr()(
+            let res = self.instance.commands.GetPhysicalDeviceImageFormatProperties().get_fptr()(
                 self.handle,
                 params.format,
                 params.image_type,

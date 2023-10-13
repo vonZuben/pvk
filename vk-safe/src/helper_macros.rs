@@ -12,42 +12,17 @@
 // }
 
 // enumerators are all very similar, so why repeat ourselves
-macro_rules! enumerator_code {
-    ( $fn_name:ident ( $($param:ident : $param_t:ty),* ) -> $getting:ty ) => {
-        pub fn $fn_name<S: ArrayStorage<$getting>>(&self, $($param : $param_t ,)* mut storage: S) -> Result<S::InitStorage, vk_safe_sys::Result> {
-            use std::convert::TryInto;
-            let len = || {
-                let mut num = 0;
-                let res;
-                unsafe {
-                    res = self.commands.get_command().get_fptr()($($param.to_c(),)* &mut num, std::ptr::null_mut());
-                    check_raw_err!(res);
-                }
-                Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
-            };
-            storage.allocate(len)?;
-            let uninit_slice = storage.uninit_slice();
-            let mut len = VulkanLenType::from_usize(uninit_slice.len());
-            let res;
-            unsafe {
-                res = self.commands.get_command().get_fptr()($($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
-                check_raw_err!(res);
-            }
-            Ok(storage.finalize(len.to_usize()))
-        }
-    };
-}
-
-// enumerators are all very similar, so why repeat ourselves
 macro_rules! enumerator_code2 {
-    ( $handle:expr, $commands:expr; ( $($param:ident : $param_t:ty),* ) -> $storage:ident ) => {{
+    ( $command:expr; ( $($param:expr),* ) -> $storage:ident ) => {{
         use std::convert::TryInto;
         use crate::array_storage::VulkanLenType;
+        #[allow(unused)]
+        use crate::safe_interface::type_conversions::ToC;
         let len = || {
             let mut num = 0;
             let res;
             unsafe {
-                res = $commands.get_command().get_fptr()($handle, $($param.to_c(),)* &mut num, std::ptr::null_mut());
+                res = $command($($param.to_c(),)* &mut num, std::ptr::null_mut());
                 check_raw_err!(res);
             }
             Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
@@ -57,35 +32,13 @@ macro_rules! enumerator_code2 {
         let mut len = crate::array_storage::VulkanLenType::from_usize(uninit_slice.len());
         let res;
         unsafe {
-            res = $commands.get_command().get_fptr()($handle, $($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
+            res = $command($($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
             check_raw_err!(res);
         }
-        $storage.finalize(len.to_usize())
+        let ret: Result<_, crate::error::Error> = Ok($storage.finalize(len.to_usize()));
+        ret
     }};
 }
-
-// enumerators are all very similar, so why repeat ourselves
-macro_rules! enumerator_code_non_fail {
-    ( $handle:expr, $commands:expr; ( $($param:ident : $param_t:ty),* ) -> $storage:ident ) => {{
-        use std::convert::TryInto;
-        use crate::array_storage::VulkanLenType;
-        let len = || {
-            let mut num = 0;
-            unsafe {
-                let _: () = $commands.get_command().get_fptr()($handle, $($param.to_c(),)* &mut num, std::ptr::null_mut());
-            }
-            Ok(num.try_into().expect("error: vk_safe_interface internal error, can't convert len as usize"))
-        };
-        let _ = $storage.allocate(len);
-        let uninit_slice = $storage.uninit_slice();
-        let mut len = crate::array_storage::VulkanLenType::from_usize(uninit_slice.len());
-        unsafe {
-            let _: () = $commands.get_command().get_fptr()($handle, $($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
-        }
-        $storage.finalize(len.to_usize())
-    }};
-}
-
 
 // Use this to create wrappers around simple structs
 macro_rules! simple_struct_wrapper {
@@ -244,11 +197,5 @@ macro_rules! check_vuid_defs2 {
                 )?
             )*
         }
-    };
-}
-
-macro_rules! get_fptr {
-    ( $from_ty:ident $get:path, $from:expr ) => {
-        <$from_ty::Commands as GetCommand<$get>>::get_command(&$from.commands).get_fptr()
     };
 }

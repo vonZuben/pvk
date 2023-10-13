@@ -5,51 +5,54 @@ use crate::safe_interface::type_conversions::ToC;
 
 use crate::scope::{Scope, Scoped};
 
-use vk::commands::{CommandLoadError, LoadCommands};
-use vk::GetCommand;
+use vk::has_command::DestroyDevice;
+
+use vk::commands::{CommandLoadError, LoadCommands, Version};
 
 pub trait DeviceConfig {
     const VERSION: VkVersion;
-    type Commands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyDevice>;
+    type DropProvider;
+    type Commands : LoadCommands + DestroyDevice<Self::DropProvider>;
 }
 
-#[derive(Debug)]
-pub struct Config<V, E> {
-    _version: PhantomData<V>,
-    _extension: PhantomData<E>,
+pub struct Config<P, Cmd> {
+    _drop_provider: PhantomData<P>,
+    _commands: PhantomData<Cmd>,
 }
 
-impl<V, E> Clone for Config<V, E> {
+impl<P, Cmd> Clone for Config<P, Cmd> {
     fn clone(&self) -> Self {
-        Self { _version: PhantomData, _extension: PhantomData }
+        Self { _drop_provider: PhantomData, _commands: PhantomData }
     }
 }
 
-impl<V, E> Copy for Config<V, E> {}
+impl<P, Cmd> Copy for Config<P, Cmd> {}
 
-impl<V, E> Config<V, E> {
-    pub fn new(_version: V, _extensions: E) -> Self {
-        Self { _version: PhantomData, _extension: PhantomData }
+impl<P> Config<P, ()> {
+    pub fn new<Cmd>() -> Config<P, Cmd> where Cmd: DestroyDevice<P> {
+        Config { _drop_provider: PhantomData, _commands: PhantomData }
     }
 }
 
-impl<V: vk::VulkanVersion, E: vk::VulkanExtension> DeviceConfig for Config<V, E>
-where
-    V::DeviceCommands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyDevice>,
-    E::DeviceCommands : vk::commands::LoadCommands,
+impl<P, Cmd> DeviceConfig for Config<P, Cmd> where Cmd: LoadCommands + DestroyDevice<P> + Version
 {
-    const VERSION: VkVersion = VkVersion::new(V::VersionTriple.0, V::VersionTriple.1, V::VersionTriple.2);
-
-    type Commands = V::DeviceCommands;
+    const VERSION: VkVersion = VkVersion::new(Cmd::VersionTriple.0, Cmd::VersionTriple.1, Cmd::VersionTriple.2);
+    type DropProvider = P;
+    type Commands = Cmd;
 }
 
 pub type ScopeDevice<'d, C, Pd> = Scope<'d, Device<C, Pd>>;
 
-#[derive(Debug)]
 pub struct Device<C: DeviceConfig, Pd: Scoped> {
     pub(crate) handle: vk::Device,
     pub(crate) commands: C::Commands,
     _pd: std::marker::PhantomData<Pd>,
+}
+
+impl<C: DeviceConfig, Pd: Scoped> std::fmt::Debug for Device<C, Pd> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Device").field("handle", &self.handle).field("version", &C::VERSION).finish()
+    }
 }
 
 impl<C: DeviceConfig, Pd: Scoped> Device<C, Pd> {
@@ -71,7 +74,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyDevic
 */
 impl<C: DeviceConfig, Pd: Scoped> Drop for Device<C, Pd> {
     fn drop(&mut self) {
-        unsafe { self.commands.get_command().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
 
         check_vuid_defs2!( DestroyDevice
             pub const VUID_vkDestroyDevice_device_00378 : & 'static [ u8 ] = "All child objects created on device must have been destroyed prior to destroying device" . as_bytes ( ) ;

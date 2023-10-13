@@ -1,21 +1,25 @@
-use super::command_impl_prelude::*;
-
 use crate::array_storage::ArrayStorage;
-use crate::instance::InstanceConfig;
 use crate::physical_device::PhysicalDevices;
+use crate::error::Error;
+
+use super::InstanceConfig;
+use super::ScopedInstance;
+
+use vk_safe_sys as vk;
+
+use vk::has_command::EnumeratePhysicalDevices;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html
 */
-impl_safe_instance_interface!{
-EnumeratePhysicalDevices {
-    pub fn enumerate_physical_devices<
-        S: ArrayStorage<vk::PhysicalDevice>,
-    >(
+impl<'scope, C: InstanceConfig> ScopedInstance<'scope, C> {
+    pub fn enumerate_physical_devices<P, S: ArrayStorage<vk::PhysicalDevice>>(
         &self,
-        mut storage: S
-    ) -> Result<PhysicalDevices<'scope, C, S>, vk::Result> {
-
+        mut storage: S,
+    ) -> Result<PhysicalDevices<'scope, C, S>, Error>
+    where
+        C::Commands: EnumeratePhysicalDevices<P>,
+    {
         // handled by enumerator_code2!() and instance creation
         check_vuid_defs2!( EnumeratePhysicalDevices
             pub const VUID_vkEnumeratePhysicalDevices_instance_parameter: &'static [u8] = "instance must be a valid VkInstance handle".as_bytes();
@@ -23,7 +27,7 @@ EnumeratePhysicalDevices {
             pub const VUID_vkEnumeratePhysicalDevices_pPhysicalDevices_parameter : &'static [u8] = "If the value referenced by pPhysicalDeviceCount is not 0, and pPhysicalDevices is not NULL, pPhysicalDevices must be a valid pointer to an array of pPhysicalDeviceCount VkPhysicalDevice handles".as_bytes();
         );
 
-        let handles = enumerator_code2!(self.handle, self.commands; () -> storage);
+        let handles = enumerator_code2!(self.commands.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
         Ok(PhysicalDevices::new(handles, *self))
     }
-}}
+}

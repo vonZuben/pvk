@@ -10,36 +10,34 @@ use vk_safe_sys as vk;
 use vk_safe::vk_str;
 
 fn main() {
-    let entry = vk_safe::entry::Entry::from_version(vk_safe_sys::VERSION_1_1).unwrap();
-
     println!(
         "Supported Version: {}",
-        entry.enumerate_instance_version().unwrap()
+        vk_safe::enumerate_instance_version().unwrap()
     );
 
     println!("--Extensions--");
-    for e in entry
-        .enumerate_instance_extension_properties(None, Vec::new())
+    for e in vk_safe::enumerate_instance_extension_properties(None, Vec::new())
         .unwrap()
     {
         println!("{e:#?}");
     }
 
     println!("--Layers--");
-    for e in entry
-        .enumerate_instance_layer_properties(Vec::new())
+    for e in vk_safe::enumerate_instance_layer_properties(Vec::new())
         .unwrap()
     {
         println!("{e:#?}");
     }
 
-    let instance_config = Config::new(vk_safe_sys::VERSION_1_1, ());
+    vk_safe::instance_context!(MyCtx: VERSION_1_1);
+
+    let instance_config = Config::new::<MyCtx>();
     let app_info = ApplicationInfo::new(instance_config)
         .app_name(vk_str!("My App"))
         .app_version(vk_safe::VkVersion::new(0, 0, 1));
     let instance_info = InstanceCreateInfo::new(&app_info);
 
-    let instance = entry.create_instance(&instance_info).unwrap();
+    let instance = vk_safe::create_instance(&instance_info).unwrap();
 
     println!("-------");
     println!("{instance:?}");
@@ -75,7 +73,7 @@ fn main() {
                 let tst_image_format_properties = pd.get_physical_device_image_format_properties(PARAMS).unwrap();
                 println!("{tst_image_format_properties:#?}");
                 println!("-------");
-                let queue_family_properties = pd.get_physical_device_queue_family_properties(Vec::new());
+                let queue_family_properties = pd.get_physical_device_queue_family_properties(Vec::new()).unwrap();
                 println!("{:#?}", queue_family_properties);
                 println!("-------");
                 let mem_props = pd.get_physical_device_memory_properties();
@@ -91,13 +89,15 @@ fn main() {
 
                 println!("{:#?}", queue_family_configurations);
 
-                let device_config = vk_safe::device::Config::new(vk_safe_sys::VERSION_1_1, ());
+                vk_safe::device_context!(MyDeviceCtx: VERSION_1_0);
+
+                let device_config = vk_safe::device::Config::new::<MyDeviceCtx>();
 
                 let device_create_info = vk_safe::physical_device::DeviceCreateInfo::new(device_config, &queue_family_configurations);
 
                 let device = pd.create_device(&device_create_info).unwrap();
 
-                scope(&device, |device: vk_safe::scope::Scope<'_, vk_safe::device::Device<vk_safe::device::Config<vk::VERSION_1_1, ()>, vk_safe::scope::Scope<'_, vk_safe::physical_device::PhysicalDevice<'_, Config<vk::VERSION_1_1, ()>>>>>| {
+                scope(&device, |device: vk_safe::scope::Scope<'_, vk_safe::device::Device<vk_safe::device::Config<vk::VERSION_1_0, MyDeviceCtx>, vk_safe::scope::Scope<'_, vk_safe::physical_device::PhysicalDevice<'_, Config<vk::VERSION_1_1, MyCtx>>>>>| {
                     let mem_type = mem_props.choose_type(0);
                     let alloc_info = vk_safe::device::allocate_memory::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
                     let mem = device.allocate_memory(&alloc_info);

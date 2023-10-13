@@ -1,54 +1,24 @@
 use vk_safe_sys as vk;
 
-use vk::{
-    commands::{CommandLoadError, LoadCommands},
-    VulkanVersion,
-};
-
-/// Entry
-///
-/// provides a means for accessing global vulkan commands
-#[derive(Debug)]
-pub struct Entry<V: VulkanVersion> {
-    commands: V::EntryCommands,
-}
-
-impl<V: VulkanVersion> Entry<V> {
-    pub fn from_version(_v: V) -> std::result::Result<Self, CommandLoadError>
-    where
-        V::EntryCommands: LoadCommands,
-    {
-        let loader = |command_name| unsafe {
-            vk::GetInstanceProcAddr(
-                vk::Instance {
-                    handle: std::ptr::null(),
-                },
-                command_name,
-            )
-        };
-
-        Ok(Self {
-            commands: V::EntryCommands::load(loader)?,
-        })
+fn entry_fn_loader<C: vk::VulkanCommand>() -> Option<C> {
+    // Safe because null is valid instance for global/entry commands, and vk::VulkanCommand ensures we provide a proper p_name
+    // https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetInstanceProcAddr.html
+    unsafe {
+        let fptr = vk::GetInstanceProcAddr(
+            vk::Instance {
+                handle: std::ptr::null(),
+            },
+            C::VK_NAME,
+        )?;
+        Some(C::new(fptr))
     }
 }
 
 // The following is imported by each command impl module
 mod command_impl_prelude {
-    pub use super::Entry;
     pub use crate::array_storage::{ArrayStorage, VulkanLenType};
     pub use crate::safe_interface::type_conversions::*;
     pub use vk_safe_sys as vk;
-    pub use vk_safe_sys::{GetCommand, VulkanExtension, VulkanVersion};
-}
-
-// This is how each safe command can be implemented on top of each raw command
-macro_rules! impl_safe_entry_interface {
-    ( $interface:ident { $($code:tt)* }) => {
-        impl<EntryVersion: VulkanVersion> Entry<EntryVersion> where EntryVersion::EntryCommands : GetCommand<vk::$interface> {
-            $($code)*
-        }
-    };
 }
 
 mod create_instance;

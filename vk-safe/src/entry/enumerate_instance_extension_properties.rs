@@ -4,6 +4,8 @@ use std::fmt;
 
 use crate::vk_str::VkStr;
 
+use crate::error::Error;
+
 //===========ExtensionProperties
 simple_struct_wrapper!(ExtensionProperties);
 
@@ -23,10 +25,10 @@ impl fmt::Debug for ExtensionProperties {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceExtensionProperties.html
 */
-impl_safe_entry_interface! {
-EnumerateInstanceExtensionProperties {
-    enumerator_code!(enumerate_instance_extension_properties(layer_name: Option<VkStr<'_>>) -> ExtensionProperties);
-}}
+pub fn enumerate_instance_extension_properties<S: ArrayStorage<ExtensionProperties>>(layer_name: Option<VkStr>, mut storage: S) -> Result<S::InitStorage, Error> {
+    let command = super::entry_fn_loader::<vk::EnumerateInstanceExtensionProperties>().unwrap().get_fptr();
+    enumerator_code2!(command; (layer_name) -> storage)
+}
 
 const _VUIDS: () = {
     check_vuid_defs2!(EnumerateInstanceExtensionProperties

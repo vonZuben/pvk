@@ -1,6 +1,5 @@
 use super::*;
 use vk_safe_sys as vk;
-use vk::GetCommand;
 use crate::instance::InstanceConfig;
 use crate::device::{Device, DeviceConfig};
 
@@ -10,17 +9,21 @@ use std::mem::MaybeUninit;
 use std::fmt;
 use std::marker::PhantomData;
 
+use vk::has_command::CreateDevice;
+
 #[derive(Debug)]
 pub struct TempError;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<'pd, 'instance, IConfig: InstanceConfig> ScopedPhysicalDevice<'pd, 'instance, IConfig> where IConfig::Commands: GetCommand<vk::CreateDevice> {
-    pub fn create_device<DConfig: DeviceConfig>(&self, create_info: &DeviceCreateInfo<'_, DConfig>) -> Result<Device<DConfig, Self>, TempError> {
+impl<'pd, 'instance, IConfig: InstanceConfig> ScopedPhysicalDevice<'pd, 'instance, IConfig> {
+    pub fn create_device<P, DConfig: DeviceConfig>(&self, create_info: &DeviceCreateInfo<'_, DConfig>) -> Result<Device<DConfig, Self>, TempError>
+    where IConfig::Commands: CreateDevice<P>
+    {
         let mut device = MaybeUninit::uninit();
         unsafe {
-            let res = self.instance.commands.get_command().get_fptr()(
+            let res = self.instance.commands.CreateDevice().get_fptr()(
                 self.handle,
                 &create_info.inner,
                 std::ptr::null(),

@@ -52,7 +52,7 @@ pub struct Generator<'a> {
     enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
     commands: commands::Commands2,
     feature_collection: features::FeatureCollection,
-    extension_infos: VecMap<extensions::ExtensionName, extensions::ExtensionInfo>,
+    extensions: extensions::ExtensionCollection,
     aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
 
     // vuid
@@ -153,8 +153,8 @@ impl<'a> Generator<'a> {
     }
 
     pub fn extensions(&self) -> String {
-        let extensions = self.extension_infos.iter();
-        krs_quote!({@* {@extensions} }).to_string()
+        let extensions = &self.extensions;
+        krs_quote!({@extensions}).to_string()
     }
 
     pub fn aliases(&self) -> String {
@@ -250,7 +250,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             None => {}
         }
 
-        self.extension_infos.push(ex_name, extension_commands);
+        self.extensions.push(ex_name, extension_commands);
     }
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>) {
         let cmd_name = utils::VkTyName::new(cmd_name);
@@ -261,7 +261,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 
         let ex_name = extensions::ExtensionName::new(parts.extension_name, parts.further_extended);
         let ex = self
-            .extension_infos
+            .extensions
             .get_mut(ex_name)
             .expect("error: this should already exist from visiting the node");
 

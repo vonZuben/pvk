@@ -11,7 +11,7 @@ use crate::utils::{VecMap, VkTyName};
 
 #[derive(Default)]
 pub struct FeatureCollection {
-    feature_commands: VecMap<VkTyName, Feature>,
+    versions: VecMap<VkTyName, Feature>,
 }
 
 impl FeatureCollection {
@@ -20,15 +20,15 @@ impl FeatureCollection {
     // when a new version is passed
     pub fn modify_with(&mut self, version: impl Into<VkTyName>, f: impl FnOnce(&mut Feature)) {
         let version = version.into();
-        match self.feature_commands.get_mut(version) {
+        match self.versions.get_mut(version) {
             Some(fc) => f(fc),
             None => {
-                let mut fc = match self.feature_commands.last() {
+                let mut fc = match self.versions.last() {
                     Some(previous_feature) => previous_feature.as_new_version(version),
                     None => Feature::new(version),
                 };
                 f(&mut fc);
-                self.feature_commands.push(version, fc);
+                self.versions.push(version, fc);
             }
         }
     }
@@ -36,10 +36,89 @@ impl FeatureCollection {
 
 impl krs_quote::ToTokens for FeatureCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let fc = self.feature_commands.iter();
+        let versions = self.versions.iter();
+
+        let v_name = versions.clone().map(|v|v.version);
+        let instance_structs = versions.clone().map(|v|VersionStruct{name: v.version, commands: &v.instance_command_names});
+        let device_structs = versions.clone().map(|v|VersionStruct{name: v.version, commands: &v.device_command_names});
+        let entry_structs = versions.clone().map(|v|VersionStruct{name: v.version, commands: &v.entry_command_names});
+
         krs_quote_with!(tokens <-
-            {@* {@fc}}
+            {@* {@versions}}
+
+            #[doc(hidden)]
+            pub mod version {
+                pub mod instance {
+                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
+                    {@* {@instance_structs}}
+                    pub mod provider {
+                        {@*
+                            pub trait {@v_name} {
+                                fn {@v_name}(&self) -> &super::{@v_name};
+                            }
+                        }
+                    }
+                }
+
+                pub mod device {
+                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
+                    {@* {@device_structs}}
+                    pub mod provider {
+                        {@*
+                            pub trait {@v_name} {
+                                fn {@v_name}(&self) -> &super::{@v_name};
+                            }
+                        }
+                    }
+                }
+
+                pub mod entry {
+                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
+                    {@* {@entry_structs}}
+                    pub mod provider {
+                        {@*
+                            pub trait {@v_name} {
+                                fn {@v_name}(&self) -> &super::{@v_name};
+                            }
+                        }
+                    }
+                }
+            }
         )
+    }
+}
+
+struct VersionStruct<'a> {
+    name: VkTyName,
+    commands: &'a[RequireRemove],
+}
+
+impl krs_quote::ToTokens for VersionStruct<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let command = self.commands.iter().filter(|r|r.is_require());
+
+        krs_quote_with!(tokens <-
+            pub struct {@name} {
+                {@* {@command}: super::super::{@command}, }
+            }
+
+            impl {@name} {
+                pub fn load(loader: impl FunctionLoader) -> std::result::Result<Self, CommandLoadError> {
+                    Ok(Self {
+                        {@* {@command} : super::super::{@command}::load(loader)?, }
+                    })
+                }
+            }
+
+            {@*
+                impl<T: provider::{@name}> super::super::command::{@command}<super::super::{@name}> for T {
+                    fn {@command}(&self) -> super::super::{@command} {
+                        self.{@name}().{@command}
+                    }
+                }
+            }
+        );
     }
 }
 
@@ -60,6 +139,9 @@ impl RequireRemove {
             Require(name) => *self = RequireRemove::Remove(*name),
             Remove(_) => {}
         }
+    }
+    fn is_require(&self) -> bool {
+        matches!(self, RequireRemove::Require(_))
     }
 }
 
@@ -145,9 +227,6 @@ impl Feature {
 impl krs_quote::ToTokens for Feature {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let version = self.version.as_code();
-        let instance_command_names = self.instance_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_)));
-        let device_command_names = self.device_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_)));
-        let entry_command_names = self.entry_command_names.iter().filter(|cmd|matches!(cmd,RequireRemove::Require(_)));
 
         let version_triple = parse_version(&self.version);
 
@@ -156,9 +235,9 @@ impl krs_quote::ToTokens for Feature {
             pub struct {@version};
             impl VulkanVersion for {@version} {
                 const VersionTriple: (u32, u32, u32) = {@version_triple};
-                type InstanceCommands = hlist_ty!({@,* {@instance_command_names}});
-                type DeviceCommands = hlist_ty!({@,* {@device_command_names}});
-                type EntryCommands = hlist_ty!({@,* {@entry_command_names}});
+                type InstanceCommands = version::instance::{@version};
+                type DeviceCommands = version::device::{@version};
+                type EntryCommands = version::entry::{@version};
             }
         );
     }

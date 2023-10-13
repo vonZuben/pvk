@@ -1,12 +1,13 @@
 use super::command_impl_prelude::*;
 
-use crate::instance as safe_instance;
-use crate::instance::InstanceConfig;
+use crate::instance::{InstanceConfig, Instance};
 use crate::pretty_version::VkVersion;
 use crate::vk_str::VkStr;
 
 use std::mem::MaybeUninit;
 use std::marker::PhantomData;
+
+use vk_safe_sys as vk;
 
 #[derive(Debug)]
 pub struct TempError;
@@ -14,45 +15,41 @@ pub struct TempError;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
 */
-impl_safe_entry_interface! {
-CreateInstance {
-    pub fn create_instance<C: InstanceConfig>(
-        &self,
-        create_info: &InstanceCreateInfo<C>,
-    ) -> std::result::Result<safe_instance::Instance<C>, TempError> {
-
-        check_vuid_defs2!(CreateInstance
-            pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list." . as_bytes ( ) ;
-            CHECK {
-                 // checked in InstanceCreateInfo construction
-            }
-            pub const VUID_vkCreateInstance_pCreateInfo_parameter: &'static [u8] =
-                "pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure"
-                    .as_bytes();
-            CHECK {
-                // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
-            }
-            pub const VUID_vkCreateInstance_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
-            CHECK {
-                // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
-            }
-            pub const VUID_vkCreateInstance_pInstance_parameter: &'static [u8] =
-                "pInstance must be a valid pointer to a VkInstance handle".as_bytes();
-            CHECK {
-                // using MaybeUninit::as_mut_ptr()
-            }
-        );
-
-        let mut instance = MaybeUninit::uninit();
-        unsafe {
-            let res = self.commands.get_command().get_fptr()(&create_info.inner, None.to_c(), instance.as_mut_ptr());
-            if res.is_err() {
-                return Err(TempError);
-            }
-            Ok(safe_instance::Instance::load_commands(instance.assume_init()).map_err(|_|TempError)?)
+pub fn create_instance<C: InstanceConfig>(create_info: &InstanceCreateInfo<C>) -> Result<Instance<C>, TempError> {
+    check_vuid_defs2!(CreateInstance
+        pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list." . as_bytes ( ) ;
+        CHECK {
+             // checked in InstanceCreateInfo construction
         }
+        pub const VUID_vkCreateInstance_pCreateInfo_parameter: &'static [u8] =
+            "pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure"
+                .as_bytes();
+        CHECK {
+            // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
+        }
+        pub const VUID_vkCreateInstance_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
+        CHECK {
+            // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
+        }
+        pub const VUID_vkCreateInstance_pInstance_parameter: &'static [u8] =
+            "pInstance must be a valid pointer to a VkInstance handle".as_bytes();
+        CHECK {
+            // using MaybeUninit::as_mut_ptr()
+        }
+    );
+
+    // TODO: return proper error for failing to load the command
+    let command = super::entry_fn_loader::<vk::CreateInstance>().unwrap().get_fptr();
+
+    let mut instance = MaybeUninit::uninit();
+    unsafe {
+        let res = command(&create_info.inner, None.to_c(), instance.as_mut_ptr());
+        if res.is_err() {
+            return Err(TempError);
+        }
+        Ok(Instance::load_commands(instance.assume_init()).map_err(|_|TempError)?)
     }
-}}
+}
 
 //===========InstanceCreateInfo
 pub struct InstanceCreateInfo<'a, C: InstanceConfig> {

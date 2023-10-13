@@ -21,10 +21,7 @@ extern "system" {
         -> Option<generated::PFN_vkVoidFunction>;
 }
 
-
-mod utils;
-
 pub mod commands;
 
 pub use generated::*;
-pub use utils::GetCommand;
+pub use generated::command as has_command;

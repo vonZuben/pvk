@@ -2,6 +2,8 @@ use super::command_impl_prelude::*;
 
 use std::fmt;
 
+use crate::error::Error;
+
 //===========LayerProperties
 simple_struct_wrapper!(LayerProperties);
 
@@ -25,10 +27,10 @@ impl fmt::Debug for LayerProperties {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceLayerProperties.html
 */
-impl_safe_entry_interface! {
-EnumerateInstanceLayerProperties {
-    enumerator_code!(enumerate_instance_layer_properties() -> LayerProperties);
-}}
+pub fn enumerate_instance_layer_properties<S: ArrayStorage<LayerProperties>>(mut storage: S) -> Result<S::InitStorage, Error> {
+    let command = super::entry_fn_loader::<vk::EnumerateInstanceLayerProperties>().unwrap().get_fptr();
+    enumerator_code2!(command; () -> storage)
+}
 
 // all verified by enumerator_code!()
 const _VUIDS: () = {

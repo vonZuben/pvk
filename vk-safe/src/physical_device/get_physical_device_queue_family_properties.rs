@@ -1,20 +1,19 @@
 use super::*;
 use crate::instance::InstanceConfig;
-use vk::GetCommand;
+use crate::error::Error;
 use vk_safe_sys as vk;
+
+use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
 
 use std::fmt;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
-impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C>
-where
-    C::Commands: GetCommand<vk::GetPhysicalDeviceQueueFamilyProperties>,
-{
-    pub fn get_physical_device_queue_family_properties<S: ArrayStorage<QueueFamilyProperties<'scope>>>(&self, mut storage: S) -> QueueFamilies<'scope, S> {
-        let families = enumerator_code_non_fail!(self.handle, self.instance.commands; () -> storage);
-        QueueFamilies { families }
+impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
+    pub fn get_physical_device_queue_family_properties<P, S: ArrayStorage<QueueFamilyProperties<'scope>>>(&self, mut storage: S) -> Result<QueueFamilies<'scope, S>, Error> where C::Commands: GetPhysicalDeviceQueueFamilyProperties<P> {
+        let families = enumerator_code2!(self.instance.commands.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
+        Ok( QueueFamilies { families } )
     }
 }
 

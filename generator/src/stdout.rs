@@ -41,15 +41,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn prelude() -> String {
     krs_quote!{
-        macro_rules! hlist_ty {
-            ($($tt:tt)*) => { () }
-        }
-        mod krs_hlist {
-            use std::marker::PhantomData;
-            pub struct hlist_ty;
-            pub struct Cons<H, T>(PhantomData<H>, PhantomData<T>);
-            pub struct End;
-        }
         use std::ffi::*;
         fn main(){println!("Success")}
     }.to_string()

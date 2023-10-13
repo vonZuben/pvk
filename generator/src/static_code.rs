@@ -8,8 +8,6 @@ impl krs_quote::ToTokens for StaticCode {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         tokens.push(
         stringify!(
-            pub use krs_hlist::hlist_ty;
-
             pub(crate) struct DbgStringAsDisplay<'a>(pub(crate) &'a str);
 
             impl std::fmt::Debug for DbgStringAsDisplay<'_> {

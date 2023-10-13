@@ -1,5 +1,4 @@
 use crate::safe_interface::type_conversions::ToC;
-use krs_hlist::Get;
 use vk_safe_sys as vk;
 
 use crate::scope::Scope;
@@ -8,50 +7,43 @@ use crate::pretty_version::VkVersion;
 
 use std::marker::PhantomData;
 
-use vk::commands::{CommandLoadError, LoadCommands};
+use vk::commands::{CommandLoadError, LoadCommands, Version};
+use vk::has_command::DestroyInstance;
 
 pub trait InstanceConfig {
     const VERSION: VkVersion;
-    type Commands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>;
+    type DropProvider;
+    type Commands: DestroyInstance<Self::DropProvider> + LoadCommands + Version;
 }
 
-#[derive(Debug)]
-pub struct Config<V, E> {
-    _version: PhantomData<V>,
-    _extension: PhantomData<E>,
+pub struct Config<P, Cmd> {
+    _drop_provider: PhantomData<P>,
+    _commands: PhantomData<Cmd>,
 }
 
-impl<V, E> Clone for Config<V, E> {
+impl<P, Cmd> Clone for Config<P, Cmd> {
     fn clone(&self) -> Self {
-        Self { _version: PhantomData, _extension: PhantomData }
+        Self { _drop_provider: PhantomData, _commands: PhantomData }
     }
 }
 
-impl<V, E> Copy for Config<V, E> {}
+impl<P, Cmd> Copy for Config<P, Cmd> {}
 
-impl<V, E> Config<V, E> {
-    pub fn new(_version: V, _extensions: E) -> Self {
-        Self { _version: PhantomData, _extension: PhantomData }
+impl<P> Config<P, ()> {
+    pub fn new<Cmd>() -> Config<P, Cmd> where Cmd: DestroyInstance<P> {
+        Config { _drop_provider: PhantomData, _commands: PhantomData }
     }
 }
 
-impl<V: vk::VulkanVersion, E: vk::VulkanExtension> InstanceConfig for Config<V, E>
-where
-    V::InstanceCommands : vk::commands::LoadCommands + vk::GetCommand<vk::DestroyInstance>,
-    E::InstanceCommands : vk::commands::LoadCommands,
+impl<P, Cmd> InstanceConfig for Config<P, Cmd> where Cmd: LoadCommands + DestroyInstance<P> + Version
 {
-    const VERSION: VkVersion = VkVersion::new(V::VersionTriple.0, V::VersionTriple.1, V::VersionTriple.2);
-
-    type Commands = V::InstanceCommands;
+    const VERSION: VkVersion = VkVersion::new(Cmd::VersionTriple.0, Cmd::VersionTriple.1, Cmd::VersionTriple.2);
+    type DropProvider = P;
+    type Commands = Cmd;
 }
 
 pub type ScopedInstance<'scope, C> = Scope<'scope, Instance<C>>;
 
-// pub trait ScopedInstance<'scope, C: InstanceConfig> {
-//     type Commands: C::
-// }
-
-#[derive(Debug)]
 pub struct Instance<C: InstanceConfig> {
     handle: vk::Instance,
     pub(crate) commands: C::Commands,
@@ -67,12 +59,17 @@ impl<C: InstanceConfig> Instance<C> {
     }
 }
 
+impl<C: InstanceConfig> std::fmt::Debug for Instance<C> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Instance").field("handle", &self.handle).field("version", &C::VERSION).finish()
+    }
+}
+
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInstance.html
 */
 impl<C: InstanceConfig> Drop for Instance<C> {
     fn drop(&mut self) {
-
         check_vuid_defs2!( DestroyInstance
             pub const VUID_vkDestroyInstance_instance_00629 : & 'static [ u8 ] = "All child objects created using instance must have been destroyed prior to destroying instance" . as_bytes ( ) ;
             CHECK {
@@ -110,7 +107,7 @@ impl<C: InstanceConfig> Drop for Instance<C> {
             }
         );
 
-        unsafe { self.commands.get().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.commands.DestroyInstance().get_fptr()(self.handle, None.to_c()) }
     }
 }
 
@@ -119,19 +116,19 @@ mod command_impl_prelude {
     pub use crate::array_storage::{ArrayStorage, VulkanLenType};
     pub use crate::safe_interface::type_conversions::*;
     pub use vk_safe_sys as vk;
-    pub use vk_safe_sys::{GetCommand, VulkanExtension, VulkanVersion};
+    pub use vk_safe_sys::{VulkanExtension, VulkanVersion};
 }
 
 // This is how each safe command can be implemented on top of each raw command
-macro_rules! impl_safe_instance_interface {
-    ( $interface:ident { $($code:tt)* }) => {
-        impl<'scope, C: InstanceConfig> ScopedInstance<'scope, C>
-        where
-            C::Commands: GetCommand<vk::$interface> {
-            $($code)*
-        }
-    };
-}
+// macro_rules! impl_safe_instance_interface {
+//     ( $interface:ident { $($code:tt)* }) => {
+//         impl<'scope, C: InstanceConfig> ScopedInstance<'scope, C>
+//         where
+//             C::Commands: GetCommand<vk::$interface> {
+//             $($code)*
+//         }
+//     };
+// }
 
 mod enumerate_physical_devices;
 

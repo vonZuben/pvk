@@ -1,66 +1,100 @@
 use std::ffi::c_char;
 use std::fmt;
 
-use krs_hlist::{Cons, End, Hlist};
-use crate::generated::VulkanCommand;
+use crate::generated::{VulkanCommand, FunctionLoader};
+pub use crate::generated::{LoadCommands, CommandLoadError};
+pub use crate::generated::PFN_vkVoidFunction as VoidFunction;
 
-/// local type alias for vulkan void function
-pub type VkVoidFunction = crate::generated::PFN_vkVoidFunction;
-
-/// "trait alias" for a function that can load a vulkan command
-pub trait FunctionLoader:
-    Fn(*const c_char) -> Option<VkVoidFunction> + Copy
-{
-}
-impl<F> FunctionLoader for F where
-    F: Fn(*const c_char) -> Option<VkVoidFunction> + Copy
-{
+pub trait Version {
+    const VersionTriple: (u32, u32, u32);
 }
 
-/// Error loading a command
-///
-/// ## Safety
-/// 'command' must be set to a valid c string pointer
-/// there is no check for this
-#[derive(Debug)]
-pub struct CommandLoadError {
-    command: *const c_char,
-}
 
-impl std::error::Error for CommandLoadError {}
+#[macro_export]
+macro_rules! instance_context {
+    ( $vis:vis $name:ident : $($v_provider:ident)? $( + $($e_provider:ident),+ $(,)? )? ) => {
+        #[allow(non_snake_case)]
+        $vis struct $name {
+            $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::InstanceCommands,)?
+            $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::InstanceCommands),+ )?
+        }
 
-impl fmt::Display for CommandLoadError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // SAFETY : CommandLoadError can only be internally created, and we must ensure it is created with a pointer to a valid c string
-        let command_name = unsafe { std::ffi::CStr::from_ptr(self.command) };
-        write!(f, "failed to load {:?}", command_name)
+        impl $crate::LoadCommands for $name {
+            fn load(loader: impl $crate::FunctionLoader) -> std::result::Result<Self, $crate::CommandLoadError> {
+                Ok(
+                    Self {
+                        $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::InstanceCommands::load(loader)?,)?
+                        $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::InstanceCommands::load(loader)?),+ )?
+                    }
+                )
+            }
+        }
+
+        $(
+            impl $crate::version::instance::provider::$v_provider for $name {
+                fn $v_provider(&self) -> &$crate::version::instance::$v_provider {
+                    &self.$v_provider
+                }
+            }
+
+            impl $crate::commands::Version for $name {
+                const VersionTriple: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
+            }
+        )?
+
+        $(
+            $(
+                impl $crate::extension::instance::provider::$e_provider for $name {
+                    fn $e_provider(&self) -> &$crate::extension::instance::$e_provider {
+                        &self.$e_provider
+                    }
+                }
+            )+
+        )?
     }
 }
 
-/// Load commands with a given function loader
-///
-/// 'loader' is an function that takes a c_string pointer to the name of the command to load
-pub trait LoadCommands : Sized {
-    fn load(loader: impl FunctionLoader) -> Result<Self, CommandLoadError>;
-}
+#[macro_export]
+macro_rules! device_context {
+    ( $vis:vis $name:ident : $($v_provider:ident)? $( + $($e_provider:ident),+ $(,)? )? ) => {
+        #[allow(non_snake_case)]
+        $vis struct $name {
+            $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::DeviceCommands,)?
+            $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::DeviceCommands),+ )?
+        }
 
-impl<C: VulkanCommand> LoadCommands for C {
-    fn load(loader: impl FunctionLoader) -> Result<Self, CommandLoadError> {
-        let fptr = loader(C::VK_NAME).ok_or(CommandLoadError { command: C::VK_NAME })?;
-        // SAFETY : fptr should be the correct kind of pointer since we loaded it with H::VK_NAME
-        unsafe { Ok(C::new(fptr)) }
-    }
-}
+        impl $crate::LoadCommands for $name {
+            fn load(loader: impl $crate::FunctionLoader) -> std::result::Result<Self, $crate::CommandLoadError> {
+                Ok(
+                    Self {
+                        $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::DeviceCommands::load(loader)?,)?
+                        $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::DeviceCommands::load(loader)?),+ )?
+                    }
+                )
+            }
+        }
 
-impl<H: LoadCommands, T: LoadCommands + Hlist> LoadCommands for Cons<H, T> {
-    fn load(loader: impl FunctionLoader) -> Result<Self, CommandLoadError> {
-       Ok(Cons::new(H::load(loader)?, T::load(loader)?))
-    }
-}
+        $(
+            impl $crate::version::device::provider::$v_provider for $name {
+                fn $v_provider(&self) -> &$crate::version::device::$v_provider {
+                    &self.$v_provider
+                }
+            }
 
-impl LoadCommands for End {
-    fn load(loader: impl FunctionLoader) -> Result<Self, CommandLoadError> {
-        Ok(End)
+            impl $crate::commands::Version for $name {
+                const VersionTriple: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
+            }
+        )?
+
+        $(
+            $(
+                impl $crate::extension::device::provider::$e_provider for $name {
+                    fn $e_provider(&self) -> &$crate::extension::device::$e_provider {
+                        &self.$e_provider
+                    }
+                }
+            )+
+        )?
     }
 }
 
@@ -69,31 +103,40 @@ mod test {
     use super::*;
     #[test]
     fn command_load_test() {
+        // use crate::generated::VERSION_1_0;
+        use crate::generated::command::DestroyInstance;
+        use crate::generated::version::instance::provider::VERSION_1_0;
+
         let mut instance = crate::generated::Instance { handle: std::ptr::null() };
         let loader = |name| {
             // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
             unsafe { crate::GetInstanceProcAddr(instance, name) }
         };
 
-        // test command list with only CreateInstance since we can load it without an instance
-        type ToLoad = krs_hlist::hlist_ty!(crate::generated::CreateInstance);
+        instance_context!(MyCx : VERSION_1_0);
 
-        let instance_commands = ToLoad::load(loader).unwrap();
+        let create_instance = crate::generated::CreateInstance::load(loader).unwrap();
 
         let mut info = unsafe { std::mem::MaybeUninit::<crate::generated::InstanceCreateInfo>::zeroed().assume_init() };
         info.s_type = crate::generated::StructureType::INSTANCE_CREATE_INFO;
 
-        unsafe { (&instance_commands.head.get_fptr())(&info, std::ptr::null(), &mut instance) };
+        unsafe { create_instance.get_fptr()(&info, std::ptr::null(), &mut instance) };
 
-        println!("{:?}", instance);
-
+        // reset since otherwise instance borrow is aliased
         let loader = |name| {
             // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
             unsafe { crate::GetInstanceProcAddr(instance, name) }
         };
 
-        let commands = <crate::generated::VERSION_1_0 as crate::generated::VulkanVersion>::InstanceCommands::load(loader).unwrap();
+        let instance_commands = MyCx::load(loader).unwrap();
 
-        println!("{commands:?}");
+        println!("{:p}", instance_commands.DestroyInstance().get_fptr());
+
+        // println!("{:?}", instance);
+
+        // let loader = |name| {
+        //     // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
+        //     unsafe { crate::GetInstanceProcAddr(instance, name) }
+        // };
     }
 }
