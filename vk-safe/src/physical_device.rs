@@ -7,17 +7,17 @@ use std::fmt;
 use crate::array_storage::ArrayStorage;
 use crate::instance::{InstanceConfig, ScopedInstance};
 
-pub struct PhysicalDevices<'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> {
-    instance: ScopedInstance<'i, C>,
+pub struct PhysicalDevices<I: ScopedInstance, S: ArrayStorage<vk::PhysicalDevice>> {
+    instance: I,
     handles: S::InitStorage,
 }
 
-impl<'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<'i, C, S> {
-    pub(crate) fn new(handles: S::InitStorage, instance: ScopedInstance<'i, C>) -> Self {
+impl<I: ScopedInstance, S: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, S> {
+    pub(crate) fn new(handles: S::InitStorage, instance: I) -> Self {
         Self { instance, handles }
     }
 
-    pub fn iter<'s>(&'s self) -> PhysicalDeviceIter<'i, 's, C> {
+    pub fn iter<'s>(&'s self) -> PhysicalDeviceIter<'s, I> {
         self.into_iter()
     }
 }
@@ -26,34 +26,42 @@ impl<'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices
 ///
 /// when you want to start using a PhysicalDevice, the PhysicalDevice defines a new scope
 /// the PhysicalDevice new scope is itself limited with respect to the associated Instance scope
-pub type ScopedPhysicalDevice<'pd, 'i, C> = Scope<'pd, PhysicalDevice<'i, C>>;
+pub type ScopedPhysicalDeviceType<'scope, I> = Scope<'scope, PhysicalDevice<I>>;
+
+pub trait ScopedPhysicalDevice:
+    Scoped + std::ops::Deref<Target = PhysicalDevice<Self::Instance>> + Copy
+{
+    type Instance: ScopedInstance;
+}
+
+impl<'scope, I: ScopedInstance> ScopedPhysicalDevice for ScopedPhysicalDeviceType<'scope, I> {
+    type Instance = I;
+}
 
 /// A PhysicalDevice handle that is limited to the scope of the associated Instance
-pub struct PhysicalDevice<'i, C: InstanceConfig> {
-    instance: ScopedInstance<'i, C>,
+pub struct PhysicalDevice<I: ScopedInstance> {
+    instance: I,
     handle: vk::PhysicalDevice,
 }
 
-impl<'i, C: InstanceConfig> PhysicalDevice<'i, C> {
-    pub(crate) fn new(instance: ScopedInstance<'i, C>, handle: vk::PhysicalDevice) -> Self {
+impl<I: ScopedInstance> PhysicalDevice<I> {
+    pub(crate) fn new(instance: I, handle: vk::PhysicalDevice) -> Self {
         Self { instance, handle }
     }
 }
 
-impl<C: InstanceConfig> fmt::Debug for PhysicalDevice<'_, C> {
+impl<I: ScopedInstance> fmt::Debug for PhysicalDevice<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.handle.fmt(f)
     }
 }
 
-pub struct PhysicalDeviceIter<'i, 's, C: InstanceConfig> {
-    instance: ScopedInstance<'i, C>,
+pub struct PhysicalDeviceIter<'s, I: ScopedInstance> {
+    instance: I,
     iter: std::iter::Copied<std::slice::Iter<'s, vk::PhysicalDevice>>,
 }
 
-impl<C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> fmt::Debug
-    for PhysicalDevices<'_, C, S>
-{
+impl<I: ScopedInstance, S: ArrayStorage<vk::PhysicalDevice>> fmt::Debug for PhysicalDevices<I, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "PhysicalDevices")?;
         f.debug_list()
@@ -62,8 +70,8 @@ impl<C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> fmt::Debug
     }
 }
 
-impl<'i, C: InstanceConfig> Iterator for PhysicalDeviceIter<'i, '_, C> {
-    type Item = PhysicalDevice<'i, C>;
+impl<I: ScopedInstance> Iterator for PhysicalDeviceIter<'_, I> {
+    type Item = PhysicalDevice<I>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
@@ -72,12 +80,12 @@ impl<'i, C: InstanceConfig> Iterator for PhysicalDeviceIter<'i, '_, C> {
     }
 }
 
-impl<'s, 'i, C: InstanceConfig, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
-    for &'s PhysicalDevices<'i, C, S>
+impl<'s, I: ScopedInstance, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
+    for &'s PhysicalDevices<I, S>
 {
-    type Item = PhysicalDevice<'i, C>;
+    type Item = PhysicalDevice<I>;
 
-    type IntoIter = PhysicalDeviceIter<'i, 's, C>;
+    type IntoIter = PhysicalDeviceIter<'s, I>;
 
     fn into_iter(self) -> Self::IntoIter {
         PhysicalDeviceIter {

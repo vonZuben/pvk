@@ -1,5 +1,5 @@
 use super::*;
-use crate::instance::InstanceConfig;
+use crate::instance::ScopedInstance;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceFormatProperties;
@@ -9,13 +9,14 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html
 */
-impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
+impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn get_physical_device_format_properties<P>(
         &self,
         format: vk::Format,
     ) -> FormatProperties<'scope>
     where
-        C::Commands: GetPhysicalDeviceFormatProperties<P>,
+        <<I as ScopedInstance>::Config as InstanceConfig>::Commands:
+            GetPhysicalDeviceFormatProperties<P>,
     {
         let mut properties = MaybeUninit::uninit();
         unsafe {

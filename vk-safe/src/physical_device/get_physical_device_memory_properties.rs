@@ -1,5 +1,5 @@
 use super::*;
-use crate::instance::InstanceConfig;
+use crate::instance::ScopedInstance;
 use crate::safe_interface::type_conversions::TransmuteArray;
 use vk_safe_sys as vk;
 
@@ -11,10 +11,11 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
-impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
+impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn get_physical_device_memory_properties<P>(&self) -> PhysicalDeviceMemoryProperties<'scope>
     where
-        C::Commands: GetPhysicalDeviceMemoryProperties<P>,
+        <<I as ScopedInstance>::Config as InstanceConfig>::Commands:
+            GetPhysicalDeviceMemoryProperties<P>,
     {
         let mut properties = MaybeUninit::uninit();
         unsafe {
@@ -39,7 +40,7 @@ const _VUID: () = {
 
 simple_struct_wrapper_scoped!(PhysicalDeviceMemoryProperties);
 
-simple_struct_wrapper_scoped!(MemoryType impl Debug, Deref);
+simple_struct_wrapper_scoped!(MemoryType impl Debug, Deref, Clone, Copy);
 
 impl MemoryType<'_> {
     // helper method since the only way to get the property_flags normally
@@ -68,19 +69,19 @@ impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
         (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute()
     }
 
-    pub fn choose_type<'a>(&'a self, index: u32) -> MemoryTypeChoice<'a, 'scope> {
+    pub fn choose_type<'a>(&'a self, index: u32) -> MemoryTypeChoice<'scope> {
         let memory_types = self.memory_types();
         assert!((index as usize) < memory_types.len());
         MemoryTypeChoice {
-            ty: &self.memory_types()[index as usize],
+            ty: self.memory_types()[index as usize],
             index,
         }
     }
 }
 
 #[derive(Clone, Copy)]
-pub struct MemoryTypeChoice<'a, 'scope> {
-    pub(crate) ty: &'a MemoryType<'scope>,
+pub struct MemoryTypeChoice<'scope> {
+    pub(crate) ty: MemoryType<'scope>,
     pub(crate) index: u32,
 }
 

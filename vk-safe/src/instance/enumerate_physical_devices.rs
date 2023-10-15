@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::physical_device::PhysicalDevices;
 
 use super::InstanceConfig;
-use super::ScopedInstance;
+use super::ScopedInstanceType;
 
 use vk_safe_sys as vk;
 
@@ -12,11 +12,11 @@ use vk::has_command::EnumeratePhysicalDevices;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html
 */
-impl<'scope, C: InstanceConfig> ScopedInstance<'scope, C> {
+impl<'scope, C: InstanceConfig> ScopedInstanceType<'scope, C> {
     pub fn enumerate_physical_devices<P, S: ArrayStorage<vk::PhysicalDevice>>(
         &self,
         mut storage: S,
-    ) -> Result<PhysicalDevices<'scope, C, S>, Error>
+    ) -> Result<PhysicalDevices<Self, S>, Error>
     where
         C::Commands: EnumeratePhysicalDevices<P>,
     {

@@ -108,6 +108,13 @@ pub trait ScopeLife<'l>: Scoped {}
 impl<'l, T> ScopeLife<'l> for Scope<'l, T> {}
 
 /// Simplify holding a scoped object when we don't care about the lifetime
-pub trait Scoped {}
+/// Can only be implemented by [Scope]
+pub trait Scoped: scope_private::SealedScope {}
 
 impl<'l, T> Scoped for Scope<'l, T> {}
+
+mod scope_private {
+    pub trait SealedScope {}
+
+    impl<'l, T> SealedScope for super::Scope<'l, T> {}
+}

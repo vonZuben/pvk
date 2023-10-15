@@ -105,6 +105,18 @@ macro_rules! simple_struct_wrapper_scoped {
             }
         }
     };
+
+    ( @IMPL Clone $name:ident ) => {
+        impl Clone for $name<'_> {
+            fn clone(&self) -> Self {
+                Self::new(self.inner)
+            }
+        }
+    };
+
+    ( @IMPL Copy $name:ident ) => {
+        impl Copy for $name<'_> { }
+    };
 }
 
 macro_rules! get_str {

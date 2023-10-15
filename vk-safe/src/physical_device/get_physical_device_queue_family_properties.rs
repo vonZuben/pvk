@@ -1,6 +1,6 @@
 use super::*;
 use crate::error::Error;
-use crate::instance::InstanceConfig;
+use crate::instance::ScopedInstance;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
@@ -10,7 +10,7 @@ use std::fmt;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
-impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
+impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn get_physical_device_queue_family_properties<
         P,
         S: ArrayStorage<QueueFamilyProperties<'scope>>,
@@ -19,7 +19,8 @@ impl<'scope, C: InstanceConfig> ScopedPhysicalDevice<'scope, '_, C> {
         mut storage: S,
     ) -> Result<QueueFamilies<'scope, S>, Error>
     where
-        C::Commands: GetPhysicalDeviceQueueFamilyProperties<P>,
+        <<I as ScopedInstance>::Config as InstanceConfig>::Commands:
+            GetPhysicalDeviceQueueFamilyProperties<P>,
     {
         let families = enumerator_code2!(self.instance.commands.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
         Ok(QueueFamilies { families })

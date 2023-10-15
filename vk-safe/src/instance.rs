@@ -1,7 +1,7 @@
 use crate::safe_interface::type_conversions::ToC;
 use vk_safe_sys as vk;
 
-use crate::scope::Scope;
+use crate::scope::{Scope, Scoped};
 
 use crate::pretty_version::VkVersion;
 
@@ -57,7 +57,15 @@ where
     type Commands = Cmd;
 }
 
-pub type ScopedInstance<'scope, C> = Scope<'scope, Instance<C>>;
+pub type ScopedInstanceType<'scope, C> = Scope<'scope, Instance<C>>;
+
+pub trait ScopedInstance: Scoped + std::ops::Deref<Target = Instance<Self::Config>> + Copy {
+    type Config: InstanceConfig;
+}
+
+impl<'scope, C: InstanceConfig> ScopedInstance for ScopedInstanceType<'scope, C> {
+    type Config = C;
+}
 
 pub struct Instance<C: InstanceConfig> {
     handle: vk::Instance,
@@ -130,7 +138,7 @@ impl<C: InstanceConfig> Drop for Instance<C> {
 }
 
 mod command_impl_prelude {
-    pub use super::ScopedInstance;
+    pub use super::ScopedInstanceType;
     pub use crate::array_storage::{ArrayStorage, VulkanLenType};
     pub use crate::safe_interface::type_conversions::*;
     pub use vk_safe_sys as vk;

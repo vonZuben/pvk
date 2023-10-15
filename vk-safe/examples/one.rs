@@ -120,8 +120,10 @@ fn main() {
                             vk_safe::scope::Scope<
                                 '_,
                                 vk_safe::physical_device::PhysicalDevice<
-                                    '_,
-                                    Config<vk::VERSION_1_1, MyCtx>,
+                                    vk_safe::scope::Scope<
+                                        '_,
+                                        vk_safe::instance::Instance<Config<vk::VERSION_1_1, MyCtx>>,
+                                    >,
                                 >,
                             >,
                         >,
