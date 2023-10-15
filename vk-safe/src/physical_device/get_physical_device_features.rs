@@ -12,7 +12,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn get_physical_device_features<P>(&self) -> PhysicalDeviceFeatures<'scope>
     where
-        <<I as ScopedInstance>::Config as InstanceConfig>::Commands: GetPhysicalDeviceFeatures<P>,
+        I::Commands: GetPhysicalDeviceFeatures<P>,
     {
         let mut features = MaybeUninit::uninit();
         unsafe {

@@ -7,10 +7,12 @@ use crate::scope::{ScopeId, ScopeLife};
 use vk::has_command::{AllocateMemory, FreeMemory};
 
 use std::mem::MaybeUninit;
+use std::ops::Deref;
 
-pub trait DeviceMemoryConfig {
-    fn free_fptr(&self) -> vk::FptrTyFreeMemory;
-    fn device_handle(&self) -> vk::Device;
+pub trait DeviceMemoryConfig: Deref<Target = Self::Device> {
+    type FreeProvider;
+    type Commands: FreeMemory<Self::FreeProvider>;
+    type Device: ScopedDevice<Commands = Self::Commands>;
 }
 
 pub struct Config<D, F> {
@@ -20,15 +22,23 @@ pub struct Config<D, F> {
 
 impl<D: ScopedDevice, F> DeviceMemoryConfig for Config<D, F>
 where
-    <D::Config as DeviceConfig>::Commands: FreeMemory<F>,
+    D::Commands: FreeMemory<F>,
 {
-    fn free_fptr(&self) -> vk::FptrTyFreeMemory {
-        self.device.commands.FreeMemory().get_fptr()
-    }
+    type FreeProvider = F;
+    type Commands = D::Commands;
+    type Device = D;
+}
 
-    fn device_handle(&self) -> vk::Device {
-        self.device.handle
+impl<D: ScopedDevice, F> Deref for Config<D, F> {
+    type Target = D;
+
+    fn deref(&self) -> &Self::Target {
+        &self.device
     }
+}
+
+pub trait Memory: Deref<Target = DeviceMemory<Self::Config>> {
+    type Config: DeviceMemoryConfig;
 }
 
 pub struct DeviceMemory<D: DeviceMemoryConfig> {
@@ -81,9 +91,9 @@ impl<'d, 'pd, C: DeviceConfig, Pd: ScopedPhysicalDevice + ScopeLife<'pd>>
 
 impl<D: DeviceMemoryConfig> Drop for DeviceMemory<D> {
     fn drop(&mut self) {
-        let fptr = self.device.free_fptr();
+        let fptr = self.device.commands.FreeMemory().get_fptr();
         unsafe {
-            fptr(self.device.device_handle(), self.handle, std::ptr::null());
+            fptr(self.device.handle, self.handle, std::ptr::null());
         }
     }
 }

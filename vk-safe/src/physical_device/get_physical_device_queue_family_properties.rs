@@ -19,8 +19,7 @@ impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
         mut storage: S,
     ) -> Result<QueueFamilies<'scope, S>, Error>
     where
-        <<I as ScopedInstance>::Config as InstanceConfig>::Commands:
-            GetPhysicalDeviceQueueFamilyProperties<P>,
+        I::Commands: GetPhysicalDeviceQueueFamilyProperties<P>,
     {
         let families = enumerator_code2!(self.instance.commands.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
         Ok(QueueFamilies { families })

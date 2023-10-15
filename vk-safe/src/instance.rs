@@ -60,11 +60,13 @@ where
 pub type ScopedInstanceType<'scope, C> = Scope<'scope, Instance<C>>;
 
 pub trait ScopedInstance: Scoped + std::ops::Deref<Target = Instance<Self::Config>> + Copy {
-    type Config: InstanceConfig;
+    type Config: InstanceConfig<Commands = Self::Commands>;
+    type Commands;
 }
 
 impl<'scope, C: InstanceConfig> ScopedInstance for ScopedInstanceType<'scope, C> {
     type Config = C;
+    type Commands = C::Commands;
 }
 
 pub struct Instance<C: InstanceConfig> {

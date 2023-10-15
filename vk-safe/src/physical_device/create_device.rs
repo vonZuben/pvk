@@ -1,6 +1,6 @@
 use super::*;
 use crate::device::{Device, DeviceConfig};
-use crate::instance::{InstanceConfig, ScopedInstance};
+use crate::instance::ScopedInstance;
 use vk_safe_sys as vk;
 
 use crate::safe_interface::type_conversions::transmute_array;
@@ -23,7 +23,7 @@ impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
         create_info: &DeviceCreateInfo<'_, C>,
     ) -> Result<Device<C, Self>, TempError>
     where
-        <<I as ScopedInstance>::Config as InstanceConfig>::Commands: CreateDevice<P>,
+        I::Commands: CreateDevice<P>,
     {
         let mut device = MaybeUninit::uninit();
         unsafe {

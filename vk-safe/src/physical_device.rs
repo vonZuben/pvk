@@ -5,7 +5,7 @@ use vk_safe_sys as vk;
 use std::fmt;
 
 use crate::array_storage::ArrayStorage;
-use crate::instance::{InstanceConfig, ScopedInstance};
+use crate::instance::ScopedInstance;
 
 pub struct PhysicalDevices<I: ScopedInstance, S: ArrayStorage<vk::PhysicalDevice>> {
     instance: I,

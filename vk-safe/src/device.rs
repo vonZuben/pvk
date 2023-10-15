@@ -62,8 +62,9 @@ pub type ScopedDeviceType<'d, C, Pd> = Scope<'d, Device<C, Pd>>;
 pub trait ScopedDevice:
     Scoped + std::ops::Deref<Target = Device<Self::Config, Self::PhysicalDevice>> + Copy
 {
-    type Config: DeviceConfig;
+    type Config: DeviceConfig<Commands = Self::Commands>;
     type PhysicalDevice: ScopedPhysicalDevice;
+    type Commands;
 }
 
 impl<'scope, C: DeviceConfig, Pd: ScopedPhysicalDevice> ScopedDevice
@@ -71,6 +72,7 @@ impl<'scope, C: DeviceConfig, Pd: ScopedPhysicalDevice> ScopedDevice
 {
     type Config = C;
     type PhysicalDevice = Pd;
+    type Commands = C::Commands;
 }
 
 pub struct Device<C: DeviceConfig, Pd: ScopedPhysicalDevice> {

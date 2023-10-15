@@ -16,8 +16,7 @@ impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
         params: GetPhysicalDeviceImageFormatPropertiesParams,
     ) -> Result<ImageFormatProperties<'scope>, vk::Result>
     where
-        <<I as ScopedInstance>::Config as InstanceConfig>::Commands:
-            GetPhysicalDeviceImageFormatProperties<P>,
+        I::Commands: GetPhysicalDeviceImageFormatProperties<P>,
     {
         let mut properties = MaybeUninit::uninit();
         unsafe {

@@ -14,8 +14,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn get_physical_device_memory_properties<P>(&self) -> PhysicalDeviceMemoryProperties<'scope>
     where
-        <<I as ScopedInstance>::Config as InstanceConfig>::Commands:
-            GetPhysicalDeviceMemoryProperties<P>,
+        I::Commands: GetPhysicalDeviceMemoryProperties<P>,
     {
         let mut properties = MaybeUninit::uninit();
         unsafe {
