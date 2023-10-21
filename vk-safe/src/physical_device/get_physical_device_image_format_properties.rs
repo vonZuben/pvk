@@ -1,5 +1,5 @@
 use super::*;
-use crate::instance::ScopedInstance;
+use crate::instance::Instance;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceImageFormatProperties;
@@ -9,7 +9,7 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
-impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
+impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
     #[track_caller]
     pub fn get_physical_device_image_format_properties<P>(
         &self,

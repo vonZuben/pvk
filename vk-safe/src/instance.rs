@@ -57,24 +57,24 @@ where
     type Commands = Cmd;
 }
 
-pub type ScopedInstanceType<'scope, C> = Scope<'scope, Instance<C>>;
+pub type ScopedInstanceType<'scope, C> = Scope<'scope, InstanceType<C>>;
 
-pub trait ScopedInstance: Scoped + std::ops::Deref<Target = Instance<Self::Config>> + Copy {
+pub trait Instance: Scoped + std::ops::Deref<Target = InstanceType<Self::Config>> + Copy {
     type Config: InstanceConfig<Commands = Self::Commands>;
     type Commands;
 }
 
-impl<'scope, C: InstanceConfig> ScopedInstance for ScopedInstanceType<'scope, C> {
+impl<'scope, C: InstanceConfig> Instance for ScopedInstanceType<'scope, C> {
     type Config = C;
     type Commands = C::Commands;
 }
 
-pub struct Instance<C: InstanceConfig> {
+pub struct InstanceType<C: InstanceConfig> {
     handle: vk::Instance,
     pub(crate) commands: C::Commands,
 }
 
-impl<C: InstanceConfig> Instance<C> {
+impl<C: InstanceConfig> InstanceType<C> {
     pub(crate) fn load_commands(handle: vk::Instance) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
@@ -84,7 +84,7 @@ impl<C: InstanceConfig> Instance<C> {
     }
 }
 
-impl<C: InstanceConfig> std::fmt::Debug for Instance<C> {
+impl<C: InstanceConfig> std::fmt::Debug for InstanceType<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Instance")
             .field("handle", &self.handle)
@@ -96,7 +96,7 @@ impl<C: InstanceConfig> std::fmt::Debug for Instance<C> {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInstance.html
 */
-impl<C: InstanceConfig> Drop for Instance<C> {
+impl<C: InstanceConfig> Drop for InstanceType<C> {
     fn drop(&mut self) {
         check_vuid_defs2!( DestroyInstance
             pub const VUID_vkDestroyInstance_instance_00629 : & 'static [ u8 ] = "All child objects created using instance must have been destroyed prior to destroying instance" . as_bytes ( ) ;

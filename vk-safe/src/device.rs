@@ -3,7 +3,7 @@ use crate::safe_interface::type_conversions::ToC;
 use std::marker::PhantomData;
 use vk_safe_sys as vk;
 
-use crate::physical_device::ScopedPhysicalDevice;
+use crate::physical_device::PhysicalDevice;
 use crate::scope::{Scope, Scoped};
 
 use vk::has_command::DestroyDevice;
@@ -57,31 +57,29 @@ where
     type Commands = Cmd;
 }
 
-pub type ScopedDeviceType<'d, C, Pd> = Scope<'d, Device<C, Pd>>;
+pub type ScopedDeviceType<'d, C, Pd> = Scope<'d, DeviceType<C, Pd>>;
 
-pub trait ScopedDevice:
-    Scoped + std::ops::Deref<Target = Device<Self::Config, Self::PhysicalDevice>> + Copy
+pub trait Device:
+    Scoped + std::ops::Deref<Target = DeviceType<Self::Config, Self::PhysicalDevice>> + Copy
 {
     type Config: DeviceConfig<Commands = Self::Commands>;
-    type PhysicalDevice: ScopedPhysicalDevice;
+    type PhysicalDevice: PhysicalDevice;
     type Commands;
 }
 
-impl<'scope, C: DeviceConfig, Pd: ScopedPhysicalDevice> ScopedDevice
-    for ScopedDeviceType<'scope, C, Pd>
-{
+impl<'scope, C: DeviceConfig, Pd: PhysicalDevice> Device for ScopedDeviceType<'scope, C, Pd> {
     type Config = C;
     type PhysicalDevice = Pd;
     type Commands = C::Commands;
 }
 
-pub struct Device<C: DeviceConfig, Pd: ScopedPhysicalDevice> {
+pub struct DeviceType<C: DeviceConfig, Pd: PhysicalDevice> {
     pub(crate) handle: vk::Device,
     pub(crate) commands: C::Commands,
     _pd: std::marker::PhantomData<Pd>,
 }
 
-impl<C: DeviceConfig, Pd: ScopedPhysicalDevice> std::fmt::Debug for Device<C, Pd> {
+impl<C: DeviceConfig, Pd: PhysicalDevice> std::fmt::Debug for DeviceType<C, Pd> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Device")
             .field("handle", &self.handle)
@@ -90,7 +88,7 @@ impl<C: DeviceConfig, Pd: ScopedPhysicalDevice> std::fmt::Debug for Device<C, Pd
     }
 }
 
-impl<C: DeviceConfig, Pd: ScopedPhysicalDevice> Device<C, Pd> {
+impl<C: DeviceConfig, Pd: PhysicalDevice> DeviceType<C, Pd> {
     pub(crate) fn load_commands(handle: vk::Device) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
         Ok(Self {
@@ -104,7 +102,7 @@ impl<C: DeviceConfig, Pd: ScopedPhysicalDevice> Device<C, Pd> {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyDevice.html
 */
-impl<C: DeviceConfig, Pd: ScopedPhysicalDevice> Drop for Device<C, Pd> {
+impl<C: DeviceConfig, Pd: PhysicalDevice> Drop for DeviceType<C, Pd> {
     fn drop(&mut self) {
         unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
 

@@ -1,6 +1,6 @@
 use super::*;
-use crate::device::{Device, DeviceConfig};
-use crate::instance::ScopedInstance;
+use crate::device::{DeviceConfig, DeviceType};
+use crate::instance::Instance;
 use vk_safe_sys as vk;
 
 use crate::safe_interface::type_conversions::transmute_array;
@@ -17,11 +17,11 @@ pub struct TempError;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
+impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn create_device<P, C: DeviceConfig>(
         &self,
         create_info: &DeviceCreateInfo<'_, C>,
-    ) -> Result<Device<C, Self>, TempError>
+    ) -> Result<DeviceType<C, Self>, TempError>
     where
         I::Commands: CreateDevice<P>,
     {
@@ -36,7 +36,7 @@ impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
             if res.is_err() {
                 Err(TempError)
             } else {
-                Ok(Device::load_commands(device.assume_init()).map_err(|_| TempError)?)
+                Ok(DeviceType::load_commands(device.assume_init()).map_err(|_| TempError)?)
             }
         }
     }

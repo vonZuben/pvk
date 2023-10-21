@@ -1,5 +1,5 @@
 use super::*;
-use crate::instance::ScopedInstance;
+use crate::instance::Instance;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceProperties;
@@ -10,7 +10,7 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
-impl<'scope, I: ScopedInstance> ScopedPhysicalDeviceType<'scope, I> {
+impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn get_physical_device_properties<P>(&self) -> PhysicalDeviceProperties<'scope>
     where
         I::Commands: GetPhysicalDeviceProperties<P>,

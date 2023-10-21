@@ -1,6 +1,6 @@
 use super::command_impl_prelude::*;
 
-use crate::instance::{Instance, InstanceConfig};
+use crate::instance::{InstanceConfig, InstanceType};
 use crate::pretty_version::VkVersion;
 use crate::vk_str::VkStr;
 
@@ -17,7 +17,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstan
 */
 pub fn create_instance<C: InstanceConfig>(
     create_info: &InstanceCreateInfo<C>,
-) -> Result<Instance<C>, TempError> {
+) -> Result<InstanceType<C>, TempError> {
     check_vuid_defs2!(CreateInstance
         pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list." . as_bytes ( ) ;
         CHECK {
@@ -51,7 +51,7 @@ pub fn create_instance<C: InstanceConfig>(
         if res.is_err() {
             return Err(TempError);
         }
-        Ok(Instance::load_commands(instance.assume_init()).map_err(|_| TempError)?)
+        Ok(InstanceType::load_commands(instance.assume_init()).map_err(|_| TempError)?)
     }
 }
 

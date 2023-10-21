@@ -12,7 +12,7 @@ use std::ops::Deref;
 pub trait DeviceMemoryConfig: Deref<Target = Self::Device> {
     type FreeProvider;
     type Commands: FreeMemory<Self::FreeProvider>;
-    type Device: ScopedDevice<Commands = Self::Commands>;
+    type Device: Device<Commands = Self::Commands>;
 }
 
 pub struct Config<D, F> {
@@ -20,7 +20,7 @@ pub struct Config<D, F> {
     free_provider: PhantomData<F>,
 }
 
-impl<D: ScopedDevice, F> DeviceMemoryConfig for Config<D, F>
+impl<D: Device, F> DeviceMemoryConfig for Config<D, F>
 where
     D::Commands: FreeMemory<F>,
 {
@@ -29,7 +29,7 @@ where
     type Device = D;
 }
 
-impl<D: ScopedDevice, F> Deref for Config<D, F> {
+impl<D: Device, F> Deref for Config<D, F> {
     type Target = D;
 
     fn deref(&self) -> &Self::Target {
@@ -37,34 +37,33 @@ impl<D: ScopedDevice, F> Deref for Config<D, F> {
     }
 }
 
-pub trait Memory: Deref<Target = DeviceMemory<Self::Config>> {
-    type Config: DeviceMemoryConfig;
+pub trait DeviceMemory: Deref<Target = DeviceMemoryType<Self::Config>> {
+    type Config: DeviceMemoryConfig<Device = Self::Device>;
+    type Device;
 }
 
-pub struct DeviceMemory<D: DeviceMemoryConfig> {
+pub struct DeviceMemoryType<D: DeviceMemoryConfig> {
     pub(crate) handle: vk::DeviceMemory,
     device: D,
 }
 
-impl<D: DeviceMemoryConfig> DeviceMemory<D> {
+impl<D: DeviceMemoryConfig> DeviceMemoryType<D> {
     fn new(handle: vk::DeviceMemory, device: D) -> Self {
         Self { handle, device }
     }
 }
 
-impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemory<D> {
+impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemoryType<D> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.handle.fmt(f)
     }
 }
 
-impl<'d, 'pd, C: DeviceConfig, Pd: ScopedPhysicalDevice + ScopeLife<'pd>>
-    ScopedDeviceType<'d, C, Pd>
-{
+impl<'d, 'pd, C: DeviceConfig, Pd: PhysicalDevice + ScopeLife<'pd>> ScopedDeviceType<'d, C, Pd> {
     pub fn allocate_memory<P, F>(
         &self,
         info: &MemoryAllocateInfo<'pd>,
-    ) -> Result<DeviceMemory<Config<Self, F>>, vk::Result>
+    ) -> Result<DeviceMemoryType<Config<Self, F>>, vk::Result>
     where
         C::Commands: AllocateMemory<P> + FreeMemory<F>,
     {
@@ -78,7 +77,7 @@ impl<'d, 'pd, C: DeviceConfig, Pd: ScopedPhysicalDevice + ScopeLife<'pd>>
                 memory.as_mut_ptr(),
             );
             check_raw_err!(ret);
-            Ok(DeviceMemory::new(
+            Ok(DeviceMemoryType::new(
                 memory.assume_init(),
                 Config {
                     device: *self,
@@ -89,7 +88,7 @@ impl<'d, 'pd, C: DeviceConfig, Pd: ScopedPhysicalDevice + ScopeLife<'pd>>
     }
 }
 
-impl<D: DeviceMemoryConfig> Drop for DeviceMemory<D> {
+impl<D: DeviceMemoryConfig> Drop for DeviceMemoryType<D> {
     fn drop(&mut self) {
         let fptr = self.device.commands.FreeMemory().get_fptr();
         unsafe {
