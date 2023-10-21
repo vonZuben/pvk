@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::future::Future;
 use std::marker::PhantomData;
 
@@ -76,12 +75,11 @@ where
 }
 
 /// Create a task scope for a give T, by passing a scoped T to a given function or closure
-pub fn scope<'a, F, R, T>(this: impl Borrow<T> + 'a, f: F) -> impl FnOnce() -> R + 'a
+pub fn scope<'a, F, R, T>(this: &'a T, f: F) -> impl FnOnce() -> R + 'a
 where
     for<'scope> F: FnOnce(Scope<'scope, T>) -> R + 'a,
-    T: 'a,
 {
-    move || f(Scope::new_scope(this.borrow()))
+    move || f(Scope::new_scope(this))
 }
 
 /// Create an async task scope for a given T, by passing a scoped T to a given async function or closure
@@ -91,12 +89,11 @@ where
 /// 1) Higher ranked trait bound (used for scope lifetime) implies closure needs to live for static
 /// 2) I have been able to change the trait bounds to avoid the static issue, but then the compiler appears to have
 ///     a hard time determining appropriate lifetime bounds for the Future returned by the closure.
-pub fn async_scope<'a, A, R, T>(this: impl Borrow<T> + 'a, a: A) -> impl Future<Output = R> + 'a
+pub fn async_scope<'a, A, R, T>(this: &'a T, a: A) -> impl Future<Output = R> + 'a
 where
     for<'scope> A: ScopedAsyncFn<'scope, T, R> + 'a,
-    T: 'a,
 {
-    async move { a(Scope::new_scope(this.borrow())).await }
+    async move { a(Scope::new_scope(this)).await }
 }
 
 //===============================

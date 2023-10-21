@@ -38,7 +38,7 @@ fn main() {
     println!("-------");
     println!("{instance:?}");
 
-    scope(instance, |instance| {
+    scope(&instance, |instance| {
         let physical_devices = instance
             .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
             .unwrap();
@@ -48,7 +48,7 @@ fn main() {
 
         println!("-------");
         for pd in physical_devices.iter() {
-            scope(pd, |pd| {
+            scope(&pd, |pd| {
                 println!("{:#?}", pd.get_physical_device_properties());
                 println!("-------");
 
@@ -111,32 +111,15 @@ fn main() {
 
                 let device = pd.create_device(&device_create_info).unwrap();
 
-                scope(
-                    &device,
-                    |device: vk_safe::scope::Scope<
-                        '_,
-                        vk_safe::device::Device<
-                            vk_safe::device::Config<vk::VERSION_1_0, MyDeviceCtx>,
-                            vk_safe::scope::Scope<
-                                '_,
-                                vk_safe::physical_device::PhysicalDevice<
-                                    vk_safe::scope::Scope<
-                                        '_,
-                                        vk_safe::instance::Instance<Config<vk::VERSION_1_1, MyCtx>>,
-                                    >,
-                                >,
-                            >,
-                        >,
-                    >| {
-                        let mem_type = mem_props.choose_type(0);
-                        let alloc_info = vk_safe::device::allocate_memory::MemoryAllocateInfo::new(
-                            std::num::NonZeroU64::new(100).unwrap(),
-                            mem_type,
-                        );
-                        let mem = device.allocate_memory(&alloc_info);
-                        println!("{mem:?}");
-                    },
-                )();
+                scope(&device, |device| {
+                    let mem_type = mem_props.choose_type(0);
+                    let alloc_info = vk_safe::device::allocate_memory::MemoryAllocateInfo::new(
+                        std::num::NonZeroU64::new(100).unwrap(),
+                        mem_type,
+                    );
+                    let mem = device.allocate_memory(&alloc_info);
+                    println!("{mem:?}");
+                })();
 
                 println!("-------");
                 println!("{device:#?}");
