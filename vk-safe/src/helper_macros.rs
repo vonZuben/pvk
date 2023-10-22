@@ -138,7 +138,7 @@ macro_rules! pretty_version {
         $version_param:ident
     ) => {
         pub fn $version_param(&self) -> crate::pretty_version::VkVersion {
-            unsafe { crate::pretty_version::VkVersion::from_raw(self.$version_param) }
+            unsafe { crate::pretty_version::VkVersion::from_raw(self.inner.$version_param) }
         }
     };
 }
