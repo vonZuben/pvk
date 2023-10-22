@@ -1,6 +1,6 @@
 use super::command_impl_prelude::*;
 
-use crate::instance::{InstanceConfig, InstanceType};
+use crate::instance::{Config, InstanceType};
 use crate::pretty_version::VkVersion;
 use crate::vk_str::VkStr;
 
@@ -9,15 +9,21 @@ use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
+use vk::commands::{LoadCommands, Version};
+use vk::has_command::DestroyInstance;
+
 #[derive(Debug)]
 pub struct TempError;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
 */
-pub fn create_instance<C: InstanceConfig>(
+pub fn create_instance<P, C>(
     create_info: &InstanceCreateInfo<C>,
-) -> Result<InstanceType<C>, TempError> {
+) -> Result<InstanceType<Config<P, C>>, TempError>
+where
+    C: DestroyInstance<P> + Version + LoadCommands,
+{
     check_vuid_defs2!(CreateInstance
         pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list." . as_bytes ( ) ;
         CHECK {
@@ -56,13 +62,13 @@ pub fn create_instance<C: InstanceConfig>(
 }
 
 //===========InstanceCreateInfo
-pub struct InstanceCreateInfo<'a, C: InstanceConfig> {
+pub struct InstanceCreateInfo<'a, C> {
     pub(crate) inner: vk::InstanceCreateInfo,
     _config: PhantomData<C>,
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, C: InstanceConfig> InstanceCreateInfo<'a, C> {
+impl<'a, C> InstanceCreateInfo<'a, C> {
     pub const fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
         check_vuid_defs2!( InstanceCreateInfo
             pub const VUID_VkInstanceCreateInfo_sType_sType: &'static [u8] =
@@ -136,14 +142,14 @@ impl<'a, C: InstanceConfig> InstanceCreateInfo<'a, C> {
 }
 
 //===========ApplicationInfo
-pub struct ApplicationInfo<'a, C: InstanceConfig> {
+pub struct ApplicationInfo<'a, C> {
     inner: vk::ApplicationInfo,
     _config: PhantomData<C>,
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, C: InstanceConfig + Copy> ApplicationInfo<'a, C> {
-    pub const fn new(_config: C) -> Self {
+impl<'a> ApplicationInfo<'a, ()> {
+    pub const fn new<Commands: Version>() -> ApplicationInfo<'a, Commands> {
         check_vuid_defs2!( ApplicationInfo
             pub const VUID_VkApplicationInfo_sType_sType: &'static [u8] =
                 "sType must be VK_STRUCTURE_TYPE_APPLICATION_INFO".as_bytes();
@@ -167,8 +173,8 @@ impl<'a, C: InstanceConfig + Copy> ApplicationInfo<'a, C> {
             }
         );
 
-        let version = C::VERSION;
-        Self {
+        let version = VkVersion::from_triple(Commands::VersionTriple);
+        ApplicationInfo {
             inner: vk::ApplicationInfo {
                 s_type: vk::StructureType::APPLICATION_INFO,
                 p_next: std::ptr::null(),
@@ -182,7 +188,9 @@ impl<'a, C: InstanceConfig + Copy> ApplicationInfo<'a, C> {
             _refs: PhantomData,
         }
     }
+}
 
+impl<'a, C> ApplicationInfo<'a, C> {
     pub const fn app_name(mut self, name: VkStr<'a>) -> Self {
         self.inner.p_application_name = name.as_ptr();
         self

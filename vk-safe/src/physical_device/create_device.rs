@@ -1,5 +1,5 @@
 use super::*;
-use crate::device::{DeviceConfig, DeviceType};
+use crate::device::{Config, DeviceType};
 use crate::instance::Instance;
 use vk_safe_sys as vk;
 
@@ -9,7 +9,8 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use vk::has_command::CreateDevice;
+use vk::commands::{LoadCommands, Version};
+use vk::has_command::{CreateDevice, DestroyDevice};
 
 #[derive(Debug)]
 pub struct TempError;
@@ -18,12 +19,13 @@ pub struct TempError;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
 impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
-    pub fn create_device<P, C: DeviceConfig>(
+    pub fn create_device<Create, Destroy, Commands>(
         &self,
-        create_info: &DeviceCreateInfo<'_, C>,
-    ) -> Result<DeviceType<C, Self>, TempError>
+        create_info: &DeviceCreateInfo<'_, Commands>,
+    ) -> Result<DeviceType<Config<Destroy, Commands>, Self>, TempError>
     where
-        I::Commands: CreateDevice<P>,
+        I::Commands: CreateDevice<Create>,
+        Commands: DestroyDevice<Destroy> + LoadCommands + Version,
     {
         let mut device = MaybeUninit::uninit();
         unsafe {
@@ -43,14 +45,16 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
 }
 
 //===========InstanceCreateInfo
-pub struct DeviceCreateInfo<'a, C: DeviceConfig> {
+pub struct DeviceCreateInfo<'a, C> {
     pub(crate) inner: vk::DeviceCreateInfo,
     _config: PhantomData<C>,
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, C: DeviceConfig + Copy> DeviceCreateInfo<'a, C> {
-    pub const fn new(_config: C, queue_create_info: &'a [DeviceQueueCreateInfo]) -> Self {
+impl<'a> DeviceCreateInfo<'a, ()> {
+    pub const fn new<Commands>(
+        queue_create_info: &'a [DeviceQueueCreateInfo],
+    ) -> DeviceCreateInfo<'a, Commands> {
         check_vuid_defs2!( DeviceCreateInfo
             pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372: &'static [u8] = "".as_bytes();
             // VUID_VkDeviceCreateInfo_queueFamilyIndex_00372 appears to be a mistake since no definition is provided
@@ -130,7 +134,7 @@ impl<'a, C: DeviceConfig + Copy> DeviceCreateInfo<'a, C> {
             }
         );
 
-        Self {
+        DeviceCreateInfo {
             inner: vk::DeviceCreateInfo {
                 s_type: vk::StructureType::DEVICE_CREATE_INFO,
                 p_next: std::ptr::null(),

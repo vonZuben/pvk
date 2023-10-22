@@ -2,12 +2,13 @@
 #![recursion_limit = "256"]
 
 use vk_safe::entry::*;
-use vk_safe::instance::Config;
-// use vk_safe::instance::*;
 use vk_safe::scope::scope;
 
 use vk_safe::vk_str;
 use vk_safe_sys as vk;
+
+vk_safe::instance_context!(InstanceContext: VERSION_1_1);
+vk_safe::device_context!(DeviceContext: VERSION_1_0);
 
 fn main() {
     println!(
@@ -25,10 +26,7 @@ fn main() {
         println!("{e:#?}");
     }
 
-    vk_safe::instance_context!(MyCtx: VERSION_1_1);
-
-    let instance_config = Config::new::<MyCtx>();
-    let app_info = ApplicationInfo::new(instance_config)
+    let app_info = ApplicationInfo::new::<InstanceContext>()
         .app_name(vk_str!("My App"))
         .app_version(vk_safe::VkVersion::new(0, 0, 1));
     let instance_info = InstanceCreateInfo::new(&app_info);
@@ -100,14 +98,9 @@ fn main() {
 
                 println!("{:#?}", queue_family_configurations);
 
-                vk_safe::device_context!(MyDeviceCtx: VERSION_1_0);
-
-                let device_config = vk_safe::device::Config::new::<MyDeviceCtx>();
-
-                let device_create_info = vk_safe::physical_device::DeviceCreateInfo::new(
-                    device_config,
-                    &queue_family_configurations,
-                );
+                let device_create_info = vk_safe::physical_device::DeviceCreateInfo::new::<
+                    DeviceContext,
+                >(&queue_family_configurations);
 
                 let device = pd.create_device(&device_create_info).unwrap();
 

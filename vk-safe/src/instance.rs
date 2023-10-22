@@ -32,18 +32,6 @@ impl<P, Cmd> Clone for Config<P, Cmd> {
 
 impl<P, Cmd> Copy for Config<P, Cmd> {}
 
-impl<P> Config<P, ()> {
-    pub fn new<Cmd>() -> Config<P, Cmd>
-    where
-        Cmd: DestroyInstance<P>,
-    {
-        Config {
-            _drop_provider: PhantomData,
-            _commands: PhantomData,
-        }
-    }
-}
-
 impl<P, Cmd> InstanceConfig for Config<P, Cmd>
 where
     Cmd: LoadCommands + DestroyInstance<P> + Version,
