@@ -1,5 +1,6 @@
 use super::command_impl_prelude::*;
 
+use crate::error::Error;
 use crate::instance::{Config, InstanceType};
 use crate::pretty_version::VkVersion;
 use crate::vk_str::VkStr;
@@ -12,15 +13,12 @@ use vk_safe_sys as vk;
 use vk::commands::{LoadCommands, Version};
 use vk::has_command::DestroyInstance;
 
-#[derive(Debug)]
-pub struct TempError;
-
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
 */
 pub fn create_instance<P, C>(
     create_info: &InstanceCreateInfo<C>,
-) -> Result<InstanceType<Config<P, C>>, TempError>
+) -> Result<InstanceType<Config<P, C>>, Error>
 where
     C: DestroyInstance<P> + Version + LoadCommands,
 {
@@ -54,10 +52,8 @@ where
     let mut instance = MaybeUninit::uninit();
     unsafe {
         let res = command(&create_info.inner, None.to_c(), instance.as_mut_ptr());
-        if res.is_err() {
-            return Err(TempError);
-        }
-        Ok(InstanceType::load_commands(instance.assume_init()).map_err(|_| TempError)?)
+        check_raw_err!(res);
+        Ok(InstanceType::load_commands(instance.assume_init())?)
     }
 }
 

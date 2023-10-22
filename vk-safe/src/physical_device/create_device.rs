@@ -1,5 +1,6 @@
 use super::*;
 use crate::device::{Config, DeviceType};
+use crate::error::Error;
 use crate::instance::Instance;
 use vk_safe_sys as vk;
 
@@ -12,9 +13,6 @@ use std::mem::MaybeUninit;
 use vk::commands::{LoadCommands, Version};
 use vk::has_command::{CreateDevice, DestroyDevice};
 
-#[derive(Debug)]
-pub struct TempError;
-
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
@@ -22,7 +20,7 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
     pub fn create_device<Create, Destroy, Commands>(
         &self,
         create_info: &DeviceCreateInfo<'_, Commands>,
-    ) -> Result<DeviceType<Config<Destroy, Commands>, Self>, TempError>
+    ) -> Result<DeviceType<Config<Destroy, Commands>, Self>, Error>
     where
         I::Commands: CreateDevice<Create>,
         Commands: DestroyDevice<Destroy> + LoadCommands + Version,
@@ -35,11 +33,8 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
                 std::ptr::null(),
                 device.as_mut_ptr(),
             );
-            if res.is_err() {
-                Err(TempError)
-            } else {
-                Ok(DeviceType::load_commands(device.assume_init()).map_err(|_| TempError)?)
-            }
+            check_raw_err!(res);
+            Ok(DeviceType::load_commands(device.assume_init())?)
         }
     }
 }
