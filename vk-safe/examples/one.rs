@@ -59,6 +59,12 @@ fn main() {
                         .unwrap()
                 );
 
+                println!("---Device Layers----");
+                println!(
+                    "{:#?}",
+                    pd.enumerate_device_layer_properties(Vec::new()).unwrap()
+                );
+
                 //test getting format properties
                 let srgb_properties =
                     pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
