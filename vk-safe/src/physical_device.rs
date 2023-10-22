@@ -96,6 +96,7 @@ impl<'s, I: Instance, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
 }
 
 mod create_device;
+mod enumerate_device_extension_properties;
 mod get_physical_device_features;
 mod get_physical_device_format_properties;
 mod get_physical_device_image_format_properties;
