@@ -17,7 +17,7 @@ macro_rules! enumerator_code2 {
         use std::convert::TryInto;
         use crate::array_storage::VulkanLenType;
         #[allow(unused)]
-        use crate::safe_interface::type_conversions::ToC;
+        use crate::safe_interface::type_conversions::{ToC, TransmuteUninitSlice};
         let len = || {
             let mut num = 0;
             let res;
@@ -32,7 +32,7 @@ macro_rules! enumerator_code2 {
         let mut len = crate::array_storage::VulkanLenType::from_usize(uninit_slice.len());
         let res;
         unsafe {
-            res = $command($($param.to_c(),)* &mut len, uninit_slice.as_mut_ptr().cast());
+            res = $command($($param.to_c(),)* &mut len, uninit_slice.safe_transmute_uninit_slice());
             check_raw_err!(res);
         }
         let ret: Result<_, crate::error::Error> = Ok($storage.finalize(len.to_usize()));
@@ -48,6 +48,15 @@ macro_rules! simple_struct_wrapper {
         #[repr(transparent)]
         pub struct $name {
             inner: vk_safe_sys::$name,
+        }
+
+        unsafe impl crate::safe_interface::type_conversions::SafeTransmute<$name>
+            for vk_safe_sys::$name
+        {
+        }
+        unsafe impl crate::safe_interface::type_conversions::SafeTransmute<vk_safe_sys::$name>
+            for $name
+        {
         }
 
         impl std::ops::Deref for $name {
@@ -75,6 +84,7 @@ macro_rules! simple_struct_wrapper_scoped {
         }
 
         unsafe impl crate::safe_interface::type_conversions::SafeTransmute<$name<'_>> for vk_safe_sys::$name {}
+        unsafe impl crate::safe_interface::type_conversions::SafeTransmute<vk_safe_sys::$name> for $name<'_> {}
 
         impl<'scope> $name<'scope> {
             #[allow(unused)]

@@ -17,7 +17,6 @@ fn entry_fn_loader<C: vk::VulkanCommand>() -> Option<C> {
 // The following is imported by each command impl module
 mod command_impl_prelude {
     pub use crate::array_storage::{ArrayStorage, VulkanLenType};
-    pub use crate::safe_interface::type_conversions::*;
     pub use vk_safe_sys as vk;
 }
 

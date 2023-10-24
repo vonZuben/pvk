@@ -1,6 +1,6 @@
 use super::*;
 use crate::instance::Instance;
-use crate::safe_interface::type_conversions::TransmuteArray;
+use crate::safe_interface::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceMemoryProperties;
@@ -57,7 +57,7 @@ impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
             self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _,
             "error: vulkan implementation reporting invalid memory_type_count"
         );
-        (&self.inner.memory_types[..self.inner.memory_type_count as _]).safe_transmute()
+        (&self.inner.memory_types[..self.inner.memory_type_count as _]).safe_transmute_slice()
     }
 
     pub fn memory_heaps(&self) -> &[MemoryHeap<'scope>] {
@@ -65,7 +65,7 @@ impl<'scope> PhysicalDeviceMemoryProperties<'scope> {
             self.inner.memory_heap_count < vk::MAX_MEMORY_HEAPS as _,
             "error: vulkan implementation reporting invalid memory_heap_count"
         );
-        (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute()
+        (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute_slice()
     }
 
     pub fn choose_type<'a>(&'a self, index: u32) -> MemoryTypeChoice<'scope> {

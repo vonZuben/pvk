@@ -4,7 +4,7 @@ use crate::error::Error;
 use crate::instance::Instance;
 use vk_safe_sys as vk;
 
-use crate::safe_interface::type_conversions::transmute_array;
+use crate::safe_interface::type_conversions::transmute_slice;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -135,7 +135,7 @@ impl<'a> DeviceCreateInfo<'a, ()> {
                 p_next: std::ptr::null(),
                 flags: vk::DeviceCreateFlags::empty(),
                 queue_create_info_count: queue_create_info.len() as u32,
-                p_queue_create_infos: transmute_array(queue_create_info).as_ptr(),
+                p_queue_create_infos: transmute_slice(queue_create_info).as_ptr(),
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),
                 enabled_extension_count: 0,

@@ -130,7 +130,6 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
 mod command_impl_prelude {
     pub use super::ScopedInstanceType;
     pub use crate::array_storage::{ArrayStorage, VulkanLenType};
-    pub use crate::safe_interface::type_conversions::*;
     pub use vk_safe_sys as vk;
     pub use vk_safe_sys::{VulkanExtension, VulkanVersion};
 }
