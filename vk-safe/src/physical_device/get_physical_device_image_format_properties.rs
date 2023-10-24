@@ -13,18 +13,19 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
     #[track_caller]
     pub fn get_physical_device_image_format_properties<P>(
         &self,
-        params: GetPhysicalDeviceImageFormatPropertiesParams,
+        params: GetPhysicalDeviceImageFormatPropertiesParameters,
     ) -> Result<ImageFormatProperties<'scope>, vk::Result>
     where
         I::Commands: GetPhysicalDeviceImageFormatProperties<P>,
     {
         let mut properties = MaybeUninit::uninit();
+        let command = self
+            .instance
+            .commands
+            .GetPhysicalDeviceImageFormatProperties()
+            .get_fptr();
         unsafe {
-            let res = self
-                .instance
-                .commands
-                .GetPhysicalDeviceImageFormatProperties()
-                .get_fptr()(
+            let res = command(
                 self.handle,
                 params.format,
                 params.image_type,
@@ -34,20 +35,21 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
                 properties.as_mut_ptr(),
             );
             check_raw_err!(res);
-            Ok(ImageFormatProperties::new(properties.assume_init()))
+            Ok(ImageFormatProperties::new(properties.assume_init(), params))
         }
     }
 }
 
-pub struct GetPhysicalDeviceImageFormatPropertiesParams {
-    format: vk::Format,
-    image_type: vk::ImageType,
-    image_tiling: vk::ImageTiling,
-    usage_flags: vk::ImageUsageFlags,
-    create_flags: vk::ImageCreateFlags,
+#[derive(Clone, Copy)]
+pub struct GetPhysicalDeviceImageFormatPropertiesParameters {
+    pub(crate) format: vk::Format,
+    pub(crate) image_type: vk::ImageType,
+    pub(crate) image_tiling: vk::ImageTiling,
+    pub(crate) usage_flags: vk::ImageUsageFlags,
+    pub(crate) create_flags: vk::ImageCreateFlags,
 }
 
-impl GetPhysicalDeviceImageFormatPropertiesParams {
+impl GetPhysicalDeviceImageFormatPropertiesParameters {
     pub const fn new(
         format: vk::Format,
         image_type: vk::ImageType,
@@ -191,4 +193,38 @@ impl GetPhysicalDeviceImageFormatPropertiesParams {
     }
 }
 
-simple_struct_wrapper_scoped!(ImageFormatProperties impl Debug);
+// simple_struct_wrapper_scoped!(ImageFormatProperties impl Debug);
+
+#[derive(Clone, Copy)]
+pub struct ImageFormatProperties<'scope> {
+    pub(crate) inner: vk::ImageFormatProperties,
+    pub(crate) params: GetPhysicalDeviceImageFormatPropertiesParameters,
+    _scope: crate::scope::ScopeId<'scope>,
+}
+
+impl<'scope> ImageFormatProperties<'scope> {
+    fn new(
+        inner: vk::ImageFormatProperties,
+        params: GetPhysicalDeviceImageFormatPropertiesParameters,
+    ) -> Self {
+        Self {
+            inner,
+            params,
+            _scope: Default::default(),
+        }
+    }
+}
+
+impl std::fmt::Debug for ImageFormatProperties<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.inner.fmt(f)
+    }
+}
+
+impl std::ops::Deref for ImageFormatProperties<'_> {
+    type Target = vk::ImageFormatProperties;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}

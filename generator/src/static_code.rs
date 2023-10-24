@@ -87,6 +87,12 @@ impl krs_quote::ToTokens for StaticCode {
                         pub const fn or(self, other: $name) -> Self {
                             Self(self.0 | other.0)
                         }
+
+                        /// return the number of set bits
+                        #[inline]
+                        pub const fn count_bits(self) -> $ty_name {
+                            self.0.count_ones()
+                        }
                     }
 
                     impl ::std::ops::BitOr for $name {

@@ -104,10 +104,11 @@ mod get_physical_device_image_format_properties;
 mod get_physical_device_memory_properties;
 mod get_physical_device_properties;
 mod get_physical_device_queue_family_properties;
+mod get_physical_device_sparse_image_format_properties;
 
 // use get_physical_device_features::*;
 // use get_physical_device_format_properties::*;
-pub use get_physical_device_image_format_properties::GetPhysicalDeviceImageFormatPropertiesParams;
+pub use get_physical_device_image_format_properties::GetPhysicalDeviceImageFormatPropertiesParameters;
 // use get_physical_device_properties::*;
 use create_device::*;
 pub use create_device::{DeviceCreateInfo, QueuePriorities};

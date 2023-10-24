@@ -71,8 +71,8 @@ fn main() {
                 println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
 
                 const PARAMS:
-                    vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParams =
-                    vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParams::new(
+                    vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParameters =
+                    vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParameters::new(
                         vk::Format::R8G8B8A8_SRGB,
                         vk::ImageType::TYPE_2D,
                         vk::ImageTiling::OPTIMAL,
@@ -85,6 +85,16 @@ fn main() {
                     .get_physical_device_image_format_properties(PARAMS)
                     .unwrap();
                 println!("{tst_image_format_properties:#?}");
+                let sparse_image_format_properties = pd
+                    .get_physical_device_sparse_image_format_properties(
+                        vk::SampleCountFlags::TYPE_1_BIT,
+                        tst_image_format_properties,
+                        Vec::new(),
+                    )
+                    .unwrap();
+                println!("---spare properties for above image format properties----");
+                println!("{sparse_image_format_properties:#?}");
+
                 println!("-------");
                 let queue_family_properties = pd
                     .get_physical_device_queue_family_properties(Vec::new())
