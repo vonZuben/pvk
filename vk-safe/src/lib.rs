@@ -7,13 +7,13 @@ mod pretty_version;
 mod helper_macros;
 
 mod array_storage;
+mod type_conversions;
 mod vk_str;
 
 pub mod device;
 pub mod entry; // not finalized on if this should be pub
 pub mod instance;
 pub mod physical_device;
-pub mod safe_interface;
 pub mod scope;
 
 pub use pretty_version::VkVersion;

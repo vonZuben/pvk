@@ -1,6 +1,6 @@
 use super::*;
 use crate::instance::Instance;
-use crate::safe_interface::type_conversions::TransmuteSlice;
+use crate::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceMemoryProperties;

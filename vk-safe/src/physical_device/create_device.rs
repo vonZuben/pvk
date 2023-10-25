@@ -4,7 +4,7 @@ use crate::error::Error;
 use crate::instance::Instance;
 use vk_safe_sys as vk;
 
-use crate::safe_interface::type_conversions::transmute_slice;
+use crate::type_conversions::{transmute_slice, SafeTransmute};
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -155,10 +155,7 @@ pub struct DeviceQueueCreateInfo<'a> {
     _refs: PhantomData<&'a ()>,
 }
 
-unsafe impl crate::safe_interface::type_conversions::SafeTransmute<vk::DeviceQueueCreateInfo>
-    for DeviceQueueCreateInfo<'_>
-{
-}
+unsafe impl SafeTransmute<vk::DeviceQueueCreateInfo> for DeviceQueueCreateInfo<'_> {}
 
 impl DeviceQueueCreateInfo<'_> {
     array!(queue_priorities, p_queue_priorities, queue_count, f32);

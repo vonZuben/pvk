@@ -1,5 +1,5 @@
 use crate::pretty_version::VkVersion;
-use crate::safe_interface::type_conversions::ToC;
+use crate::type_conversions::ToC;
 use std::marker::PhantomData;
 use vk_safe_sys as vk;
 

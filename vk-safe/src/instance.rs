@@ -1,4 +1,4 @@
-use crate::safe_interface::type_conversions::ToC;
+use crate::type_conversions::ToC;
 use vk_safe_sys as vk;
 
 use crate::scope::{Scope, Scoped};
