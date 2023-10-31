@@ -70,14 +70,34 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         vk_parse::TypeSpec::None => {}
                                         _ => panic!("error: unhandled struct TypSpec node"),
                                     },
-                                    Some("basetype") => match ty.spec {
-                                        vk_parse::TypeSpec::Code(ref code) => {
-                                            let basetype = parse_basetype(&code.code)
-                                                .expect("error: can't parse basetype in vk_parse");
-                                            visitor.visit_basetype(basetype);
+                                    Some("basetype") => {
+                                        match ty.spec {
+                                            vk_parse::TypeSpec::Code(ref code) => {
+                                                if let Ok(basetype) = parse_basetype(&code.code) {
+                                                    visitor.visit_basetype(basetype);
+                                                } else if let Ok(extern_type) =
+                                                    parse_external_opaque_type(&code.code)
+                                                {
+                                                    visitor.visit_external_type(extern_type);
+                                                } else if code.code.contains("#ifdef __OBJC__") {
+                                                    if code.markup.len() != 1 {
+                                                        panic!("error: can't parse __OBJC__ extern type?");
+                                                    } else {
+                                                        match &code.markup[0] {
+                                                            vk_parse::TypeCodeMarkup::Name(name) => visitor.visit_external_type(name.into()),
+                                                            _ => panic!("error: unexpected definition in #ifdef __OBJC__"),
+                                                        };
+                                                    }
+                                                } else {
+                                                    panic!(
+                                                        "error: can't parse basetype code: {}",
+                                                        code.code
+                                                    );
+                                                }
+                                            }
+                                            _ => panic!("unexpected basetype spec"),
                                         }
-                                        _ => panic!("unexpected basetype spec"),
-                                    },
+                                    }
                                     Some("bitmask") => match ty.spec {
                                         vk_parse::TypeSpec::Code(ref code) => {
                                             let basetype = parse_basetype(&code.code)
