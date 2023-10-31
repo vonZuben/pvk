@@ -192,6 +192,12 @@ impl fmt::Display for TokenStream {
     }
 }
 
+impl ToTokens for TokenStream {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.0.extend(self.0.iter().cloned())
+    }
+}
+
 #[doc(hidden)]
 #[derive(Copy, Clone, Debug)]
 pub struct RawToken(pub &'static str);
