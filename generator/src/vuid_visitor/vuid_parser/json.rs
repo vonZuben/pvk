@@ -18,8 +18,8 @@ impl<'a> VuidJsonStrParser<'a> {
 impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
     fn parse_with(mut self, visitor: &mut impl crate::vuid_visitor::VuidVisitor<'a>) {
         let mut get_line = || {
-            for (i, c) in self.json.chars().enumerate() {
-                if c == '\n' {
+            for (i, c) in self.json.bytes().enumerate() {
+                if c == b'\n' {
                     let line = &self.json[..i];
                     self.json = &self.json[i + 1..];
                     return Some(line);
