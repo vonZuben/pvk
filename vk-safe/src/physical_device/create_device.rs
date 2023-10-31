@@ -51,12 +51,15 @@ impl<'a> DeviceCreateInfo<'a, ()> {
         queue_create_info: &'a [DeviceQueueCreateInfo],
     ) -> DeviceCreateInfo<'a, Commands> {
         check_vuid_defs2!( DeviceCreateInfo
-            pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372: &'static [u8] = "".as_bytes();
+            pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372 : & 'static [ u8 ] = "The queueFamilyIndex member of each element of pQueueCreateInfos must be unique within pQueueCreateInfos" . as_bytes ( ) ;
+            CHECK {
+                // the way of creating a DeviceQueueCreateInfo ensures unique indices
+            }
             // VUID_VkDeviceCreateInfo_queueFamilyIndex_00372 appears to be a mistake since no definition is provided
             pub const VUID_VkDeviceCreateInfo_sType_sType: &'static [u8] =
                 "sType must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO".as_bytes();
             // s_type is set below
-            pub const VUID_VkDeviceCreateInfo_pNext_pNext : & 'static [ u8 ] = "Each pNext member of any structure (including this one) in the pNext chain must be either NULL or a pointer to a valid instance of VkDeviceGroupDeviceCreateInfo, VkDeviceMemoryOverallocationCreateInfoAMD, VkPhysicalDevice16BitStorageFeatures, VkPhysicalDevice8BitStorageFeaturesKHR, VkPhysicalDeviceASTCDecodeFeaturesEXT, VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT, VkPhysicalDeviceBufferAddressFeaturesEXT, VkPhysicalDeviceComputeShaderDerivativesFeaturesNV, VkPhysicalDeviceConditionalRenderingFeaturesEXT, VkPhysicalDeviceCornerSampledImageFeaturesNV, VkPhysicalDeviceDescriptorIndexingFeaturesEXT, VkPhysicalDeviceExclusiveScissorFeaturesNV, VkPhysicalDeviceFeatures2, VkPhysicalDeviceFloat16Int8FeaturesKHR, VkPhysicalDeviceFragmentDensityMapFeaturesEXT, VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV, VkPhysicalDeviceInlineUniformBlockFeaturesEXT, VkPhysicalDeviceMemoryPriorityFeaturesEXT, VkPhysicalDeviceMeshShaderFeaturesNV, VkPhysicalDeviceMultiviewFeatures, VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV, VkPhysicalDeviceSamplerYcbcrConversionFeatures, VkPhysicalDeviceScalarBlockLayoutFeaturesEXT, VkPhysicalDeviceShaderAtomicInt64FeaturesKHR, VkPhysicalDeviceShaderDrawParameterFeatures, VkPhysicalDeviceShaderImageFootprintFeaturesNV, VkPhysicalDeviceShadingRateImageFeaturesNV, VkPhysicalDeviceTransformFeedbackFeaturesEXT, VkPhysicalDeviceVariablePointerFeatures, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT, or VkPhysicalDeviceVulkanMemoryModelFeaturesKHR" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_pNext_pNext : & 'static [ u8 ] = "Each pNext member of any structure (including this one) in the pNext chain must be either NULL or a pointer to a valid instance of VkDeviceDiagnosticsConfigCreateInfoNV, VkDeviceGroupDeviceCreateInfo, VkDeviceMemoryOverallocationCreateInfoAMD, VkPhysicalDevice16BitStorageFeatures, VkPhysicalDevice8BitStorageFeatures, VkPhysicalDeviceASTCDecodeFeaturesEXT, VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT, VkPhysicalDeviceBufferDeviceAddressFeatures, VkPhysicalDeviceBufferDeviceAddressFeaturesEXT, VkPhysicalDeviceCoherentMemoryFeaturesAMD, VkPhysicalDeviceComputeShaderDerivativesFeaturesNV, VkPhysicalDeviceConditionalRenderingFeaturesEXT, VkPhysicalDeviceCooperativeMatrixFeaturesNV, VkPhysicalDeviceCornerSampledImageFeaturesNV, VkPhysicalDeviceCoverageReductionModeFeaturesNV, VkPhysicalDeviceCustomBorderColorFeaturesEXT, VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV, VkPhysicalDeviceDepthClipEnableFeaturesEXT, VkPhysicalDeviceDescriptorIndexingFeatures, VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV, VkPhysicalDeviceDiagnosticsConfigFeaturesNV, VkPhysicalDeviceExclusiveScissorFeaturesNV, VkPhysicalDeviceFeatures2, VkPhysicalDeviceFragmentDensityMapFeaturesEXT, VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV, VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT, VkPhysicalDeviceHostQueryResetFeatures, VkPhysicalDeviceImagelessFramebufferFeatures, VkPhysicalDeviceIndexTypeUint8FeaturesEXT, VkPhysicalDeviceInlineUniformBlockFeaturesEXT, VkPhysicalDeviceLineRasterizationFeaturesEXT, VkPhysicalDeviceMemoryPriorityFeaturesEXT, VkPhysicalDeviceMeshShaderFeaturesNV, VkPhysicalDeviceMultiviewFeatures, VkPhysicalDevicePerformanceQueryFeaturesKHR, VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT, VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR, VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceRayTracingFeaturesKHR, VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV, VkPhysicalDeviceRobustness2FeaturesEXT, VkPhysicalDeviceSamplerYcbcrConversionFeatures, VkPhysicalDeviceScalarBlockLayoutFeatures, VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures, VkPhysicalDeviceShaderAtomicInt64Features, VkPhysicalDeviceShaderClockFeaturesKHR, VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT, VkPhysicalDeviceShaderDrawParametersFeatures, VkPhysicalDeviceShaderFloat16Int8Features, VkPhysicalDeviceShaderImageFootprintFeaturesNV, VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL, VkPhysicalDeviceShaderSMBuiltinsFeaturesNV, VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures, VkPhysicalDeviceShadingRateImageFeaturesNV, VkPhysicalDeviceSubgroupSizeControlFeaturesEXT, VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT, VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT, VkPhysicalDeviceTimelineSemaphoreFeatures, VkPhysicalDeviceTransformFeedbackFeaturesEXT, VkPhysicalDeviceUniformBufferStandardLayoutFeatures, VkPhysicalDeviceVariablePointersFeatures, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT, VkPhysicalDeviceVulkan11Features, VkPhysicalDeviceVulkan12Features, VkPhysicalDeviceVulkanMemoryModelFeatures, or VkPhysicalDeviceYcbcrImageArraysFeaturesEXT" . as_bytes ( ) ;
             CHECK {
                 // ******************************************
                 // *****************TODO*********************
@@ -64,7 +67,7 @@ impl<'a> DeviceCreateInfo<'a, ()> {
                 // need check when add p_next support
             }
             pub const VUID_VkDeviceCreateInfo_sType_unique: &'static [u8] =
-                "Each sType member in the pNext chain must be unique".as_bytes();
+                "The sType value of each struct in the pNext chain must be unique".as_bytes();
             CHECK {
                 // ******************************************
                 // *****************TODO*********************
@@ -127,6 +130,15 @@ impl<'a> DeviceCreateInfo<'a, ()> {
                 // ******************************************
                 // need check when support extensions
             }
+            pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_02802 : & 'static [ u8 ] = "The queueFamilyIndex member of each element of pQueueCreateInfos must be unique within pQueueCreateInfos, except that two members can share the same queueFamilyIndex if one is a protected-capable queue and one is not a protected-capable queue" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_03328 : & 'static [ u8 ] = "ppEnabledExtensionNames must not contain both VK_KHR_buffer_device_address and VK_EXT_buffer_device_address" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_pNext_02829 : & 'static [ u8 ] = "If the pNext chain includes a VkPhysicalDeviceVulkan11Features structure, then it must not include a VkPhysicalDevice16BitStorageFeatures, VkPhysicalDeviceMultiviewFeatures, VkPhysicalDeviceVariablePointersFeatures, VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceSamplerYcbcrConversionFeatures, or VkPhysicalDeviceShaderDrawParametersFeatures structure" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_pNext_02830 : & 'static [ u8 ] = "If the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then it must not include a VkPhysicalDevice8BitStorageFeatures, VkPhysicalDeviceShaderAtomicInt64Features, VkPhysicalDeviceShaderFloat16Int8Features, VkPhysicalDeviceDescriptorIndexingFeatures, VkPhysicalDeviceScalarBlockLayoutFeatures, VkPhysicalDeviceImagelessFramebufferFeatures, VkPhysicalDeviceUniformBufferStandardLayoutFeatures, VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures, VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures, VkPhysicalDeviceHostQueryResetFeatures, VkPhysicalDeviceTimelineSemaphoreFeatures, VkPhysicalDeviceBufferDeviceAddressFeatures, or VkPhysicalDeviceVulkanMemoryModelFeatures structure" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02831 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_KHR_draw_indirect_count\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::drawIndirectCount must be VK_TRUE" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02832 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_KHR_sampler_mirror_clamp_to_edge\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerMirrorClampToEdge must be VK_TRUE" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02833 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_EXT_descriptor_indexing\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::descriptorIndexing must be VK_TRUE" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02834 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_EXT_sampler_filter_minmax\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerFilterMinmax must be VK_TRUE" . as_bytes ( ) ;
+            pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02835 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_EXT_shader_viewport_index_layer\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex and VkPhysicalDeviceVulkan12Features::shaderOutputLayer must both be VK_TRUE" . as_bytes ( ) ;
         );
 
         DeviceCreateInfo {
@@ -324,6 +336,9 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope>
             CHECK {
                 // guaranteed by QueuePriorities
             }
+            pub const VUID_VkDeviceQueueCreateInfo_sType_unique: &'static [u8] =
+            "The sType value of each struct in the pNext chain must be unique".as_bytes();
+            pub const VUID_VkDeviceQueueCreateInfo_flags_02861 : & 'static [ u8 ] = "If the protected memory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT bit of flags must not be set" . as_bytes ( ) ;
         );
 
         let info = DeviceQueueCreateInfo {
@@ -392,6 +407,9 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope>
             CHECK {
                 // guaranteed by QueuePriorities
             }
+            pub const VUID_VkDeviceQueueCreateInfo_sType_unique: &'static [u8] =
+            "The sType value of each struct in the pNext chain must be unique".as_bytes();
+            pub const VUID_VkDeviceQueueCreateInfo_flags_02861 : & 'static [ u8 ] = "If the protected memory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT bit of flags must not be set" . as_bytes ( ) ;
         );
 
         if priorities_for_non_protected.len() > 0 {

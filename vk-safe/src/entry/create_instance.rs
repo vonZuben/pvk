@@ -22,7 +22,7 @@ where
     C: DestroyInstance<P> + Version + LoadCommands,
 {
     check_vuid_defs2!(CreateInstance
-        pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list." . as_bytes ( ) ;
+        pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list" . as_bytes ( ) ;
         CHECK {
              // checked in InstanceCreateInfo construction
         }
@@ -81,7 +81,7 @@ impl<'a, C> InstanceCreateInfo<'a, C> {
                 */
             }
             pub const VUID_VkInstanceCreateInfo_sType_unique: &'static [u8] =
-                "Each sType member in the pNext chain must be unique".as_bytes();
+                "The sType value of each struct in the pNext chain must be unique".as_bytes();
             CHECK {
                 /*
                 ===========================================
@@ -166,6 +166,9 @@ impl<'a> ApplicationInfo<'a, ()> {
             CHECK {
                 // VkStr ensures null-terminated UTF-8 string
             }
+            pub const VUID_VkApplicationInfo_apiVersion_04010: &'static [u8] =
+            "If apiVersion is not 0, then it must be greater or equal to VK_API_VERSION_1_0"
+                .as_bytes();
         );
 
         let version = VkVersion::from_triple(Commands::VersionTriple);

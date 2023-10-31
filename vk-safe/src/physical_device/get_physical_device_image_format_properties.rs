@@ -65,7 +65,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         use vk::image_usage_flag_bits::*;
 
         check_vuid_defs2! { GetPhysicalDeviceImageFormatProperties
-            pub const VUID_vkGetPhysicalDeviceImageFormatProperties_tiling_02248 : & 'static [ u8 ] = "tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)." . as_bytes ( ) ;
+            pub const VUID_vkGetPhysicalDeviceImageFormatProperties_tiling_02248 : & 'static [ u8 ] = "tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2 instead)" . as_bytes ( ) ;
             CHECK {
                 assert!(!image_tiling.is(DRM_FORMAT_MODIFIER_EXT));
             }
