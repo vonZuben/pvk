@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use krs_quote::krs_quote_with;
+use krs_quote::{krs_quote, krs_quote_with, TokenStream};
 
 use crate::utils::{self, case};
 
@@ -117,15 +117,14 @@ impl krs_quote::ToTokens for CtypeInner {
         let bt = &self.basetype;
         let array = &self.array;
 
-        if array.len() > 1 {
-            panic!("handling of multidimensional arrays is not good right now");
-        }
+        let bt = krs_quote!({@bt});
 
-        if let Some(size) = array.iter().next() {
-            krs_quote_with!(tokens <- [ {@bt} ; {@size}] );
-        } else {
-            krs_quote_with!(tokens <- {@bt} );
-        }
+        let bt = array.iter().rev().fold(
+            bt,
+            |prev, array_dim| krs_quote!( [ {@prev} ; {@array_dim} ] ),
+        );
+
+        krs_quote_with!(tokens <- {@bt});
     }
 }
 
