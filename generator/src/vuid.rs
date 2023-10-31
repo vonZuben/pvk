@@ -59,7 +59,7 @@ impl ToTokens for TargetVuids<'_> {
         let vuid_names = self
             .vuid_pairs
             .iter()
-            .map(|p| p.name().replace("-", "_").as_code());
+            .map(|p| p.name().replace("-", "_").replace("::", "_").as_code());
         let descriptions = self.vuid_pairs.iter().map(|p| p.description());
         let docs = descriptions
             .clone()
