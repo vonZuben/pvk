@@ -4,6 +4,8 @@
 use vk_safe::entry::*;
 use vk_safe::scope::scope;
 
+use vk_safe::physical_device::DeviceCreateInfo;
+
 use vk_safe::vk_str;
 use vk_safe_sys as vk;
 
@@ -26,12 +28,12 @@ fn main() {
         println!("{e:#?}");
     }
 
-    let app_info = ApplicationInfo::new::<InstanceContext>()
+    const APP_INFO: ApplicationInfo<InstanceContext> = ApplicationInfo::new()
         .app_name(vk_str!("My App"))
         .app_version(vk_safe::VkVersion::new(0, 0, 1));
-    let instance_info = InstanceCreateInfo::new(&app_info);
+    const INSTANCE_INFO: InstanceCreateInfo<InstanceContext> = InstanceCreateInfo::new(&APP_INFO);
 
-    let instance = vk_safe::create_instance(&instance_info).unwrap();
+    let instance = vk_safe::create_instance(&INSTANCE_INFO).unwrap();
 
     println!("-------");
     println!("{instance:?}");
