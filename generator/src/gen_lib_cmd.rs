@@ -1,24 +1,15 @@
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use std::env::var_os;
 
-fn main() -> Result<()> {
-    let mut args = std::env::args();
-    let current_exe = std::env::current_exe().unwrap();
-    let current_exe = current_exe.to_string_lossy();
+mod sdk;
 
-    let mut get_input_arg = || {
-        let arg = args.next()?;
-        if current_exe.contains(&arg) {
-            args.next()
-        } else {
-            Some(arg)
-        }
-    };
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let sdk_path =
+        sdk::sdk_registry_path().ok_or("error: need to set environment for Vulkan SDK")?;
+    let vk_xml_path = sdk_path.join("vk.xml");
+    let vuid_path = sdk_path.join("validusage.json");
 
-    const INPUT_ERROR_MSG: &str =
-        "please provide paths to vk.xml, validusage.json, and output directory";
-    let vk_xml = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
-    let vuid = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
-    let out_dir = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
+    let out_path =
+        var_os("TMP_LIB_DIR").ok_or("error: must set TMP_LIB_DIR for output directory")?;
 
-    generator::generate_library(&out_dir, &vk_xml, &vuid)
+    generator::generate_library(&out_path, &vk_xml_path, &vuid_path)
 }

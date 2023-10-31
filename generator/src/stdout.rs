@@ -2,38 +2,44 @@ use generator::parse_vk_xml;
 
 use krs_quote::krs_quote;
 
+use std::env::var_os;
+use std::path::Path;
+
+use std::fs::OpenOptions;
+use std::{
+    io::{Read, Write},
+    process::{Command, Stdio},
+};
+
 #[macro_use]
 mod code_parts;
 
+mod sdk;
+
+/// This program will output the generated code to stdout, or to a single file if a file name is provided
+///
+/// Vulkan SDK path set in the environment to find the input files if set
+/// if TMP_OUT_FILE is set in the environment, then output to the file indicated by such
+/// otherwise write to stdout
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = std::env::args();
-    let current_exe = std::env::current_exe().unwrap();
-    let current_exe = current_exe.to_string_lossy();
+    let sdk_path =
+        sdk::sdk_registry_path().ok_or("error: need to set environment for Vulkan SDK")?;
+    let vk_xml_path = sdk_path.join("vk.xml");
+    let vuid_path = sdk_path.join("validusage.json");
 
-    let mut get_input_arg = || {
-        let arg = args.next()?;
-        if current_exe.contains(&arg) {
-            args.next()
-        } else {
-            Some(arg)
-        }
-    };
+    let out_path = var_os("TMP_OUT_FILE");
 
-    const INPUT_ERROR_MSG: &str = "please provide paths to vk.xml and validusage.json";
-    let vk_xml = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
-    let vuid = get_input_arg().ok_or(INPUT_ERROR_MSG)?;
-
-    let code = parse_vk_xml(vk_xml, vuid);
-
-    print!("{}", prelude());
-
-    macro_rules! print_code_parts {
-        ( $($module:ident,)* ) => {
-            $( print!("{}", code.$module()); )*
-        };
+    if out_path.is_none() {
+        eprintln!("set TMP_OUT_FILE if you want to output to a file");
     }
 
-    code_parts!(print_code_parts());
+    let code = parse_vk_xml(vk_xml_path, vuid_path);
+
+    if let Some(out_path) = out_path {
+        create_file(out_path.as_ref(), &code)?;
+    } else {
+        write_stdout(&code);
+    }
 
     Ok(())
 }
@@ -44,4 +50,57 @@ fn prelude() -> String {
         fn main(){println!("Success")}
     }
     .to_string()
+}
+
+fn write_stdout(code: &generator::Code) {
+    print!("{}", prelude());
+    macro_rules! print_code_parts {
+        ( $($module:ident,)* ) => {
+            $( print!("{}", code.$module()); )*
+        };
+    }
+    code_parts!(print_code_parts());
+}
+
+/// output to file
+fn create_file(out_path: &Path, code: &generator::Code) -> Result<(), Box<dyn std::error::Error>> {
+    let formatter = Command::new("rustfmt")
+        .args(&["--emit", "stdout"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    let prelude = prelude();
+    let byte_iter = prelude.as_bytes().iter();
+    macro_rules! collect_code_parts {
+        ( $to:ident $($module:ident,)* ) => {
+            $( let $to = $to.chain(code.$module().as_bytes()); )*
+        };
+    }
+    code_parts!(collect_code_parts() byte_iter);
+
+    // I tried writing bit by bit to the formatter, but it seems the formatter freezes when I do so
+    // thus, I buffer everything and write it all at once.
+    let buffer: Vec<u8> = byte_iter.copied().collect();
+
+    formatter
+        .stdin
+        .ok_or("Error: no stdin for rustfmt")?
+        .write(&buffer)?;
+
+    let mut formatted_code = Vec::new();
+    formatter
+        .stdout
+        .ok_or("Error: failed to get formatted code")?
+        .read_to_end(&mut formatted_code)?;
+
+    let dest_path = Path::new(out_path);
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(dest_path)?;
+
+    file.write(&formatted_code)?;
+    file.set_len(formatted_code.len() as _).map_err(Into::into)
 }
