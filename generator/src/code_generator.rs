@@ -115,8 +115,8 @@ impl<'a> Generator<'a> {
     }
 
     pub fn structs(&self) -> String {
-        let structs = self.definitions.structs.iter();
-        krs_quote!({@* {@structs} }).to_string()
+        let structs = &self.definitions.structs;
+        krs_quote!({@structs}).to_string()
     }
 
     pub fn unions(&self) -> String {
@@ -261,7 +261,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             None => {}
         }
 
-        self.extensions.push(ex_name, extension_commands);
+        self.extensions
+            .get_mut_or_default(ex_name, extension_commands);
     }
     fn visit_ex_cmd_ref(
         &mut self,
@@ -314,10 +315,12 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
                         stct.non_normative();
                     }
                 }
+                MemberKind::UnsupportedApi => {}
             }
         }
         if generic_struct {
             self.generic_types.insert(struct_name);
+            self.definitions.structs.generic_struct(struct_name);
         }
     }
     fn visit_union(&mut self, def: crate::vk_parse_visitor::UnionDef<'a>) {
@@ -328,6 +331,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
                 member.set_public();
                 Some(member)
             }
+            crate::vk_parse_visitor::MemberKind::UnsupportedApi => None,
         });
         uni.extend_fields(fields);
         self.definitions.unions.push(uni);
@@ -345,10 +349,14 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             .push(name, constants::Constant3::new(name, ty, val, None));
     }
     fn visit_basetype(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
-        let type_def = definitions::TypeDef::new(basetype.name, basetype.ty);
+        let mut type_def = definitions::TypeDef::new(basetype.name, basetype.ty);
+        if basetype.ptr {
+            type_def.set_ptr();
+        }
         self.definitions.type_defs.push(type_def);
     }
     fn visit_bitmask(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
+        assert!(!basetype.ptr);
         let name = utils::VkTyName::new(basetype.name);
         assert!(name.contains("Flags"));
         self.enum_variants.contains_or_default(

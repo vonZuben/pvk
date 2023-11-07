@@ -36,6 +36,10 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                     match type_child {
                         Comment(_) => {}
                         Type(ty) => {
+                            // skip type which are not for 'vulkan'
+                            if !supported_api(ty.api.as_ref()) {
+                                continue;
+                            }
                             if ty.name.is_some() && ty.alias.is_some() {
                                 visitor.visit_alias(
                                     ty.name.as_ref().unwrap(),
@@ -79,7 +83,9 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                     parse_external_opaque_type(&code.code)
                                                 {
                                                     visitor.visit_external_type(extern_type);
-                                                } else if code.code.contains("#ifdef __OBJC__") {
+                                                } else if code.code.contains("#ifdef __OBJC__")
+                                                    || code.code.contains("typedef struct")
+                                                {
                                                     if code.markup.len() != 1 {
                                                         panic!("error: can't parse __OBJC__ extern type?");
                                                     } else {
@@ -228,31 +234,40 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                     match command {
                         Alias { name, alias } => visitor.visit_alias(name, alias),
                         Definition(cmd_def) => {
-                            let def = match parse_command(&cmd_def.code) {
-                                Ok(def) => def,
-                                Err(_) => panic!("error: can't parse command"),
-                            };
-                            let def_wrapper = CommandDefWrapper { def, raw: cmd_def };
-                            visitor.visit_command(def_wrapper);
+                            if supported_api(cmd_def.api.as_ref()) {
+                                let def = match parse_command(&cmd_def.code) {
+                                    Ok(def) => def,
+                                    Err(_) => panic!("error: can't parse command"),
+                                };
+                                let def_wrapper = CommandDefWrapper { def, raw: cmd_def };
+                                visitor.visit_command(def_wrapper);
+                            }
                         }
                         _ => panic!("unexpected Command node"),
                     }
                 }
             }
             Feature(feature) => {
+                if !supported_api(Some(&feature.api)) {
+                    continue;
+                }
                 for feature_child in feature.children.iter() {
                     use vk_parse::ExtensionChild::*;
                     let feature_name = feature.name.as_str().into();
                     visitor.visit_feature_name(feature_name);
                     match feature_child {
                         Require {
-                            api: _,
+                            api,
                             profile: _,
                             extension: _,
                             feature: _,
                             comment: _,
+                            depends: _,
                             items,
                         } => {
+                            if !supported_api(api.as_ref()) {
+                                continue;
+                            }
                             for item in items.iter() {
                                 use vk_parse::InterfaceItem::*;
                                 match item {
@@ -286,11 +301,14 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                             }
                         }
                         Remove {
-                            api: _,
+                            api,
                             profile: _,
                             comment: _,
                             items,
                         } => {
+                            if !supported_api(api.as_ref()) {
+                                continue;
+                            }
                             for item in items.iter() {
                                 use vk_parse::InterfaceItem::*;
                                 match item {
@@ -319,26 +337,31 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
             }
             Extensions(extensions) => {
                 for extension in extensions.children.iter() {
-                    if extension.supported.as_ref().map(String::as_str) == Some("disabled") {
+                    if !supported_api(extension.supported.as_ref()) {
                         continue;
                     }
                     for ex_child in extension.children.iter() {
                         use vk_parse::ExtensionChild::*;
                         match ex_child {
                             Require {
-                                api: _,
+                                api,
                                 profile: _,
                                 extension: required_extension,
                                 feature: required_feature,
                                 comment: _,
+                                depends,
                                 items,
                             } => {
+                                if !supported_api(api.as_ref()) {
+                                    continue;
+                                }
                                 // assuming for now that feature and extension additions are exclusive
-                                let further_extended = match (required_feature, required_extension) {
-                                    (Some(feature), None) => Some(feature.as_str()),
-                                    (None, Some(extension)) => Some(extension.as_str()),
-                                    (None, None) => None,
-                                    _ => panic!("error: not expecting feature and extension additions at the same time"),
+                                let further_extended = match (required_feature, required_extension, depends) {
+                                    (Some(feature), None, None) => Some(feature.as_str().into()),
+                                    (None, Some(extension), None) => Some(extension.as_str().into()),
+                                    (None, None, Some(depends)) => Some(depends.as_str().into()),
+                                    (None, None, None) => None,
+                                    _ => panic!("error: not expecting feature, extension, and depends additions at the same time"),
                                 };
                                 let parts = VkParseExtensionParts {
                                     extension_name: &extension.name,
@@ -362,6 +385,9 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             comment: _,
                                         } => {}
                                         Enum(enm) => {
+                                            if !supported_api(enm.api.as_ref()) {
+                                                continue;
+                                            }
                                             let extends = enm.spec.extends();
                                             if extends.is_some() {
                                                 visitor.visit_ex_enum(VkParseEnumConstant {
@@ -397,8 +423,10 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                     }
                 }
             }
+            Formats(_) => {}
             SpirvExtensions(_) => {}
             SpirvCapabilities(_) => {}
+            Sync(_) => {}
             _ => panic!("unexpected node"),
         }
     }
@@ -443,7 +471,53 @@ pub struct VkParseEnumConstant<'a> {
 #[derive(Clone, Copy)]
 pub struct VkParseExtensionParts<'a> {
     pub extension_name: &'a str,
-    pub further_extended: Option<&'a str>,
+    pub further_extended: Option<NameExtras<'a>>,
+}
+
+#[derive(Clone, Copy)]
+pub struct NameExtras<'a> {
+    extras: &'a str,
+}
+
+impl<'a> From<&'a str> for NameExtras<'a> {
+    fn from(extras: &'a str) -> Self {
+        Self { extras }
+    }
+}
+
+impl<'a> IntoIterator for NameExtras<'a> {
+    type Item = &'a str;
+
+    type IntoIter = NameExtrasIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        NameExtrasIter { text: self.extras }
+    }
+}
+
+pub struct NameExtrasIter<'a> {
+    text: &'a str,
+}
+
+impl<'a> Iterator for NameExtrasIter<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.text == "" {
+            None
+        } else {
+            for (i, c) in self.text.bytes().enumerate() {
+                if c == b',' || c == b'+' {
+                    let ret = &self.text[..i];
+                    self.text = &self.text[i + 1..];
+                    return Some(ret);
+                }
+            }
+            let ret = self.text;
+            self.text = "";
+            Some(ret)
+        }
+    }
 }
 
 pub struct StructDef<'a> {
@@ -468,9 +542,54 @@ impl<'a> Iterator for Members<'a> {
         use vk_parse::TypeMember;
         match member {
             TypeMember::Definition(ref def) => {
-                let field = parse_field(def.code.as_str())
-                    .expect("error: failed to parse struct member code");
-                Some(MemberKind::Member(field))
+                if supported_api(def.api.as_ref()) {
+                    let field = match parse_field(def.code.as_str()) {
+                        Ok(field) => field,
+                        // fallback with newer vk_parse on older vk.xml
+                        // (there is code where name and type get mushed together, which appears like a formatting error in older vk.xml, but worked anyway with older vk_parse)
+                        Err(ParseFieldError::NoName) => {
+                            let mut name = None;
+                            let mut ty = None;
+
+                            for markup in def.markup.iter() {
+                                match markup {
+                                    vk_parse::TypeMemberMarkup::Name(def_name) => {
+                                        assert!(
+                                            name.is_none(),
+                                            "ERROR: too many names in member markup"
+                                        );
+                                        name = Some(def_name);
+                                    }
+                                    vk_parse::TypeMemberMarkup::Type(def_type) => {
+                                        assert!(
+                                            ty.is_none(),
+                                            "ERROR: too many types in member markup"
+                                        );
+                                        ty = Some(def_type);
+                                    }
+                                    vk_parse::TypeMemberMarkup::Enum(_) => {
+                                        panic!("ERROR: not expecting Enum markup in member")
+                                    }
+                                    vk_parse::TypeMemberMarkup::Comment(_) => {}
+                                    _ => panic!("ERROR: unhandled markup. Check to ensure nothing important is omitted"),
+                                }
+                            }
+
+                            match (name, ty) {
+                                (Some(name), Some(ty)) => {
+                                    ctype::Cfield::new(name, ctype::Ctype::new(ty))
+                                }
+                                _ => panic!("ERROR: could not make Ctype from member markup"),
+                            }
+                        }
+                        Err(ParseFieldError::Default) => {
+                            panic!("ERROR: cannot parse struct/union member")
+                        }
+                    };
+                    Some(MemberKind::Member(field))
+                } else {
+                    Some(MemberKind::UnsupportedApi)
+                }
             }
             TypeMember::Comment(ref comment) => Some(MemberKind::Comment(comment)),
             _ => panic!("error: unexpected TypeMember node"),
@@ -481,6 +600,7 @@ impl<'a> Iterator for Members<'a> {
 pub enum MemberKind<'a> {
     Member(ctype::Cfield),
     Comment(&'a str),
+    UnsupportedApi,
 }
 
 pub struct ExtensionInfo<'a, I> {
@@ -492,6 +612,7 @@ pub struct ExtensionInfo<'a, I> {
 pub struct VkBasetype<'a> {
     pub name: &'a str,
     pub ty: &'a str,
+    pub ptr: bool,
 }
 
 pub struct HandleDef<'a> {
@@ -603,12 +724,28 @@ fn parse_basetype<'a>(code: &'a str) -> Result<VkBasetype, ()> {
     let input = TokenIter::new(code);
     let (input, _) = tag("typedef")(input)?;
     let (input, ty) = token()(input)?;
+    let (input, ptr) = opt(tag("*"))(input)?;
     let (input, name) = token()(input)?;
     let (_input, _) = tag(";")(input)?;
-    Ok(VkBasetype { name, ty })
+    Ok(VkBasetype {
+        name,
+        ty,
+        ptr: ptr.is_some(),
+    })
 }
 
-fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
+enum ParseFieldError {
+    NoName,
+    Default,
+}
+
+impl From<()> for ParseFieldError {
+    fn from(_value: ()) -> Self {
+        ParseFieldError::Default
+    }
+}
+
+fn parse_field(code: &str) -> Result<ctype::Cfield, ParseFieldError> {
     use crate::simple_parse::*;
 
     let input = crate::simple_parse::TokenIter::new(code);
@@ -634,7 +771,7 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
         }
     })?;
 
-    let (input, name) = token()(input)?;
+    let (input, name) = token()(input).map_err(|_| ParseFieldError::NoName)?;
 
     let (input, bit_width) = opt(followed(tag(":"), token()))(input)?;
 
@@ -651,7 +788,7 @@ fn parse_field(code: &str) -> Result<ctype::Cfield, ()> {
 
     // this is expected to consume all tokens
     if input.next().is_some() {
-        Err(())
+        Err(ParseFieldError::Default)
     } else {
         Ok(ctype::Cfield::new(name, ty))
     }
@@ -768,21 +905,6 @@ fn parse_external_opaque_type(code: &str) -> Result<utils::VkTyName, ()> {
     }
 }
 
-// fn parse_api_version(code: &str) -> Result<(u32, u32), ()> {
-//     use crate::simple_parse::*;
-
-//     let input = crate::simple_parse::TokenIter::new(code);
-
-//     let (input, _) = until("#define")(input)?;
-//     let (input, name) = token()(input)?;
-
-//     if name.contains("VK_API_VERSION") {
-//         let (input, _) = tag("VK_MAKE_VERSION")(input)?;
-//         let (input, _) = tag("(")(input)?;
-//         // ...
-//     }
-// }
-
-// fn parse_header_version(code: &str) -> Result<u32, ()> {
-//     todo!()
-// }
+fn supported_api<S: AsRef<str>>(api: Option<&S>) -> bool {
+    api.map_or(true, |s| crate::vulkansc::api_for_vulkan(s.as_ref()))
+}

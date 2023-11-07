@@ -105,7 +105,7 @@ impl<'a> DocFormatFilter<'a> {
 enum Brackets {
     No,
     Start,
-    In,
+    In(usize),
     End,
 }
 
@@ -131,21 +131,27 @@ impl<'a> Iterator for DocFormatFilter<'a> {
                     }
                 },
                 Brackets::Start => {
-                    self.text = &self.text[1..]; // represent consuming '['
-                    self.brackets = Brackets::In;
-                    Some("[[")
+                    // check for an end ']' in advance because there have been docs with typos. If typo is found, just maintain it
+                    match self.text.find("]") {
+                        Some(until) => {
+                            self.text = &self.text[1..]; // represent consuming '['
+                            self.brackets = Brackets::In(until - 1); // subtract 1 from until since we advanced the text by 1
+                            Some("[[")
+                        }
+                        None => {
+                            self.brackets = Brackets::No;
+                            let ret = self.text;
+                            self.text = &"";
+                            Some(ret)
+                        }
+                    }
                 }
-                Brackets::In => match self.text.find(']') {
-                    Some(until) => {
-                        self.brackets = Brackets::End;
-                        let ret = &self.text[..until];
-                        self.text = &self.text[until..];
-                        Some(ret)
-                    }
-                    None => {
-                        panic!("error: DocFormatFilter can't find ']'")
-                    }
-                },
+                Brackets::In(until) => {
+                    self.brackets = Brackets::End;
+                    let ret = &self.text[..until];
+                    self.text = &self.text[until..];
+                    Some(ret)
+                }
                 Brackets::End => {
                     self.text = &self.text[1..]; // represent consuming ']'
                     self.brackets = Brackets::No;

@@ -13,13 +13,21 @@ use crate::ctype;
 pub struct TypeDef {
     pub name: VkTyName,
     pub ty: VkTyName,
+    pub ptr: bool,
 }
 
 impl TypeDef {
     pub fn new(name: impl Into<VkTyName>, ty: impl Into<VkTyName>) -> Self {
         let name = name.into();
         let ty = ty.into();
-        Self { name, ty }
+        Self {
+            name,
+            ty,
+            ptr: false,
+        }
+    }
+    pub fn set_ptr(&mut self) {
+        self.ptr = true;
     }
 }
 
@@ -27,9 +35,18 @@ impl krs_quote::ToTokens for TypeDef {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let ty = self.ty;
-        krs_quote_with!(tokens <-
-            pub type {@name} = {@ty};
-        );
+        match self.ptr {
+            true => {
+                krs_quote_with!(tokens <-
+                    pub type {@name} = *mut {@ty};
+                );
+            }
+            false => {
+                krs_quote_with!(tokens <-
+                    pub type {@name} = {@ty};
+                );
+            }
+        }
     }
 }
 
@@ -88,21 +105,63 @@ impl Struct2 {
     }
 }
 
-impl krs_quote::ToTokens for Struct2 {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let name = self.name;
+#[derive(Default)]
+pub struct StructCollection {
+    structs: VecMap<VkTyName, Struct2>,
+    generic_types: std::collections::HashSet<VkTyName>,
+}
 
-        let generics = self.fields.iter().filter_map(|field| {
-            if field.ty.is_external() {
+impl std::ops::Deref for StructCollection {
+    type Target = VecMap<VkTyName, Struct2>;
+    fn deref(&self) -> &Self::Target {
+        &self.structs
+    }
+}
+
+impl std::ops::DerefMut for StructCollection {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.structs
+    }
+}
+
+impl StructCollection {
+    pub fn generic_struct(&mut self, name: VkTyName) {
+        self.generic_types.insert(name);
+    }
+}
+
+impl krs_quote::ToTokens for StructCollection {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        for s in self.structs.iter() {
+            StructToToken {
+                s,
+                g: &self.generic_types,
+            }
+            .to_tokens(tokens)
+        }
+    }
+}
+
+struct StructToToken<'a> {
+    s: &'a Struct2,
+    g: &'a std::collections::HashSet<VkTyName>,
+}
+
+impl krs_quote::ToTokens for StructToToken<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.s.name;
+
+        let generics = self.s.fields.iter().filter_map(|field| {
+            if field.ty.is_external() || self.g.contains(&field.ty.name()) {
                 Some(field.ty.name())
             } else {
                 None
             }
         });
 
-        match self.non_normative {
+        match self.s.non_normative {
             false => {
-                let fields = &self.fields;
+                let fields = &self.s.fields;
                 krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[derive(Copy, Clone, Debug)]
@@ -112,7 +171,7 @@ impl krs_quote::ToTokens for Struct2 {
                 );
             }
             true => {
-                let fields = BitFieldIter::new(self.fields.iter());
+                let fields = BitFieldIter::new(self.s.fields.iter());
                 krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[repr(packed)]
@@ -412,39 +471,18 @@ impl krs_quote::ToTokens for FunctionPointer {
 pub struct Definitions2 {
     pub type_defs: Vec<TypeDef>,
     pub bitmasks: Vec<Bitmask>,
-    pub structs: VecMap<VkTyName, Struct2>,
+    pub structs: StructCollection,
     pub unions: Vec<Union>,
     pub handles: Vec<Handle2>,
     pub enumerations: Vec<Enum2>,
     pub function_pointers: Vec<FunctionPointer>,
 }
 
-//impl<'a> Definitions2<'a> {
-//    fn extend_type_defs(&mut self, type_defs: impl IntoIterator<Item=TypeDef<'a>>) {
-//        self.type_defs.extend(type_defs);
-//    }
-//    fn extend_bitmasks(&mut self, bitmasks: impl IntoIterator<Item=Bitmask<'a>>) {
-//        self.bitmasks.extend(bitmasks);
-//    }
-//    fn extend_structs(&mut self, structs: impl IntoIterator<Item=Struct2<'a>>) {
-//        self.structs.extend(structs);
-//    }
-//    fn extend_unions(&mut self, unions: impl IntoIterator<Item=Union<'a>>) {
-//        self.unions.extend(unions);
-//    }
-//    fn extend_handles(&mut self, handles: impl IntoIterator<Item=Handle2<'a>>) {
-//        self.handles.extend(handles);
-//    }
-//    fn extend_function_pointers(&mut self, function_pointers: impl IntoIterator<Item=FunctionPointer<'a>>) {
-//        self.function_pointers.extend(function_pointers);
-//    }
-//}
-
 impl krs_quote::ToTokens for Definitions2 {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let type_defs = &self.type_defs;
         let bitmasks = &self.bitmasks;
-        let structs = self.structs.iter();
+        let structs = &self.structs;
         let unions = &self.unions;
         let handles = &self.handles;
         let enumerations = &self.enumerations;
@@ -453,7 +491,7 @@ impl krs_quote::ToTokens for Definitions2 {
         krs_quote_with!(tokens <-
             {@* {@type_defs} }
             {@* {@bitmasks} }
-            {@* {@structs} }
+            {@structs}
             {@* {@unions} }
             {@* {@handles} }
             {@* {@enumerations} }

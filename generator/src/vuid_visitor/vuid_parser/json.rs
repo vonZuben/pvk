@@ -51,7 +51,16 @@ impl<'a> VuidParser<'a> for VuidJsonStrParser<'a> {
                     .strip_prefix(TEXT_TAG)
                     .expect("error: line after 'vuid' is not 'text'");
 
-                let vuid_description = line[1..line.len() - 1].trim(); // remove quotation marks and whitespace leading/trailing
+                let start = line
+                    .find("\"")
+                    .expect("ERROR: vuid description does not start with a '\"'")
+                    + 1;
+                let end = line
+                    .rfind("\"")
+                    .expect("ERROR: vuid description does not end with a '\"'");
+                assert!(start != end);
+
+                let vuid_description = line[start..end].trim(); // remove quotation marks and whitespace leading/trailing
 
                 // remove HTML from the description
                 let filtered_description: String = HtmlFilter(vuid_description.chars()).collect();

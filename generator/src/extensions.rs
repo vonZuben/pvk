@@ -122,10 +122,23 @@ pub enum ExtensionName {
 }
 
 impl ExtensionName {
-    pub fn new(base: &str, extra: Option<&str>) -> Self {
+    pub fn new<'a>(base: &str, extra: Option<impl IntoIterator<Item = &'a str>>) -> Self {
         let base = VkTyName::new(base);
         match extra {
             Some(extra) => {
+                let extra: String =
+                    extra
+                        .into_iter()
+                        .fold(String::with_capacity(100), |mut i, e| {
+                            if i.len() != 0 {
+                                i += "_AND_";
+                                i += e;
+                                i
+                            } else {
+                                i += e;
+                                i
+                            }
+                        });
                 let extra = VkTyName::new(extra);
                 ExtensionName::Extra {
                     name: format!("{}_WITH_{}", base, extra).into(),
@@ -213,14 +226,18 @@ impl krs_quote::ToTokens for ExtensionInfo {
         let kind = self.kind;
         let extension_name = &self.extension_name;
         let raw_name = self.extension_name.name_as_str();
-        let tmp;
-        let required = match self.extension_name {
-            ExtensionName::Base { .. } => self.required.as_slice(),
-            ExtensionName::Extra { base, extra, .. } => {
-                tmp = [base, extra];
-                &tmp
-            }
-        };
+
+        // TODO, fix how required/dependent extensions are handled
+        // let tmp;
+        // let required = match self.extension_name {
+        //     ExtensionName::Base { .. } => self.required.as_slice(),
+        //     ExtensionName::Extra { base, extra, .. } => {
+        //         tmp = [base, extra];
+        //         &tmp
+        //     }
+        // };
+
+        let required = Some(()).iter();
 
         if self.extension_name.is_base() {
             krs_quote_with!(tokens <-

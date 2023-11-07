@@ -95,7 +95,17 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     pub fn contains_or_default(&mut self, key: K, default: V) {
         let _ = self.get_mut_or_default(key, default);
     }
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a V> + Clone {
+    #[allow(unused)]
+    pub fn entry<'a>(&'a mut self, key: K) -> VecMapEntry<'a, K, V> {
+        match self.map.get(&key) {
+            Some(index) => VecMapEntry::Occupied(self, *index),
+            None => VecMapEntry::Empty(self, key),
+        }
+    }
+}
+
+impl<K, V> VecMap<K, V> {
+    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, V> {
         self.vec.iter()
     }
     pub fn last(&self) -> Option<&V> {
@@ -105,12 +115,15 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     pub fn last_mut(&mut self) -> Option<&mut V> {
         self.vec.last_mut()
     }
-    #[allow(unused)]
-    pub fn entry<'a>(&'a mut self, key: K) -> VecMapEntry<'a, K, V> {
-        match self.map.get(&key) {
-            Some(index) => VecMapEntry::Occupied(self, *index),
-            None => VecMapEntry::Empty(self, key),
-        }
+}
+
+impl<'a, K, V> IntoIterator for &'a VecMap<K, V> {
+    type Item = &'a V;
+
+    type IntoIter = std::slice::Iter<'a, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

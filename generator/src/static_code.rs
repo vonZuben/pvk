@@ -90,7 +90,7 @@ impl krs_quote::ToTokens for StaticCode {
 
                         /// return the number of set bits
                         #[inline]
-                        pub const fn count_bits(self) -> $ty_name {
+                        pub const fn count_bits(self) -> u32 {
                             self.0.count_ones()
                         }
                     }

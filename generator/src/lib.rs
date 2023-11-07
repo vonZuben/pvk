@@ -34,6 +34,7 @@ mod traits;
 mod vk_parse_visitor;
 mod vuid;
 mod vuid_visitor;
+mod vulkansc;
 
 mod gen_lib;
 

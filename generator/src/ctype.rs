@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use krs_quote::{krs_quote, krs_quote_with, TokenStream};
+use krs_quote::{krs_quote, krs_quote_with};
 
 use crate::utils::{self, case};
 

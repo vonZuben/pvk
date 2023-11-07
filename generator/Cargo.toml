@@ -20,4 +20,4 @@ path = "src/gen_lib_cmd.rs"
 krs_quote = { path = "../krs_quote" }
 
 [dependencies.vk-parse]
-version = "0.6.0"
+version = "0.12.0"
