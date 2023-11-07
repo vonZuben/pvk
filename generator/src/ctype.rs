@@ -130,11 +130,16 @@ impl krs_quote::ToTokens for CtypeInner {
 
 impl PartialEq for CtypeInner {
     fn eq(&self, other: &Self) -> bool {
+        if self.array.len() != other.array.len() {
+            return false;
+        }
+
         for (me, other) in self.array.iter().zip(other.array.iter()) {
             if me != other {
                 return false;
             }
         }
+
         self.basetype == other.basetype
     }
 }
