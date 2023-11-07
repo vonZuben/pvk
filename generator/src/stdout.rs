@@ -24,6 +24,11 @@ use sdk::{validusage_json_path, vk_xml_path};
 /// if TMP_OUT_FILE is set in the environment, then output to the file indicated by such
 /// otherwise write to stdout
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    eprintln!("checking following environment variables:");
+    for var in sdk::relevant_env() {
+        eprintln!("{var}");
+    }
+
     let vk_xml_path =
         vk_xml_path().ok_or("ERROR: provide path for vk.xml or set path for Vulkan SDK")?;
     let vuid_path = validusage_json_path()

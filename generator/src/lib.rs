@@ -38,6 +38,17 @@ mod vulkansc;
 
 mod gen_lib;
 
+/**
+Provide standard interface for access portions of the Vulkan SDK
+
+When generating the Vulkan rust code, certain Vulkan Docs files are needed.
+These files are provided by the Vulkan SDK. It is a good idea to have the Vulkan SDK installed
+when developing a Vulkan App, but it is also possible to override the paths to the needed files.
+
+See module functions for more details.
+*/
+pub mod sdk;
+
 use std::fs::File;
 use std::io::Read;
 use std::{ffi::OsStr, path::Path};
