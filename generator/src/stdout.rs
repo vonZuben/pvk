@@ -16,7 +16,7 @@ mod code_parts;
 
 mod sdk;
 
-use sdk::{validusage_json_path, vk_xml_path};
+use sdk::vk_xml_path;
 
 /// This program will output the generated code to stdout, or to a single file if a file name is provided
 ///
@@ -31,8 +31,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let vk_xml_path =
         vk_xml_path().ok_or("ERROR: provide path for vk.xml or set path for Vulkan SDK")?;
-    let vuid_path = validusage_json_path()
-        .ok_or("ERROR: provide path for validusage.json or set path for Vulkan SDK")?;
 
     let out_path = var_os("TMP_OUT_FILE");
 
@@ -40,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         eprintln!("set TMP_OUT_FILE if you want to output to a file");
     }
 
-    let code = parse_vk_xml(vk_xml_path, vuid_path);
+    let code = parse_vk_xml(vk_xml_path);
 
     if let Some(out_path) = out_path {
         create_file(out_path.as_ref(), &code)?;

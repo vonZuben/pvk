@@ -87,9 +87,15 @@ macro_rules! make_rs_files {
     };
 }
 
-pub fn generate_library(out_dir: &Path, vk_xml: &Path, vuid: &Path) -> Result<()> {
+pub fn generate_library(out_dir: &Path, vk_xml: &Path) -> Result<()> {
     make_output_directory(&out_dir)?;
-    let code = crate::parse_vk_xml(vk_xml, vuid);
+    let code = crate::parse_vk_xml(vk_xml);
     code_parts!(make_rs_files() code, out_dir,);
     make_lib_file(&out_dir)
+}
+
+pub fn generate_vuids_file(out_dir: &Path, validusage_json_path: &Path) -> Result<()> {
+    make_output_directory(out_dir)?;
+    let code = crate::parse_vuids(validusage_json_path);
+    create_file(out_dir, "vuids.rs", &code)
 }

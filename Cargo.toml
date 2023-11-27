@@ -6,4 +6,5 @@ members = [
      # "krs_hlist",
      # "krs_hlist_pm",
      "krs_quote",
+     "check_vuids",
      ]

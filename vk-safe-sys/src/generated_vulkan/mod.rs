@@ -6,7 +6,6 @@
 // #[cfg(not(feature = "generate"))]
 // pub use pre_built::*;
 
-#[cfg(feature = "generate")]
 include! {concat!(env!("OUT_DIR"), "/lib.rs")}
 
 impl Result {

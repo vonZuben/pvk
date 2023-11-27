@@ -21,7 +21,6 @@ macro_rules! code_parts {
             versions,
             extensions,
             aliases,
-            vuids,
         )$($semi)?
     };
 }

@@ -17,9 +17,11 @@ pub struct Interner {
 impl Interner {
     // should only be called once by one thread
     pub unsafe fn init() {
-        INTERNER = Some(Interner {
-            strings: HashSet::new(),
-        });
+        if INTERNER.is_none() {
+            INTERNER = Some(Interner {
+                strings: HashSet::new(),
+            });
+        }
     }
     // should only be called by one thread at a time, and should ensure init called before
     pub fn intern<'a>(s: impl Into<Cow<'a, str>>) -> Istring {

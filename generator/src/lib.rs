@@ -38,6 +38,8 @@ mod vulkansc;
 
 mod gen_lib;
 
+mod vuid_generator;
+
 /**
 Provide standard interface for access portions of the Vulkan SDK
 
@@ -85,27 +87,18 @@ macro_rules! make_code_type {
 code_parts!(make_code_type(;));
 
 /// Parse a xk.xml at the provided path, and provide the generated [Code]
-pub fn parse_vk_xml(vk_xml_path: impl AsRef<OsStr>, vuid_path: impl AsRef<OsStr>) -> Code {
+pub fn parse_vk_xml(vk_xml_path: impl AsRef<Path>) -> Code {
     unsafe {
         intern::Interner::init();
     }
 
     // vk_xml registry
     let (registry2, _) =
-        vk_parse::parse_file(Path::new(&vk_xml_path)).expect("failed to parse vk.xml");
-
-    // vuids
-    let mut vuid_json_string = String::new();
-    File::open(vuid_path.as_ref())
-        .expect("failed to open vuid file")
-        .read_to_string(&mut vuid_json_string)
-        .expect("failed to read vuid file");
-    let vuid_json_parser = vuid_visitor::VuidJsonStrParser::new(&vuid_json_string);
+        vk_parse::parse_file(vk_xml_path.as_ref()).expect("failed to parse vk.xml");
 
     let mut generator = code_generator::Generator::default();
 
     vk_parse_visitor::visit_vk_parse(&registry2, &mut generator);
-    vuid_visitor::visit_vuids(vuid_json_parser, &mut generator);
 
     macro_rules! get_code_parts {
         ( $generator:ident $($param:ident,)* ) => {
@@ -118,12 +111,40 @@ pub fn parse_vk_xml(vk_xml_path: impl AsRef<OsStr>, vuid_path: impl AsRef<OsStr>
     code_parts!(get_code_parts() generator)
 }
 
+/// Parse validusage.json at provided path and provide the generated code for vuid checks
+pub fn parse_vuids(vuid_path: impl AsRef<Path>) -> String {
+    unsafe {
+        intern::Interner::init();
+    }
+
+    // vuids
+    let mut vuid_json_string = String::new();
+    File::open(vuid_path)
+        .expect("failed to open vuid file")
+        .read_to_string(&mut vuid_json_string)
+        .expect("failed to read vuid file");
+    let vuid_json_parser = vuid_visitor::VuidJsonStrParser::new(&vuid_json_string);
+
+    let mut generator = vuid_generator::VuidGenerator::default();
+
+    vuid_visitor::visit_vuids(vuid_json_parser, &mut generator);
+
+    generator.vuids()
+}
+
 /// generate all the code parts into files that can be used for the src directory of a standalone crate
 /// or can be embedded into another crate
 pub fn generate_library(
     out_dir: impl AsRef<OsStr>,
     vk_xml: impl AsRef<OsStr>,
-    vuid: impl AsRef<OsStr>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    gen_lib::generate_library(Path::new(&out_dir), Path::new(&vk_xml), Path::new(&vuid))
+    gen_lib::generate_library(Path::new(&out_dir), Path::new(&vk_xml))
+}
+
+/// generate vuids.rs in provided directory, by parsing provided validusage.json file
+pub fn generate_vuids_file(
+    out_dir: impl AsRef<Path>,
+    validusage_json_path: impl AsRef<Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    gen_lib::generate_vuids_file(out_dir.as_ref(), validusage_json_path.as_ref())
 }

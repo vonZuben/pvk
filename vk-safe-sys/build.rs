@@ -1,4 +1,4 @@
-use generator::{generate_library, sdk};
+use generator::sdk;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -25,21 +25,29 @@ fn set_env() -> Result<()> {
 }
 
 fn main() -> Result<()> {
-    if cfg!(feature = "generate") {
-        generate()?;
-        set_env()?;
-    }
+    generate()?;
+    set_env()?;
     Ok(())
 }
 
 fn generate() -> Result<()> {
     let out_dir = std::env::var_os("OUT_DIR").ok_or("can't get cargo 'OUT_DIR'")?;
 
-    let vk_xml_path = sdk::vk_xml_path().ok_or(ERROR_MSG)?;
-    let validusage_path = sdk::validusage_json_path().ok_or(ERROR_MSG)?;
+    #[cfg(feature = "vk_xml")]
+    {
+        let vk_xml_path = sdk::vk_xml_path().ok_or(ERROR_MSG)?;
+        eprintln!("{:?}", vk_xml_path);
 
-    eprintln!("{:?}", vk_xml_path);
-    eprintln!("{:?}", validusage_path);
+        generator::generate_library(&out_dir, vk_xml_path)?;
+    }
 
-    generate_library(&out_dir, vk_xml_path, validusage_path)
+    #[cfg(feature = "vuid")]
+    {
+        let validusage_path = sdk::validusage_json_path().ok_or(ERROR_MSG)?;
+        eprintln!("{:?}", validusage_path);
+
+        generator::generate_vuids_file(out_dir, validusage_path)?;
+    }
+
+    Ok(())
 }

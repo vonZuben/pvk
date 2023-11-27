@@ -30,11 +30,21 @@ impl ToTokens for Vuids<'_> {
         let collections = self.collections.iter();
 
         krs_quote_with!(tokens <-
-            pub mod validation {
-                /// vuid api version
-                const API_VERSION: (u32, u32, u32) = ({@major}, {@minor}, {@patch});
-                {@* {@collections}}
+            use std::collections::HashMap;
+
+            const API_VERSION: (u32, u32, u32) = ({@major}, {@minor}, {@patch});
+
+            pub type Target = &'static str;
+            pub type Vuid = &'static str;
+            pub type Description = &'static str;
+            pub type VuidGroup = (Target, &'static [(Vuid, Description)]);
+
+            static VUID_GROUPS: &'static [VuidGroup] = [{@,* {@collections}}].as_slice();
+
+            pub fn get_vuids() -> &'static [VuidGroup] {
+                VUID_GROUPS
             }
+
         );
     }
 }
@@ -55,31 +65,19 @@ impl<'a> TargetVuids<'a> {
 
 impl ToTokens for TargetVuids<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let target = self.target;
+        let target = self.target.as_str();
         let vuid_names = self
             .vuid_pairs
             .iter()
-            .map(|p| p.name().replace("-", "_").replace("::", "_").as_code());
+            .map(|p| p.name().replace("-", "_").replace("::", "_"));
         let descriptions = self.vuid_pairs.iter().map(|p| p.description());
-        let docs = descriptions
-            .clone()
-            .map(|desc| DocFormatFilter::new(desc).into_iter().collect::<String>());
+        // let docs = descriptions
+        //     .clone()
+        //     .map(|desc| DocFormatFilter::new(desc).into_iter().collect::<String>());
 
         krs_quote_with!(tokens <-
 
-            #[allow(non_upper_case_globals)]
-            pub mod {@target} {
-                // output trait that should be implemented for vuid checks
-                pub trait Vuids {
-                    {@*
-                        #[doc = {@docs}]
-                        const {@vuid_names}: ();
-                    }
-                }
-                {@*
-                    pub const {@vuid_names}: &'static [u8] = {@descriptions}.as_bytes();
-                }
-            }
+            ({@target}, [{@,* ({@vuid_names}, {@descriptions}) }].as_slice())
 
         );
     }

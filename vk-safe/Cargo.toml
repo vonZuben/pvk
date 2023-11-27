@@ -8,3 +8,9 @@ edition = "2018"
 
 [dependencies]
 vk-safe-sys = { path="../vk-safe-sys", features=["generate"] }
+
+[build-dependencies]
+vk-safe-sys = { path="../vk-safe-sys", features=["generate"] }
+
+[features]
+check_vuids = []
