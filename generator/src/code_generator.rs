@@ -13,7 +13,6 @@ use crate::definitions;
 use crate::enumerations;
 use crate::extensions;
 use crate::features;
-use crate::vuid;
 
 #[derive(Copy, Clone)]
 enum CommandType {
@@ -59,9 +58,6 @@ pub struct Generator<'a> {
     feature_collection: features::FeatureCollection,
     extensions: extensions::ExtensionCollection,
     aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
-
-    // vuid
-    vuids: vuid::Vuids<'a>,
 }
 
 impl<'a> Generator<'a> {

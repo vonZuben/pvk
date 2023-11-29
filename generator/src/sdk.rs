@@ -72,6 +72,7 @@ Defaults to the file in the registry folder of the Vulkan SDK.
 
 can be overridden by setting VALIDUSAGE_JSON_OVERRIDE to the desired file path
  */
+#[allow(unused)]
 pub fn validusage_json_path() -> Option<PathBuf> {
     match var_os(VALIDUSAGE_JSON_OVERRIDE) {
         Some(path) => Some(path.into()),

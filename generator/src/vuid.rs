@@ -2,7 +2,7 @@ use crate::utils::VkTyName;
 use crate::vuid_visitor::VuidPair;
 use krs_quote::{krs_quote_with, ToTokens};
 
-use crate::utils::{StrAsCode, VecMap};
+use crate::utils::VecMap;
 
 type ApiVersion = (u32, u32, u32);
 
@@ -71,9 +71,6 @@ impl ToTokens for TargetVuids<'_> {
             .iter()
             .map(|p| p.name().replace("-", "_").replace("::", "_"));
         let descriptions = self.vuid_pairs.iter().map(|p| p.description());
-        // let docs = descriptions
-        //     .clone()
-        //     .map(|desc| DocFormatFilter::new(desc).into_iter().collect::<String>());
 
         krs_quote_with!(tokens <-
 
@@ -92,6 +89,7 @@ struct DocFormatFilter<'a> {
 }
 
 impl<'a> DocFormatFilter<'a> {
+    #[allow(unused)]
     fn new(text: &'a str) -> Self {
         Self {
             text,
