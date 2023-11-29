@@ -58,11 +58,11 @@ impl<'a> SubStr<'a> {
         Self { sub_slice, start }
     }
 
-    fn start_position(&self) -> usize {
+    pub fn start_position(&self) -> usize {
         self.start
     }
 
-    fn end_position(&self) -> usize {
+    pub fn end_position(&self) -> usize {
         self.start + self.sub_slice.len()
     }
 }
@@ -113,14 +113,19 @@ pub trait RustFileVisitor<'a> {
 struct BytePositionIterator<'a> {
     // start of buffer
     buffer: *const u8,
+
     // len of buffer
     len: usize,
+
     // current offset in iterating
     offset: usize,
-    // current line based on number of newlines detected
+
+    // line of last returned byte based on number of newlines detected
     line: usize,
-    // current column of current line, reset to 1 on each new line
-    column: usize,
+
+    // column (in bytes) of last return byte in line
+    column_b: usize,
+
     // toggle to check if line should be incremented on a subsequent call to next
     next_line: bool,
 
@@ -134,27 +139,33 @@ impl<'a> BytePositionIterator<'a> {
             len: parser.buffer.len(),
             offset: 0,
             line: 1,
-            column: 1,
+            column_b: 0,
             next_line: false,
             _buffer: Default::default(),
         }
     }
 
-    fn current_line_text(&self) -> &'a str {
-        let line_start_offset = self.offset - (self.column - 1);
+    fn error_at(&self, e: Box<dyn std::error::Error>) -> PositionError {
+        let line_start_offset = self.offset - self.column_b;
 
         let line_start_ptr = unsafe { self.buffer.add(line_start_offset) };
 
         let mut tmp_offset = self.offset;
-        while unsafe { self.buffer.add(tmp_offset).read() } != b'\n' {
+        while unsafe { self.buffer.add(tmp_offset).read() } != b'\n' && tmp_offset < self.len {
             tmp_offset += 1;
         }
 
         let line_len = tmp_offset - line_start_offset;
 
         // safe since this should just be a substring of an already confirmed utf8 string between newline characters
-        unsafe {
+        let line_text = unsafe {
             std::str::from_utf8_unchecked(std::slice::from_raw_parts(line_start_ptr, line_len))
+        };
+
+        PositionError {
+            file_context: line_text.to_owned(),
+            column: self.column_b,
+            cause: e,
         }
     }
 }
@@ -174,26 +185,30 @@ impl Iterator for BytePositionIterator<'_> {
 
         let value = unsafe { self.buffer.add(self.offset).read() };
 
-        let ret = Byte {
+        let this_byte = Byte {
             value,
             offset: self.offset,
         };
 
+        // set offset for returning next byte
         self.offset += 1;
 
+        // set column of this byte
+        self.column_b += 1;
+
+        // rest line and column when last byte was new line
         if self.next_line {
             self.line += 1;
-            self.column = 1;
+            self.column_b = 1; // since the next thing read should have been in the first column of the new line
             self.next_line = false;
-        } else {
-            self.column += 1;
         }
 
+        // if this this byte is a new line, prepare to rest line for next byte
         if value == b'\n' {
             self.next_line = true;
         }
 
-        Some(ret)
+        Some(this_byte)
     }
 }
 
@@ -207,7 +222,7 @@ impl std::fmt::Display for PositionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "");
         writeln!(f, "{}", self.file_context)?;
-        for _ in 0..self.column - 1 {
+        for _ in 1..self.column {
             write!(f, " ")?;
         }
         writeln!(f, "^")?;
@@ -379,11 +394,7 @@ impl<'a> RustParser<'a> {
 
         match inner_res() {
             Ok(_) => Ok(()),
-            Err(e) => Err(PositionError {
-                file_context: byte_iter.current_line_text().to_owned(),
-                column: byte_iter.column,
-                cause: e,
-            })?,
+            Err(e) => Err(byte_iter.error_at(e))?,
         }
     }
 }
