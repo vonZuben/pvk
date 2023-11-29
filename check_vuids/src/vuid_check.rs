@@ -39,7 +39,7 @@ fn check_file(file: &mut File) -> Result<()> {
     let buffer = load_file(file)?;
     let mut parser = crate::parse::RustParser::new(&buffer);
 
-    let mut visitor = TestVisitor;
+    let mut visitor = PrintlnVisitor;
 
     parser.parse(&mut visitor)?;
 
@@ -96,9 +96,9 @@ const fn tst() {
 }
  */
 
-struct TestVisitor;
+struct PrintlnVisitor;
 
-impl<'a> crate::parse::RustFileVisitor<'a> for TestVisitor {
+impl<'a> crate::parse::RustFileVisitor<'a> for PrintlnVisitor {
     fn visit_string(&mut self, range: crate::parse::SubStr<'a>) -> Result<()> {
         let s: &str = &range;
         println!("string: {}", s);
