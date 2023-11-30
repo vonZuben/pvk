@@ -1,7 +1,7 @@
 use std::convert::TryInto;
-use std::fs::{File, FileType, OpenOptions};
+use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 

@@ -199,7 +199,7 @@ impl Iterator for BytePositionIterator<'_> {
         // rest line and column when last byte was new line
         if self.next_line {
             self.line += 1;
-            self.column_b = 1; // since the next thing read should have been in the first column of the new line
+            self.column_b = 1; // since the this byte should be in the first column of the new line
             self.next_line = false;
         }
 
@@ -220,7 +220,7 @@ struct PositionError {
 
 impl std::fmt::Display for PositionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "");
+        writeln!(f, "")?;
         writeln!(f, "{}", self.file_context)?;
         for _ in 1..self.column {
             write!(f, " ")?;
@@ -322,7 +322,7 @@ impl<'a> RustParser<'a> {
                                     })?;
                                     break 'find_label_end;
                                 }
-                                Some(b) => {
+                                Some(_) => {
                                     // assumed to be a lifetime identifier
                                     // not handled at this time
                                     break 'find_label_end;
@@ -334,7 +334,7 @@ impl<'a> RustParser<'a> {
                     b if is_delimiter_start(b) => {
                         let delimiter: Delimiter = b.into();
                         block_stack.push(delimiter);
-                        visitor.visit_delim_start(byte.offset, delimiter);
+                        visitor.visit_delim_start(byte.offset, delimiter)?;
                     }
                     b if is_delimiter_end(b) => {
                         let delimiter: Delimiter = b.into();
@@ -346,7 +346,7 @@ impl<'a> RustParser<'a> {
                                 "ERROR: wrong delimiter, expected '{previous_delimiter}'"
                             ))?
                         }
-                        visitor.visit_delim_end(byte.offset, b.into());
+                        visitor.visit_delim_end(byte.offset, b.into())?;
                     }
                     b if is_identifier_start(b) => {
                         let identifier_start = byte.offset;
@@ -364,7 +364,7 @@ impl<'a> RustParser<'a> {
                                     visitor.visit_macro_call_identifier(SubStr {
                                         sub_slice: &self.buffer[identifier_start..identifier_end],
                                         start: identifier_start,
-                                    });
+                                    })?;
                                     break 'find_identifier_end;
                                 }
                                 // end of normal identifier
@@ -373,7 +373,7 @@ impl<'a> RustParser<'a> {
                                     visitor.visit_identifier(SubStr {
                                         sub_slice: &self.buffer[identifier_start..identifier_end],
                                         start: identifier_start,
-                                    });
+                                    })?;
                                     break 'find_identifier_end;
                                 }
                                 None => Err("ERROR: unexpected end of file")?,
