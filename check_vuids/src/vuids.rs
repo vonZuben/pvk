@@ -1,24 +1,28 @@
 use std::collections::HashMap;
-use vk_safe_sys::validation::{Description, Target, Vuid};
 
-use vk_safe_sys::validation::get_vuids;
+const VUIDS: &'static str = include_str!(concat!(env!("OUT_DIR"), "/vuids.txt"));
 
+type Target = &'static str;
+type Vuid = &'static str;
+type Description = &'static str;
+
+#[allow(unused)]
 pub struct VuidCollection {
     collection: HashMap<Target, VecMap<Vuid, Description>>,
 }
 
 impl VuidCollection {
-    pub fn new() -> Self {
-        let src = get_vuids();
+    // pub fn new() -> Self {
+    //     let src = get_vuids();
 
-        let collection = src
-            .iter()
-            .map(|group| (group.0, VecMap::from_iter(group.1.iter().copied())));
+    //     let collection = src
+    //         .iter()
+    //         .map(|group| (group.0, VecMap::from_iter(group.1.iter().copied())));
 
-        Self {
-            collection: collection.collect(),
-        }
-    }
+    //     Self {
+    //         collection: collection.collect(),
+    //     }
+    // }
     pub fn get_target(&self, target: Target) -> Option<&dyn TargetVuids> {
         fn coerce(t: &impl TargetVuids) -> &dyn TargetVuids {
             t

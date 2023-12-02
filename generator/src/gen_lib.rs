@@ -96,6 +96,14 @@ pub fn generate_library(out_dir: &Path, vk_xml: &Path) -> Result<()> {
 
 pub fn generate_vuids_file(out_dir: &Path, validusage_json_path: &Path) -> Result<()> {
     make_output_directory(out_dir)?;
-    let code = crate::parse_vuids(validusage_json_path);
-    create_file(out_dir, "vuids.rs", &code)
+    let vuids = crate::parse_vuids(validusage_json_path);
+
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(out_dir.join("vuids.txt"))?;
+
+    file.write(vuids.as_bytes())?;
+    file.set_len(vuids.as_bytes().len() as _)
+        .map_err(Into::into)
 }

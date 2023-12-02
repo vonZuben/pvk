@@ -1,8 +1,6 @@
 use std::env::args_os;
 use std::path::PathBuf;
 
-use vk_safe_sys::validation;
-
 mod parse;
 mod vuid_check;
 mod vuids;
@@ -15,8 +13,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .last()
         .ok_or("USAGE: provide path to directory to check")?
         .into();
-
-    let vuids = validation::get_vuids();
 
     if !check_dir.is_dir() {
         Err("USAGE: provide path to directory to check")?

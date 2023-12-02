@@ -6,7 +6,7 @@ version = 3
 name = "check_vuids"
 version = "0.1.0"
 dependencies = [
- "vk-safe-sys",
+ "generator",
 ]
 
 [[package]]

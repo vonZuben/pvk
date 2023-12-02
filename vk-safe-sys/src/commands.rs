@@ -1,9 +1,9 @@
 use std::ffi::c_char;
 use std::fmt;
 
-pub use crate::generated::PFN_vkVoidFunction as VoidFunction;
-pub use crate::generated::{CommandLoadError, LoadCommands};
-use crate::generated::{FunctionLoader, VulkanCommand};
+pub use crate::PFN_vkVoidFunction as VoidFunction;
+pub use crate::{CommandLoadError, LoadCommands};
+use crate::{FunctionLoader, VulkanCommand};
 
 pub trait Version {
     const VersionTriple: (u32, u32, u32);
@@ -103,10 +103,10 @@ mod test {
     #[test]
     fn command_load_test() {
         // use crate::generated::VERSION_1_0;
-        use crate::generated::command::DestroyInstance;
-        use crate::generated::version::instance::provider::VERSION_1_0;
+        use crate::command::DestroyInstance;
+        use crate::version::instance::provider::VERSION_1_0;
 
-        let mut instance = crate::generated::Instance {
+        let mut instance = crate::Instance {
             handle: std::ptr::null(),
         };
         let loader = |name| {
@@ -116,12 +116,11 @@ mod test {
 
         instance_context!(MyCx: VERSION_1_0);
 
-        let create_instance = crate::generated::CreateInstance::load(loader).unwrap();
+        let create_instance = crate::CreateInstance::load(loader).unwrap();
 
-        let mut info = unsafe {
-            std::mem::MaybeUninit::<crate::generated::InstanceCreateInfo>::zeroed().assume_init()
-        };
-        info.s_type = crate::generated::StructureType::INSTANCE_CREATE_INFO;
+        let mut info =
+            unsafe { std::mem::MaybeUninit::<crate::InstanceCreateInfo>::zeroed().assume_init() };
+        info.s_type = crate::StructureType::INSTANCE_CREATE_INFO;
 
         unsafe { create_instance.get_fptr()(&info, std::ptr::null(), &mut instance) };
 

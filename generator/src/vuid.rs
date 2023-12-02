@@ -24,6 +24,29 @@ impl<'a> Vuids<'a> {
     }
 }
 
+/**
+Display the VUIDs as lines wherein:
+first line indicates the API version with A #.#.#
+followed by target lines with T name_of_target
+and VUID and Description line pairs, for target, as V vuid_name and D description_text
+
+this is meant to be extremely simple to parse in the vuid_check tool
+ */
+impl std::fmt::Display for Vuids<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (major, minor, patch) = self.api_version.expect("error: vuid api version never set");
+        writeln!(f, "A {major}.{minor}.{patch}")?;
+        for vuid_group in self.collections.iter() {
+            writeln!(f, "T {}", vuid_group.target)?;
+            for pair in vuid_group.vuid_pairs.iter() {
+                writeln!(f, "V {}", pair.name())?;
+                writeln!(f, "D {}", pair.description())?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl ToTokens for Vuids<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let (major, minor, patch) = self.api_version.expect("error: vuid api version never set");

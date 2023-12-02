@@ -141,15 +141,12 @@ impl<'a> ConstValue2<'a> {
                     context,
                 }
             }
-            Bitpos { bitpos, .. } => {
-                use std::convert::TryInto;
-                ConstValue2 {
-                    value: ValueKind::Bitpos(bitpos.try_into().expect(
-                        "error: expecting 32 bit number for Flags (is this not a Flags type?)",
-                    )),
-                    context,
-                }
-            }
+            Bitpos { bitpos, .. } => ConstValue2 {
+                value: ValueKind::Bitpos(bitpos.try_into().expect(
+                    "error: expecting 32 bit number for Flags (is this not a Flags type?)",
+                )),
+                context,
+            },
             Value { ref value, .. } => {
                 if let Ok(val) = i32::from_str_radix(value, 10) {
                     ConstValue2 {

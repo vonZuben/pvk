@@ -61,19 +61,6 @@ fn load_file(file: &mut File) -> Result<String> {
     Ok(buffer)
 }
 
-struct BufferCursor<'a> {
-    /// buffer that the cursor points into
-    buffer: &'a [u8],
-    /// byte offset from beginning of buffer
-    pos: usize,
-}
-
-impl<'a> BufferCursor<'a> {
-    fn new(buffer: &'a [u8]) -> Self {
-        Self { buffer, pos: 0 }
-    }
-}
-
 /*
 macro_rules! check {
     ($name:ident) => {};

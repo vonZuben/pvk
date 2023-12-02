@@ -2,15 +2,12 @@
 name = "vk-safe"
 version = "0.1.0"
 authors = ["Chris von Zuben <chris.vonzuben@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-vk-safe-sys = { path="../vk-safe-sys", features=["generate"] }
+vk-safe-sys = { path="../vk-safe-sys" }
 
-[build-dependencies]
-vk-safe-sys = { path="../vk-safe-sys", features=["generate"] }
-
-[features]
-check_vuids = []
+# [build-dependencies]
+# vk-safe-sys = { path="../vk-safe-sys", features=["generate"] }

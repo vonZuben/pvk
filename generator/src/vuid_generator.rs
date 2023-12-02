@@ -2,8 +2,6 @@ use crate::utils;
 use crate::vuid;
 use crate::vuid_visitor::VuidVisitor;
 
-use krs_quote::krs_quote;
-
 #[derive(Default)]
 pub struct VuidGenerator<'a> {
     // vuid
@@ -12,8 +10,7 @@ pub struct VuidGenerator<'a> {
 
 impl VuidGenerator<'_> {
     pub fn vuids(&self) -> String {
-        let vuids = &self.vuids;
-        krs_quote!({@vuids}).to_string()
+        self.vuids.to_string()
     }
 }
 
