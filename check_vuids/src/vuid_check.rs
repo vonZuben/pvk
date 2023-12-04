@@ -3,6 +3,11 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek};
 use std::path::Path;
 
+use crate::vuids::VuidCollection;
+
+mod file_vuids;
+use file_vuids::CheckVisitor;
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 /**
@@ -13,14 +18,14 @@ When found, check if all VUID checks are up-to-date and add any missing VUID che
 Can be run in a build script (**only for local development**), or manually.
 When run manually, one argument indicating the path of the rust project with the src directory must be provided
  */
-pub fn check_vuids(check_dir: &Path) -> Result<()> {
+pub fn check_vuids(check_dir: &Path, vuid_collection: &VuidCollection) -> Result<()> {
     for path in check_dir.read_dir()? {
         let path = path?;
         eprintln!("{path:?}");
 
         if path.file_type()?.is_dir() {
             // recurse into all directories
-            check_vuids(path.path().as_path())?;
+            check_vuids(path.path().as_path(), vuid_collection)?;
         } else {
             // open and check file
             let mut file = OpenOptions::new()
@@ -28,20 +33,24 @@ pub fn check_vuids(check_dir: &Path) -> Result<()> {
                 .write(true)
                 .open(path.path().as_path())?;
 
-            check_file(&mut file)?;
+            check_file(&mut file, vuid_collection)?;
         }
     }
 
     Ok(())
 }
 
-fn check_file(file: &mut File) -> Result<()> {
+fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
     let buffer = load_file(file)?;
     let mut parser = crate::parse::RustParser::new(&buffer);
 
-    let mut visitor = PrintlnVisitor;
+    let file_vuids = parser.parse(CheckVisitor::new())?;
 
-    parser.parse(&mut visitor)?;
+    for target in file_vuids.targets() {
+        let reference_vuids = vuid_collection
+            .get_target(target.name())
+            .ok_or(format!("Can't find VUIDs for {}", target.name()))?;
+    }
 
     Ok(())
 }
@@ -61,28 +70,7 @@ fn load_file(file: &mut File) -> Result<String> {
     Ok(buffer)
 }
 
-/*
-macro_rules! check {
-    ($name:ident) => {};
-}
-
-macro_rules! description {
-    ($desc:literal) => {};
-}
-
-#[allow(unused_labels)]
-const fn tst() {
-    check!(CreateInstance);
-
-    'VUID_INFO_003245: {
-        version!(1.3.24);
-        description!("Info must be valid");
-
-        compile_error!("check new VUID_INFO_003245")
-    }
-}
- */
-
+#[allow(unused)]
 struct PrintlnVisitor;
 
 impl<'a> crate::parse::RustFileVisitor<'a> for PrintlnVisitor {

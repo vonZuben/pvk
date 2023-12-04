@@ -1,97 +1,104 @@
-use std::collections::HashMap;
+use generator::VecMap;
+
+use crate::must_next::MustNext;
+use crate::Error;
+use crate::Result;
 
 const VUIDS: &'static str = include_str!(concat!(env!("OUT_DIR"), "/vuids.txt"));
 
 type Target = &'static str;
 type Vuid = &'static str;
 type Description = &'static str;
+type Version = (usize, usize, usize);
 
-#[allow(unused)]
+pub fn parse_version(v_str: &str) -> Result<Version> {
+    let mut version_parts = v_str.split('.');
+    let mut version_parts = MustNext::new(&mut version_parts);
+    const ERROR: &'static str = "missing version part";
+    let major = version_parts.must_next(ERROR)?.parse()?;
+    let minor = version_parts.must_next(ERROR)?.parse()?;
+    let patch = version_parts.must_next(ERROR)?.parse()?;
+    version_parts.must_not_next("unexpected extra in API version")?;
+
+    Ok((major, minor, patch))
+}
+
+/// represents each possible line in [VUIDS]
+enum VuidLine {
+    Version(Version),
+    Target(Target),
+    Vuid(Vuid),
+    Description(Description),
+}
+
+/// like FromStr, but can borrow the source str
+trait RefFromStr<'a>: Sized {
+    type Err;
+    fn ref_from_str(s: &'a str) -> std::result::Result<Self, Self::Err>;
+}
+
+impl RefFromStr<'static> for VuidLine {
+    type Err = Error;
+
+    fn ref_from_str(s: &'static str) -> std::result::Result<Self, Self::Err> {
+        match &s[..1] {
+            "A" => Ok(Self::Version(parse_version(&s[2..])?)),
+            "T" => Ok(Self::Target(&s[2..])),
+            "V" => Ok(Self::Vuid(&s[2..])),
+            "D" => Ok(Self::Description(&s[2..])),
+            _ => Err("not a valid line for VUIDS")?,
+        }
+    }
+}
+
+/// for implementing function like parse on str, but using [RefFromStr]
+trait MyParse<'a> {
+    fn my_parse<F>(&'a self) -> std::result::Result<F, <F as RefFromStr>::Err>
+    where
+        F: RefFromStr<'a>;
+}
+
+impl<'a> MyParse<'a> for str {
+    fn my_parse<F>(&'a self) -> std::result::Result<F, <F as RefFromStr>::Err>
+    where
+        F: RefFromStr<'a>,
+    {
+        F::ref_from_str(self)
+    }
+}
+
 pub struct VuidCollection {
-    collection: HashMap<Target, VecMap<Vuid, Description>>,
+    collection: VecMap<Target, VecMap<Vuid, Description>>,
+    version: Version,
 }
 
 impl VuidCollection {
-    // pub fn new() -> Self {
-    //     let src = get_vuids();
+    pub fn new() -> Result<Self> {
+        let mut version = None;
+        let mut collection = VecMap::default();
+        let mut vuid = None;
 
-    //     let collection = src
-    //         .iter()
-    //         .map(|group| (group.0, VecMap::from_iter(group.1.iter().copied())));
+        for line in VUIDS.lines().map(MyParse::my_parse) {
+            let line = line?;
 
-    //     Self {
-    //         collection: collection.collect(),
-    //     }
-    // }
-    pub fn get_target(&self, target: Target) -> Option<&dyn TargetVuids> {
-        fn coerce(t: &impl TargetVuids) -> &dyn TargetVuids {
-            t
+            use VuidLine::*;
+            match line {
+                Version(v) => version = Some(v),
+                Target(target) => collection.push(target, VecMap::default()),
+                Vuid(id) => vuid = Some(id),
+                Description(description) => collection
+                    .last_mut()
+                    .ok_or("no target for vuid")?
+                    .push(vuid.take().ok_or("no vuid for description")?, description),
+            }
         }
-        self.collection.get(target).map(coerce)
+
+        Ok(Self {
+            collection,
+            version: version.ok_or("no version found")?,
+        })
     }
-}
-
-pub trait TargetVuids {
-    fn get_description(&self, vuid: Vuid) -> Option<Description>;
-    fn iter(&self) -> std::slice::Iter<Description>;
-}
-
-struct VecMap<K, V> {
-    vec: Vec<V>,
-    map: HashMap<K, usize>,
-}
-
-impl TargetVuids for VecMap<Vuid, Description> {
-    fn get_description(&self, vuid: Vuid) -> Option<Description> {
-        self.get(vuid).copied()
-    }
-    fn iter(&self) -> std::slice::Iter<Description> {
-        self.iter()
-    }
-}
-
-impl<K, V> Default for VecMap<K, V> {
-    fn default() -> Self {
-        Self {
-            vec: Default::default(),
-            map: Default::default(),
-        }
-    }
-}
-
-impl<K: std::cmp::Eq + std::hash::Hash, V> VecMap<K, V> {
-    fn push(&mut self, key: K, val: V) {
-        match self.map.insert(key, self.vec.len()) {
-            Some(_) => panic!("error: trying to put duplicate item in VecMap"),
-            None => {} // good
-        }
-        self.vec.push(val);
-    }
-    fn from_iter(items: impl IntoIterator<Item = (K, V)>) -> Self {
-        let mut this = Self::default();
-        for (key, value) in items.into_iter() {
-            this.push(key, value);
-        }
-        this
-    }
-    fn get(&self, key: K) -> Option<&V> {
-        let index = self.map.get(&key)?;
-        unsafe { Some(self.vec.get_unchecked(*index)) }
-    }
-}
-
-impl<K, V> VecMap<K, V> {
-    pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, V> {
-        self.vec.iter()
-    }
-}
-
-impl<'a, K, V> IntoIterator for &'a VecMap<K, V> {
-    type Item = &'a V;
-
-    type IntoIter = std::slice::Iter<'a, V>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.iter()
+    pub fn get_target<'a>(&'a self, target: &'a str) -> Option<&'a VecMap<Vuid, Description>> {
+        self.collection.get(target)
     }
 }

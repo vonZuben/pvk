@@ -37,6 +37,9 @@ where
     }
 }
 
+/// Hashmap with Vec ordering
+///
+/// use push instead of insert
 pub struct VecMap<K, V> {
     vec: Vec<V>,
     map: HashMap<K, usize>,
@@ -52,6 +55,8 @@ impl<K, V> Default for VecMap<K, V> {
 }
 
 impl<K: Eq + Hash, V> VecMap<K, V> {
+    /// push new element with key
+    /// panics if the same key is used more than once
     pub fn push(&mut self, key: K, val: V) {
         match self.map.insert(key, self.vec.len()) {
             Some(_) => panic!("error: trying to put duplicate item in VecMap"),
@@ -59,20 +64,23 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
         }
         self.vec.push(val);
     }
-    #[allow(unused)]
+    /// extend the VecMap from an iterator of (key, value) tuples
     pub fn extend(&mut self, items: impl IntoIterator<Item = (K, V)>) {
         for (key, value) in items.into_iter() {
             self.push(key, value);
         }
     }
+    /// get reference to element with key
     pub fn get(&self, key: K) -> Option<&V> {
         let index = self.map.get(&key)?;
         unsafe { Some(self.vec.get_unchecked(*index)) }
     }
+    /// get mutable reference to element with key
     pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
         let index = self.map.get(&key)?;
         unsafe { Some(self.vec.get_unchecked_mut(*index)) }
     }
+    /// get mutable reference to existing element or set default element with key
     pub fn get_mut_or_default(&mut self, key: K, default: V) -> &mut V {
         match self.map.get(&key) {
             Some(index) => unsafe { self.vec.get_unchecked_mut(*index) },
@@ -82,7 +90,7 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
             }
         }
     }
-    #[allow(unused)]
+    /// get mutable reference to existing element or default element using closure with key
     pub fn get_mut_or_default_with(&mut self, key: K, default: impl FnOnce() -> V) -> &mut V {
         match self.map.get(&key) {
             Some(index) => unsafe { self.vec.get_unchecked_mut(*index) },
@@ -92,10 +100,11 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
             }
         }
     }
+    /// ensures the VecMap contains a value with key, and sets it if not
     pub fn contains_or_default(&mut self, key: K, default: V) {
         let _ = self.get_mut_or_default(key, default);
     }
-    #[allow(unused)]
+    /// like the HashMap entry api
     pub fn entry<'a>(&'a mut self, key: K) -> VecMapEntry<'a, K, V> {
         match self.map.get(&key) {
             Some(index) => VecMapEntry::Occupied(self, *index),
@@ -105,13 +114,15 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
 }
 
 impl<K, V> VecMap<K, V> {
+    /// iterate over the elements of the VecMap
     pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, V> {
         self.vec.iter()
     }
+    /// get reference to the last element push to the VecMap
     pub fn last(&self) -> Option<&V> {
         self.vec.last()
     }
-    #[allow(unused)]
+    /// get mutable reference to the last element push to the VecMap
     pub fn last_mut(&mut self) -> Option<&mut V> {
         self.vec.last_mut()
     }

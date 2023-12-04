@@ -51,6 +51,8 @@ See module functions for more details.
 */
 pub mod sdk;
 
+pub use utils::VecMap;
+
 use std::fs::File;
 use std::io::Read;
 use std::{ffi::OsStr, path::Path};

@@ -1,4 +1,5 @@
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::must_next::MustNext;
+use crate::Result;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Delimiter {
@@ -65,6 +66,10 @@ impl<'a> SubStr<'a> {
     pub fn end_position(&self) -> usize {
         self.start + self.sub_slice.len()
     }
+
+    pub fn inner(&self) -> &'a str {
+        self.sub_slice
+    }
 }
 
 impl std::ops::Deref for SubStr<'_> {
@@ -106,6 +111,10 @@ pub trait RustFileVisitor<'a> {
     }
     #[allow(unused_variables)]
     fn visit_delim_end(&mut self, offset: usize, kind: Delimiter) -> Result<()> {
+        Ok(())
+    }
+    #[allow(unused_variables)]
+    fn visit_semi_colon(&mut self, offset: usize) -> Result<()> {
         Ok(())
     }
 }
@@ -255,7 +264,7 @@ impl<'a> RustParser<'a> {
     /// A file with proper rust code contains raw characters in different contexts. It is
     /// important to distinguish between normal code and "strings" since a strong can contain
     /// any text
-    pub fn parse<V: RustFileVisitor<'a>>(&mut self, visitor: &mut V) -> Result<()> {
+    pub fn parse<V: RustFileVisitor<'a>>(&mut self, mut visitor: V) -> Result<V> {
         // parsing context
         let mut block_stack: Vec<Delimiter> = Vec::new();
 
@@ -331,6 +340,9 @@ impl<'a> RustParser<'a> {
                             }
                         }
                     }
+                    b';' => {
+                        visitor.visit_semi_colon(byte.offset)?;
+                    }
                     b if is_delimiter_start(b) => {
                         let delimiter: Delimiter = b.into();
                         block_stack.push(delimiter);
@@ -393,7 +405,7 @@ impl<'a> RustParser<'a> {
         };
 
         match inner_res() {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(visitor),
             Err(e) => Err(byte_iter.error_at(e))?,
         }
     }
@@ -402,7 +414,7 @@ impl<'a> RustParser<'a> {
 /// call this function after finding a first '/' which indicates the beginning of a comment
 /// this function then determines how to eat the rest of the comment
 fn eat_comment(iter: &mut impl Iterator<Item = Byte>) -> Result<()> {
-    let mut iter = MustNext { iter };
+    let mut iter = MustNext::new(iter);
     match iter.must_next("ERROR: improper comment start")?.value {
         b'/' => {
             // line comment, find end at new line
@@ -441,23 +453,4 @@ fn is_identifier_start(byte: u8) -> bool {
 // TODO this is not correct, but good enough for my own use
 fn is_identifier_char(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || byte == b'_'
-}
-
-struct MustNext<'a, I> {
-    iter: &'a mut I,
-}
-
-impl<I: Iterator> MustNext<'_, I> {
-    fn must_next(&mut self, error: &'static str) -> Result<I::Item> {
-        let item = self.iter.next().ok_or(error)?;
-        Ok(item)
-    }
-}
-
-impl<I: Iterator> Iterator for MustNext<'_, I> {
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
 }
