@@ -140,7 +140,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
                 }
             }
             LookingForVuidDescription => {
-                if &*range == "description" {
+                if &*range == "cur_description" {
                     self.state = GetDescription;
                 }
             }

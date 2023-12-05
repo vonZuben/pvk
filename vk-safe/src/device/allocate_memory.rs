@@ -112,7 +112,7 @@ impl<'pd> MemoryAllocateInfo<'pd> {
 
         'VUID_VkMemoryAllocateInfo_allocationSize_00638: {
             check_vuids::version!("1.2.3");
-            check_vuids::description!("hey there");
+            check_vuids::cur_description!("hey there");
 
             let _ = 0; // test code
         }
