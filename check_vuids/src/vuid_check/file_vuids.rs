@@ -8,8 +8,10 @@ enum CheckVisitorState {
     VuidBlockStart,
     LookingForVuidVersion,
     GetVersion,
+    VersionEnd,
     LookingForVuidDescription,
     GetDescription,
+    DescriptionEnd,
     VuidInfoEnd,
     VuidBlockEnd,
 }
@@ -38,6 +40,10 @@ impl<'a> TargetInfo<'a> {
     pub fn name(&self) -> &'a str {
         self.target
     }
+
+    pub fn get_vuid(&self, vuid: &'a str) -> Option<&VuidInfo<'a>> {
+        self.vuids.get(vuid)
+    }
 }
 
 #[derive(Default)]
@@ -46,6 +52,23 @@ pub struct VuidInfo<'a> {
     description: Option<&'a str>,
     info_end: Option<usize>,
     block_end: Option<usize>,
+}
+
+// these methods are intended to be used after the VuidInfo is already fully parsed
+// thus, we assume that all the options are Some
+impl<'a> VuidInfo<'a> {
+    pub fn version(&self) -> (usize, usize, usize) {
+        self.version.expect("version must have been parsed")
+    }
+    pub fn description(&self) -> &'a str {
+        self.description.expect("description must have been parsed")
+    }
+    pub fn info_end(&self) -> usize {
+        self.info_end.expect("info end must have been found")
+    }
+    pub fn block_end(&self) -> usize {
+        self.block_end.expect("block end must have been found")
+    }
 }
 
 pub struct CheckVisitor<'a> {
@@ -91,7 +114,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
                 let version = crate::vuids::parse_version(&range)?;
                 vuid.version = Some(version);
 
-                self.state = LookingForVuidDescription;
+                self.state = VersionEnd;
             }
             GetDescription => {
                 let vuid = self.expect_last_vuid_mut("GetDescription state: no vuid");
@@ -99,7 +122,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
 
                 vuid.description = Some(range.inner());
 
-                self.state = VuidInfoEnd;
+                self.state = DescriptionEnd;
             }
             _ => {}
         }
@@ -137,6 +160,8 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
             LookingForVuidVersion => {
                 if &*range == "version" {
                     self.state = GetVersion;
+                } else if range.contains("description") {
+                    Err("version should come before description")?
                 }
             }
             LookingForVuidDescription => {
@@ -189,7 +214,15 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
 
         match self.state {
             GetTarget => Err("check_vuids!(...) missing target")?,
+            LookingForVuidVersion | GetVersion => Err("could not find version!(version_text)")?,
+            LookingForVuidDescription | GetDescription => {
+                Err("could not find cur_description!(description_text)")?
+            }
+            VersionEnd => self.state = LookingForVuidDescription,
+            DescriptionEnd => self.state = VuidInfoEnd,
             VuidBlockEnd => {
+                // expected that this must be found, or else the rust source file is already malformed
+                // the call to end() will ensure that the proper number of block ends were found
                 let depth = self
                     .vuid_block_depth
                     .expect("VuidBlockEnd state: no vuid block");
@@ -204,6 +237,8 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
                 }
             }
             LookingForVuidBlock => {
+                // expected that this must be found, or else the rust source file is already malformed
+                // the call to end() will ensure that the proper number of block ends were found
                 let depth = self
                     .check_block_depth
                     .expect("LookingForVuidBlock state: no check block");
@@ -238,5 +273,13 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
             _ => {}
         }
         Ok(())
+    }
+
+    fn end(&mut self) -> crate::Result<()> {
+        if self.block_depth != 0 {
+            Err("incorrect block delimiters")?
+        } else {
+            Ok(())
+        }
     }
 }

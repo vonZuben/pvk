@@ -117,6 +117,10 @@ pub trait RustFileVisitor<'a> {
     fn visit_semi_colon(&mut self, offset: usize) -> Result<()> {
         Ok(())
     }
+    #[allow(unused_variables)]
+    fn end(&mut self) -> Result<()> {
+        Ok(())
+    }
 }
 
 struct BytePositionIterator<'a> {
@@ -405,7 +409,10 @@ impl<'a> RustParser<'a> {
         };
 
         match inner_res() {
-            Ok(_) => Ok(visitor),
+            Ok(_) => {
+                visitor.end()?;
+                Ok(visitor)
+            }
             Err(e) => Err(byte_iter.error_at(e))?,
         }
     }
