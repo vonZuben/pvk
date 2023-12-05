@@ -46,15 +46,35 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
 
     let file_vuids = parser.parse(CheckVisitor::new())?;
 
+    // for each target found in the file, compare each target's reference VUID's "version" to the corresponding VUID's "version" in the file
+    // if the reference VUIDs include new VUIDs not in the file (no corresponding in file), add the new VUIDs to the file with a compile_error!("new VUID")
+    // if the reference VUIDs have a higher version, compare the associated descriptions
+    // if the descriptions do not match, update the description of the file VUID and add a old_description!("...") and compile_error!("updated VUID")
     for target in file_vuids.targets() {
         let reference_vuids = vuid_collection
             .get_target(target.name())
             .ok_or(format!("Can't find VUIDs for {}", target.name()))?;
 
-        // for each target, compare each target's reference VUID's "version" to the corresponding VUID's "version" in the file
-        // if the reference VUIDs include new VUIDs not in the file (no corresponding in file), add the new VUIDs to the file with a compile_error!("new VUID")
-        // if the reference VUIDs have a higher version, compare the associated descriptions
-        // if the descriptions do not match, update the description of the file VUID and add a old_description!("...") and compile_error!("updated VUID")
+        for (vuid, &description) in reference_vuids
+            .ordered_key_value_iter()
+            .expect("vuid collection must use copy keys")
+        {
+            // check if target has this vuid
+            match target.get_vuid(vuid) {
+                Some(vuid_info) => {
+                    // compare versions
+                    if vuid_collection.version_tuple() > vuid_info.version() {
+                        // compare description
+                        if description != vuid_info.description() {
+                            // update description
+                        }
+                    }
+                }
+                None => {
+                    // add new vuid
+                }
+            }
+        }
     }
 
     Ok(())

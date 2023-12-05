@@ -89,7 +89,7 @@ impl VuidCollection {
                 Description(description) => collection
                     .last_mut()
                     .ok_or("no target for vuid")?
-                    .push(vuid.take().ok_or("no vuid for description")?, description),
+                    .push_copy_key(vuid.take().ok_or("no vuid for description")?, description),
             }
         }
 
@@ -100,5 +100,8 @@ impl VuidCollection {
     }
     pub fn get_target<'a>(&'a self, target: &'a str) -> Option<&'a VecMap<Vuid, Description>> {
         self.collection.get(target)
+    }
+    pub fn version_tuple(&self) -> Version {
+        self.version
     }
 }
