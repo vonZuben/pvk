@@ -43,6 +43,7 @@ where
 pub struct VecMap<K, V> {
     vec: Vec<V>,
     map: HashMap<K, usize>,
+    key_copies: Option<Vec<K>>,
 }
 
 impl<K, V> Default for VecMap<K, V> {
@@ -50,6 +51,7 @@ impl<K, V> Default for VecMap<K, V> {
         Self {
             vec: Default::default(),
             map: Default::default(),
+            key_copies: Default::default(),
         }
     }
 }
@@ -113,16 +115,44 @@ impl<K: Eq + Hash, V> VecMap<K, V> {
     }
 }
 
+impl<K: Eq + Hash + Copy, V> VecMap<K, V> {
+    /// If a key is copyable, use this method to push the key and value in a way where the keys will also be iterable in insertion order
+    pub fn push_copy_key(&mut self, key: K, val: V) {
+        self.push(key, val);
+        match self.key_copies {
+            Some(ref mut keys) => keys.push(key),
+            None => self.key_copies = Some(Default::default()),
+        }
+    }
+
+    /// iterate of the keys and values in insertion order
+    pub fn ordered_key_value_iter<'a>(&'a self) -> Option<impl Iterator<Item = (K, &V)> + 'a> {
+        match self.key_copies {
+            None => None,
+            Some(ref keys) => {
+                let mut keys_iter = keys.iter().copied();
+                Some(std::iter::from_fn(move || match keys_iter.next() {
+                    Some(key) => {
+                        let value = self.get(key).expect("Key must have value");
+                        Some((key, value))
+                    }
+                    None => None,
+                }))
+            }
+        }
+    }
+}
+
 impl<K, V> VecMap<K, V> {
-    /// iterate over the elements of the VecMap
+    /// iterate over the elements of the VecMap in insertion order
     pub fn iter<'a>(&'a self) -> std::slice::Iter<'a, V> {
         self.vec.iter()
     }
-    /// get reference to the last element push to the VecMap
+    /// get reference to the last element pushed to the VecMap
     pub fn last(&self) -> Option<&V> {
         self.vec.last()
     }
-    /// get mutable reference to the last element push to the VecMap
+    /// get mutable reference to the last element pushed to the VecMap
     pub fn last_mut(&mut self) -> Option<&mut V> {
         self.vec.last_mut()
     }
