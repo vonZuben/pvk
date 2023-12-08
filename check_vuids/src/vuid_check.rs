@@ -5,8 +5,10 @@ use std::path::Path;
 
 use crate::vuids::VuidCollection;
 
+use crate::file_edits::FileEdits;
+
 mod file_vuids;
-use file_vuids::CheckVisitor;
+use file_vuids::GatherVuids;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -44,7 +46,9 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
     let buffer = load_file(file)?;
     let mut parser = crate::parse::RustParser::new(&buffer);
 
-    let file_vuids = parser.parse(CheckVisitor::new())?;
+    let file_vuids = parser.parse(GatherVuids::new())?;
+
+    let mut file_edits = FileEdits::new(&buffer);
 
     // for each target found in the file, compare each target's reference VUID's "version" to the corresponding VUID's "version" in the file
     // if the reference VUIDs include new VUIDs not in the file (no corresponding in file), add the new VUIDs to the file with a compile_error!("new VUID")
@@ -54,6 +58,8 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
         let reference_vuids = vuid_collection
             .get_target(target.name())
             .ok_or(format!("Can't find VUIDs for {}", target.name()))?;
+
+        let mut insert_offset = target.start_offset();
 
         for (vuid, &description) in reference_vuids
             .ordered_key_value_iter()
@@ -67,17 +73,64 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
                         // compare description
                         if description != vuid_info.description() {
                             // update description
+                            file_edits.delete(vuid_info.info_start(), vuid_info.info_end());
+                            file_edits.insert(
+                                updated_vuid_info(
+                                    vuid_collection.version_tuple(),
+                                    description,
+                                    vuid_info.description(),
+                                ),
+                                vuid_info.info_end(),
+                            );
                         }
                     }
+                    // I assume the vuids in the file will be in roughly the same order as in the reference
+                    // after each target vuid we find in the file, update the insert offset so we insert new ones after this
+                    insert_offset = vuid_info.block_end();
                 }
                 None => {
                     // add new vuid
+                    file_edits.insert(
+                        new_vuid(vuid, vuid_collection.version_tuple(), description),
+                        insert_offset,
+                    );
                 }
             }
         }
     }
 
+    file_edits.make_edits(file)?;
+
     Ok(())
+}
+
+fn new_vuid(name: &str, version: (usize, usize, usize), description: &str) -> String {
+    let major = version.0;
+    let minor = version.1;
+    let patch = version.2;
+    format!(
+        "'{name}: {{
+            check_vuids::version!(\"{major}.{minor}.{patch}\");
+            check_vuids::cur_description!(\"{description}\");
+            check_vuids::compile_error!(\"new VUID\");
+        }}"
+    )
+}
+
+fn updated_vuid_info(
+    new_version: (usize, usize, usize),
+    new_description: &str,
+    old_description: &str,
+) -> String {
+    let major = new_version.0;
+    let minor = new_version.1;
+    let patch = new_version.2;
+    format!(
+        "check_vuids::version!(\"{major}.{minor}.{patch}\");
+        check_vuids::cur_description!(\"{new_description}\");
+        check_vuids::old_description!(\"{old_description}\");
+        check_vuids::compile_error!(\"updated VUID\");"
+    )
 }
 
 fn load_file(file: &mut File) -> Result<String> {
@@ -117,7 +170,11 @@ impl<'a> crate::parse::RustFileVisitor<'a> for PrintlnVisitor {
         Ok(())
     }
 
-    fn visit_block_label(&mut self, range: crate::parse::SubStr<'a>) -> Result<()> {
+    fn visit_block_label(
+        &mut self,
+        label_start: usize,
+        range: crate::parse::SubStr<'a>,
+    ) -> Result<()> {
         let s: &str = &range;
         println!("label: {}", s);
         Ok(())

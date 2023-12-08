@@ -3,13 +3,17 @@ use generator::VecMap;
 #[derive(Clone, Copy)]
 enum CheckVisitorState {
     LookingForCheckBlock,
+    TargetStart,
     GetTarget,
+    TargetEnd,
     LookingForVuidBlock,
     VuidBlockStart,
     LookingForVuidVersion,
+    VersionStart,
     GetVersion,
     VersionEnd,
     LookingForVuidDescription,
+    DescriptionStart,
     GetDescription,
     DescriptionEnd,
     VuidInfoEnd,
@@ -19,16 +23,20 @@ enum CheckVisitorState {
 pub struct TargetInfo<'a> {
     target: &'a str,
     vuids: VecMap<&'a str, VuidInfo<'a>>,
-    block_start: usize,
+
+    /// offset into the file right after the check_vuids!(target) call
+    vuids_start: Option<usize>,
+
+    /// offset into the file at the end of the block which contains the vuids to check
     block_end: Option<usize>,
 }
 
 impl<'a> TargetInfo<'a> {
-    fn new(target: &'a str, block_start: usize) -> Self {
+    fn new(target: &'a str) -> Self {
         Self {
             target,
             vuids: Default::default(),
-            block_start,
+            vuids_start: None,
             block_end: None,
         }
     }
@@ -44,24 +52,51 @@ impl<'a> TargetInfo<'a> {
     pub fn get_vuid(&self, vuid: &'a str) -> Option<&VuidInfo<'a>> {
         self.vuids.get(vuid)
     }
+
+    pub fn start_offset(&self) -> usize {
+        self.vuids_start
+            .expect("Target parsed with improper syntax")
+    }
 }
 
-#[derive(Default)]
 pub struct VuidInfo<'a> {
     version: Option<(usize, usize, usize)>,
     description: Option<&'a str>,
+
+    /// offset into the file to the beginning of the vuid block label (including ')
+    start: usize,
+
+    /// offset into the file to the first byte of version!("ver");
+    info_start: Option<usize>,
+
+    /// offset into the file to the first byte after the cur_description!("desc");
     info_end: Option<usize>,
+
+    /// offset into the file to the end of the block containing the vuid info and check code
     block_end: Option<usize>,
 }
 
 // these methods are intended to be used after the VuidInfo is already fully parsed
 // thus, we assume that all the options are Some
 impl<'a> VuidInfo<'a> {
+    fn new(start: usize) -> Self {
+        Self {
+            version: None,
+            description: None,
+            start,
+            info_start: None,
+            info_end: None,
+            block_end: None,
+        }
+    }
     pub fn version(&self) -> (usize, usize, usize) {
         self.version.expect("version must have been parsed")
     }
     pub fn description(&self) -> &'a str {
         self.description.expect("description must have been parsed")
+    }
+    pub fn info_start(&self) -> usize {
+        self.info_start.expect("info start must have been found")
     }
     pub fn info_end(&self) -> usize {
         self.info_end.expect("info end must have been found")
@@ -71,7 +106,7 @@ impl<'a> VuidInfo<'a> {
     }
 }
 
-pub struct CheckVisitor<'a> {
+pub struct GatherVuids<'a> {
     state: CheckVisitorState,
     targets: Vec<TargetInfo<'a>>,
     block_depth: usize,
@@ -79,7 +114,7 @@ pub struct CheckVisitor<'a> {
     vuid_block_depth: Option<usize>,
 }
 
-impl<'a> CheckVisitor<'a> {
+impl<'a> GatherVuids<'a> {
     pub fn new() -> Self {
         Self {
             state: CheckVisitorState::LookingForCheckBlock,
@@ -103,7 +138,7 @@ impl<'a> CheckVisitor<'a> {
     }
 }
 
-impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
+impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
     fn visit_string(&mut self, range: crate::parse::SubStr<'a>) -> crate::Result<()> {
         use CheckVisitorState::*;
         match self.state {
@@ -133,9 +168,8 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
         use CheckVisitorState::*;
         match self.state {
             GetTarget => {
-                self.targets
-                    .push(TargetInfo::new(range.inner(), self.block_depth)); // TODO this should be location of block, not block depth
-                self.state = LookingForVuidBlock;
+                self.targets.push(TargetInfo::new(range.inner()));
+                self.state = TargetEnd;
             }
             _ => {}
         }
@@ -150,23 +184,25 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
         match self.state {
             LookingForCheckBlock => {
                 if &*range == "check_vuids" {
-                    self.state = GetTarget;
                     if self.block_depth < 1 {
                         Err("check_vuid!() is not in a block")?;
                     }
+                    self.state = TargetStart;
                     self.check_block_depth = Some(self.block_depth);
                 }
             }
             LookingForVuidVersion => {
                 if &*range == "version" {
-                    self.state = GetVersion;
+                    self.state = VersionStart;
+                    self.expect_last_vuid_mut("LookingForVuidVersion no vuid")
+                        .info_start = Some(range.start_position());
                 } else if range.contains("description") {
                     Err("version should come before description")?
                 }
             }
             LookingForVuidDescription => {
                 if &*range == "cur_description" {
-                    self.state = GetDescription;
+                    self.state = DescriptionStart;
                 }
             }
             _ => {}
@@ -174,13 +210,17 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
         Ok(())
     }
 
-    fn visit_block_label(&mut self, range: crate::parse::SubStr<'a>) -> crate::Result<()> {
+    fn visit_block_label(
+        &mut self,
+        label_start: usize,
+        range: crate::parse::SubStr<'a>,
+    ) -> crate::Result<()> {
         use CheckVisitorState::*;
         match self.state {
             LookingForVuidBlock => {
                 self.expect_last_target_mut("LookingForVuidBlock state: no target")
                     .vuids
-                    .push(range.inner(), Default::default());
+                    .push(range.inner(), VuidInfo::new(label_start));
                 self.state = VuidBlockStart;
             }
             _ => {}
@@ -191,11 +231,29 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
     fn visit_delim_start(
         &mut self,
         _offset: usize,
-        _kind: crate::parse::Delimiter,
+        kind: crate::parse::Delimiter,
     ) -> crate::Result<()> {
         use CheckVisitorState::*;
         self.block_depth += 1;
         match self.state {
+            TargetStart => {
+                if kind != crate::parse::Delimiter::Parenthesis {
+                    Err("Expect Parenthesis")?;
+                }
+                self.state = GetTarget;
+            }
+            VersionStart => {
+                if kind != crate::parse::Delimiter::Parenthesis {
+                    Err("Expect Parenthesis")?;
+                }
+                self.state = GetVersion;
+            }
+            DescriptionStart => {
+                if kind != crate::parse::Delimiter::Parenthesis {
+                    Err("Expect Parenthesis")?;
+                }
+                self.state = GetDescription;
+            }
             VuidBlockStart => {
                 self.state = LookingForVuidVersion;
                 self.vuid_block_depth = Some(self.block_depth);
@@ -233,7 +291,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
                     let vuid = self.expect_last_vuid_mut("VuidInfoEnd state: no vuid");
                     assert!(vuid.block_end.is_none());
 
-                    vuid.block_end = Some(offset);
+                    vuid.block_end = Some(offset + 1);
                 }
             }
             LookingForVuidBlock => {
@@ -243,13 +301,13 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
                     .check_block_depth
                     .expect("LookingForVuidBlock state: no check block");
                 if depth == self.block_depth {
-                    self.vuid_block_depth = None;
+                    self.check_block_depth = None;
                     self.state = LookingForCheckBlock;
 
                     let target = self.expect_last_target_mut("no target for check block");
                     assert!(target.block_end.is_none());
 
-                    target.block_end = Some(offset);
+                    target.block_end = Some(offset + 1);
                 }
             }
             _ => {}
@@ -262,11 +320,16 @@ impl<'a> crate::parse::RustFileVisitor<'a> for CheckVisitor<'a> {
     fn visit_semi_colon(&mut self, offset: usize) -> crate::Result<()> {
         use CheckVisitorState::*;
         match self.state {
+            TargetEnd => {
+                let target = self.expect_last_target_mut("TargetEnd no target");
+                target.vuids_start = Some(offset + 1);
+                self.state = LookingForVuidBlock;
+            }
             VuidInfoEnd => {
                 let vuid = self.expect_last_vuid_mut("VuidInfoEnd state: no vuid");
                 assert!(vuid.info_end.is_none());
 
-                vuid.info_end = Some(offset);
+                vuid.info_end = Some(offset + 1);
 
                 self.state = VuidBlockEnd;
             }

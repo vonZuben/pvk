@@ -102,7 +102,7 @@ pub trait RustFileVisitor<'a> {
         Ok(())
     }
     #[allow(unused_variables)]
-    fn visit_block_label(&mut self, range: SubStr<'a>) -> Result<()> {
+    fn visit_block_label(&mut self, label_start: usize, range: SubStr<'a>) -> Result<()> {
         Ok(())
     }
     #[allow(unused_variables)]
@@ -329,10 +329,13 @@ impl<'a> RustParser<'a> {
                                 Some(b) if b.value == b':' => {
                                     let label_end = b.offset;
                                     byte_iter.next(); // consume ':'
-                                    visitor.visit_block_label(SubStr {
-                                        sub_slice: &self.buffer[label_start..label_end],
-                                        start: label_start,
-                                    })?;
+                                    visitor.visit_block_label(
+                                        byte.offset,
+                                        SubStr {
+                                            sub_slice: &self.buffer[label_start..label_end],
+                                            start: label_start,
+                                        },
+                                    )?;
                                     break 'find_label_end;
                                 }
                                 Some(_) => {
