@@ -39,7 +39,7 @@ impl std::fmt::Display for Vuids<'_> {
         for vuid_group in self.collections.iter() {
             writeln!(f, "T {}", vuid_group.target)?;
             for pair in vuid_group.vuid_pairs.iter() {
-                writeln!(f, "V {}", pair.name())?;
+                writeln!(f, "V {}", pair.name().replace("-", "_").replace("::", "_"))?;
                 writeln!(f, "D {}", pair.description())?;
             }
         }
