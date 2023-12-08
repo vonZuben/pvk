@@ -20,21 +20,22 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
     where
         I::Commands: EnumerateDeviceExtensionProperties<P>,
     {
+        check_vuids::check_vuids!(EnumerateDeviceExtensionProperties);
         // all checks handled by PhysicalDevice creation and enumerator_code2!(), except one below
-        check_vuid_defs2!(EnumerateDeviceExtensionProperties
-            pub const VUID_vkEnumerateDeviceExtensionProperties_physicalDevice_parameter:
-                &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
-            pub const VUID_vkEnumerateDeviceExtensionProperties_pLayerName_parameter: &'static [u8] =
-                "If pLayerName is not NULL, pLayerName must be a null-terminated UTF-8 string"
-                    .as_bytes();
-            CHECK {
-                // this is handled by Option<VkStr>
-            }
-            pub const VUID_vkEnumerateDeviceExtensionProperties_pPropertyCount_parameter:
-                &'static [u8] = "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
-            pub const VUID_vkEnumerateDeviceExtensionProperties_pProperties_parameter : & 'static [ u8 ] =
-                "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkExtensionProperties structures" . as_bytes ( ) ;
-        );
+        // check_vuid_defs2!(EnumerateDeviceExtensionProperties
+        //     pub const VUID_vkEnumerateDeviceExtensionProperties_physicalDevice_parameter:
+        //         &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
+        //     pub const VUID_vkEnumerateDeviceExtensionProperties_pLayerName_parameter: &'static [u8] =
+        //         "If pLayerName is not NULL, pLayerName must be a null-terminated UTF-8 string"
+        //             .as_bytes();
+        //     CHECK {
+        //         // this is handled by Option<VkStr>
+        //     }
+        //     pub const VUID_vkEnumerateDeviceExtensionProperties_pPropertyCount_parameter:
+        //         &'static [u8] = "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
+        //     pub const VUID_vkEnumerateDeviceExtensionProperties_pProperties_parameter : & 'static [ u8 ] =
+        //         "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkExtensionProperties structures" . as_bytes ( ) ;
+        // );
 
         enumerator_code2!(self.instance.commands.EnumerateDeviceExtensionProperties().get_fptr(); (self.handle, layer_name) -> storage)
     }

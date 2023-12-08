@@ -18,15 +18,16 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
     where
         I::Commands: EnumerateDeviceLayerProperties<P>,
     {
+        check_vuids::check_vuids!(EnumerateDeviceLayerProperties);
         // all checks handled by PhysicalDevice creation and enumerator_code2!()
-        check_vuid_defs2!(EnumerateDeviceLayerProperties
-            pub const VUID_vkEnumerateDeviceLayerProperties_physicalDevice_parameter: &'static [u8] =
-                "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
-            pub const VUID_vkEnumerateDeviceLayerProperties_pPropertyCount_parameter: &'static [u8] =
-                "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
-            pub const VUID_vkEnumerateDeviceLayerProperties_pProperties_parameter : & 'static [ u8 ] =
-                "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkLayerProperties structures" . as_bytes ( ) ;
-        );
+        // check_vuid_defs2!(EnumerateDeviceLayerProperties
+        //     pub const VUID_vkEnumerateDeviceLayerProperties_physicalDevice_parameter: &'static [u8] =
+        //         "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
+        //     pub const VUID_vkEnumerateDeviceLayerProperties_pPropertyCount_parameter: &'static [u8] =
+        //         "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
+        //     pub const VUID_vkEnumerateDeviceLayerProperties_pProperties_parameter : & 'static [ u8 ] =
+        //         "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkLayerProperties structures" . as_bytes ( ) ;
+        // );
 
         enumerator_code2!(self.instance.commands.EnumerateDeviceLayerProperties().get_fptr(); (self.handle) -> storage)
     }

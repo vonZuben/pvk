@@ -31,17 +31,18 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
 simple_struct_wrapper_scoped!(FormatProperties impl Debug);
 
 const _VUID: () = {
-    check_vuid_defs2!( GetPhysicalDeviceFormatProperties
-        pub const VUID_vkGetPhysicalDeviceFormatProperties_physicalDevice_parameter:
-            &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
-        // ensured by PhysicalDevice creation
-        pub const VUID_vkGetPhysicalDeviceFormatProperties_format_parameter: &'static [u8] =
-            "format must be a valid VkFormat value".as_bytes();
-        // ensured by Format (can only make valid values)
-        pub const VUID_vkGetPhysicalDeviceFormatProperties_pFormatProperties_parameter:
-            &'static [u8] =
-            "pFormatProperties must be a valid pointer to a VkFormatProperties structure"
-                .as_bytes();
-        // using MaybeUninit
-    )
+    check_vuids::check_vuids!(GetPhysicalDeviceFormatProperties);
+    // check_vuid_defs2!( GetPhysicalDeviceFormatProperties
+    //     pub const VUID_vkGetPhysicalDeviceFormatProperties_physicalDevice_parameter:
+    //         &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
+    //     // ensured by PhysicalDevice creation
+    //     pub const VUID_vkGetPhysicalDeviceFormatProperties_format_parameter: &'static [u8] =
+    //         "format must be a valid VkFormat value".as_bytes();
+    //     // ensured by Format (can only make valid values)
+    //     pub const VUID_vkGetPhysicalDeviceFormatProperties_pFormatProperties_parameter:
+    //         &'static [u8] =
+    //         "pFormatProperties must be a valid pointer to a VkFormatProperties structure"
+    //             .as_bytes();
+    //     // using MaybeUninit
+    // )
 };

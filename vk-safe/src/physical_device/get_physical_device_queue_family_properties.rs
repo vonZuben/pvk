@@ -28,12 +28,13 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
 
 // ensured by PhysicalDevice and enumerator_code2!()
 const _VUID: () = {
-    check_vuid_defs2!( GetPhysicalDeviceQueueFamilyProperties
-        pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_physicalDevice_parameter:
-            &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
-        pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyPropertyCount_parameter : & 'static [ u8 ] = "pQueueFamilyPropertyCount must be a valid pointer to a uint32_t value" . as_bytes ( ) ;
-        pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyProperties_parameter : & 'static [ u8 ] = "If the value referenced by pQueueFamilyPropertyCount is not 0, and pQueueFamilyProperties is not NULL, pQueueFamilyProperties must be a valid pointer to an array of pQueueFamilyPropertyCount VkQueueFamilyProperties structures" . as_bytes ( ) ;
-    )
+    check_vuids::check_vuids!(GetPhysicalDeviceQueueFamilyProperties);
+    // check_vuid_defs2!( GetPhysicalDeviceQueueFamilyProperties
+    //     pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_physicalDevice_parameter:
+    //         &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
+    //     pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyPropertyCount_parameter : & 'static [ u8 ] = "pQueueFamilyPropertyCount must be a valid pointer to a uint32_t value" . as_bytes ( ) ;
+    //     pub const VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyProperties_parameter : & 'static [ u8 ] = "If the value referenced by pQueueFamilyPropertyCount is not 0, and pQueueFamilyProperties is not NULL, pQueueFamilyProperties must be a valid pointer to an array of pQueueFamilyPropertyCount VkQueueFamilyProperties structures" . as_bytes ( ) ;
+    // )
 };
 
 simple_struct_wrapper_scoped!(QueueFamilyProperties impl Deref, Debug);

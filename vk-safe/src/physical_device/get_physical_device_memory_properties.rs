@@ -28,13 +28,14 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
 }
 
 const _VUID: () = {
-    check_vuid_defs2!( GetPhysicalDeviceMemoryProperties
-        pub const VUID_vkGetPhysicalDeviceMemoryProperties_physicalDevice_parameter:
-            &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
-        // PhysicalDevice
-        pub const VUID_vkGetPhysicalDeviceMemoryProperties_pMemoryProperties_parameter : & 'static [ u8 ] = "pMemoryProperties must be a valid pointer to a VkPhysicalDeviceMemoryProperties structure" . as_bytes ( ) ;
-        // MaybeUninit
-    )
+    check_vuids::check_vuids!(GetPhysicalDeviceMemoryProperties);
+    // check_vuid_defs2!( GetPhysicalDeviceMemoryProperties
+    //     pub const VUID_vkGetPhysicalDeviceMemoryProperties_physicalDevice_parameter:
+    //         &'static [u8] = "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
+    //     // PhysicalDevice
+    //     pub const VUID_vkGetPhysicalDeviceMemoryProperties_pMemoryProperties_parameter : & 'static [ u8 ] = "pMemoryProperties must be a valid pointer to a VkPhysicalDeviceMemoryProperties structure" . as_bytes ( ) ;
+    //     // MaybeUninit
+    // )
 };
 
 simple_struct_wrapper_scoped!(PhysicalDeviceMemoryProperties);

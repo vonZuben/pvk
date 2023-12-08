@@ -21,27 +21,28 @@ pub fn create_instance<P, C>(
 where
     C: DestroyInstance<P> + Version + LoadCommands,
 {
-    check_vuid_defs2!(CreateInstance
-        pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list" . as_bytes ( ) ;
-        CHECK {
-             // checked in InstanceCreateInfo construction
-        }
-        pub const VUID_vkCreateInstance_pCreateInfo_parameter: &'static [u8] =
-            "pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure"
-                .as_bytes();
-        CHECK {
-            // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
-        }
-        pub const VUID_vkCreateInstance_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
-        CHECK {
-            // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
-        }
-        pub const VUID_vkCreateInstance_pInstance_parameter: &'static [u8] =
-            "pInstance must be a valid pointer to a VkInstance handle".as_bytes();
-        CHECK {
-            // using MaybeUninit::as_mut_ptr()
-        }
-    );
+    check_vuids::check_vuids!(CreateInstance);
+    // check_vuid_defs2!(CreateInstance
+    //     pub const VUID_vkCreateInstance_ppEnabledExtensionNames_01388 : & 'static [ u8 ] = "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames list must also be present in that list" . as_bytes ( ) ;
+    //     CHECK {
+    //          // checked in InstanceCreateInfo construction
+    //     }
+    //     pub const VUID_vkCreateInstance_pCreateInfo_parameter: &'static [u8] =
+    //         "pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure"
+    //             .as_bytes();
+    //     CHECK {
+    //         // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
+    //     }
+    //     pub const VUID_vkCreateInstance_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
+    //     CHECK {
+    //         // taken by rust reference, so the pointer is valid, and the structure itself is validated on it's own
+    //     }
+    //     pub const VUID_vkCreateInstance_pInstance_parameter: &'static [u8] =
+    //         "pInstance must be a valid pointer to a VkInstance handle".as_bytes();
+    //     CHECK {
+    //         // using MaybeUninit::as_mut_ptr()
+    //     }
+    // );
 
     // TODO: return proper error for failing to load the command
     let command = super::entry_fn_loader::<vk::CreateInstance>()
@@ -65,59 +66,61 @@ pub struct InstanceCreateInfo<'a, C> {
 
 impl<'a, C> InstanceCreateInfo<'a, C> {
     pub const fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
-        check_vuid_defs2!( InstanceCreateInfo
-            pub const VUID_VkInstanceCreateInfo_sType_sType: &'static [u8] =
-                "sType must be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO".as_bytes();
-            CHECK {
-                // set below
-            }
-            pub const VUID_VkInstanceCreateInfo_pNext_pNext : & 'static [ u8 ] = "Each pNext member of any structure (including this one) in the pNext chain must be either NULL or a pointer to a valid instance of VkDebugReportCallbackCreateInfoEXT, VkDebugUtilsMessengerCreateInfoEXT, VkValidationFeaturesEXT, or VkValidationFlagsEXT" . as_bytes ( ) ;
-            CHECK {
-                /*
-                ===========================================
-                ===============TODO========================
-                ===========================================
-                currently safe since pnext list is disallowed, but when added, this needs to be checked
-                */
-            }
-            pub const VUID_VkInstanceCreateInfo_sType_unique: &'static [u8] =
-                "The sType value of each struct in the pNext chain must be unique".as_bytes();
-            CHECK {
-                /*
-                ===========================================
-                ===============TODO========================
-                ===========================================
-                currently safe since pnext list is disallowed, but when added, this needs to be checked
-                */
-            }
-            pub const VUID_VkInstanceCreateInfo_flags_zerobitmask: &'static [u8] =
-                "flags must be 0".as_bytes();
-            CHECK {
-                // set below
-            }
-            pub const VUID_VkInstanceCreateInfo_pApplicationInfo_parameter : & 'static [ u8 ] = "If pApplicationInfo is not NULL, pApplicationInfo must be a valid pointer to a valid VkApplicationInfo structure" . as_bytes ( ) ;
-            CHECK {
-                // app_info is provided by valid reference, and the structure itself is validated at construction
-            }
-            pub const VUID_VkInstanceCreateInfo_ppEnabledLayerNames_parameter : & 'static [ u8 ] = "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array of enabledLayerCount null-terminated UTF-8 strings" . as_bytes ( ) ;
-            CHECK {
-                /*
-                ===========================================
-                ===============TODO========================
-                ===========================================
-                currently layers are not allowed, but when added this should be checked
-                */
-            }
-            pub const VUID_VkInstanceCreateInfo_ppEnabledExtensionNames_parameter : & 'static [ u8 ] = "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer to an array of enabledExtensionCount null-terminated UTF-8 strings" . as_bytes ( ) ;
-            CHECK {
-                /*
-                ===========================================
-                ===============TODO========================
-                ===========================================
-                currently extensions are not allowed, but when added this should be checked
-                */
-            }
-        );
+        check_vuids::check_vuids!(InstanceCreateInfo);
+
+        // check_vuid_defs2!( InstanceCreateInfo
+        //     pub const VUID_VkInstanceCreateInfo_sType_sType: &'static [u8] =
+        //         "sType must be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO".as_bytes();
+        //     CHECK {
+        //         // set below
+        //     }
+        //     pub const VUID_VkInstanceCreateInfo_pNext_pNext : & 'static [ u8 ] = "Each pNext member of any structure (including this one) in the pNext chain must be either NULL or a pointer to a valid instance of VkDebugReportCallbackCreateInfoEXT, VkDebugUtilsMessengerCreateInfoEXT, VkValidationFeaturesEXT, or VkValidationFlagsEXT" . as_bytes ( ) ;
+        //     CHECK {
+        //         /*
+        //         ===========================================
+        //         ===============TODO========================
+        //         ===========================================
+        //         currently safe since pnext list is disallowed, but when added, this needs to be checked
+        //         */
+        //     }
+        //     pub const VUID_VkInstanceCreateInfo_sType_unique: &'static [u8] =
+        //         "The sType value of each struct in the pNext chain must be unique".as_bytes();
+        //     CHECK {
+        //         /*
+        //         ===========================================
+        //         ===============TODO========================
+        //         ===========================================
+        //         currently safe since pnext list is disallowed, but when added, this needs to be checked
+        //         */
+        //     }
+        //     pub const VUID_VkInstanceCreateInfo_flags_zerobitmask: &'static [u8] =
+        //         "flags must be 0".as_bytes();
+        //     CHECK {
+        //         // set below
+        //     }
+        //     pub const VUID_VkInstanceCreateInfo_pApplicationInfo_parameter : & 'static [ u8 ] = "If pApplicationInfo is not NULL, pApplicationInfo must be a valid pointer to a valid VkApplicationInfo structure" . as_bytes ( ) ;
+        //     CHECK {
+        //         // app_info is provided by valid reference, and the structure itself is validated at construction
+        //     }
+        //     pub const VUID_VkInstanceCreateInfo_ppEnabledLayerNames_parameter : & 'static [ u8 ] = "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array of enabledLayerCount null-terminated UTF-8 strings" . as_bytes ( ) ;
+        //     CHECK {
+        //         /*
+        //         ===========================================
+        //         ===============TODO========================
+        //         ===========================================
+        //         currently layers are not allowed, but when added this should be checked
+        //         */
+        //     }
+        //     pub const VUID_VkInstanceCreateInfo_ppEnabledExtensionNames_parameter : & 'static [ u8 ] = "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer to an array of enabledExtensionCount null-terminated UTF-8 strings" . as_bytes ( ) ;
+        //     CHECK {
+        //         /*
+        //         ===========================================
+        //         ===============TODO========================
+        //         ===========================================
+        //         currently extensions are not allowed, but when added this should be checked
+        //         */
+        //     }
+        // );
 
         Self {
             inner: vk::InstanceCreateInfo {
@@ -145,31 +148,32 @@ pub struct ApplicationInfo<'a, C> {
 
 impl<'a> ApplicationInfo<'a, ()> {
     pub const fn new<Commands: Version>() -> ApplicationInfo<'a, Commands> {
-        check_vuid_defs2!( ApplicationInfo
-            pub const VUID_VkApplicationInfo_sType_sType: &'static [u8] =
-                "sType must be VK_STRUCTURE_TYPE_APPLICATION_INFO".as_bytes();
-            CHECK {
-                // set below
-            }
-            pub const VUID_VkApplicationInfo_pNext_pNext: &'static [u8] =
-                "pNext must be NULL".as_bytes();
-            CHECK {
-                // set below
-            }
-            pub const VUID_VkApplicationInfo_pApplicationName_parameter : & 'static [ u8 ] = "If pApplicationName is not NULL, pApplicationName must be a null-terminated UTF-8 string" . as_bytes ( ) ;
-            CHECK {
-                // VkStr ensures null-terminated UTF-8 string
-            }
-            pub const VUID_VkApplicationInfo_pEngineName_parameter: &'static [u8] =
-                "If pEngineName is not NULL, pEngineName must be a null-terminated UTF-8 string"
-                    .as_bytes();
-            CHECK {
-                // VkStr ensures null-terminated UTF-8 string
-            }
-            pub const VUID_VkApplicationInfo_apiVersion_04010: &'static [u8] =
-            "If apiVersion is not 0, then it must be greater or equal to VK_API_VERSION_1_0"
-                .as_bytes();
-        );
+        check_vuids::check_vuids!(ApplicationInfo);
+        // check_vuid_defs2!( ApplicationInfo
+        //     pub const VUID_VkApplicationInfo_sType_sType: &'static [u8] =
+        //         "sType must be VK_STRUCTURE_TYPE_APPLICATION_INFO".as_bytes();
+        //     CHECK {
+        //         // set below
+        //     }
+        //     pub const VUID_VkApplicationInfo_pNext_pNext: &'static [u8] =
+        //         "pNext must be NULL".as_bytes();
+        //     CHECK {
+        //         // set below
+        //     }
+        //     pub const VUID_VkApplicationInfo_pApplicationName_parameter : & 'static [ u8 ] = "If pApplicationName is not NULL, pApplicationName must be a null-terminated UTF-8 string" . as_bytes ( ) ;
+        //     CHECK {
+        //         // VkStr ensures null-terminated UTF-8 string
+        //     }
+        //     pub const VUID_VkApplicationInfo_pEngineName_parameter: &'static [u8] =
+        //         "If pEngineName is not NULL, pEngineName must be a null-terminated UTF-8 string"
+        //             .as_bytes();
+        //     CHECK {
+        //         // VkStr ensures null-terminated UTF-8 string
+        //     }
+        //     pub const VUID_VkApplicationInfo_apiVersion_04010: &'static [u8] =
+        //     "If apiVersion is not 0, then it must be greater or equal to VK_API_VERSION_1_0"
+        //         .as_bytes();
+        // );
 
         let version = VkVersion::from_triple(Commands::VersionTriple);
         ApplicationInfo {

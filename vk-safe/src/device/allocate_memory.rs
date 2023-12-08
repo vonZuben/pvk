@@ -110,13 +110,6 @@ impl<'pd> MemoryAllocateInfo<'pd> {
         #![allow(unused_labels)]
         check_vuids::check_vuids!(MemoryAllocateInfo);
 
-        'VUID_VkMemoryAllocateInfo_allocationSize_00638: {
-            check_vuids::version!("1.2.3");
-            check_vuids::cur_description!("hey there");
-
-            let _ = 0; // test code
-        }
-
         let inner = vk::MemoryAllocateInfo {
             s_type: vk::StructureType::MEMORY_ALLOCATE_INFO,
             p_next: std::ptr::null(),

@@ -38,9 +38,10 @@ pub fn enumerate_instance_layer_properties<S: ArrayStorage<LayerProperties>>(
 
 // all verified by enumerator_code!()
 const _VUIDS: () = {
-    check_vuid_defs2!(EnumerateInstanceLayerProperties
-        pub const VUID_vkEnumerateInstanceLayerProperties_pPropertyCount_parameter:
-            &'static [u8] = "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
-        pub const VUID_vkEnumerateInstanceLayerProperties_pProperties_parameter : & 'static [ u8 ] = "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkLayerProperties structures" . as_bytes ( ) ;
-    )
+    check_vuids::check_vuids!(EnumerateInstanceLayerProperties);
+    // check_vuid_defs2!(EnumerateInstanceLayerProperties
+    //     pub const VUID_vkEnumerateInstanceLayerProperties_pPropertyCount_parameter:
+    //         &'static [u8] = "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
+    //     pub const VUID_vkEnumerateInstanceLayerProperties_pProperties_parameter : & 'static [ u8 ] = "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkLayerProperties structures" . as_bytes ( ) ;
+    // )
 };

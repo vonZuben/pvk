@@ -94,32 +94,34 @@ impl<C: DeviceConfig, Pd: PhysicalDevice> Drop for DeviceType<C, Pd> {
     fn drop(&mut self) {
         unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
 
-        check_vuid_defs2!( DestroyDevice
-            pub const VUID_vkDestroyDevice_device_00378 : & 'static [ u8 ] = "All child objects created on device must have been destroyed prior to destroying device" . as_bytes ( ) ;
-            CHECK {
-                // all child objects borrow the device, so rust ensures they are Dropped (and dropping destroys)
-                // **actually** it is possible to forget child objects so that they are not Destroyed
-                // However, it is understood that this can at worst cause resource/memory leaks, and is not "unsound"
-                // Therefore, I accept that this rule is broken until "unsound" behavior can be observed
-            }
-            pub const VUID_vkDestroyDevice_device_00379 : & 'static [ u8 ] = "If VkAllocationCallbacks were provided when device was created, a compatible set of callbacks must be provided here" . as_bytes ( ) ;
-            CHECK {
-                // when supported, the Device handle will store the allocation callbacks used and automatically use them
-            }
-            pub const VUID_vkDestroyDevice_device_00380 : & 'static [ u8 ] = "If no VkAllocationCallbacks were provided when device was created, pAllocator must be NULL" . as_bytes ( ) ;
-            CHECK {
-                // ensured along with the VUID_vkDestroyDevice_device_00379
-            }
-            pub const VUID_vkDestroyDevice_device_parameter: &'static [u8] =
-                "If device is not NULL, device must be a valid VkDevice handle".as_bytes();
-            CHECK {
-                // the Device can only be created with a valid handle in create_device()
-            }
-            pub const VUID_vkDestroyDevice_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
-            CHECK {
-                // ensured along with the VUID_vkDestroyDevice_device_00379
-            }
-        );
+        check_vuids::check_vuids!(DestroyDevice);
+
+        // check_vuid_defs2!( DestroyDevice
+        //     pub const VUID_vkDestroyDevice_device_00378 : & 'static [ u8 ] = "All child objects created on device must have been destroyed prior to destroying device" . as_bytes ( ) ;
+        //     CHECK {
+        //         // all child objects borrow the device, so rust ensures they are Dropped (and dropping destroys)
+        //         // **actually** it is possible to forget child objects so that they are not Destroyed
+        //         // However, it is understood that this can at worst cause resource/memory leaks, and is not "unsound"
+        //         // Therefore, I accept that this rule is broken until "unsound" behavior can be observed
+        //     }
+        //     pub const VUID_vkDestroyDevice_device_00379 : & 'static [ u8 ] = "If VkAllocationCallbacks were provided when device was created, a compatible set of callbacks must be provided here" . as_bytes ( ) ;
+        //     CHECK {
+        //         // when supported, the Device handle will store the allocation callbacks used and automatically use them
+        //     }
+        //     pub const VUID_vkDestroyDevice_device_00380 : & 'static [ u8 ] = "If no VkAllocationCallbacks were provided when device was created, pAllocator must be NULL" . as_bytes ( ) ;
+        //     CHECK {
+        //         // ensured along with the VUID_vkDestroyDevice_device_00379
+        //     }
+        //     pub const VUID_vkDestroyDevice_device_parameter: &'static [u8] =
+        //         "If device is not NULL, device must be a valid VkDevice handle".as_bytes();
+        //     CHECK {
+        //         // the Device can only be created with a valid handle in create_device()
+        //     }
+        //     pub const VUID_vkDestroyDevice_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
+        //     CHECK {
+        //         // ensured along with the VUID_vkDestroyDevice_device_00379
+        //     }
+        // );
     }
 }
 
