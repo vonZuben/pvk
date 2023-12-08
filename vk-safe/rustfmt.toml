@@ -1,0 +1,1 @@
+skip_macro_invocations = ["check_vuids", "version", "cur_description", "old_description"]
