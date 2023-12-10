@@ -1,3 +1,12 @@
+/*!
+Check source files for check_vuids!(target) macro calls.
+
+for each such macro call found, check if the VUIDs in the same block are up to date
+and update as necessary
+
+With no arguments passed, it will automatically search all source files in the workspace vk-safe/src
+One argument for the desired search directory can be provided and searched instead
+ */
 use std::env::{args_os, current_exe};
 use std::path::PathBuf;
 
@@ -23,9 +32,6 @@ fn check_in_workspace() -> Option<PathBuf> {
     }
 }
 
-/**
-Check VUIDs in all files in a given directory
- */
 fn main() -> Result<()> {
     let check_dir = match args_os().last() {
         Some(arg) => {
