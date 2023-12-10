@@ -63,6 +63,7 @@ pub struct VuidInfo<'a> {
     version: Option<(usize, usize, usize)>,
     description: Option<&'a str>,
 
+    #[allow(unused)]
     /// offset into the file to the beginning of the vuid block label (including ')
     start: usize,
 

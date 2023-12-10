@@ -63,6 +63,7 @@ impl<'a> SubStr<'a> {
         self.start
     }
 
+    #[allow(unused)]
     pub fn end_position(&self) -> usize {
         self.start + self.sub_slice.len()
     }

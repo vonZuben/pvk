@@ -123,7 +123,7 @@ fn main() {
 
                 println!("{:#?}", queue_family_configurations);
 
-                let device_create_info = vk_safe::physical_device::DeviceCreateInfo::new::<
+                let device_create_info = DeviceCreateInfo::new::<
                     DeviceContext,
                 >(&queue_family_configurations);
 

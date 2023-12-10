@@ -37,9 +37,9 @@ where
     Cmd: LoadCommands + DestroyDevice<P> + Version,
 {
     const VERSION: VkVersion = VkVersion::new(
-        Cmd::VersionTriple.0,
-        Cmd::VersionTriple.1,
-        Cmd::VersionTriple.2,
+        Cmd::VERSION_TRIPLE.0,
+        Cmd::VERSION_TRIPLE.1,
+        Cmd::VERSION_TRIPLE.2,
     );
     type DropProvider = P;
     type Commands = Cmd;

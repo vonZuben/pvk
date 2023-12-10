@@ -166,7 +166,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for PrintlnVisitor {
 
     fn visit_block_label(
         &mut self,
-        label_start: usize,
+        _label_start: usize,
         range: crate::parse::SubStr<'a>,
     ) -> Result<()> {
         let s: &str = &range;

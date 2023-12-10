@@ -175,7 +175,7 @@ impl<'a> ApplicationInfo<'a, ()> {
         //         .as_bytes();
         // );
 
-        let version = VkVersion::from_triple(Commands::VersionTriple);
+        let version = VkVersion::from_triple(Commands::VERSION_TRIPLE);
         ApplicationInfo {
             inner: vk::ApplicationInfo {
                 s_type: vk::StructureType::APPLICATION_INFO,

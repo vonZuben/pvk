@@ -6,7 +6,7 @@ pub use crate::{CommandLoadError, LoadCommands};
 use crate::{FunctionLoader, VulkanCommand};
 
 pub trait Version {
-    const VersionTriple: (u32, u32, u32);
+    const VERSION_TRIPLE: (u32, u32, u32);
 }
 
 #[macro_export]
@@ -31,19 +31,21 @@ macro_rules! instance_context {
 
         $(
             impl $crate::version::instance::provider::$v_provider for $name {
+                #[allow(non_snake_case)]
                 fn $v_provider(&self) -> &$crate::version::instance::$v_provider {
                     &self.$v_provider
                 }
             }
 
             impl $crate::commands::Version for $name {
-                const VersionTriple: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
+                const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
             }
         )?
 
         $(
             $(
                 impl $crate::extension::instance::provider::$e_provider for $name {
+                    #[allow(non_snake_case)]
                     fn $e_provider(&self) -> &$crate::extension::instance::$e_provider {
                         &self.$e_provider
                     }
@@ -75,19 +77,21 @@ macro_rules! device_context {
 
         $(
             impl $crate::version::device::provider::$v_provider for $name {
+                #[allow(non_snake_case)]
                 fn $v_provider(&self) -> &$crate::version::device::$v_provider {
                     &self.$v_provider
                 }
             }
 
             impl $crate::commands::Version for $name {
-                const VersionTriple: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
+                const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
             }
         )?
 
         $(
             $(
                 impl $crate::extension::device::provider::$e_provider for $name {
+                    #[allow(non_snake_case)]
                     fn $e_provider(&self) -> &$crate::extension::device::$e_provider {
                         &self.$e_provider
                     }
