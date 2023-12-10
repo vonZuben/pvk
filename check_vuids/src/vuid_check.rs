@@ -109,7 +109,7 @@ fn new_vuid(name: &str, (major, minor, patch): (usize, usize, usize), descriptio
         "\n\n'{name}: {{
             check_vuids::version!(\"{major}.{minor}.{patch}\");
             check_vuids::cur_description!(\"{description}\");
-            check_vuids::compile_error!(\"new VUID\");
+            compile_error!(\"new VUID\");
         }}"
     )
 }
@@ -123,7 +123,7 @@ fn updated_vuid_info(
         "check_vuids::version!(\"{major}.{minor}.{patch}\");
         check_vuids::cur_description!(\"{new_description}\");
         check_vuids::old_description!(\"{old_description}\");
-        check_vuids::compile_error!(\"updated VUID\");"
+        compile_error!(\"updated VUID\");"
     )
 }
 
