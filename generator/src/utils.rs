@@ -121,7 +121,7 @@ impl<K: Eq + Hash + Copy, V> VecMap<K, V> {
         self.push(key, val);
         match self.key_copies {
             Some(ref mut keys) => keys.push(key),
-            None => self.key_copies = Some(Default::default()),
+            None => self.key_copies = Some(vec![key]),
         }
     }
 
@@ -129,16 +129,7 @@ impl<K: Eq + Hash + Copy, V> VecMap<K, V> {
     pub fn ordered_key_value_iter<'a>(&'a self) -> Option<impl Iterator<Item = (K, &V)> + 'a> {
         match self.key_copies {
             None => None,
-            Some(ref keys) => {
-                let mut keys_iter = keys.iter().copied();
-                Some(std::iter::from_fn(move || match keys_iter.next() {
-                    Some(key) => {
-                        let value = self.get(key).expect("Key must have value");
-                        Some((key, value))
-                    }
-                    None => None,
-                }))
-            }
+            Some(ref keys) => Some(keys.iter().copied().zip(self.vec.iter())),
         }
     }
 }
