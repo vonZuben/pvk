@@ -15,7 +15,6 @@ enum CheckVisitorState {
     LookingForVuidDescription,
     DescriptionStart,
     GetDescription,
-    DescriptionEnd,
     VuidInfoEnd,
     VuidBlockEnd,
 }
@@ -158,7 +157,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
 
                 vuid.description = Some(range.inner());
 
-                self.state = DescriptionEnd;
+                self.state = VuidInfoEnd;
             }
             _ => {}
         }
@@ -244,14 +243,14 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
                 self.state = GetTarget;
             }
             VersionStart => {
-                if kind != crate::parse::Delimiter::Parenthesis {
-                    Err("Expect Parenthesis")?;
+                if kind != crate::parse::Delimiter::Brace {
+                    Err("Expect Brace")?;
                 }
                 self.state = GetVersion;
             }
             DescriptionStart => {
-                if kind != crate::parse::Delimiter::Parenthesis {
-                    Err("Expect Parenthesis")?;
+                if kind != crate::parse::Delimiter::Brace {
+                    Err("Expect Brace")?;
                 }
                 self.state = GetDescription;
             }
@@ -267,7 +266,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
     fn visit_delim_end(
         &mut self,
         offset: usize,
-        _kind: crate::parse::Delimiter,
+        kind: crate::parse::Delimiter,
     ) -> crate::Result<()> {
         use CheckVisitorState::*;
 
@@ -278,7 +277,17 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
                 Err("could not find cur_description!(description_text)")?
             }
             VersionEnd => self.state = LookingForVuidDescription,
-            DescriptionEnd => self.state = VuidInfoEnd,
+            VuidInfoEnd => {
+                if kind != crate::parse::Delimiter::Brace {
+                    Err("Expected Brace")?;
+                }
+                let vuid = self.expect_last_vuid_mut("VuidInfoEnd state: no vuid");
+                assert!(vuid.info_end.is_none());
+
+                vuid.info_end = Some(offset + 1);
+
+                self.state = VuidBlockEnd;
+            }
             VuidBlockEnd => {
                 // expected that this must be found, or else the rust source file is already malformed
                 // the call to end() will ensure that the proper number of block ends were found
@@ -325,14 +334,6 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
                 let target = self.expect_last_target_mut("TargetEnd no target");
                 target.vuids_start = Some(offset + 1);
                 self.state = LookingForVuidBlock;
-            }
-            VuidInfoEnd => {
-                let vuid = self.expect_last_vuid_mut("VuidInfoEnd state: no vuid");
-                assert!(vuid.info_end.is_none());
-
-                vuid.info_end = Some(offset + 1);
-
-                self.state = VuidBlockEnd;
             }
             _ => {}
         }

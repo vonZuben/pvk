@@ -107,8 +107,8 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
 fn new_vuid(name: &str, (major, minor, patch): (usize, usize, usize), description: &str) -> String {
     format!(
         "\n\n'{name}: {{
-            check_vuids::version!(\"{major}.{minor}.{patch}\");
-            check_vuids::cur_description!(\"{description}\");
+            check_vuids::version!{{\"{major}.{minor}.{patch}\"}}
+            check_vuids::cur_description!{{\"{description}\"}}
             compile_error!(\"new VUID\");
         }}"
     )
@@ -120,9 +120,9 @@ fn updated_vuid_info(
     old_description: &str,
 ) -> String {
     format!(
-        "check_vuids::version!(\"{major}.{minor}.{patch}\");
-        check_vuids::cur_description!(\"{new_description}\");
-        check_vuids::old_description!(\"{old_description}\");
+        "check_vuids::version!{{\"{major}.{minor}.{patch}\"}}
+        check_vuids::cur_description!{{\"{new_description}\"}}
+        check_vuids::old_description!{{\"{old_description}\"}}
         compile_error!(\"updated VUID\");"
     )
 }
