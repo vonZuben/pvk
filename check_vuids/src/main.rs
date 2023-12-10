@@ -10,17 +10,21 @@ mod vuids;
 type Error = Box<dyn std::error::Error>;
 type Result<T> = std::result::Result<T, Error>;
 
+const USAGE_ERROR: &'static str =
+    "USAGE: run from workspace root or provide path to directory to check";
+
 /**
 Check VUIDs in all files in a given directory
  */
 fn main() -> Result<()> {
-    let check_dir: PathBuf = args_os()
-        .last()
-        .ok_or("USAGE: provide path to directory to check")?
-        .into();
+    let mut check_dir = PathBuf::from("vk-safe/src");
+
+    if !check_dir.exists() {
+        check_dir = args_os().last().ok_or(USAGE_ERROR)?.into();
+    }
 
     if !check_dir.is_dir() {
-        Err("USAGE: provide path to directory to check")?
+        Err(USAGE_ERROR)?
     } else {
         let vuid_collection = vuids::VuidCollection::new()?;
         vuid_check::check_vuids(check_dir.as_path(), &vuid_collection)
