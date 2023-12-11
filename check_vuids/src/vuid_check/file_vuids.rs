@@ -1,5 +1,8 @@
 use generator::VecMap;
 
+pub trait Captures<U> {}
+impl<T, U> Captures<U> for T {}
+
 #[derive(Clone, Copy)]
 enum CheckVisitorState {
     LookingForCheckBlock,
@@ -15,7 +18,6 @@ enum CheckVisitorState {
     LookingForVuidDescription,
     DescriptionStart,
     GetDescription,
-    VuidInfoEnd,
     VuidBlockEnd,
 }
 
@@ -60,7 +62,7 @@ impl<'a> TargetInfo<'a> {
 
 pub struct VuidInfo<'a> {
     version: Option<(usize, usize, usize)>,
-    description: Option<&'a str>,
+    description: Option<Vec<&'a str>>,
 
     #[allow(unused)]
     /// offset into the file to the beginning of the vuid block label (including ')
@@ -92,8 +94,12 @@ impl<'a> VuidInfo<'a> {
     pub fn version(&self) -> (usize, usize, usize) {
         self.version.expect("version must have been parsed")
     }
-    pub fn description(&self) -> &'a str {
-        self.description.expect("description must have been parsed")
+    pub fn description<'s>(&'s self) -> impl Iterator<Item = &'a str> + Clone + Captures<&'s Self> {
+        self.description
+            .as_ref()
+            .expect("description must have been parsed")
+            .iter()
+            .copied()
     }
     pub fn info_start(&self) -> usize {
         self.info_start.expect("info start must have been found")
@@ -153,11 +159,11 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
             }
             GetDescription => {
                 let vuid = self.expect_last_vuid_mut("GetDescription state: no vuid");
-                assert!(vuid.description.is_none());
 
-                vuid.description = Some(range.inner());
-
-                self.state = VuidInfoEnd;
+                match vuid.description {
+                    Some(ref mut vec) => vec.push(range.inner()),
+                    None => vuid.description = Some(vec![range.inner()]),
+                }
             }
             _ => {}
         }
@@ -273,11 +279,9 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
         match self.state {
             GetTarget => Err("check_vuids!(...) missing target")?,
             LookingForVuidVersion | GetVersion => Err("could not find version!(version_text)")?,
-            LookingForVuidDescription | GetDescription => {
-                Err("could not find cur_description!(description_text)")?
-            }
+            LookingForVuidDescription => Err("could not find cur_description!(description_text)")?,
             VersionEnd => self.state = LookingForVuidDescription,
-            VuidInfoEnd => {
+            GetDescription => {
                 if kind != crate::parse::Delimiter::Brace {
                     Err("Expected Brace")?;
                 }

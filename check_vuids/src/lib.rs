@@ -29,7 +29,7 @@ macro_rules! version {
 /// the check_vuids tool will check if this is up to date with the latest version that check_vuids was compiled with
 #[macro_export]
 macro_rules! cur_description {
-    ($desc:literal) => {};
+    ($($desc:literal)*) => {};
 }
 
 /// provide the old description of the VUID
@@ -37,7 +37,7 @@ macro_rules! cur_description {
 /// this is simply informative to the user to allow them to easily compare and see what is new
 #[macro_export]
 macro_rules! old_description {
-    ($desc:literal) => {};
+    ($($desc:literal)*) => {};
 }
 
 /* EXAMPLE

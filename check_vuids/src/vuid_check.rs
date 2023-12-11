@@ -71,7 +71,7 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
                     // compare versions
                     if vuid_collection.version_tuple() > vuid_info.version() {
                         // compare description
-                        if description != vuid_info.description() {
+                        if !descriptions_equal(description, vuid_info.description()) {
                             // update description
                             file_edits.delete(vuid_info.info_start(), vuid_info.info_end());
                             file_edits.insert(
@@ -105,26 +105,113 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
 }
 
 fn new_vuid(name: &str, (major, minor, patch): (usize, usize, usize), description: &str) -> String {
+    let description = DescriptionFormatter { desc: description };
     format!(
         "\n\n'{name}: {{
             check_vuids::version!{{\"{major}.{minor}.{patch}\"}}
-            check_vuids::cur_description!{{\"{description}\"}}
+            check_vuids::cur_description!{{
+            {description}
+            }}
+
             compile_error!(\"new VUID\");
         }}"
     )
 }
 
-fn updated_vuid_info(
+fn updated_vuid_info<'a>(
     (major, minor, patch): (usize, usize, usize),
     new_description: &str,
-    old_description: &str,
+    old_description: impl Iterator<Item = &'a str> + Clone,
 ) -> String {
+    let new_description = DescriptionFormatter {
+        desc: new_description,
+    };
+    let old_description = PrintOldDescription {
+        lines: old_description,
+    };
     format!(
         "check_vuids::version!{{\"{major}.{minor}.{patch}\"}}
-        check_vuids::cur_description!{{\"{new_description}\"}}
-        check_vuids::old_description!{{\"{old_description}\"}}
-        compile_error!(\"updated VUID\");"
+            check_vuids::cur_description!{{
+            {new_description}
+            }}
+            check_vuids::old_description!{{
+            {old_description}
+            }}
+
+            compile_error!(\"updated VUID\");"
     )
+}
+
+const DESCRIPTION_WIDTH: usize = 80;
+/// split the description into lines if a predetermined width is passed
+struct DescriptionFormatter<'a> {
+    desc: &'a str,
+}
+
+impl std::fmt::Display for DescriptionFormatter<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut desc = self.desc;
+        let next_line = || {
+            if desc == "" {
+                return None;
+            }
+            for (i, &c) in desc.as_bytes().iter().enumerate() {
+                if i > DESCRIPTION_WIDTH && c == b' ' {
+                    let ret = &desc[..i];
+                    desc = &desc[i + 1..];
+                    return Some(ret);
+                }
+            }
+            let ret = desc;
+            desc = "";
+            Some(ret)
+        };
+
+        let mut lines = std::iter::from_fn(next_line).peekable();
+
+        while let Some(line) = lines.next() {
+            if lines.peek().is_some() {
+                writeln!(f, "\"{line}\"")?;
+            } else {
+                write!(f, "\"{line}\"")?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct PrintOldDescription<I> {
+    lines: I,
+}
+
+impl<'a, I: Iterator<Item = &'a str> + Clone> std::fmt::Display for PrintOldDescription<I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut lines = self.lines.clone().peekable();
+        while let Some(line) = lines.next() {
+            if lines.peek().is_some() {
+                writeln!(f, "\"{line}\"")?;
+            } else {
+                write!(f, "\"{line}\"")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+// compare descriptions without whitespace since the descriptions in the file are formatted
+// and whitespace is assumed to have no significant meaning
+fn descriptions_equal<'a>(reference_desc: &str, file_desc: impl Iterator<Item = &'a str>) -> bool {
+    let mut d1 = reference_desc.chars().filter(|c| !c.is_whitespace());
+    let mut d2 = file_desc
+        .map(|s| s.chars().filter(|c| !c.is_whitespace()))
+        .flatten();
+    for (d1, d2) in d1.by_ref().zip(d2.by_ref()) {
+        if d1 != d2 {
+            return false;
+        }
+    }
+    d1.next().is_none() && d2.next().is_none()
 }
 
 fn load_file(file: &mut File) -> Result<String> {
