@@ -107,7 +107,9 @@ fn check_file(file: &mut File, vuid_collection: &VuidCollection) -> Result<()> {
 fn new_vuid(name: &str, (major, minor, patch): (usize, usize, usize), description: &str) -> String {
     let description = DescriptionFormatter { desc: description };
     format!(
-        "\n\n'{name}: {{
+        "\n
+        #[allow(unused_labels)]
+        '{name}: {{
             check_vuids::version!{{\"{major}.{minor}.{patch}\"}}
             check_vuids::cur_description!{{
             {description}
