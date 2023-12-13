@@ -23,9 +23,14 @@ pub fn enumerate_instance_version() -> Result<VkVersion, vk::Result> {
 
 const _VUIDS: () = {
     check_vuids::check_vuids!(EnumerateInstanceVersion);
-    // check_vuid_defs2!(EnumerateInstanceVersion
-    //     pub const VUID_vkEnumerateInstanceVersion_pApiVersion_parameter: &'static [u8] =
-    //         "pApiVersion must be a valid pointer to a uint32_t value".as_bytes();
-    //         // using MaybeUninit::as_mut_ptr
-    // )
+
+    #[allow(unused_labels)]
+    'VUID_vkEnumerateInstanceVersion_pApiVersion_parameter: {
+        check_vuids::version! {"1.3.268"}
+        check_vuids::cur_description! {
+        "pApiVersion must be a valid pointer to a uint32_t value"
+        }
+
+        // MaybeUninit
+    }
 };

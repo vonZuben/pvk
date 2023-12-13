@@ -96,32 +96,64 @@ impl<C: DeviceConfig, Pd: PhysicalDevice> Drop for DeviceType<C, Pd> {
 
         check_vuids::check_vuids!(DestroyDevice);
 
-        // check_vuid_defs2!( DestroyDevice
-        //     pub const VUID_vkDestroyDevice_device_00378 : & 'static [ u8 ] = "All child objects created on device must have been destroyed prior to destroying device" . as_bytes ( ) ;
-        //     CHECK {
-        //         // all child objects borrow the device, so rust ensures they are Dropped (and dropping destroys)
-        //         // **actually** it is possible to forget child objects so that they are not Destroyed
-        //         // However, it is understood that this can at worst cause resource/memory leaks, and is not "unsound"
-        //         // Therefore, I accept that this rule is broken until "unsound" behavior can be observed
-        //     }
-        //     pub const VUID_vkDestroyDevice_device_00379 : & 'static [ u8 ] = "If VkAllocationCallbacks were provided when device was created, a compatible set of callbacks must be provided here" . as_bytes ( ) ;
-        //     CHECK {
-        //         // when supported, the Device handle will store the allocation callbacks used and automatically use them
-        //     }
-        //     pub const VUID_vkDestroyDevice_device_00380 : & 'static [ u8 ] = "If no VkAllocationCallbacks were provided when device was created, pAllocator must be NULL" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ensured along with the VUID_vkDestroyDevice_device_00379
-        //     }
-        //     pub const VUID_vkDestroyDevice_device_parameter: &'static [u8] =
-        //         "If device is not NULL, device must be a valid VkDevice handle".as_bytes();
-        //     CHECK {
-        //         // the Device can only be created with a valid handle in create_device()
-        //     }
-        //     pub const VUID_vkDestroyDevice_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ensured along with the VUID_vkDestroyDevice_device_00379
-        //     }
-        // );
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_05137: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "All child objects created on device must have been destroyed prior to destroying device"
+            }
+
+            // all child objects borrow the device, and *normally* they are dropped/destroyed before the device is destroyed
+            // However, it is well known that rust does not guarantee that values will be dropped. Thus, we cannot enforce this rule
+            // In any event, if a child object is not dropped (e.g. forgotten), it should never be used again or dropped. Thus, even if the Device is
+            // dropped, the child objects are merely leaked, and it is "assumed" that this is no real issue even in Vulkan.
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_00379: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If VkAllocationCallbacks were provided when device was created, a compatible set of"
+            "callbacks must be provided here"
+            }
+
+            // TODO: currently VkAllocationCallbacks are not supported
+            // when added, this need to be checked again
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_00380: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If no VkAllocationCallbacks were provided when device was created, pAllocator must"
+            "be NULL"
+            }
+
+            // This is currently always set to NULL
+            // TODO: ensure still ok when VkAllocationCallbacks are supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If device is not NULL, device must be a valid VkDevice handle"
+            }
+
+            // Device will always be a valid handle. Guaranteed by Device creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_pAllocator_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
+            "structure"
+            }
+
+            // TODO: currently VkAllocationCallbacks are not supported
+            // when added, this need to be checked again
+        }
     }
 }
 

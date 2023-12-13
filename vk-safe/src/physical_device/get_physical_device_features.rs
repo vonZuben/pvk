@@ -29,13 +29,24 @@ simple_struct_wrapper_scoped!(PhysicalDeviceFeatures impl Debug);
 
 const _VUID: () = {
     check_vuids::check_vuids!(GetPhysicalDeviceFeatures);
-    // check_vuid_defs2!( GetPhysicalDeviceFeatures
-    //     pub const VUID_vkGetPhysicalDeviceFeatures_physicalDevice_parameter: &'static [u8] =
-    //     "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
-    //     // ensured by PhysicalDevice creation
 
-    //     pub const VUID_vkGetPhysicalDeviceFeatures_pFeatures_parameter: &'static [u8] =
-    //     "pFeatures must be a valid pointer to a VkPhysicalDeviceFeatures structure".as_bytes();
-    //     // using MaybeUninit
-    // )
+    #[allow(unused_labels)]
+    'VUID_vkGetPhysicalDeviceFeatures_physicalDevice_parameter: {
+        check_vuids::version! {"1.3.268"}
+        check_vuids::cur_description! {
+        "physicalDevice must be a valid VkPhysicalDevice handle"
+        }
+
+        // valid from creation
+    }
+
+    #[allow(unused_labels)]
+    'VUID_vkGetPhysicalDeviceFeatures_pFeatures_parameter: {
+        check_vuids::version! {"1.3.268"}
+        check_vuids::cur_description! {
+        "pFeatures must be a valid pointer to a VkPhysicalDeviceFeatures structure"
+        }
+
+        // MaybeUninit
+    }
 };

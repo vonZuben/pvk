@@ -87,42 +87,63 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInsta
 impl<C: InstanceConfig> Drop for InstanceType<C> {
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyInstance);
-        // check_vuid_defs2!( DestroyInstance
-        //     pub const VUID_vkDestroyInstance_instance_00629 : & 'static [ u8 ] = "All child objects created using instance must have been destroyed prior to destroying instance" . as_bytes ( ) ;
-        //     CHECK {
-        //         // it is possible to forget child objects such that they are nto destroyed
-        //         // However, I believe this is at worst a memory leak issue and will never cause undefined behavior
-        //     }
-        //     pub const VUID_vkDestroyInstance_instance_00630 : & 'static [ u8 ] = "If VkAllocationCallbacks were provided when instance was created, a compatible set of callbacks must be provided here" . as_bytes ( ) ;
-        //     CHECK {
-        //         // *******************************************
-        //         // ******************TODO*********************
-        //         // *******************************************
-        //         // when implemented, check this
-        //         // probably the instance object will hold its allocator and automatically use it in drop
-        //     }
-        //     pub const VUID_vkDestroyInstance_instance_00631 : & 'static [ u8 ] = "If no VkAllocationCallbacks were provided when instance was created, pAllocator must be NULL" . as_bytes ( ) ;
-        //     CHECK {
-        //         // *******************************************
-        //         // ******************TODO*********************
-        //         // *******************************************
-        //         // when implemented, check this
-        //         // probably the instance object will hold its allocator and automatically use it in drop
-        //     }
-        //     pub const VUID_vkDestroyInstance_instance_parameter: &'static [u8] =
-        //         "If instance is not NULL, instance must be a valid VkInstance handle".as_bytes();
-        //     CHECK {
-        //         // Instance must have been created with a valid handle, so only valid handle should be dropped
-        //     }
-        //     pub const VUID_vkDestroyInstance_pAllocator_parameter : & 'static [ u8 ] = "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks structure" . as_bytes ( ) ;
-        //     CHECK {
-        //         // *******************************************
-        //         // ******************TODO*********************
-        //         // *******************************************
-        //         // when implemented, check this
-        //         // probably the instance object will hold its allocator and automatically use it in drop
-        //     }
-        // );
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_00629: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "All child objects created using instance must have been destroyed prior to destroying"
+            "instance"
+            }
+
+            // all child objects borrow the instance, and *normally* they are dropped/destroyed before the instance is destroyed
+            // However, it is well known that rust does not guarantee that values will be dropped. Thus, we cannot enforce this rule
+            // In any event, if a child object is not dropped (e.g. forgotten), it should never be used again or dropped. Thus, even if the Instance is
+            // dropped, the child objects are merely leaked, and it is "assumed" that this is no real issue even in Vulkan.
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_00630: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If VkAllocationCallbacks were provided when instance was created, a compatible set"
+            "of callbacks must be provided here"
+            }
+
+            // TODO: VkAllocationCallbacks not currently supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_00631: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If no VkAllocationCallbacks were provided when instance was created, pAllocator must"
+            "be NULL"
+            }
+
+            // TODO: VkAllocationCallbacks not currently supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If instance is not NULL, instance must be a valid VkInstance handle"
+            }
+
+            // always a valid handle from creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_pAllocator_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
+            "structure"
+            }
+
+            // TODO: VkAllocationCallbacks not currently supported
+        }
 
         unsafe { self.commands.DestroyInstance().get_fptr()(self.handle, None.to_c()) }
     }

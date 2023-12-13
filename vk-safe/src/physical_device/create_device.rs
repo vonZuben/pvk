@@ -11,21 +11,32 @@ use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
 use vk::commands::{LoadCommands, Version};
-use vk::has_command::{CreateDevice, DestroyDevice};
+use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
 impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
-    pub fn create_device<Create, Destroy, Commands>(
+    pub fn create_device<Create, Destroy, E, Commands>(
         &self,
         create_info: &DeviceCreateInfo<'_, Commands>,
     ) -> Result<DeviceType<Config<Destroy, Commands>, Self>, Error>
     where
-        I::Commands: CreateDevice<Create>,
+        I::Commands: CreateDevice<Create> + EnumerateDeviceExtensionProperties<E>,
         Commands: DestroyDevice<Destroy> + LoadCommands + Version,
     {
         let mut device = MaybeUninit::uninit();
+
+        // *********************************************
+        // *********Fix with extension support**********
+        // **VUID_VkDeviceCreateInfo_pProperties_04451**
+        // *********************************************
+        for e in self.enumerate_device_extension_properties(None, Vec::new())? {
+            if e.extension_name() == "VK_KHR_portability_subset" {
+                panic!("Physical device with VK_KHR_portability_subset is not supported")
+            }
+        }
+        // *********************************************
         unsafe {
             let res = self.instance.commands.CreateDevice().get_fptr()(
                 self.handle,
@@ -51,96 +62,530 @@ impl<'a> DeviceCreateInfo<'a, ()> {
         queue_create_info: &'a [DeviceQueueCreateInfo],
     ) -> DeviceCreateInfo<'a, Commands> {
         check_vuids::check_vuids!(DeviceCreateInfo);
-        // check_vuid_defs2!( DeviceCreateInfo
-        //     pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_00372 : & 'static [ u8 ] = "The queueFamilyIndex member of each element of pQueueCreateInfos must be unique within pQueueCreateInfos" . as_bytes ( ) ;
-        //     CHECK {
-        //         // the way of creating a DeviceQueueCreateInfo ensures unique indices
-        //     }
-        //     // VUID_VkDeviceCreateInfo_queueFamilyIndex_00372 appears to be a mistake since no definition is provided
-        //     pub const VUID_VkDeviceCreateInfo_sType_sType: &'static [u8] =
-        //         "sType must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO".as_bytes();
-        //     // s_type is set below
-        //     pub const VUID_VkDeviceCreateInfo_pNext_pNext : & 'static [ u8 ] = "Each pNext member of any structure (including this one) in the pNext chain must be either NULL or a pointer to a valid instance of VkDeviceDiagnosticsConfigCreateInfoNV, VkDeviceGroupDeviceCreateInfo, VkDeviceMemoryOverallocationCreateInfoAMD, VkPhysicalDevice16BitStorageFeatures, VkPhysicalDevice8BitStorageFeatures, VkPhysicalDeviceASTCDecodeFeaturesEXT, VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT, VkPhysicalDeviceBufferDeviceAddressFeatures, VkPhysicalDeviceBufferDeviceAddressFeaturesEXT, VkPhysicalDeviceCoherentMemoryFeaturesAMD, VkPhysicalDeviceComputeShaderDerivativesFeaturesNV, VkPhysicalDeviceConditionalRenderingFeaturesEXT, VkPhysicalDeviceCooperativeMatrixFeaturesNV, VkPhysicalDeviceCornerSampledImageFeaturesNV, VkPhysicalDeviceCoverageReductionModeFeaturesNV, VkPhysicalDeviceCustomBorderColorFeaturesEXT, VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV, VkPhysicalDeviceDepthClipEnableFeaturesEXT, VkPhysicalDeviceDescriptorIndexingFeatures, VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV, VkPhysicalDeviceDiagnosticsConfigFeaturesNV, VkPhysicalDeviceExclusiveScissorFeaturesNV, VkPhysicalDeviceFeatures2, VkPhysicalDeviceFragmentDensityMapFeaturesEXT, VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV, VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT, VkPhysicalDeviceHostQueryResetFeatures, VkPhysicalDeviceImagelessFramebufferFeatures, VkPhysicalDeviceIndexTypeUint8FeaturesEXT, VkPhysicalDeviceInlineUniformBlockFeaturesEXT, VkPhysicalDeviceLineRasterizationFeaturesEXT, VkPhysicalDeviceMemoryPriorityFeaturesEXT, VkPhysicalDeviceMeshShaderFeaturesNV, VkPhysicalDeviceMultiviewFeatures, VkPhysicalDevicePerformanceQueryFeaturesKHR, VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT, VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR, VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceRayTracingFeaturesKHR, VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV, VkPhysicalDeviceRobustness2FeaturesEXT, VkPhysicalDeviceSamplerYcbcrConversionFeatures, VkPhysicalDeviceScalarBlockLayoutFeatures, VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures, VkPhysicalDeviceShaderAtomicInt64Features, VkPhysicalDeviceShaderClockFeaturesKHR, VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT, VkPhysicalDeviceShaderDrawParametersFeatures, VkPhysicalDeviceShaderFloat16Int8Features, VkPhysicalDeviceShaderImageFootprintFeaturesNV, VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL, VkPhysicalDeviceShaderSMBuiltinsFeaturesNV, VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures, VkPhysicalDeviceShadingRateImageFeaturesNV, VkPhysicalDeviceSubgroupSizeControlFeaturesEXT, VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT, VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT, VkPhysicalDeviceTimelineSemaphoreFeatures, VkPhysicalDeviceTransformFeedbackFeaturesEXT, VkPhysicalDeviceUniformBufferStandardLayoutFeatures, VkPhysicalDeviceVariablePointersFeatures, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT, VkPhysicalDeviceVulkan11Features, VkPhysicalDeviceVulkan12Features, VkPhysicalDeviceVulkanMemoryModelFeatures, or VkPhysicalDeviceYcbcrImageArraysFeaturesEXT" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when add p_next support
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_sType_unique: &'static [u8] =
-        //         "The sType value of each struct in the pNext chain must be unique".as_bytes();
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when add p_next support
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_flags_zerobitmask: &'static [u8] =
-        //         "flags must be 0".as_bytes();
-        //     // flags is set below
-        //     pub const VUID_VkDeviceCreateInfo_pQueueCreateInfos_parameter : & 'static [ u8 ] = "pQueueCreateInfos must be a valid pointer to an array of queueCreateInfoCount valid VkDeviceQueueCreateInfo structures" . as_bytes ( ) ;
-        //     CHECK {
-        //         // the queue create infos are created in a DeviceQueueCreateInfoArray via DeviceQueueCreateInfoConfiguration which ensure valid infos
-        //         // also rust references are used and are valid, and the array len is used for count
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledLayerNames_parameter : & 'static [ u8 ] = "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array of enabledLayerCount null-terminated UTF-8 strings" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when support layers
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_parameter : & 'static [ u8 ] = "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer to an array of enabledExtensionCount null-terminated UTF-8 strings" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when support extensions
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_pEnabledFeatures_parameter : & 'static [ u8 ] = "If pEnabledFeatures is not NULL, pEnabledFeatures must be a valid pointer to a valid VkPhysicalDeviceFeatures structure" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when support features
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_queueCreateInfoCount_arraylength: &'static [u8] =
-        //         "queueCreateInfoCount must be greater than 0".as_bytes();
-        //     CHECK {
-        //         assert!(queue_create_info.len() > 0);
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_pNext_00373 : & 'static [ u8 ] = "If the pNext chain includes a VkPhysicalDeviceFeatures2 structure, then pEnabledFeatures must be NULL" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when add p_next support
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_01840: &'static [u8] =
-        //         "ppEnabledExtensionNames must not contain VK_AMD_negative_viewport_height".as_bytes();
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when support extensions
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_00374 : & 'static [ u8 ] = "ppEnabledExtensionNames must not contain both VK_KHR_maintenance1 and VK_AMD_negative_viewport_height" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when support extensions
-        //     }
-        //     pub const VUID_VkDeviceCreateInfo_queueFamilyIndex_02802 : & 'static [ u8 ] = "The queueFamilyIndex member of each element of pQueueCreateInfos must be unique within pQueueCreateInfos, except that two members can share the same queueFamilyIndex if one is a protected-capable queue and one is not a protected-capable queue" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_03328 : & 'static [ u8 ] = "ppEnabledExtensionNames must not contain both VK_KHR_buffer_device_address and VK_EXT_buffer_device_address" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_pNext_02829 : & 'static [ u8 ] = "If the pNext chain includes a VkPhysicalDeviceVulkan11Features structure, then it must not include a VkPhysicalDevice16BitStorageFeatures, VkPhysicalDeviceMultiviewFeatures, VkPhysicalDeviceVariablePointersFeatures, VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceSamplerYcbcrConversionFeatures, or VkPhysicalDeviceShaderDrawParametersFeatures structure" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_pNext_02830 : & 'static [ u8 ] = "If the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then it must not include a VkPhysicalDevice8BitStorageFeatures, VkPhysicalDeviceShaderAtomicInt64Features, VkPhysicalDeviceShaderFloat16Int8Features, VkPhysicalDeviceDescriptorIndexingFeatures, VkPhysicalDeviceScalarBlockLayoutFeatures, VkPhysicalDeviceImagelessFramebufferFeatures, VkPhysicalDeviceUniformBufferStandardLayoutFeatures, VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures, VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures, VkPhysicalDeviceHostQueryResetFeatures, VkPhysicalDeviceTimelineSemaphoreFeatures, VkPhysicalDeviceBufferDeviceAddressFeatures, or VkPhysicalDeviceVulkanMemoryModelFeatures structure" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02831 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_KHR_draw_indirect_count\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::drawIndirectCount must be VK_TRUE" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02832 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_KHR_sampler_mirror_clamp_to_edge\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerMirrorClampToEdge must be VK_TRUE" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02833 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_EXT_descriptor_indexing\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::descriptorIndexing must be VK_TRUE" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02834 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_EXT_sampler_filter_minmax\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerFilterMinmax must be VK_TRUE" . as_bytes ( ) ;
-        //     pub const VUID_VkDeviceCreateInfo_ppEnabledExtensions_02835 : & 'static [ u8 ] = "If ppEnabledExtensions contains \"VK_EXT_shader_viewport_index_layer\" and the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex and VkPhysicalDeviceVulkan12Features::shaderOutputLayer must both be VK_TRUE" . as_bytes ( ) ;
-        // );
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_queueFamilyIndex_02802: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "The queueFamilyIndex member of each element of pQueueCreateInfos must be unique within"
+            "pQueueCreateInfos , except that two members can share the same queueFamilyIndex if"
+            "one describes protected-capable queues and one describes queues that are not protected-capable"
+            }
+
+            // handled by DeviceQueueCreateInfoConfiguration
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pQueueCreateInfos_06755: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If multiple elements of pQueueCreateInfos share the same queueFamilyIndex, the sum"
+            "of their queueCount members must be less than or equal to the queueCount member of"
+            "the VkQueueFamilyProperties structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties"
+            "in the pQueueFamilyProperties[queueFamilyIndex]"
+            }
+
+            // handled by DeviceQueueCreateInfoConfiguration
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pQueueCreateInfos_06654: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If multiple elements of pQueueCreateInfos share the same queueFamilyIndex, then all"
+            "of such elements must have the same global priority level, which can be specified"
+            "explicitly by the including a VkDeviceQueueGlobalPriorityCreateInfoKHR structure in"
+            "the pNext chain, or by the implicit default value"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pNext_00373: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the pNext chain includes a VkPhysicalDeviceFeatures2 structure, then pEnabledFeatures"
+            "must be NULL"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_01840: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If VkPhysicalDeviceProperties::apiVersion advertises Vulkan 1.1 or later, ppEnabledExtensionNames"
+            "must not contain VK_AMD_negative_viewport_height"
+            }
+
+            // TODO: extensions not yet supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_00374: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "ppEnabledExtensionNames must not contain both VK_KHR_maintenance1 and VK_AMD_negative_viewport_height"
+            }
+
+            // TODO: extensions not yet supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_03328: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "ppEnabledExtensionNames must not contain both VK_KHR_buffer_device_address and VK_EXT_buffer_device_address"
+            }
+
+            // TODO: extensions not yet supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pNext_04748: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the pNext chain includes a VkPhysicalDeviceVulkan12Features structure and VkPhysicalDeviceVulkan12Features::bufferDeviceAddress"
+            "is VK_TRUE, ppEnabledExtensionNames must not contain VK_EXT_buffer_device_address"
+            }
+
+            // TODO: p_next and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pNext_02829: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the pNext chain includes a VkPhysicalDeviceVulkan11Features structure, then it"
+            "must not include a VkPhysicalDevice16BitStorageFeatures, VkPhysicalDeviceMultiviewFeatures,"
+            "VkPhysicalDeviceVariablePointersFeatures, VkPhysicalDeviceProtectedMemoryFeatures,"
+            "VkPhysicalDeviceSamplerYcbcrConversionFeatures, or VkPhysicalDeviceShaderDrawParametersFeatures"
+            "structure"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pNext_02830: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then it"
+            "must not include a VkPhysicalDevice8BitStorageFeatures, VkPhysicalDeviceShaderAtomicInt64Features,"
+            "VkPhysicalDeviceShaderFloat16Int8Features, VkPhysicalDeviceDescriptorIndexingFeatures,"
+            "VkPhysicalDeviceScalarBlockLayoutFeatures, VkPhysicalDeviceImagelessFramebufferFeatures,"
+            "VkPhysicalDeviceUniformBufferStandardLayoutFeatures, VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures,"
+            "VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures, VkPhysicalDeviceHostQueryResetFeatures,"
+            "VkPhysicalDeviceTimelineSemaphoreFeatures, VkPhysicalDeviceBufferDeviceAddressFeatures,"
+            "or VkPhysicalDeviceVulkanMemoryModelFeatures structure"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_04476: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If ppEnabledExtensionNames contains \"VK_KHR_shader_draw_parameters\" and the pNext"
+            "chain includes a VkPhysicalDeviceVulkan11Features structure, then VkPhysicalDeviceVulkan11Features::shaderDrawParameters"
+            "must be VK_TRUE"
+            }
+
+            // TODO: p_next and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02831: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If ppEnabledExtensionNames contains \"VK_KHR_draw_indirect_count\" and the pNext chain"
+            "includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::drawIndirectCount"
+            "must be VK_TRUE"
+            }
+
+            // TODO: p_next and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02832: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If ppEnabledExtensionNames contains \"VK_KHR_sampler_mirror_clamp_to_edge\" and the"
+            "pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerMirrorClampToEdge"
+            "must be VK_TRUE"
+            }
+
+            // TODO: p_next and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02833: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If ppEnabledExtensionNames contains \"VK_EXT_descriptor_indexing\" and the pNext chain"
+            "includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::descriptorIndexing"
+            "must be VK_TRUE"
+            }
+
+            // TODO: p_next and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02834: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If ppEnabledExtensionNames contains \"VK_EXT_sampler_filter_minmax\" and the pNext"
+            "chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerFilterMinmax"
+            "must be VK_TRUE"
+            }
+
+            // TODO: p_next and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02835: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If ppEnabledExtensionNames contains \"VK_EXT_shader_viewport_index_layer\" and the"
+            "pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex"
+            "and VkPhysicalDeviceVulkan12Features::shaderOutputLayer must both be VK_TRUE"
+            }
+
+            // TODO: p_next and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pNext_06532: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the pNext chain includes a VkPhysicalDeviceVulkan13Features structure, then it"
+            "must not include a VkPhysicalDeviceDynamicRenderingFeatures, VkPhysicalDeviceImageRobustnessFeatures,"
+            "VkPhysicalDeviceInlineUniformBlockFeatures, VkPhysicalDeviceMaintenance4Features,"
+            "VkPhysicalDevicePipelineCreationCacheControlFeatures, VkPhysicalDevicePrivateDataFeatures,"
+            "VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures, VkPhysicalDeviceShaderIntegerDotProductFeatures,"
+            "VkPhysicalDeviceShaderTerminateInvocationFeatures, VkPhysicalDeviceSubgroupSizeControlFeatures,"
+            "VkPhysicalDeviceSynchronization2Features, VkPhysicalDeviceTextureCompressionASTCHDRFeatures,"
+            "or VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures structure"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pProperties_04451: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the VK_KHR_portability_subset extension is included in pProperties of vkEnumerateDeviceExtensionProperties,"
+            "ppEnabledExtensionNames must include \"VK_KHR_portability_subset\""
+            }
+
+            // TODO: this is definitely bad
+            // *********************************************
+            // when extensions are properly supported, do better checking
+            // for now, just check if a VK_KHR_portability_subset device is being used and panic
+            // this check is performed in create_device for now
+            // *********************************************
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_shadingRateImage_04478: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the shadingRateImage feature is enabled, the pipelineFragmentShadingRate feature"
+            "must not be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_shadingRateImage_04479: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the shadingRateImage feature is enabled, the primitiveFragmentShadingRate feature"
+            "must not be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_shadingRateImage_04480: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the shadingRateImage feature is enabled, the attachmentFragmentShadingRate feature"
+            "must not be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_fragmentDensityMap_04481: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the fragmentDensityMap feature is enabled, the pipelineFragmentShadingRate feature"
+            "must not be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_fragmentDensityMap_04482: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the fragmentDensityMap feature is enabled, the primitiveFragmentShadingRate feature"
+            "must not be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_fragmentDensityMap_04483: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the fragmentDensityMap feature is enabled, the attachmentFragmentShadingRate feature"
+            "must not be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_None_04896: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If sparseImageInt64Atomics is enabled, shaderImageInt64Atomics must be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_None_04897: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If sparseImageFloat32Atomics is enabled, shaderImageFloat32Atomics must be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_None_04898: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If sparseImageFloat32AtomicAdd is enabled, shaderImageFloat32AtomicAdd must be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_sparseImageFloat32AtomicMinMax_04975: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If sparseImageFloat32AtomicMinMax is enabled, shaderImageFloat32AtomicMinMax must"
+            "be enabled"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_None_08095: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If descriptorBuffer is enabled, ppEnabledExtensionNames must not contain VK_AMD_shader_fragment_mask"
+            }
+
+            // TODO: features and extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_sType_sType: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "sType must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO"
+            }
+
+            // set below
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pNext_pNext: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "Each pNext member of any structure (including this one) in the pNext chain must be"
+            "either NULL or a pointer to a valid instance of VkDeviceDeviceMemoryReportCreateInfoEXT,"
+            "VkDeviceDiagnosticsConfigCreateInfoNV, VkDeviceGroupDeviceCreateInfo, VkDeviceMemoryOverallocationCreateInfoAMD,"
+            "VkDevicePrivateDataCreateInfo, VkPhysicalDevice16BitStorageFeatures, VkPhysicalDevice4444FormatsFeaturesEXT,"
+            "VkPhysicalDevice8BitStorageFeatures, VkPhysicalDeviceASTCDecodeFeaturesEXT, VkPhysicalDeviceAccelerationStructureFeaturesKHR,"
+            "VkPhysicalDeviceAddressBindingReportFeaturesEXT, VkPhysicalDeviceAmigoProfilingFeaturesSEC,"
+            "VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT, VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT,"
+            "VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT, VkPhysicalDeviceBorderColorSwizzleFeaturesEXT,"
+            "VkPhysicalDeviceBufferDeviceAddressFeatures, VkPhysicalDeviceBufferDeviceAddressFeaturesEXT,"
+            "VkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI, VkPhysicalDeviceCoherentMemoryFeaturesAMD,"
+            "VkPhysicalDeviceColorWriteEnableFeaturesEXT, VkPhysicalDeviceComputeShaderDerivativesFeaturesNV,"
+            "VkPhysicalDeviceConditionalRenderingFeaturesEXT, VkPhysicalDeviceCooperativeMatrixFeaturesKHR,"
+            "VkPhysicalDeviceCooperativeMatrixFeaturesNV, VkPhysicalDeviceCopyMemoryIndirectFeaturesNV,"
+            "VkPhysicalDeviceCornerSampledImageFeaturesNV, VkPhysicalDeviceCoverageReductionModeFeaturesNV,"
+            "VkPhysicalDeviceCubicClampFeaturesQCOM, VkPhysicalDeviceCubicWeightsFeaturesQCOM,"
+            "VkPhysicalDeviceCustomBorderColorFeaturesEXT, VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV,"
+            "VkPhysicalDeviceDepthBiasControlFeaturesEXT, VkPhysicalDeviceDepthClampZeroOneFeaturesEXT,"
+            "VkPhysicalDeviceDepthClipControlFeaturesEXT, VkPhysicalDeviceDepthClipEnableFeaturesEXT,"
+            "VkPhysicalDeviceDescriptorBufferFeaturesEXT, VkPhysicalDeviceDescriptorIndexingFeatures,"
+            "VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV, VkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE,"
+            "VkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV, VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV,"
+            "VkPhysicalDeviceDeviceMemoryReportFeaturesEXT, VkPhysicalDeviceDiagnosticsConfigFeaturesNV,"
+            "VkPhysicalDeviceDisplacementMicromapFeaturesNV, VkPhysicalDeviceDynamicRenderingFeatures,"
+            "VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT, VkPhysicalDeviceExclusiveScissorFeaturesNV,"
+            "VkPhysicalDeviceExtendedDynamicState2FeaturesEXT, VkPhysicalDeviceExtendedDynamicState3FeaturesEXT,"
+            "VkPhysicalDeviceExtendedDynamicStateFeaturesEXT, VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV,"
+            "VkPhysicalDeviceExternalFormatResolveFeaturesANDROID, VkPhysicalDeviceExternalMemoryRDMAFeaturesNV,"
+            "VkPhysicalDeviceExternalMemoryScreenBufferFeaturesQNX, VkPhysicalDeviceFaultFeaturesEXT,"
+            "VkPhysicalDeviceFeatures2, VkPhysicalDeviceFragmentDensityMap2FeaturesEXT, VkPhysicalDeviceFragmentDensityMapFeaturesEXT,"
+            "VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM, VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR,"
+            "VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT, VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV,"
+            "VkPhysicalDeviceFragmentShadingRateFeaturesKHR, VkPhysicalDeviceFrameBoundaryFeaturesEXT,"
+            "VkPhysicalDeviceGlobalPriorityQueryFeaturesKHR, VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT,"
+            "VkPhysicalDeviceHostImageCopyFeaturesEXT, VkPhysicalDeviceHostQueryResetFeatures,"
+            "VkPhysicalDeviceImage2DViewOf3DFeaturesEXT, VkPhysicalDeviceImageCompressionControlFeaturesEXT,"
+            "VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT, VkPhysicalDeviceImageProcessing2FeaturesQCOM,"
+            "VkPhysicalDeviceImageProcessingFeaturesQCOM, VkPhysicalDeviceImageRobustnessFeatures,"
+            "VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT, VkPhysicalDeviceImageViewMinLodFeaturesEXT,"
+            "VkPhysicalDeviceImagelessFramebufferFeatures, VkPhysicalDeviceIndexTypeUint8FeaturesEXT,"
+            "VkPhysicalDeviceInheritedViewportScissorFeaturesNV, VkPhysicalDeviceInlineUniformBlockFeatures,"
+            "VkPhysicalDeviceInvocationMaskFeaturesHUAWEI, VkPhysicalDeviceLegacyDitheringFeaturesEXT,"
+            "VkPhysicalDeviceLineRasterizationFeaturesEXT, VkPhysicalDeviceLinearColorAttachmentFeaturesNV,"
+            "VkPhysicalDeviceMaintenance4Features, VkPhysicalDeviceMaintenance5FeaturesKHR, VkPhysicalDeviceMemoryDecompressionFeaturesNV,"
+            "VkPhysicalDeviceMemoryPriorityFeaturesEXT, VkPhysicalDeviceMeshShaderFeaturesEXT,"
+            "VkPhysicalDeviceMeshShaderFeaturesNV, VkPhysicalDeviceMultiDrawFeaturesEXT, VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT,"
+            "VkPhysicalDeviceMultiviewFeatures, VkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM,"
+            "VkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM, VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT,"
+            "VkPhysicalDeviceNestedCommandBufferFeaturesEXT, VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT,"
+            "VkPhysicalDeviceOpacityMicromapFeaturesEXT, VkPhysicalDeviceOpticalFlowFeaturesNV,"
+            "VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT, VkPhysicalDevicePerformanceQueryFeaturesKHR,"
+            "VkPhysicalDevicePipelineCreationCacheControlFeatures, VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR,"
+            "VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT, VkPhysicalDevicePipelinePropertiesFeaturesEXT,"
+            "VkPhysicalDevicePipelineProtectedAccessFeaturesEXT, VkPhysicalDevicePipelineRobustnessFeaturesEXT,"
+            "VkPhysicalDevicePortabilitySubsetFeaturesKHR, VkPhysicalDevicePresentBarrierFeaturesNV,"
+            "VkPhysicalDevicePresentIdFeaturesKHR, VkPhysicalDevicePresentWaitFeaturesKHR, VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT,"
+            "VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT, VkPhysicalDevicePrivateDataFeatures,"
+            "VkPhysicalDeviceProtectedMemoryFeatures, VkPhysicalDeviceProvokingVertexFeaturesEXT,"
+            "VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT, VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT,"
+            "VkPhysicalDeviceRayQueryFeaturesKHR, VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV,"
+            "VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR, VkPhysicalDeviceRayTracingMotionBlurFeaturesNV,"
+            "VkPhysicalDeviceRayTracingPipelineFeaturesKHR, VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR,"
+            "VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV, VkPhysicalDeviceRobustness2FeaturesEXT,"
+            "VkPhysicalDeviceSamplerYcbcrConversionFeatures, VkPhysicalDeviceScalarBlockLayoutFeatures,"
+            "VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures, VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT,"
+            "VkPhysicalDeviceShaderAtomicFloatFeaturesEXT, VkPhysicalDeviceShaderAtomicInt64Features,"
+            "VkPhysicalDeviceShaderClockFeaturesKHR, VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM,"
+            "VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures, VkPhysicalDeviceShaderDrawParametersFeatures,"
+            "VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD, VkPhysicalDeviceShaderEnqueueFeaturesAMDX,"
+            "VkPhysicalDeviceShaderFloat16Int8Features, VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT,"
+            "VkPhysicalDeviceShaderImageFootprintFeaturesNV, VkPhysicalDeviceShaderIntegerDotProductFeatures,"
+            "VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL, VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT,"
+            "VkPhysicalDeviceShaderObjectFeaturesEXT, VkPhysicalDeviceShaderSMBuiltinsFeaturesNV,"
+            "VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures, VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR,"
+            "VkPhysicalDeviceShaderTerminateInvocationFeatures, VkPhysicalDeviceShaderTileImageFeaturesEXT,"
+            "VkPhysicalDeviceShadingRateImageFeaturesNV, VkPhysicalDeviceSubgroupSizeControlFeatures,"
+            "VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT, VkPhysicalDeviceSubpassShadingFeaturesHUAWEI,"
+            "VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT, VkPhysicalDeviceSynchronization2Features,"
+            "VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT, VkPhysicalDeviceTextureCompressionASTCHDRFeatures,"
+            "VkPhysicalDeviceTilePropertiesFeaturesQCOM, VkPhysicalDeviceTimelineSemaphoreFeatures,"
+            "VkPhysicalDeviceTransformFeedbackFeaturesEXT, VkPhysicalDeviceUniformBufferStandardLayoutFeatures,"
+            "VkPhysicalDeviceVariablePointersFeatures, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT,"
+            "VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT, VkPhysicalDeviceVulkan11Features,"
+            "VkPhysicalDeviceVulkan12Features, VkPhysicalDeviceVulkan13Features, VkPhysicalDeviceVulkanMemoryModelFeatures,"
+            "VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR, VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT,"
+            "VkPhysicalDeviceYcbcrDegammaFeaturesQCOM, VkPhysicalDeviceYcbcrImageArraysFeaturesEXT,"
+            "or VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_sType_unique: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "The sType value of each struct in the pNext chain must be unique, with the exception"
+            "of structures of type VkDeviceDeviceMemoryReportCreateInfoEXT or VkDevicePrivateDataCreateInfo"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_flags_zerobitmask: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "flags must be 0"
+            }
+
+            // set below
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pQueueCreateInfos_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pQueueCreateInfos must be a valid pointer to an array of queueCreateInfoCount valid"
+            "VkDeviceQueueCreateInfo structures"
+            }
+
+            // rust reference; VkDeviceQueueCreateInfo self validated
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledLayerNames_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array"
+            "of enabledLayerCount null-terminated UTF-8 strings"
+            }
+
+            // TODO: layers not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer"
+            "to an array of enabledExtensionCount null-terminated UTF-8 strings"
+            }
+
+            // TODO: extensions not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_pEnabledFeatures_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If pEnabledFeatures is not NULL, pEnabledFeatures must be a valid pointer to a valid"
+            "VkPhysicalDeviceFeatures structure"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceCreateInfo_queueCreateInfoCount_arraylength: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueCreateInfoCount must be greater than 0"
+            }
+
+            // checked in DeviceQueueCreateInfoConfiguration, but maybe I should change how this works
+        }
 
         DeviceCreateInfo {
             inner: vk::DeviceCreateInfo {
@@ -298,50 +743,122 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope>
         flags: vk::DeviceQueueCreateFlags,
     ) -> crate::array_storage::InitResult {
         check_vuids::check_vuids!(DeviceQueueCreateInfo);
-        // check_vuid_defs2!( DeviceQueueCreateInfo
-        //     pub const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381 : & 'static [ u8 ] = "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties" . as_bytes ( ) ;
-        //     CHECK {
-        //         // Self.family_index should be valid
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_queueCount_00382 : & 'static [ u8 ] = "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]" . as_bytes ( ) ;
-        //     CHECK {
-        //         assert!(priorities.len() <= self.family_properties.queue_count as usize);
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: &'static [u8] =
-        //         "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive".as_bytes();
-        //     CHECK {
-        //         // this is verified by QueuePriorities::new()
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_sType_sType: &'static [u8] =
-        //         "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO".as_bytes();
-        //     // s_type set below
-        //     pub const VUID_VkDeviceQueueCreateInfo_pNext_pNext : & 'static [ u8 ] = "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoEXT" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when add p_next support
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_flags_parameter: &'static [u8] =
-        //         "flags must be a valid combination of VkDeviceQueueCreateFlagBits values".as_bytes();
-        //     CHECK {
-        //         assert!(!flags.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT), "must not push_config with PROTECTED_BIT. use push_config_with_protected instead");
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: &'static [u8] =
-        //         "pQueuePriorities must be a valid pointer to an array of queueCount float values"
-        //             .as_bytes();
-        //     CHECK {
-        //         // guaranteed by QueuePriorities
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: &'static [u8] =
-        //         "queueCount must be greater than 0".as_bytes();
-        //     CHECK {
-        //         // guaranteed by QueuePriorities
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_sType_unique: &'static [u8] =
-        //     "The sType value of each struct in the pNext chain must be unique".as_bytes();
-        //     pub const VUID_VkDeviceQueueCreateInfo_flags_02861 : & 'static [ u8 ] = "If the protected memory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT bit of flags must not be set" . as_bytes ( ) ;
-        // );
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties"
+            }
+
+            // Self.family_index should be valid from QueueFamilies.configure_create_info
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueCount_00382: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties"
+            "structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]"
+            }
+
+            assert!(priorities.len() <= self.family_properties.queue_count as usize)
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive"
+            }
+
+            // [QueuePriorities]
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_02861: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the protectedMemory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT"
+            "bit of flags must not be set"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_06449: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If flags includes VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT, queueFamilyIndex must be the"
+            "index of a queue family that includes the VK_QUEUE_PROTECTED_BIT capability"
+            }
+
+            assert!(
+                !flags.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT),
+                "must not push_config with PROTECTED_BIT. use push_config_with_protected instead"
+            );
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_sType_sType: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO"
+            }
+
+            // set below
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pNext_pNext: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoKHR"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_sType_unique: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "The sType value of each struct in the pNext chain must be unique"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "flags must be a valid combination of VkDeviceQueueCreateFlagBits values"
+            }
+
+            // vk::DeviceQueueCreateFlags, and checking VUID_VkDeviceQueueCreateInfo_flags_06449 above
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pQueuePriorities must be a valid pointer to an array of queueCount float values"
+            }
+
+            // QueuePriorities
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueCount must be greater than 0"
+            }
+
+            // QueuePriorities
+        }
 
         let info = DeviceQueueCreateInfo {
             inner: vk::DeviceQueueCreateInfo {
@@ -368,52 +885,133 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope>
         flags_for_protected: vk::DeviceQueueCreateFlags,
     ) -> crate::array_storage::InitResult {
         check_vuids::check_vuids!(DeviceQueueCreateInfo);
-        // check_vuid_defs2!( DeviceQueueCreateInfo
-        //     pub const VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381 : & 'static [ u8 ] = "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties" . as_bytes ( ) ;
-        //     CHECK {
-        //         // Self.family_index should be valid
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_queueCount_00382 : & 'static [ u8 ] = "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]" . as_bytes ( ) ;
-        //     CHECK {
-        //         assert!(priorities_for_non_protected.len() + priorities_for_protected.len() <= self.family_properties.queue_count as usize);
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: &'static [u8] =
-        //         "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive".as_bytes();
-        //     CHECK {
-        //         // guaranteed by QueuePriorities
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_sType_sType: &'static [u8] =
-        //         "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO".as_bytes();
-        //     // s_type set below
-        //     pub const VUID_VkDeviceQueueCreateInfo_pNext_pNext : & 'static [ u8 ] = "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoEXT" . as_bytes ( ) ;
-        //     CHECK {
-        //         // ******************************************
-        //         // *****************TODO*********************
-        //         // ******************************************
-        //         // need check when add p_next support
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_flags_parameter: &'static [u8] =
-        //         "flags must be a valid combination of VkDeviceQueueCreateFlagBits values".as_bytes();
-        //     CHECK {
-        //         assert!(self.family_properties.queue_flags.contains(vk::QueueFlags::PROTECTED_BIT));
-        //         assert!(!flags_for_non_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT), "flags_for_non_protected should not include PROTECTED_BIT");
-        //         assert!(flags_for_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT), "flags_for_protected must include PROTECTED_BIT");
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: &'static [u8] =
-        //         "pQueuePriorities must be a valid pointer to an array of queueCount float values"
-        //             .as_bytes();
-        //     CHECK {
-        //         // guaranteed by QueuePriorities
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: &'static [u8] =
-        //         "queueCount must be greater than 0".as_bytes();
-        //     CHECK {
-        //         // guaranteed by QueuePriorities
-        //     }
-        //     pub const VUID_VkDeviceQueueCreateInfo_sType_unique: &'static [u8] =
-        //     "The sType value of each struct in the pNext chain must be unique".as_bytes();
-        //     pub const VUID_VkDeviceQueueCreateInfo_flags_02861 : & 'static [ u8 ] = "If the protected memory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT bit of flags must not be set" . as_bytes ( ) ;
-        // );
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties"
+            }
+
+            // Self.family_index should be valid from QueueFamilies.configure_create_info
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueCount_00382: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties"
+            "structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]"
+            }
+
+            assert!(
+                priorities_for_non_protected.len() + priorities_for_protected.len()
+                    <= self.family_properties.queue_count as usize
+            );
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive"
+            }
+
+            // [QueuePriorities]
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_02861: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the protectedMemory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT"
+            "bit of flags must not be set"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_06449: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If flags includes VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT, queueFamilyIndex must be the"
+            "index of a queue family that includes the VK_QUEUE_PROTECTED_BIT capability"
+            }
+
+            assert!(self
+                .family_properties
+                .queue_flags
+                .contains(vk::QueueFlags::PROTECTED_BIT));
+            assert!(
+                !flags_for_non_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT),
+                "flags_for_non_protected should not include PROTECTED_BIT"
+            );
+            assert!(
+                flags_for_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT),
+                "flags_for_protected must include PROTECTED_BIT"
+            );
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_sType_sType: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO"
+            }
+
+            // set below
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pNext_pNext: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoKHR"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_sType_unique: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "The sType value of each struct in the pNext chain must be unique"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "flags must be a valid combination of VkDeviceQueueCreateFlagBits values"
+            }
+
+            // vk::DeviceQueueCreateFlags, and checking VUID_VkDeviceQueueCreateInfo_flags_06449 above
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pQueuePriorities must be a valid pointer to an array of queueCount float values"
+            }
+
+            // QueuePriorities
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueCount must be greater than 0"
+            }
+
+            // QueuePriorities
+        }
 
         if priorities_for_non_protected.len() > 0 {
             let non_protected_info = DeviceQueueCreateInfo {

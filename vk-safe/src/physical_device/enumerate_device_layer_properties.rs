@@ -19,15 +19,37 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
         I::Commands: EnumerateDeviceLayerProperties<P>,
     {
         check_vuids::check_vuids!(EnumerateDeviceLayerProperties);
-        // all checks handled by PhysicalDevice creation and enumerator_code2!()
-        // check_vuid_defs2!(EnumerateDeviceLayerProperties
-        //     pub const VUID_vkEnumerateDeviceLayerProperties_physicalDevice_parameter: &'static [u8] =
-        //         "physicalDevice must be a valid VkPhysicalDevice handle".as_bytes();
-        //     pub const VUID_vkEnumerateDeviceLayerProperties_pPropertyCount_parameter: &'static [u8] =
-        //         "pPropertyCount must be a valid pointer to a uint32_t value".as_bytes();
-        //     pub const VUID_vkEnumerateDeviceLayerProperties_pProperties_parameter : & 'static [ u8 ] =
-        //         "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties must be a valid pointer to an array of pPropertyCount VkLayerProperties structures" . as_bytes ( ) ;
-        // );
+
+        #[allow(unused_labels)]
+        'VUID_vkEnumerateDeviceLayerProperties_physicalDevice_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "physicalDevice must be a valid VkPhysicalDevice handle"
+            }
+
+            // always valid from creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkEnumerateDeviceLayerProperties_pPropertyCount_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pPropertyCount must be a valid pointer to a uint32_t value"
+            }
+
+            // enumerator_code2!
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkEnumerateDeviceLayerProperties_pProperties_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties"
+            "must be a valid pointer to an array of pPropertyCount VkLayerProperties structures"
+            }
+
+            // enumerator_code2!
+        }
 
         enumerator_code2!(self.instance.commands.EnumerateDeviceLayerProperties().get_fptr(); (self.handle) -> storage)
     }
