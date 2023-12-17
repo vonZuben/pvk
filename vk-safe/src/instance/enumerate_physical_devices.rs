@@ -2,6 +2,8 @@ use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 use crate::physical_device::PhysicalDevices;
 
+use crate::instance::Instance;
+
 use super::InstanceConfig;
 use super::ScopedInstanceType;
 
@@ -12,11 +14,11 @@ use vk::has_command::EnumeratePhysicalDevices;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html
 */
-impl<'scope, C: InstanceConfig> ScopedInstanceType<'scope, C> {
-    pub fn enumerate_physical_devices<P, S: ArrayStorage<vk::PhysicalDevice>>(
+impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
+    pub fn enumerate_physical_devices<P, A: ArrayStorage<vk::PhysicalDevice>>(
         &self,
-        mut storage: S,
-    ) -> Result<PhysicalDevices<Self, S>, Error>
+        mut storage: A,
+    ) -> Result<PhysicalDevices<S, A>, Error>
     where
         C::Commands: EnumeratePhysicalDevices<P>,
     {
@@ -55,6 +57,6 @@ impl<'scope, C: InstanceConfig> ScopedInstanceType<'scope, C> {
         }
 
         let handles = enumerator_code2!(self.commands.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
-        Ok(PhysicalDevices::new(handles, *self))
+        Ok(PhysicalDevices::new(handles, self.to_scope()))
     }
 }

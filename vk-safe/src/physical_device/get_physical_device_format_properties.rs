@@ -9,11 +9,11 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html
 */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn get_physical_device_format_properties<P>(
         &self,
         format: vk::Format,
-    ) -> FormatProperties<'scope>
+    ) -> FormatProperties<S>
     where
         I::Commands: GetPhysicalDeviceFormatProperties<P>,
     {

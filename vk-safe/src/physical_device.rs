@@ -1,4 +1,4 @@
-use crate::scope::*;
+use crate::scope::{RefScope, Scope};
 
 use vk_safe_sys as vk;
 
@@ -7,13 +7,13 @@ use std::fmt;
 use crate::array_storage::ArrayStorage;
 use crate::instance::Instance;
 
-pub struct PhysicalDevices<I: Instance, S: ArrayStorage<vk::PhysicalDevice>> {
+pub struct PhysicalDevices<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> {
     instance: I,
-    handles: S::InitStorage,
+    handles: A::InitStorage,
 }
 
-impl<I: Instance, S: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, S> {
-    pub(crate) fn new(handles: S::InitStorage, instance: I) -> Self {
+impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, A> {
+    pub(crate) fn new(handles: A::InitStorage, instance: I) -> Self {
         Self { instance, handles }
     }
 
@@ -26,15 +26,15 @@ impl<I: Instance, S: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, S> {
 ///
 /// when you want to start using a PhysicalDevice, the PhysicalDevice defines a new scope
 /// the PhysicalDevice new scope is itself limited with respect to the associated Instance scope
-pub type ScopedPhysicalDeviceType<'scope, I> = Scope<'scope, PhysicalDeviceType<I>>;
+pub type ScopedPhysicalDeviceType<S, I> = RefScope<S, PhysicalDeviceType<I>>;
 
 pub trait PhysicalDevice:
-    Scoped + std::ops::Deref<Target = PhysicalDeviceType<Self::Instance>> + Copy
+    std::ops::Deref<Target = ScopedPhysicalDeviceType<Self, Self::Instance>> + Copy
 {
     type Instance: Instance;
 }
 
-impl<'scope, I: Instance> PhysicalDevice for ScopedPhysicalDeviceType<'scope, I> {
+impl<'scope, I: Instance> PhysicalDevice for Scope<'scope, PhysicalDeviceType<I>> {
     type Instance = I;
 }
 

@@ -10,8 +10,8 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
-    pub fn get_physical_device_properties<P>(&self) -> PhysicalDeviceProperties<'scope>
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+    pub fn get_physical_device_properties<P>(&self) -> PhysicalDeviceProperties<S>
     where
         I::Commands: GetPhysicalDeviceProperties<P>,
     {
@@ -52,12 +52,12 @@ const _VUID: () = {
 
 simple_struct_wrapper_scoped!(PhysicalDeviceProperties impl Deref);
 
-impl PhysicalDeviceProperties<'_> {
+impl<S> PhysicalDeviceProperties<S> {
     pretty_version!(api_version);
     get_str!(device_name);
 }
 
-impl fmt::Debug for PhysicalDeviceProperties<'_> {
+impl<S> fmt::Debug for PhysicalDeviceProperties<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PhysicalDeviceProperties")
             .field("api_version", &self.api_version())

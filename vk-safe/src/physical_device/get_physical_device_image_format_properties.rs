@@ -9,12 +9,12 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     #[track_caller]
     pub fn get_physical_device_image_format_properties<P>(
         &self,
         params: GetPhysicalDeviceImageFormatPropertiesParameters,
-    ) -> Result<ImageFormatProperties<'scope>, vk::Result>
+    ) -> Result<ImageFormatProperties<S>, vk::Result>
     where
         I::Commands: GetPhysicalDeviceImageFormatProperties<P>,
     {
@@ -287,13 +287,13 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
 // simple_struct_wrapper_scoped!(ImageFormatProperties impl Debug);
 
 #[derive(Clone, Copy)]
-pub struct ImageFormatProperties<'scope> {
+pub struct ImageFormatProperties<S> {
     pub(crate) inner: vk::ImageFormatProperties,
     pub(crate) params: GetPhysicalDeviceImageFormatPropertiesParameters,
-    _scope: crate::scope::ScopeId<'scope>,
+    _scope: std::marker::PhantomData<S>,
 }
 
-impl<'scope> ImageFormatProperties<'scope> {
+impl<S> ImageFormatProperties<S> {
     fn new(
         inner: vk::ImageFormatProperties,
         params: GetPhysicalDeviceImageFormatPropertiesParameters,
@@ -306,13 +306,13 @@ impl<'scope> ImageFormatProperties<'scope> {
     }
 }
 
-impl std::fmt::Debug for ImageFormatProperties<'_> {
+impl<S> std::fmt::Debug for ImageFormatProperties<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
 
-impl std::ops::Deref for ImageFormatProperties<'_> {
+impl<S> std::ops::Deref for ImageFormatProperties<S> {
     type Target = vk::ImageFormatProperties;
 
     fn deref(&self) -> &Self::Target {

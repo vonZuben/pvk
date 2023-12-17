@@ -10,14 +10,14 @@ use std::fmt;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn get_physical_device_queue_family_properties<
         P,
-        S: ArrayStorage<QueueFamilyProperties<'scope>>,
+        A: ArrayStorage<QueueFamilyProperties<S>>,
     >(
         &self,
-        mut storage: S,
-    ) -> Result<QueueFamilies<'scope, S>, Error>
+        mut storage: A,
+    ) -> Result<QueueFamilies<S, A>, Error>
     where
         I::Commands: GetPhysicalDeviceQueueFamilyProperties<P>,
     {
@@ -72,23 +72,19 @@ simple_struct_wrapper_scoped!(QueueFamilyProperties impl Deref, Debug);
 ///
 /// this is a wrapper type to ensure that the array of QueueFamilyProperties is not mutated
 /// since the relationship between the properties and family index is an important invariant
-pub struct QueueFamilies<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> {
-    families: S::InitStorage,
+pub struct QueueFamilies<S, A: ArrayStorage<QueueFamilyProperties<S>>> {
+    families: A::InitStorage,
 }
 
-impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> std::ops::Deref
-    for QueueFamilies<'scope, S>
-{
-    type Target = [QueueFamilyProperties<'scope>];
+impl<S, A: ArrayStorage<QueueFamilyProperties<S>>> std::ops::Deref for QueueFamilies<S, A> {
+    type Target = [QueueFamilyProperties<S>];
 
     fn deref(&self) -> &Self::Target {
         self.families.as_ref()
     }
 }
 
-impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> fmt::Debug
-    for QueueFamilies<'scope, S>
-{
+impl<S, A: ArrayStorage<QueueFamilyProperties<S>>> fmt::Debug for QueueFamilies<S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.families.as_ref().iter())
@@ -96,14 +92,14 @@ impl<'scope, S: ArrayStorage<QueueFamilyProperties<'scope>>> fmt::Debug
     }
 }
 
-impl<'scope, QS: ArrayStorage<QueueFamilyProperties<'scope>>> QueueFamilies<'scope, QS> {
-    pub fn configure_create_info<'params, IS: ArrayStorage<DeviceQueueCreateInfo<'params>>>(
+impl<S, QA: ArrayStorage<QueueFamilyProperties<S>>> QueueFamilies<S, QA> {
+    pub fn configure_create_info<'params, IA: ArrayStorage<DeviceQueueCreateInfo<'params>>>(
         &self,
-        mut storage: IS,
+        mut storage: IA,
         mut filter: impl for<'properties, 'initializer, 'storage> FnMut(
-            DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, '_>,
+            DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S>,
         ),
-    ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IS> {
+    ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IA> {
         let len = || {
             let mut protected_count = 0;
             for properties in self.families.as_ref().iter() {

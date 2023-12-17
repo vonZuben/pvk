@@ -1,7 +1,7 @@
 use crate::type_conversions::ToC;
 use vk_safe_sys as vk;
 
-use crate::scope::{Scope, Scoped};
+use crate::scope::{RefScope, Scope};
 
 use crate::pretty_version::VkVersion;
 
@@ -45,14 +45,16 @@ where
     type Commands = Cmd;
 }
 
-pub type ScopedInstanceType<'scope, C> = Scope<'scope, InstanceType<C>>;
+pub type ScopedInstanceType<S, C> = RefScope<S, InstanceType<C>>;
 
-pub trait Instance: Scoped + std::ops::Deref<Target = InstanceType<Self::Config>> + Copy {
+pub trait Instance:
+    std::ops::Deref<Target = ScopedInstanceType<Self, Self::Config>> + Copy
+{
     type Config: InstanceConfig<Commands = Self::Commands>;
     type Commands;
 }
 
-impl<'scope, C: InstanceConfig> Instance for ScopedInstanceType<'scope, C> {
+impl<'scope, C: InstanceConfig> Instance for Scope<'scope, InstanceType<C>> {
     type Config = C;
     type Commands = C::Commands;
 }

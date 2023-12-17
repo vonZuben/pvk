@@ -9,8 +9,8 @@ use std::mem::MaybeUninit;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html
 */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
-    pub fn get_physical_device_features<P>(&self) -> PhysicalDeviceFeatures<'scope>
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+    pub fn get_physical_device_features<P>(&self) -> PhysicalDeviceFeatures<S>
     where
         I::Commands: GetPhysicalDeviceFeatures<P>,
     {

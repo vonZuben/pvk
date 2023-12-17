@@ -11,12 +11,12 @@ use vk::has_command::EnumerateDeviceExtensionProperties;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceExtensionProperties.html
  */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
-    pub fn enumerate_device_extension_properties<P, S: ArrayStorage<ExtensionProperties<'scope>>>(
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+    pub fn enumerate_device_extension_properties<P, A: ArrayStorage<ExtensionProperties<S>>>(
         &self,
         layer_name: Option<VkStr>,
-        mut storage: S,
-    ) -> Result<S::InitStorage, Error>
+        mut storage: A,
+    ) -> Result<A::InitStorage, Error>
     where
         I::Commands: EnumerateDeviceExtensionProperties<P>,
     {
@@ -69,11 +69,11 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
 
 simple_struct_wrapper_scoped!(ExtensionProperties);
 
-impl ExtensionProperties<'_> {
+impl<S> ExtensionProperties<S> {
     get_str!(extension_name);
 }
 
-impl std::fmt::Debug for ExtensionProperties<'_> {
+impl<S> std::fmt::Debug for ExtensionProperties<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtensionProperties")
             .field("Name", &self.extension_name())

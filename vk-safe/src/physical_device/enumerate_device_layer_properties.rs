@@ -10,11 +10,11 @@ use vk::has_command::EnumerateDeviceLayerProperties;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceLayerProperties.html
  */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
-    pub fn enumerate_device_layer_properties<P, S: ArrayStorage<LayerProperties<'scope>>>(
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+    pub fn enumerate_device_layer_properties<P, A: ArrayStorage<LayerProperties<S>>>(
         &self,
-        mut storage: S,
-    ) -> Result<S::InitStorage, Error>
+        mut storage: A,
+    ) -> Result<A::InitStorage, Error>
     where
         I::Commands: EnumerateDeviceLayerProperties<P>,
     {
@@ -57,13 +57,13 @@ impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
 
 simple_struct_wrapper_scoped!(LayerProperties);
 
-impl LayerProperties<'_> {
+impl<S> LayerProperties<S> {
     get_str!(layer_name);
     get_str!(description);
     pretty_version!(spec_version);
 }
 
-impl std::fmt::Debug for LayerProperties<'_> {
+impl<S> std::fmt::Debug for LayerProperties<S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LayerProperties")
             .field("Name", &self.layer_name())

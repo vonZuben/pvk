@@ -16,11 +16,11 @@ use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionPrope
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn create_device<Create, Destroy, E, Commands>(
         &self,
         create_info: &DeviceCreateInfo<'_, Commands>,
-    ) -> Result<DeviceType<Config<Destroy, Commands>, Self>, Error>
+    ) -> Result<DeviceType<Config<Destroy, Commands>, S>, Error>
     where
         I::Commands: CreateDevice<Create> + EnumerateDeviceExtensionProperties<E>,
         Commands: DestroyDevice<Destroy> + LoadCommands + Version,
@@ -707,18 +707,17 @@ impl<'a> QueuePriorities<'a> {
 /// Builder for [DeviceQueueCreateInfo]
 /// initially created with sane defaults
 /// user must provide their own p_queue_priorities
-pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope>
-{
+pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S> {
     family_index: u32,
     to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<
         'storage,
         DeviceQueueCreateInfo<'params>,
     >,
-    pub family_properties: &'properties QueueFamilyProperties<'scope>,
+    pub family_properties: &'properties QueueFamilyProperties<S>,
 }
 
-impl<'params, 'properties, 'initializer, 'storage, 'scope>
-    DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, 'scope>
+impl<'params, 'properties, 'initializer, 'storage, S>
+    DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S>
 {
     /// internal only method to be called from [QueueFamilies::create_info_builder_iter]
     /// should pass the current queue_family_index, and set queue_count to max possible
@@ -728,7 +727,7 @@ impl<'params, 'properties, 'initializer, 'storage, 'scope>
             'storage,
             DeviceQueueCreateInfo<'params>,
         >,
-        family_properties: &'properties QueueFamilyProperties<'scope>,
+        family_properties: &'properties QueueFamilyProperties<S>,
     ) -> Self {
         Self {
             family_index,

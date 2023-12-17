@@ -2,7 +2,6 @@ use super::*;
 use vk_safe_sys as vk;
 
 use crate::physical_device::MemoryTypeChoice;
-use crate::scope::{ScopeId, ScopeLife};
 
 use vk::has_command::{AllocateMemory, FreeMemory};
 
@@ -47,6 +46,19 @@ pub struct DeviceMemoryType<D: DeviceMemoryConfig> {
     device: D,
 }
 
+impl<D: DeviceMemoryConfig> Deref for DeviceMemoryType<D> {
+    type Target = Self;
+
+    fn deref(&self) -> &Self::Target {
+        self
+    }
+}
+
+impl<D: DeviceMemoryConfig> DeviceMemory for DeviceMemoryType<D> {
+    type Config = D;
+    type Device = D::Device;
+}
+
 impl<D: DeviceMemoryConfig> DeviceMemoryType<D> {
     fn new(handle: vk::DeviceMemory, device: D) -> Self {
         Self { handle, device }
@@ -59,19 +71,20 @@ impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemoryType<D> {
     }
 }
 
-impl<'d, 'pd, C: DeviceConfig, Pd: PhysicalDevice + ScopeLife<'pd>> ScopedDeviceType<'d, C, Pd> {
+impl<S: Device, C: DeviceConfig, Pd> ScopedDeviceType<S, C, Pd> {
     pub fn allocate_memory<P, F>(
         &self,
-        info: &MemoryAllocateInfo<'pd>,
-    ) -> Result<DeviceMemoryType<Config<Self, F>>, vk::Result>
+        info: &MemoryAllocateInfo<Pd>,
+    ) -> Result<DeviceMemoryType<Config<S, F>>, vk::Result>
     where
-        C::Commands: AllocateMemory<P> + FreeMemory<F>,
+        C::Commands: AllocateMemory<P>,
+        S::Commands: FreeMemory<F>,
     {
         let fptr = self.commands.AllocateMemory().get_fptr();
         let mut memory = MaybeUninit::uninit();
         unsafe {
             let ret = fptr(
-                self.handle,
+                self.inner().handle,
                 &info.inner,
                 std::ptr::null(),
                 memory.as_mut_ptr(),
@@ -80,7 +93,7 @@ impl<'d, 'pd, C: DeviceConfig, Pd: PhysicalDevice + ScopeLife<'pd>> ScopedDevice
             Ok(DeviceMemoryType::new(
                 memory.assume_init(),
                 Config {
-                    device: *self,
+                    device: self.to_scope(),
                     free_provider: PhantomData,
                 },
             ))
@@ -97,16 +110,13 @@ impl<D: DeviceMemoryConfig> Drop for DeviceMemoryType<D> {
     }
 }
 
-pub struct MemoryAllocateInfo<'pd> {
+pub struct MemoryAllocateInfo<S> {
     inner: vk::MemoryAllocateInfo,
-    _pd: ScopeId<'pd>,
+    _pd: std::marker::PhantomData<S>,
 }
 
-impl<'pd> MemoryAllocateInfo<'pd> {
-    pub const fn new(
-        size: std::num::NonZeroU64,
-        memory_type_choice: MemoryTypeChoice<'pd>,
-    ) -> Self {
+impl<S> MemoryAllocateInfo<S> {
+    pub const fn new(size: std::num::NonZeroU64, memory_type_choice: MemoryTypeChoice<S>) -> Self {
         #![allow(unused_labels)]
         check_vuids::check_vuids!(MemoryAllocateInfo);
 
@@ -796,7 +806,7 @@ impl<'pd> MemoryAllocateInfo<'pd> {
 
         Self {
             inner,
-            _pd: ScopeId::new(),
+            _pd: std::marker::PhantomData,
         }
     }
 }

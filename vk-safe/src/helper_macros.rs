@@ -72,15 +72,15 @@ macro_rules! simple_struct_wrapper_scoped {
         $name:ident $(impl $($t:ident),+ $(,)?)?
     ) => {
         #[repr(transparent)]
-        pub struct $name<'scope> {
+        pub struct $name<S> {
             inner: vk_safe_sys::$name,
-            _scope: crate::scope::ScopeId<'scope>,
+            _scope: std::marker::PhantomData<S>,
         }
 
-        unsafe impl crate::type_conversions::SafeTransmute<$name<'_>> for vk_safe_sys::$name {}
-        unsafe impl crate::type_conversions::SafeTransmute<vk_safe_sys::$name> for $name<'_> {}
+        unsafe impl<S> crate::type_conversions::SafeTransmute<$name<S>> for vk_safe_sys::$name {}
+        unsafe impl<S> crate::type_conversions::SafeTransmute<vk_safe_sys::$name> for $name<S> {}
 
-        impl<'scope> $name<'scope> {
+        impl<S> $name<S> {
             #[allow(unused)]
             pub(crate) fn new(inner: vk_safe_sys::$name) -> Self {
                 Self {
@@ -94,7 +94,7 @@ macro_rules! simple_struct_wrapper_scoped {
     };
 
     ( @IMPL Deref $name:ident ) => {
-        impl std::ops::Deref for $name<'_> {
+        impl<S> std::ops::Deref for $name<S> {
             type Target = vk_safe_sys::$name;
             fn deref(&self) -> &Self::Target {
                 &self.inner
@@ -103,7 +103,7 @@ macro_rules! simple_struct_wrapper_scoped {
     };
 
     ( @IMPL Debug $name:ident ) => {
-        impl std::fmt::Debug for $name<'_> {
+        impl<S> std::fmt::Debug for $name<S> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.inner.fmt(f)
             }
@@ -111,7 +111,7 @@ macro_rules! simple_struct_wrapper_scoped {
     };
 
     ( @IMPL Clone $name:ident ) => {
-        impl Clone for $name<'_> {
+        impl<S> Clone for $name<S> {
             fn clone(&self) -> Self {
                 Self::new(self.inner)
             }
@@ -119,7 +119,7 @@ macro_rules! simple_struct_wrapper_scoped {
     };
 
     ( @IMPL Copy $name:ident ) => {
-        impl Copy for $name<'_> { }
+        impl<S> Copy for $name<S> { }
     };
 }
 

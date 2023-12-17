@@ -9,16 +9,16 @@ use super::get_physical_device_image_format_properties::ImageFormatProperties;
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 
-impl<'scope, I: Instance> ScopedPhysicalDeviceType<'scope, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn get_physical_device_sparse_image_format_properties<
         P,
-        S: ArrayStorage<SparseImageFormatProperties<'scope>>,
+        A: ArrayStorage<SparseImageFormatProperties<S>>,
     >(
         &self,
         samples: vk::SampleCountFlags,
-        image_format_properties: ImageFormatProperties<'scope>,
-        mut storage: S,
-    ) -> Result<S::InitStorage, Error>
+        image_format_properties: ImageFormatProperties<S>,
+        mut storage: A,
+    ) -> Result<A::InitStorage, Error>
     where
         I::Commands: GetPhysicalDeviceSparseImageFormatProperties<P>,
     {

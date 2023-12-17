@@ -3,8 +3,7 @@ use crate::type_conversions::ToC;
 use std::marker::PhantomData;
 use vk_safe_sys as vk;
 
-use crate::physical_device::PhysicalDevice;
-use crate::scope::{Scope, Scoped};
+use crate::scope::{RefScope, Scope};
 
 use vk::has_command::DestroyDevice;
 
@@ -45,29 +44,29 @@ where
     type Commands = Cmd;
 }
 
-pub type ScopedDeviceType<'d, C, Pd> = Scope<'d, DeviceType<C, Pd>>;
+pub type ScopedDeviceType<S, C, Pd> = RefScope<S, DeviceType<C, Pd>>;
 
 pub trait Device:
-    Scoped + std::ops::Deref<Target = DeviceType<Self::Config, Self::PhysicalDevice>> + Copy
+    std::ops::Deref<Target = ScopedDeviceType<Self, Self::Config, Self::PhysicalDevice>> + Copy
 {
     type Config: DeviceConfig<Commands = Self::Commands>;
-    type PhysicalDevice: PhysicalDevice;
+    type PhysicalDevice;
     type Commands;
 }
 
-impl<'scope, C: DeviceConfig, Pd: PhysicalDevice> Device for ScopedDeviceType<'scope, C, Pd> {
+impl<'scope, C: DeviceConfig, Pd> Device for Scope<'scope, DeviceType<C, Pd>> {
     type Config = C;
     type PhysicalDevice = Pd;
     type Commands = C::Commands;
 }
 
-pub struct DeviceType<C: DeviceConfig, Pd: PhysicalDevice> {
+pub struct DeviceType<C: DeviceConfig, Pd> {
     pub(crate) handle: vk::Device,
     pub(crate) commands: C::Commands,
     _pd: std::marker::PhantomData<Pd>,
 }
 
-impl<C: DeviceConfig, Pd: PhysicalDevice> std::fmt::Debug for DeviceType<C, Pd> {
+impl<C: DeviceConfig, Pd> std::fmt::Debug for DeviceType<C, Pd> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Device")
             .field("handle", &self.handle)
@@ -76,7 +75,7 @@ impl<C: DeviceConfig, Pd: PhysicalDevice> std::fmt::Debug for DeviceType<C, Pd> 
     }
 }
 
-impl<C: DeviceConfig, Pd: PhysicalDevice> DeviceType<C, Pd> {
+impl<C: DeviceConfig, Pd> DeviceType<C, Pd> {
     pub(crate) fn load_commands(handle: vk::Device) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
         Ok(Self {
@@ -90,7 +89,7 @@ impl<C: DeviceConfig, Pd: PhysicalDevice> DeviceType<C, Pd> {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyDevice.html
 */
-impl<C: DeviceConfig, Pd: PhysicalDevice> Drop for DeviceType<C, Pd> {
+impl<C: DeviceConfig, Pd> Drop for DeviceType<C, Pd> {
     fn drop(&mut self) {
         unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
 
