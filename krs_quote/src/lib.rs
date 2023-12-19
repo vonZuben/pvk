@@ -7,10 +7,7 @@
 //! 2) I was annoyed that I couldn't use [IntoIterator] types, so this crate lets you do that.
 //! 3) I only need to output to file, so this basically only generates a `String` stream. (kind of just a glorified format macro)
 //!
-//! I also kind of only made it just for fun and to see what I could put together.
-//!
-//! Also, the string output inserts `\n` in specific places so that the output of any generated `macro_rules!` code looks nicer (since rustfmt can't help there),
-//! otherwise, I was getting files with very long single line `macro_rules!`.
+//! Also, the string output inserts `\n` in specific places so that the output of any generated `macro_rules!` code looks nicer (since rustfmt can't help there).
 //!
 //! # Example
 //! ```
@@ -28,20 +25,12 @@
 //!
 //! ## internal details
 //!
-//! This macro works by converting each user input into an iterator over `ToTokens` implementors. (see runtime/user_input.rs), and
-//! creating an hlist tree comprising ToTokens iterators and other hlists.
+//! This macro works by converting each user input into an iterator over `ToTokens` implementors. (see runtime/user_input.rs), and putting them into an array.
 //!
-//! A single hlist represents a sequence of tokens that may be repeated any number of times (depending on what iterators are provided).
-//! The outermost hlist is intended to only be used to produce one sequence of tokens (handled by `krs_quote!` and `krs_quote_with!`)
-//! An inner hlist is intended to produce a sequence of tokens repeatedly based on user provided iterators (handled by the 'InnerRep'
-//! and 'InnerRepWithSeparator' wrappers).
+//! Such an array represents a sequence of tokens that may be repeated any number of times (depending on what iterators are provided).
 //!
 //! Repetition is achieved by cloning the iterators. We try to only use iterators that "should" be cheap to clone (e.g.
-//! iterators over references such that the whole collection is not closed).
-//!
-//! 'MaybeCloneTokenIter' is an internal detail that avoids recursive cloning of hlists.
-//!
-//! 'TokenIter' is another internal detail to avoid cloning inner hlists.
+//! iterators over references such that the whole collection is not cloned).
 
 #![warn(missing_docs)]
 
