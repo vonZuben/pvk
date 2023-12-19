@@ -4,7 +4,9 @@
 #![allow(unused)]
 #![recursion_limit = "1000"]
 
-// trace_macros!(true);
+//! Vulkan bindings for rust
+//!
+//! generated using the generator crate
 
 #[macro_use]
 mod generated_vulkan; // TODO I do not think I want this public, but need type defs for now
