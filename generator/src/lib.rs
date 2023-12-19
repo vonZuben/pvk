@@ -1,11 +1,7 @@
 #![warn(missing_docs)]
 
 /*!
-This crate is for parsing vk.xml and generating code intended for use in another
-crate that provides a safe vulkan interface that is as close as possible to using bare
-vulkan, with a few nice rust additions.
-
-These docs are still very work in progress.
+Generate a raw unsafe rust interface based on the definitions in vk.xml
 */
 
 extern crate vk_parse;
@@ -41,7 +37,7 @@ mod gen_lib;
 mod vuid_generator;
 
 /**
-Provide standard interface for access portions of the Vulkan SDK
+Provide standard interface for finding vulkan definition files
 
 When generating the Vulkan rust code, certain Vulkan Docs files are needed.
 These files are provided by the Vulkan SDK. It is a good idea to have the Vulkan SDK installed
@@ -66,7 +62,7 @@ macro_rules! make_code_type {
 
         The generated code is mostly unformatted (there are newlines in some places to make
         it easier to read even without rustfmt; based on how [krs_quote] works). However,
-        running rust fmt is still recommended if the output is for human.
+        running rustfmt is still recommended if the output is for humans.
 
         Generated code removes the "Vk" prefixes since the code can be imbedded in a crate
         and used as vk to provide e.g. vk::Instance.
@@ -143,7 +139,7 @@ pub fn generate_library(
     gen_lib::generate_library(Path::new(&out_dir), Path::new(&vk_xml))
 }
 
-/// generate vuids.rs in provided directory, by parsing provided validusage.json file
+/// generate vuids in provided directory, by parsing provided validusage.json file
 pub fn generate_vuids_file(
     out_dir: impl AsRef<Path>,
     validusage_json_path: impl AsRef<Path>,
