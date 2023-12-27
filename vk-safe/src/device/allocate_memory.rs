@@ -100,6 +100,60 @@ impl<S: Device, C: DeviceConfig, Pd> ScopedDeviceType<S, C, Pd> {
 impl<D: DeviceMemoryConfig> Drop for DeviceMemoryType<D> {
     fn drop(&mut self) {
         let fptr = self.device.commands.FreeMemory().get_fptr();
+        check_vuids::check_vuids!(FreeMemory);
+
+        #[allow(unused_labels)]
+        'VUID_vkFreeMemory_memory_00677: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "All submitted commands that refer to memory (via images or buffers) must have completed"
+            "execution"
+            }
+
+            // the memory will be borrowed by objects using the memory, such that the Memory cannot be dropped until done being used
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkFreeMemory_device_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "device must be a valid VkDevice handle"
+            }
+
+            // valid from creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkFreeMemory_memory_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If memory is not VK_NULL_HANDLE, memory must be a valid VkDeviceMemory handle"
+            }
+
+            // valid from creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkFreeMemory_pAllocator_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
+            "structure"
+            }
+
+            // TODO: VkAllocationCallbacks not currently supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkFreeMemory_memory_parent: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If memory is a valid handle, it must have been created, allocated, or retrieved from"
+            "device"
+            }
+
+            // DeviceMemoryType knows what device it came from
+        }
         unsafe {
             fptr(self.device.handle, self.handle, std::ptr::null());
         }
