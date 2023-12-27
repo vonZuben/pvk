@@ -120,7 +120,7 @@ macro_rules! quote_each_tt {
     // expand repetition with any separator
     ( {@$sep:tt* $($tt:tt)* } ) => {{
         Repeat(coerce([
-            Box::new(SkipFirst::new(RawToken($sep))),
+            Box::new(SkipFirst::new(RawToken(stringify!($sep)))),
             $(Box::new($crate::quote_each_tt!($tt))),*
         ]))
     }};
