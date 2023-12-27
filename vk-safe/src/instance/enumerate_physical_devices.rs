@@ -15,12 +15,12 @@ use vk::has_command::EnumeratePhysicalDevices;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html
 */
 impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
-    pub fn enumerate_physical_devices<P, A: ArrayStorage<vk::PhysicalDevice>>(
+    pub fn enumerate_physical_devices<A: ArrayStorage<vk::PhysicalDevice>>(
         &self,
         mut storage: A,
     ) -> Result<PhysicalDevices<S, A>, Error>
     where
-        C::Commands: EnumeratePhysicalDevices<P>,
+        C::Commands: EnumeratePhysicalDevices,
     {
         check_vuids::check_vuids!(EnumeratePhysicalDevices);
 

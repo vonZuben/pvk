@@ -11,12 +11,12 @@ use vk::has_command::EnumerateDeviceLayerProperties;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceLayerProperties.html
  */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn enumerate_device_layer_properties<P, A: ArrayStorage<LayerProperties<S>>>(
+    pub fn enumerate_device_layer_properties<A: ArrayStorage<LayerProperties<S>>>(
         &self,
         mut storage: A,
     ) -> Result<A::InitStorage, Error>
     where
-        I::Commands: EnumerateDeviceLayerProperties<P>,
+        I::Commands: EnumerateDeviceLayerProperties,
     {
         check_vuids::check_vuids!(EnumerateDeviceLayerProperties);
 

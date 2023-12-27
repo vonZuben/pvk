@@ -12,9 +12,9 @@ use std::mem::MaybeUninit;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
 */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_memory_properties<P>(&self) -> PhysicalDeviceMemoryProperties<S>
+    pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<S>
     where
-        I::Commands: GetPhysicalDeviceMemoryProperties<P>,
+        I::Commands: GetPhysicalDeviceMemoryProperties,
     {
         let mut properties = MaybeUninit::uninit();
         unsafe {

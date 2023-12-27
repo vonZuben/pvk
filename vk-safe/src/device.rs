@@ -11,36 +11,32 @@ use vk::commands::{CommandLoadError, LoadCommands, Version};
 
 pub trait DeviceConfig {
     const VERSION: VkVersion;
-    type DropProvider;
-    type Commands: LoadCommands + DestroyDevice<Self::DropProvider>;
+    type Commands: LoadCommands + DestroyDevice;
 }
 
-pub struct Config<P, Cmd> {
-    drop_provider: PhantomData<P>,
+pub struct Config<Cmd> {
     commands: PhantomData<Cmd>,
 }
 
-impl<P, Cmd> Clone for Config<P, Cmd> {
+impl<Cmd> Clone for Config<Cmd> {
     fn clone(&self) -> Self {
         Self {
-            drop_provider: PhantomData,
             commands: PhantomData,
         }
     }
 }
 
-impl<P, Cmd> Copy for Config<P, Cmd> {}
+impl<Cmd> Copy for Config<Cmd> {}
 
-impl<P, Cmd> DeviceConfig for Config<P, Cmd>
+impl<Cmd> DeviceConfig for Config<Cmd>
 where
-    Cmd: LoadCommands + DestroyDevice<P> + Version,
+    Cmd: LoadCommands + DestroyDevice + Version,
 {
     const VERSION: VkVersion = VkVersion::new(
         Cmd::VERSION_TRIPLE.0,
         Cmd::VERSION_TRIPLE.1,
         Cmd::VERSION_TRIPLE.2,
     );
-    type DropProvider = P;
     type Commands = Cmd;
 }
 

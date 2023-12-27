@@ -12,13 +12,13 @@ use vk::has_command::EnumerateDeviceExtensionProperties;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceExtensionProperties.html
  */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn enumerate_device_extension_properties<P, A: ArrayStorage<ExtensionProperties<S>>>(
+    pub fn enumerate_device_extension_properties<A: ArrayStorage<ExtensionProperties<S>>>(
         &self,
         layer_name: Option<VkStr>,
         mut storage: A,
     ) -> Result<A::InitStorage, Error>
     where
-        I::Commands: EnumerateDeviceExtensionProperties<P>,
+        I::Commands: EnumerateDeviceExtensionProperties,
     {
         check_vuids::check_vuids!(EnumerateDeviceExtensionProperties);
 

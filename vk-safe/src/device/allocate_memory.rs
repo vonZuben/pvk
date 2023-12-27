@@ -9,26 +9,23 @@ use std::mem::MaybeUninit;
 use std::ops::Deref;
 
 pub trait DeviceMemoryConfig: Deref<Target = Self::Device> {
-    type FreeProvider;
-    type Commands: FreeMemory<Self::FreeProvider>;
+    type Commands: FreeMemory;
     type Device: Device<Commands = Self::Commands>;
 }
 
-pub struct Config<D, F> {
+pub struct Config<D> {
     device: D,
-    free_provider: PhantomData<F>,
 }
 
-impl<D: Device, F> DeviceMemoryConfig for Config<D, F>
+impl<D: Device> DeviceMemoryConfig for Config<D>
 where
-    D::Commands: FreeMemory<F>,
+    D::Commands: FreeMemory,
 {
-    type FreeProvider = F;
     type Commands = D::Commands;
     type Device = D;
 }
 
-impl<D: Device, F> Deref for Config<D, F> {
+impl<D: Device> Deref for Config<D> {
     type Target = D;
 
     fn deref(&self) -> &Self::Target {
@@ -72,13 +69,13 @@ impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemoryType<D> {
 }
 
 impl<S: Device, C: DeviceConfig, Pd> ScopedDeviceType<S, C, Pd> {
-    pub fn allocate_memory<P, F>(
+    pub fn allocate_memory(
         &self,
         info: &MemoryAllocateInfo<Pd>,
-    ) -> Result<DeviceMemoryType<Config<S, F>>, vk::Result>
+    ) -> Result<DeviceMemoryType<Config<S>>, vk::Result>
     where
-        C::Commands: AllocateMemory<P>,
-        S::Commands: FreeMemory<F>,
+        C::Commands: AllocateMemory,
+        S::Commands: FreeMemory,
     {
         let fptr = self.commands.AllocateMemory().get_fptr();
         let mut memory = MaybeUninit::uninit();
@@ -94,7 +91,6 @@ impl<S: Device, C: DeviceConfig, Pd> ScopedDeviceType<S, C, Pd> {
                 memory.assume_init(),
                 Config {
                     device: self.to_scope(),
-                    free_provider: PhantomData,
                 },
             ))
         }

@@ -10,9 +10,9 @@ use std::mem::MaybeUninit;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html
 */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_features<P>(&self) -> PhysicalDeviceFeatures<S>
+    pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures<S>
     where
-        I::Commands: GetPhysicalDeviceFeatures<P>,
+        I::Commands: GetPhysicalDeviceFeatures,
     {
         let mut features = MaybeUninit::uninit();
         unsafe {

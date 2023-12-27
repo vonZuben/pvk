@@ -11,15 +11,12 @@ use std::fmt;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_queue_family_properties<
-        P,
-        A: ArrayStorage<QueueFamilyProperties<S>>,
-    >(
+    pub fn get_physical_device_queue_family_properties<A: ArrayStorage<QueueFamilyProperties<S>>>(
         &self,
         mut storage: A,
     ) -> Result<QueueFamilies<S, A>, Error>
     where
-        I::Commands: GetPhysicalDeviceQueueFamilyProperties<P>,
+        I::Commands: GetPhysicalDeviceQueueFamilyProperties,
     {
         let families = enumerator_code2!(self.instance.commands.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
         Ok(QueueFamilies { families })

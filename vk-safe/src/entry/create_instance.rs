@@ -15,11 +15,11 @@ use vk::has_command::DestroyInstance;
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
 */
-pub fn create_instance<P, C>(
+pub fn create_instance<C>(
     create_info: &InstanceCreateInfo<C>,
-) -> Result<InstanceType<Config<P, C>>, Error>
+) -> Result<InstanceType<Config<C>>, Error>
 where
-    C: DestroyInstance<P> + Version + LoadCommands,
+    C: DestroyInstance + Version + LoadCommands,
 {
     check_vuids::check_vuids!(CreateInstance);
 

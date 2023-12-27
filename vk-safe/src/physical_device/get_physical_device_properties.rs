@@ -11,9 +11,9 @@ use std::mem::MaybeUninit;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_properties<P>(&self) -> PhysicalDeviceProperties<S>
+    pub fn get_physical_device_properties(&self) -> PhysicalDeviceProperties<S>
     where
-        I::Commands: GetPhysicalDeviceProperties<P>,
+        I::Commands: GetPhysicalDeviceProperties,
     {
         let mut properties = MaybeUninit::uninit();
         unsafe {

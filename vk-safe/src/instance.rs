@@ -12,36 +12,32 @@ use vk::has_command::DestroyInstance;
 
 pub trait InstanceConfig {
     const VERSION: VkVersion;
-    type DropProvider;
-    type Commands: DestroyInstance<Self::DropProvider> + LoadCommands + Version;
+    type Commands: DestroyInstance + LoadCommands + Version;
 }
 
-pub struct Config<P, Cmd> {
-    _drop_provider: PhantomData<P>,
+pub struct Config<Cmd> {
     _commands: PhantomData<Cmd>,
 }
 
-impl<P, Cmd> Clone for Config<P, Cmd> {
+impl<Cmd> Clone for Config<Cmd> {
     fn clone(&self) -> Self {
         Self {
-            _drop_provider: PhantomData,
             _commands: PhantomData,
         }
     }
 }
 
-impl<P, Cmd> Copy for Config<P, Cmd> {}
+impl<Cmd> Copy for Config<Cmd> {}
 
-impl<P, Cmd> InstanceConfig for Config<P, Cmd>
+impl<Cmd> InstanceConfig for Config<Cmd>
 where
-    Cmd: LoadCommands + DestroyInstance<P> + Version,
+    Cmd: LoadCommands + DestroyInstance + Version,
 {
     const VERSION: VkVersion = VkVersion::new(
         Cmd::VERSION_TRIPLE.0,
         Cmd::VERSION_TRIPLE.1,
         Cmd::VERSION_TRIPLE.2,
     );
-    type DropProvider = P;
     type Commands = Cmd;
 }
 

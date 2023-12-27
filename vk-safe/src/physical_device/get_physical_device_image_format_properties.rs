@@ -11,12 +11,12 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     #[track_caller]
-    pub fn get_physical_device_image_format_properties<P>(
+    pub fn get_physical_device_image_format_properties(
         &self,
         params: GetPhysicalDeviceImageFormatPropertiesParameters,
     ) -> Result<ImageFormatProperties<S>, vk::Result>
     where
-        I::Commands: GetPhysicalDeviceImageFormatProperties<P>,
+        I::Commands: GetPhysicalDeviceImageFormatProperties,
     {
         let mut properties = MaybeUninit::uninit();
         let command = self

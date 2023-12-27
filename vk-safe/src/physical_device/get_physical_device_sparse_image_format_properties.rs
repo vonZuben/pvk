@@ -11,7 +11,6 @@ use crate::error::Error;
 
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn get_physical_device_sparse_image_format_properties<
-        P,
         A: ArrayStorage<SparseImageFormatProperties<S>>,
     >(
         &self,
@@ -20,7 +19,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         mut storage: A,
     ) -> Result<A::InitStorage, Error>
     where
-        I::Commands: GetPhysicalDeviceSparseImageFormatProperties<P>,
+        I::Commands: GetPhysicalDeviceSparseImageFormatProperties,
     {
         check_vuids::check_vuids!(GetPhysicalDeviceSparseImageFormatProperties);
 
