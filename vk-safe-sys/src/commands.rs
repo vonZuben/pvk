@@ -66,7 +66,7 @@ macro_rules! device_context {
         }
 
         $(
-            $crate::version::instance::$v_provider!($name);
+            $crate::version::device::$v_provider!($name);
 
             impl $crate::commands::Version for $name {
                 const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
@@ -75,7 +75,7 @@ macro_rules! device_context {
 
         $(
             $(
-                $crate::extension::instance::$e_provider!($name);
+                $crate::extension::device::$e_provider!($name);
             )+
         )?
     }
