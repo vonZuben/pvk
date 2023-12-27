@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use krs_quote::krs_quote_with;
 
-use crate::utils::{VecMap, VkTyName};
+use crate::utils::{StrAsCode, VecMap, VkTyName};
 
 // Feature Collection is for keeping track of different feature Versions
 // Since the Vulkan spec defines each Feature as additions/deletions (requires/remove)
@@ -38,7 +38,7 @@ impl krs_quote::ToTokens for FeatureCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let versions = self.versions.iter();
 
-        let v_name = versions.clone().map(|v| v.version);
+        // structs
         let instance_structs = versions.clone().map(|v| VersionStruct {
             name: v.version,
             commands: &v.instance_command_names,
@@ -52,44 +52,69 @@ impl krs_quote::ToTokens for FeatureCollection {
             commands: &v.entry_command_names,
         });
 
+        // traits
+        let instance_traits = versions.clone().map(|v| VersionTrait {
+            name: v.version,
+            commands: &v.instance_command_names,
+        });
+        let device_traits = versions.clone().map(|v| VersionTrait {
+            name: v.version,
+            commands: &v.device_command_names,
+        });
+        let entry_traits = versions.clone().map(|v| VersionTrait {
+            name: v.version,
+            commands: &v.entry_command_names,
+        });
+
+        // macros
+        let instance_macros = versions.clone().map(|v| VersionMacros {
+            name: v.version,
+            mod_name: "instance",
+            commands: &v.instance_command_names,
+        });
+        let device_macros = versions.clone().map(|v| VersionMacros {
+            name: v.version,
+            mod_name: "device",
+            commands: &v.device_command_names,
+        });
+        let entry_macros = versions.clone().map(|v| VersionMacros {
+            name: v.version,
+            mod_name: "entry",
+            commands: &v.entry_command_names,
+        });
+
         krs_quote_with!(tokens <-
             {@* {@versions}}
 
             #[doc(hidden)]
             pub mod version {
                 pub mod instance {
-                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
-                    {@* {@instance_structs}}
-                    pub mod provider {
-                        {@*
-                            pub trait {@v_name} {
-                                fn {@v_name}(&self) -> &super::{@v_name};
-                            }
-                        }
+                    use super::super::has_command::*;
+                    {@* {@instance_traits}}
+                    {@* {@instance_macros}}
+                    pub mod structs {
+                        use super::super::super::*;
+                        {@* {@instance_structs}}
                     }
                 }
 
                 pub mod device {
-                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
-                    {@* {@device_structs}}
-                    pub mod provider {
-                        {@*
-                            pub trait {@v_name} {
-                                fn {@v_name}(&self) -> &super::{@v_name};
-                            }
-                        }
+                    use super::super::has_command::*;
+                    {@* {@device_traits}}
+                    {@* {@device_macros}}
+                    pub mod structs {
+                        use super::super::super::*;
+                        {@* {@device_structs}}
                     }
                 }
 
                 pub mod entry {
-                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
-                    {@* {@entry_structs}}
-                    pub mod provider {
-                        {@*
-                            pub trait {@v_name} {
-                                fn {@v_name}(&self) -> &super::{@v_name};
-                            }
-                        }
+                    use super::super::has_command::*;
+                    {@* {@entry_traits}}
+                    {@* {@entry_macros}}
+                    pub mod structs {
+                        use super::super::super::*;
+                        {@* {@entry_structs}}
                     }
                 }
             }
@@ -109,24 +134,57 @@ impl krs_quote::ToTokens for VersionStruct<'_> {
 
         krs_quote_with!(tokens <-
             pub struct {@name} {
-                {@* {@command}: super::super::{@command}, }
+                {@* pub {@command}: {@command}, }
             }
 
             impl {@name} {
                 pub fn load(loader: impl FunctionLoader) -> std::result::Result<Self, CommandLoadError> {
                     Ok(Self {
-                        {@* {@command} : super::super::{@command}::load(loader)?, }
+                        {@* {@command} : {@command}::load(loader)?, }
                     })
                 }
             }
+        );
+    }
+}
 
-            {@*
-                impl<T: provider::{@name}> super::super::command::{@command}<super::super::{@name}> for T {
-                    fn {@command}(&self) -> super::super::{@command} {
-                        self.{@name}().{@command}
-                    }
+struct VersionTrait<'a> {
+    name: VkTyName,
+    commands: &'a [RequireRemove],
+}
+
+impl krs_quote::ToTokens for VersionTrait<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let commands = self.commands.iter().filter(|c| c.is_require());
+
+        krs_quote_with!(tokens <-
+            pub trait {@name} : {@+* {@commands}} {}
+            impl<T> {@name} for T where T: {@+* {@commands}} {}
+        );
+    }
+}
+
+struct VersionMacros<'a> {
+    name: VkTyName,
+    mod_name: &'a str,
+    commands: &'a [RequireRemove],
+}
+
+impl krs_quote::ToTokens for VersionMacros<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let commands = self.commands.iter().filter(|c| c.is_require());
+        let macro_name = format!("{}_{}", name, self.mod_name).as_code();
+        krs_quote_with!(tokens <-
+            #[doc(hidden)]
+            #[macro_export]
+            macro_rules! {@macro_name} {
+                ( $target:ident ) => {
+                    {@* $crate::{@commands}!($target {@name}); }
                 }
             }
+            pub use {@macro_name} as {@name};
         );
     }
 }
@@ -256,9 +314,9 @@ impl krs_quote::ToTokens for Feature {
             pub struct {@version};
             impl VulkanVersion for {@version} {
                 const VersionTriple: (u32, u32, u32) = {@version_triple};
-                type InstanceCommands = version::instance::{@version};
-                type DeviceCommands = version::device::{@version};
-                type EntryCommands = version::entry::{@version};
+                type InstanceCommands = version::instance::structs::{@version};
+                type DeviceCommands = version::device::structs::{@version};
+                type EntryCommands = version::entry::structs::{@version};
             }
         );
     }

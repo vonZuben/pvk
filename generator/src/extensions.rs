@@ -1,7 +1,6 @@
 use krs_quote::krs_quote_with;
 
-use crate::utils::VecMap;
-use crate::utils::VkTyName;
+use crate::utils::{StrAsCode, VecMap, VkTyName};
 
 use std::ops::{Deref, DerefMut};
 
@@ -29,7 +28,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let extensions = self.extensions.iter();
 
-        let e_name = extensions.clone().map(|e| e.extension_name);
+        // structs
         let instance_structs = extensions.clone().map(|e| ExtensionStruct {
             name: e.extension_name,
             commands: &e.instance_command_names,
@@ -39,32 +38,50 @@ impl krs_quote::ToTokens for ExtensionCollection {
             commands: &e.device_command_names,
         });
 
+        // traits
+        let instance_traits = extensions.clone().map(|e| ExtensionTrait {
+            name: e.extension_name,
+            commands: &e.instance_command_names,
+        });
+        let device_traits = extensions.clone().map(|e| ExtensionTrait {
+            name: e.extension_name,
+            commands: &e.device_command_names,
+        });
+
+        // macros
+        let instance_macros = extensions.clone().map(|e| ExtensionMacros {
+            name: e.extension_name,
+            mod_name: "instance",
+            commands: &e.instance_command_names,
+        });
+        let device_macros = extensions.clone().map(|e| ExtensionMacros {
+            name: e.extension_name,
+            mod_name: "device",
+            commands: &e.device_command_names,
+        });
+
         krs_quote_with!(tokens <-
             {@* {@extensions}}
 
             #[doc(hidden)]
             pub mod extension {
                 pub mod instance {
-                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
-                    {@* {@instance_structs}}
-                    pub mod provider {
-                        {@*
-                            pub trait {@e_name} {
-                                fn {@e_name}(&self) -> &super::{@e_name};
-                            }
-                        }
+                    use super::super::has_command::*;
+                    {@* {@instance_traits}}
+                    {@* {@instance_macros}}
+                    pub mod structs {
+                        use super::super::super::*;
+                        {@* {@instance_structs}}
                     }
                 }
 
                 pub mod device {
-                    use super::super::{LoadCommands, CommandLoadError, FunctionLoader};
-                    {@* {@device_structs}}
-                    pub mod provider {
-                        {@*
-                            pub trait {@e_name} {
-                                fn {@e_name}(&self) -> &super::{@e_name};
-                            }
-                        }
+                    use super::super::has_command::*;
+                    {@* {@device_traits}}
+                    {@* {@device_macros}}
+                    pub mod structs {
+                        use super::super::super::*;
+                        {@* {@device_structs}}
                     }
                 }
             }
@@ -74,7 +91,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
 
 struct ExtensionStruct<'a> {
     name: ExtensionName,
-    commands: &'a Vec<VkTyName>,
+    commands: &'a [VkTyName],
 }
 
 impl krs_quote::ToTokens for ExtensionStruct<'_> {
@@ -84,24 +101,56 @@ impl krs_quote::ToTokens for ExtensionStruct<'_> {
 
         krs_quote_with!(tokens <-
             pub struct {@name} {
-                {@* {@command}: super::super::{@command}, }
+                {@* pub {@command}: {@command}, }
             }
 
             impl {@name} {
                 pub fn load(loader: impl FunctionLoader) -> std::result::Result<Self, CommandLoadError> {
                     Ok(Self {
-                        {@* {@command} : super::super::{@command}::load(loader)?, }
+                        {@* {@command} : {@command}::load(loader)?, }
                     })
                 }
             }
+        );
+    }
+}
 
-            {@*
-                impl<T: provider::{@name}> super::super::command::{@command}<super::super::{@name}> for T {
-                    fn {@command}(&self) -> super::super::{@command} {
-                        self.{@name}().{@command}
-                    }
+struct ExtensionTrait<'a> {
+    name: ExtensionName,
+    commands: &'a [VkTyName],
+}
+
+impl krs_quote::ToTokens for ExtensionTrait<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let commands = self.commands.iter();
+        krs_quote_with!(tokens <-
+            pub trait {@name} : {@+* {@commands}} {}
+            impl<T> {@name} for T where T: {@+* {@commands}} {}
+        );
+    }
+}
+
+struct ExtensionMacros<'a> {
+    name: ExtensionName,
+    mod_name: &'a str,
+    commands: &'a [VkTyName],
+}
+
+impl krs_quote::ToTokens for ExtensionMacros<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+        let commands = self.commands.iter();
+        let macro_name = format!("{}_{}", name.name_as_str(), self.mod_name).as_code();
+        krs_quote_with!(tokens <-
+            #[doc(hidden)]
+            #[macro_export]
+            macro_rules! {@macro_name} {
+                ( $target:ident ) => {
+                    {@* $crate::{@commands}!($target {@name}); }
                 }
             }
+            pub use {@macro_name} as {@name};
         );
     }
 }
@@ -247,8 +296,8 @@ impl krs_quote::ToTokens for ExtensionInfo {
                     type Require = ({@,* {@required}});
                     const VK_NAME: *const c_char = concat!({@raw_name}, '\0').as_ptr().cast();
                     type ExtensionType = {@kind};
-                    type InstanceCommands = extension::instance::{@extension_name};
-                    type DeviceCommands = extension::device::{@extension_name};
+                    type InstanceCommands = extension::instance::structs::{@extension_name};
+                    type DeviceCommands = extension::device::structs::{@extension_name};
                 }
             )
         } else {
@@ -257,8 +306,8 @@ impl krs_quote::ToTokens for ExtensionInfo {
                 pub struct {@extension_name};
                 impl VulkanExtensionExtras for {@extension_name} {
                     type Require = ({@,* {@required}});
-                    type InstanceCommands = extension::instance::{@extension_name};
-                    type DeviceCommands = extension::device::{@extension_name};
+                    type InstanceCommands = extension::instance::structs::{@extension_name};
+                    type DeviceCommands = extension::device::structs::{@extension_name};
                 }
             )
         }

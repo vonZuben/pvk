@@ -37,19 +37,29 @@ impl krs_quote::ToTokens for Commands2 {
                 }
             }
 
-            /// Provider traits are intended to be automatically implemented for any type that contains the relevant function pointer
-            /// See the feature and extension generated code for more details
-            /// The Source generic parameter allows the provider trait to be implemented more than once so different version and extensions can provide the same command
-            /// When a user creates their Instance or Device context, it is intended that they only choose a single provider of a command to avoid redundancy,
-            /// and allow inference of the Source which is possible for the compiler if of there is only one Source
-            /// (if multiple Sources are available in a context, a Source needs to be manually selected).
-            /// For example, a command may have been provided by an extension, and then later promoted to a new core version.
-            /// If upgrading the the new core version, the old extension can/should be removed from the context
+            /// Traits to provide the respective command, and macros to implement the same
+            ///
+            /// For the macros to work, there will need to be a path to this module from
+            /// the root of the crate containing the generated code.
+            /// Also, the command types themselves will need to be at the root of the crate
             #[doc(hidden)]
-            pub mod command {
+            pub mod has_command {
                 {@*
-                    pub trait {@commands}<Source> {
+                    pub trait {@commands} {
                         fn {@commands}(&self) -> super::{@commands};
+                    }
+
+                    #[doc(hidden)]
+                    #[macro_export]
+                    macro_rules! {@commands} {
+                        ($target:ident $provider:ident) => {
+                            #[allow(non_snake_case)]
+                            impl $crate::has_command::{@commands} for $target {
+                                fn {@commands}(&self) -> $crate::{@commands} {
+                                    self.$provider.{@commands}
+                                }
+                            }
+                        };
                     }
                 }
             }

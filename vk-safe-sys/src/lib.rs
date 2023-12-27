@@ -9,7 +9,7 @@
 //! generated using the generator crate
 
 #[macro_use]
-mod generated_vulkan; // TODO I do not think I want this public, but need type defs for now
+mod generated_vulkan;
 
 #[link(name = "vulkan")]
 extern "system" {
@@ -28,5 +28,5 @@ extern "system" {
 
 pub mod commands;
 
-pub use generated_vulkan::command as has_command;
+pub use generated_vulkan::has_command;
 pub use generated_vulkan::*;

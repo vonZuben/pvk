@@ -30,12 +30,7 @@ macro_rules! instance_context {
         }
 
         $(
-            impl $crate::version::instance::provider::$v_provider for $name {
-                #[allow(non_snake_case)]
-                fn $v_provider(&self) -> &$crate::version::instance::$v_provider {
-                    &self.$v_provider
-                }
-            }
+            $crate::version::instance::$v_provider!($name);
 
             impl $crate::commands::Version for $name {
                 const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
@@ -44,12 +39,7 @@ macro_rules! instance_context {
 
         $(
             $(
-                impl $crate::extension::instance::provider::$e_provider for $name {
-                    #[allow(non_snake_case)]
-                    fn $e_provider(&self) -> &$crate::extension::instance::$e_provider {
-                        &self.$e_provider
-                    }
-                }
+                $crate::extension::instance::$e_provider!($name);
             )+
         )?
     }
@@ -76,12 +66,7 @@ macro_rules! device_context {
         }
 
         $(
-            impl $crate::version::device::provider::$v_provider for $name {
-                #[allow(non_snake_case)]
-                fn $v_provider(&self) -> &$crate::version::device::$v_provider {
-                    &self.$v_provider
-                }
-            }
+            $crate::version::instance::$v_provider!($name);
 
             impl $crate::commands::Version for $name {
                 const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
@@ -90,59 +75,8 @@ macro_rules! device_context {
 
         $(
             $(
-                impl $crate::extension::device::provider::$e_provider for $name {
-                    #[allow(non_snake_case)]
-                    fn $e_provider(&self) -> &$crate::extension::device::$e_provider {
-                        &self.$e_provider
-                    }
-                }
+                $crate::extension::instance::$e_provider!($name);
             )+
         )?
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn command_load_test() {
-        // use crate::generated::VERSION_1_0;
-        use crate::command::DestroyInstance;
-        use crate::version::instance::provider::VERSION_1_0;
-
-        let mut instance = crate::Instance {
-            handle: std::ptr::null(),
-        };
-        let loader = |name| {
-            // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
-            unsafe { crate::GetInstanceProcAddr(instance, name) }
-        };
-
-        instance_context!(MyCx: VERSION_1_0);
-
-        let create_instance = crate::CreateInstance::load(loader).unwrap();
-
-        let mut info =
-            unsafe { std::mem::MaybeUninit::<crate::InstanceCreateInfo>::zeroed().assume_init() };
-        info.s_type = crate::StructureType::INSTANCE_CREATE_INFO;
-
-        unsafe { create_instance.get_fptr()(&info, std::ptr::null(), &mut instance) };
-
-        // reset since otherwise instance borrow is aliased
-        let loader = |name| {
-            // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
-            unsafe { crate::GetInstanceProcAddr(instance, name) }
-        };
-
-        let instance_commands = MyCx::load(loader).unwrap();
-
-        println!("{:p}", instance_commands.DestroyInstance().get_fptr());
-
-        // println!("{:?}", instance);
-
-        // let loader = |name| {
-        //     // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
-        //     unsafe { crate::GetInstanceProcAddr(instance, name) }
-        // };
     }
 }
