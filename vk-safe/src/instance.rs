@@ -12,22 +12,12 @@ use vk::has_command::DestroyInstance;
 
 pub trait InstanceConfig {
     const VERSION: VkVersion;
-    type Commands: DestroyInstance + LoadCommands + Version;
+    type Commands: DestroyInstance;
 }
 
 pub struct Config<Cmd> {
-    _commands: PhantomData<Cmd>,
+    commands: PhantomData<Cmd>,
 }
-
-impl<Cmd> Clone for Config<Cmd> {
-    fn clone(&self) -> Self {
-        Self {
-            _commands: PhantomData,
-        }
-    }
-}
-
-impl<Cmd> Copy for Config<Cmd> {}
 
 impl<Cmd> InstanceConfig for Config<Cmd>
 where
@@ -60,7 +50,10 @@ pub struct InstanceType<C: InstanceConfig> {
     pub(crate) commands: C::Commands,
 }
 
-impl<C: InstanceConfig> InstanceType<C> {
+impl<C: InstanceConfig> InstanceType<C>
+where
+    C::Commands: LoadCommands,
+{
     pub(crate) fn load_commands(handle: vk::Instance) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
