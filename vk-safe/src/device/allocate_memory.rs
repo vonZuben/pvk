@@ -68,10 +68,10 @@ impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemoryType<D> {
     }
 }
 
-impl<S: Device, C: DeviceConfig, Pd> ScopedDeviceType<S, C, Pd> {
+impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C> {
     pub fn allocate_memory(
         &self,
-        info: &MemoryAllocateInfo<Pd>,
+        info: &MemoryAllocateInfo<C::PhysicalDevice>,
     ) -> Result<DeviceMemoryType<Config<S>>, vk::Result>
     where
         C::Commands: AllocateMemory,

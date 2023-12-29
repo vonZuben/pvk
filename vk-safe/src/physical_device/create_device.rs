@@ -16,11 +16,11 @@ use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionPrope
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn create_device<Commands>(
         &self,
         create_info: &DeviceCreateInfo<'_, Commands>,
-    ) -> Result<DeviceType<Config<Commands>, S>, Error>
+    ) -> Result<DeviceType<Config<Commands, S>>, Error>
     where
         I::Commands: CreateDevice + EnumerateDeviceExtensionProperties,
         Commands: DestroyDevice + LoadCommands + Version,
