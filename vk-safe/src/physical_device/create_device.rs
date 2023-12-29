@@ -19,7 +19,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice
 impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn create_device<Commands>(
         &self,
-        create_info: &DeviceCreateInfo<'_, Commands>,
+        create_info: &DeviceCreateInfo<Commands, S>,
     ) -> Result<DeviceType<Config<Commands, S>>, Error>
     where
         I::Commands: CreateDevice + EnumerateDeviceExtensionProperties,
@@ -51,16 +51,17 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
 }
 
 //===========InstanceCreateInfo
-pub struct DeviceCreateInfo<'a, C> {
+pub struct DeviceCreateInfo<'a, C, S> {
     pub(crate) inner: vk::DeviceCreateInfo,
     _config: PhantomData<C>,
     _refs: PhantomData<&'a ()>,
+    _scope: PhantomData<S>,
 }
 
-impl<'a> DeviceCreateInfo<'a, ()> {
-    pub const fn new<Commands>(
-        queue_create_info: &'a [DeviceQueueCreateInfo],
-    ) -> DeviceCreateInfo<'a, Commands> {
+impl<'a> DeviceCreateInfo<'a, (), ()> {
+    pub const fn new<Commands, S>(
+        queue_create_info: &'a [DeviceQueueCreateInfo<S>],
+    ) -> DeviceCreateInfo<'a, Commands, S> {
         check_vuids::check_vuids!(DeviceCreateInfo);
 
         #[allow(unused_labels)]
@@ -602,24 +603,26 @@ impl<'a> DeviceCreateInfo<'a, ()> {
             },
             _config: PhantomData,
             _refs: PhantomData,
+            _scope: PhantomData,
         }
     }
 }
 
 /// A safe to use [vk::DeviceQueueCreateInfo]
 #[repr(transparent)]
-pub struct DeviceQueueCreateInfo<'a> {
+pub struct DeviceQueueCreateInfo<'a, S> {
     inner: vk::DeviceQueueCreateInfo,
     _refs: PhantomData<&'a ()>,
+    _scope: PhantomData<S>,
 }
 
-unsafe impl SafeTransmute<vk::DeviceQueueCreateInfo> for DeviceQueueCreateInfo<'_> {}
+unsafe impl<S> SafeTransmute<vk::DeviceQueueCreateInfo> for DeviceQueueCreateInfo<'_, S> {}
 
-impl DeviceQueueCreateInfo<'_> {
+impl<S> DeviceQueueCreateInfo<'_, S> {
     array!(queue_priorities, p_queue_priorities, queue_count, f32);
 }
 
-impl std::ops::Deref for DeviceQueueCreateInfo<'_> {
+impl<S> std::ops::Deref for DeviceQueueCreateInfo<'_, S> {
     type Target = vk::DeviceQueueCreateInfo;
 
     fn deref(&self) -> &Self::Target {
@@ -627,7 +630,7 @@ impl std::ops::Deref for DeviceQueueCreateInfo<'_> {
     }
 }
 
-impl fmt::Debug for DeviceQueueCreateInfo<'_> {
+impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DeviceQueueCreateInfo")
             .field("flags", &self.inner.flags)
@@ -639,34 +642,36 @@ impl fmt::Debug for DeviceQueueCreateInfo<'_> {
     }
 }
 
-pub struct DeviceQueueCreateInfoArray<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> {
-    infos: S::InitStorage,
+pub struct DeviceQueueCreateInfoArray<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> {
+    infos: A::InitStorage,
     _a: PhantomData<&'a ()>,
+    _scope: PhantomData<S>,
 }
 
-impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> fmt::Debug
-    for DeviceQueueCreateInfoArray<'a, S>
+impl<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> fmt::Debug
+    for DeviceQueueCreateInfoArray<'a, A, S>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.infos.as_ref().iter()).finish()
     }
 }
 
-impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> std::ops::Deref
-    for DeviceQueueCreateInfoArray<'a, S>
+impl<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> std::ops::Deref
+    for DeviceQueueCreateInfoArray<'a, A, S>
 {
-    type Target = [DeviceQueueCreateInfo<'a>];
+    type Target = [DeviceQueueCreateInfo<'a, S>];
 
     fn deref(&self) -> &Self::Target {
         &self.infos.as_ref()
     }
 }
 
-impl<'a, S: ArrayStorage<DeviceQueueCreateInfo<'a>>> DeviceQueueCreateInfoArray<'a, S> {
-    pub(crate) fn new(infos: S::InitStorage) -> Self {
+impl<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> DeviceQueueCreateInfoArray<'a, A, S> {
+    pub(crate) fn new(infos: A::InitStorage) -> Self {
         Self {
             infos,
             _a: PhantomData,
+            _scope: PhantomData,
         }
     }
 }
@@ -711,7 +716,7 @@ pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer
     family_index: u32,
     to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<
         'storage,
-        DeviceQueueCreateInfo<'params>,
+        DeviceQueueCreateInfo<'params, S>,
     >,
     pub family_properties: &'properties QueueFamilyProperties<S>,
 }
@@ -725,7 +730,7 @@ impl<'params, 'properties, 'initializer, 'storage, S>
         family_index: u32,
         to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<
             'storage,
-            DeviceQueueCreateInfo<'params>,
+            DeviceQueueCreateInfo<'params, S>,
         >,
         family_properties: &'properties QueueFamilyProperties<S>,
     ) -> Self {
@@ -869,6 +874,7 @@ impl<'params, 'properties, 'initializer, 'storage, S>
                 p_queue_priorities: priorities.as_ptr(),
             },
             _refs: PhantomData,
+            _scope: PhantomData,
         };
         self.to_write.push(info)
     }
@@ -1023,6 +1029,7 @@ impl<'params, 'properties, 'initializer, 'storage, S>
                     p_queue_priorities: priorities_for_non_protected.as_ptr(),
                 },
                 _refs: PhantomData,
+                _scope: PhantomData,
             };
             self.to_write.push(non_protected_info)?;
         }
@@ -1038,6 +1045,7 @@ impl<'params, 'properties, 'initializer, 'storage, S>
                     p_queue_priorities: priorities_for_protected.as_ptr(),
                 },
                 _refs: PhantomData,
+                _scope: PhantomData,
             };
             self.to_write.push(protected_info)?;
         }

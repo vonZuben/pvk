@@ -124,7 +124,7 @@ fn main() {
                 println!("{:#?}", queue_family_configurations);
 
                 let device_create_info =
-                    DeviceCreateInfo::new::<DeviceContext>(&queue_family_configurations);
+                    DeviceCreateInfo::new::<DeviceContext, _>(&queue_family_configurations);
 
                 let device = pd.create_device(&device_create_info).unwrap();
 

@@ -90,13 +90,13 @@ impl<S, A: ArrayStorage<QueueFamilyProperties<S>>> fmt::Debug for QueueFamilies<
 }
 
 impl<S, QA: ArrayStorage<QueueFamilyProperties<S>>> QueueFamilies<S, QA> {
-    pub fn configure_create_info<'params, IA: ArrayStorage<DeviceQueueCreateInfo<'params>>>(
+    pub fn configure_create_info<'params, IA: ArrayStorage<DeviceQueueCreateInfo<'params, S>>>(
         &self,
         mut storage: IA,
         mut filter: impl for<'properties, 'initializer, 'storage> FnMut(
             DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S>,
         ),
-    ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IA> {
+    ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IA, S> {
         let len = || {
             let mut protected_count = 0;
             for properties in self.families.as_ref().iter() {
