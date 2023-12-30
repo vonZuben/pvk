@@ -9,9 +9,25 @@ pub trait Version {
     const VERSION_TRIPLE: (u32, u32, u32);
 }
 
+/// define what API version and extensions should be used with an instance
 #[macro_export]
 macro_rules! instance_context {
     ( $vis:vis $name:ident : $($v_provider:ident)? $( + $($e_provider:ident),+ $(,)? )? ) => {
+        $(
+            use $crate::version::instance::$v_provider;
+            $v_provider!($name);
+            impl $crate::commands::Version for $name {
+                const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
+            }
+        )?
+
+        $(
+            $(
+                use $crate::extension::instance::$e_provider;
+                $e_provider!($name);
+            )+
+        )?
+
         #[allow(non_snake_case)]
         $vis struct $name {
             $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::InstanceCommands,)?
@@ -28,10 +44,16 @@ macro_rules! instance_context {
                 )
             }
         }
+    }
+}
 
+/// define what API version and extensions should be used with a device
+#[macro_export]
+macro_rules! device_context {
+    ( $vis:vis $name:ident : $($v_provider:ident)? $( + $($e_provider:ident),+ $(,)? )? ) => {
         $(
-            $crate::version::instance::$v_provider!($name);
-
+            use $crate::version::device::$v_provider;
+            $v_provider!($name);
             impl $crate::commands::Version for $name {
                 const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
             }
@@ -39,15 +61,11 @@ macro_rules! instance_context {
 
         $(
             $(
-                $crate::extension::instance::$e_provider!($name);
+                use $crate::extension::device::$e_provider;
+                $e_provider!($name);
             )+
         )?
-    }
-}
 
-#[macro_export]
-macro_rules! device_context {
-    ( $vis:vis $name:ident : $($v_provider:ident)? $( + $($e_provider:ident),+ $(,)? )? ) => {
         #[allow(non_snake_case)]
         $vis struct $name {
             $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::DeviceCommands,)?
@@ -64,19 +82,5 @@ macro_rules! device_context {
                 )
             }
         }
-
-        $(
-            $crate::version::device::$v_provider!($name);
-
-            impl $crate::commands::Version for $name {
-                const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
-            }
-        )?
-
-        $(
-            $(
-                $crate::extension::device::$e_provider!($name);
-            )+
-        )?
     }
 }
