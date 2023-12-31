@@ -160,3 +160,7 @@ mod command_impl_prelude {
 // }
 
 mod enumerate_physical_devices;
+
+pub mod instance_exports {
+    pub use super::Instance;
+}

@@ -26,6 +26,7 @@ pub use vk_safe_sys::{device_context, instance_context};
 
 pub use device_type::device_exports::*;
 pub use entry::*;
+pub use instance_type::instance_exports::*;
 pub use physical_device::physical_device_exports::*;
 
 pub use scope::scope;
