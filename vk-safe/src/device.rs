@@ -8,7 +8,7 @@ use crate::scope::{RefScope, Scope};
 
 use vk::has_command::DestroyDevice;
 
-use vk::commands::{CommandLoadError, LoadCommands, Version};
+use vk::commands::{CommandLoadError, Commands, LoadCommands, Version};
 
 pub trait DeviceConfig {
     const VERSION: VkVersion;
@@ -16,21 +16,22 @@ pub trait DeviceConfig {
     type PhysicalDevice: PhysicalDevice;
 }
 
-pub struct Config<Cmd, P> {
-    commands: PhantomData<Cmd>,
+pub struct Config<C, P> {
+    commands: PhantomData<C>,
     physical_device: PhantomData<P>,
 }
 
-impl<Cmd, P: PhysicalDevice> DeviceConfig for Config<Cmd, P>
+impl<C, P: PhysicalDevice> DeviceConfig for Config<C, P>
 where
-    Cmd: LoadCommands + DestroyDevice + Version,
+    C: Commands,
+    C::Commands: LoadCommands + DestroyDevice + Version,
 {
     const VERSION: VkVersion = VkVersion::new(
-        Cmd::VERSION_TRIPLE.0,
-        Cmd::VERSION_TRIPLE.1,
-        Cmd::VERSION_TRIPLE.2,
+        C::Commands::VERSION_TRIPLE.0,
+        C::Commands::VERSION_TRIPLE.1,
+        C::Commands::VERSION_TRIPLE.2,
     );
-    type Commands = Cmd;
+    type Commands = C::Commands;
     type PhysicalDevice = P;
 }
 

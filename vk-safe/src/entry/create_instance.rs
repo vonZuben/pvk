@@ -9,17 +9,17 @@ use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
-use vk::commands::{LoadCommands, Version};
+use vk::commands::{Commands, LoadCommands, Version};
 use vk::has_command::DestroyInstance;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
 */
-pub fn create_instance<C>(
+pub fn create_instance<C: Commands>(
     create_info: &InstanceCreateInfo<C>,
 ) -> Result<InstanceType<Config<C>>, Error>
 where
-    C: DestroyInstance + Version + LoadCommands,
+    C::Commands: DestroyInstance + Version + LoadCommands,
 {
     check_vuids::check_vuids!(CreateInstance);
 
@@ -249,7 +249,11 @@ pub struct ApplicationInfo<'a, C> {
 }
 
 impl<'a> ApplicationInfo<'a, ()> {
-    pub const fn new<Commands: Version>() -> ApplicationInfo<'a, Commands> {
+    pub const fn new<C: Copy>(_: C) -> ApplicationInfo<'a, C>
+    where
+        C: Commands,
+        C::Commands: Version,
+    {
         check_vuids::check_vuids!(ApplicationInfo);
 
         #[allow(unused_labels)]
@@ -303,7 +307,7 @@ impl<'a> ApplicationInfo<'a, ()> {
             // ensured by VkStr
         }
 
-        let version = VkVersion::from_triple(Commands::VERSION_TRIPLE);
+        let version = VkVersion::from_triple(C::Commands::VERSION_TRIPLE);
         ApplicationInfo {
             inner: vk::ApplicationInfo {
                 s_type: vk::StructureType::APPLICATION_INFO,

@@ -28,10 +28,12 @@ fn main() {
         println!("{e:#?}");
     }
 
-    const APP_INFO: ApplicationInfo<InstanceContext> = ApplicationInfo::new()
-        .app_name(vk_str!("My App"))
-        .app_version(vk_safe::VkVersion::new(0, 0, 1));
-    const INSTANCE_INFO: InstanceCreateInfo<InstanceContext> = InstanceCreateInfo::new(&APP_INFO);
+    const INSTANCE_INFO: InstanceCreateInfo<InstanceContext::InstanceContext> =
+        InstanceCreateInfo::new(
+            &ApplicationInfo::new(InstanceContext)
+                .app_name(vk_str!("Example"))
+                .app_version(vk_safe::VkVersion::new(0, 0, 1)),
+        );
 
     let instance = vk_safe::create_instance(&INSTANCE_INFO).unwrap();
 
@@ -124,7 +126,7 @@ fn main() {
                 println!("{:#?}", queue_family_configurations);
 
                 let device_create_info =
-                    DeviceCreateInfo::new::<DeviceContext, _>(&queue_family_configurations);
+                    DeviceCreateInfo::new(DeviceContext, &queue_family_configurations);
 
                 let device = pd.create_device(&device_create_info).unwrap();
 

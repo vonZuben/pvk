@@ -7,7 +7,7 @@ use crate::pretty_version::VkVersion;
 
 use std::marker::PhantomData;
 
-use vk::commands::{CommandLoadError, LoadCommands, Version};
+use vk::commands::{CommandLoadError, Commands, LoadCommands, Version};
 use vk::has_command::DestroyInstance;
 
 pub trait InstanceConfig {
@@ -15,20 +15,21 @@ pub trait InstanceConfig {
     type Commands: DestroyInstance;
 }
 
-pub struct Config<Cmd> {
-    commands: PhantomData<Cmd>,
+pub struct Config<C> {
+    commands: PhantomData<C>,
 }
 
-impl<Cmd> InstanceConfig for Config<Cmd>
+impl<C> InstanceConfig for Config<C>
 where
-    Cmd: LoadCommands + DestroyInstance + Version,
+    C: Commands,
+    C::Commands: LoadCommands + DestroyInstance + Version,
 {
     const VERSION: VkVersion = VkVersion::new(
-        Cmd::VERSION_TRIPLE.0,
-        Cmd::VERSION_TRIPLE.1,
-        Cmd::VERSION_TRIPLE.2,
+        C::Commands::VERSION_TRIPLE.0,
+        C::Commands::VERSION_TRIPLE.1,
+        C::Commands::VERSION_TRIPLE.2,
     );
-    type Commands = Cmd;
+    type Commands = C::Commands;
 }
 
 pub type ScopedInstanceType<S, C> = RefScope<S, InstanceType<C>>;

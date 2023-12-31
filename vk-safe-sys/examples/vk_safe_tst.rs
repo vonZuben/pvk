@@ -20,13 +20,24 @@ fn main() {
 
     unsafe { create_instance.get_fptr()(&info, std::ptr::null(), &mut instance) };
 
-    // reset since otherwise instance borrow is aliased
-    let loader = |name| {
-        // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
-        unsafe { GetInstanceProcAddr(instance, name) }
-    };
+    struct Commands<C: commands::Commands> {
+        c: C::Commands,
+    }
 
-    let instance_commands = MyCx::load(loader).unwrap();
+    impl<C: commands::Commands> Commands<C> {
+        fn load(instance: Instance, _: C) -> Self {
+            // reset since otherwise instance borrow is aliased
+            let loader = |name| {
+                // SAFETY : this will only be used here where we trust the passed name is a proper c_string command name
+                unsafe { GetInstanceProcAddr(instance, name) }
+            };
+            Self {
+                c: C::Commands::load(loader).unwrap(),
+            }
+        }
+    }
 
-    println!("{:p}", instance_commands.DestroyInstance().get_fptr());
+    let instance_commands = Commands::load(instance, MyCx);
+
+    println!("{:p}", instance_commands.c.DestroyInstance().get_fptr());
 }

@@ -10,20 +10,21 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use vk::commands::{LoadCommands, Version};
+use vk::commands::{Commands, LoadCommands, Version};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
 impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn create_device<Commands>(
+    pub fn create_device<C>(
         &self,
-        create_info: &DeviceCreateInfo<Commands, S>,
-    ) -> Result<DeviceType<Config<Commands, S>>, Error>
+        create_info: &DeviceCreateInfo<C, S>,
+    ) -> Result<DeviceType<Config<C, S>>, Error>
     where
         I::Commands: CreateDevice + EnumerateDeviceExtensionProperties,
-        Commands: DestroyDevice + LoadCommands + Version,
+        C: Commands,
+        C::Commands: DestroyDevice + LoadCommands + Version,
     {
         let mut device = MaybeUninit::uninit();
 
@@ -59,9 +60,10 @@ pub struct DeviceCreateInfo<'a, C, S> {
 }
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
-    pub const fn new<Commands, S>(
+    pub const fn new<C: Copy, S>(
+        _: C,
         queue_create_info: &'a [DeviceQueueCreateInfo<S>],
-    ) -> DeviceCreateInfo<'a, Commands, S> {
+    ) -> DeviceCreateInfo<'a, C, S> {
         check_vuids::check_vuids!(DeviceCreateInfo);
 
         #[allow(unused_labels)]
