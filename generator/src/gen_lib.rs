@@ -60,7 +60,7 @@ fn make_lib_file(out_dir: &Path) -> Result<()> {
     // the first module should be 'util_code', which should be the only module to include macros
     let code = krs_quote!(
         #[macro_use]
-        {@* mod {@module_names};}
+        {@* pub mod {@module_names};}
         {@* pub use {@module_names}::*;}
 
         use std::ffi::{c_char, c_int, c_void, c_ulong, c_uint};

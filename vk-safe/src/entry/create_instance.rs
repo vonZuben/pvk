@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::instance::{Config, InstanceType};
+use crate::instance_type::{Config, InstanceType};
 use crate::pretty_version::VkVersion;
 use crate::type_conversions::ToC;
 use crate::vk_str::VkStr;

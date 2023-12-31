@@ -160,5 +160,3 @@ mod command_impl_prelude {
 // }
 
 mod enumerate_physical_devices;
-
-pub use enumerate_physical_devices::*;

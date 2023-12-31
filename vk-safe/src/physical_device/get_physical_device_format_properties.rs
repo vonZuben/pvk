@@ -1,5 +1,5 @@
 use super::*;
-use crate::instance::Instance;
+use crate::instance_type::Instance;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceFormatProperties;

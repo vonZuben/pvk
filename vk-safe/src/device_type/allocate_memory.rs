@@ -1,7 +1,7 @@
 use super::*;
 use vk_safe_sys as vk;
 
-use crate::physical_device::MemoryTypeChoice;
+use crate::physical_device::get_physical_device_memory_properties::MemoryTypeChoice;
 
 use vk::has_command::{AllocateMemory, FreeMemory};
 

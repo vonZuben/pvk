@@ -2,7 +2,7 @@ use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 use crate::physical_device::PhysicalDevices;
 
-use crate::instance::Instance;
+use crate::instance_type::Instance;
 
 use super::InstanceConfig;
 use super::ScopedInstanceType;

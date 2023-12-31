@@ -147,3 +147,8 @@ impl<C: DeviceConfig> Drop for DeviceType<C> {
 }
 
 pub mod allocate_memory;
+
+pub mod device_exports {
+    use super::*;
+    pub use allocate_memory::MemoryAllocateInfo;
+}

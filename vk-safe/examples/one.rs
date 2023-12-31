@@ -1,46 +1,42 @@
 // trace_macros!(true);
 #![recursion_limit = "256"]
 
-use vk_safe::entry::*;
-use vk_safe::scope::scope;
+use vk_safe as vk;
 
-use vk_safe::physical_device::DeviceCreateInfo;
+use vk::vk_str;
 
-use vk_safe::vk_str;
-use vk_safe_sys as vk;
-
-vk_safe::instance_context!(InstanceContext: VERSION_1_1);
-vk_safe::device_context!(DeviceContext: VERSION_1_0);
+vk::instance_context!(InstanceContext: VERSION_1_1);
+vk::device_context!(DeviceContext: VERSION_1_0);
 
 fn main() {
     println!(
         "Supported Version: {}",
-        vk_safe::enumerate_instance_version().unwrap()
+        vk::enumerate_instance_version().unwrap()
     );
 
     println!("--Extensions--");
-    for e in vk_safe::enumerate_instance_extension_properties(None, Vec::new()).unwrap() {
+    for e in vk::enumerate_instance_extension_properties(None, Vec::new()).unwrap() {
         println!("{e:#?}");
     }
 
     println!("--Layers--");
-    for e in vk_safe::enumerate_instance_layer_properties(Vec::new()).unwrap() {
+    for e in vk::enumerate_instance_layer_properties(Vec::new()).unwrap() {
         println!("{e:#?}");
     }
 
-    const INSTANCE_INFO: InstanceCreateInfo<InstanceContext::InstanceContext> =
-        InstanceCreateInfo::new(
-            &ApplicationInfo::new(InstanceContext)
+    const INSTANCE_INFO: vk::InstanceCreateInfo<InstanceContext::InstanceContext> =
+        vk::InstanceCreateInfo::new(
+            &vk::ApplicationInfo::new(InstanceContext)
                 .app_name(vk_str!("Example"))
-                .app_version(vk_safe::VkVersion::new(0, 0, 1)),
+                .app_version(vk::VkVersion::new(0, 0, 1)),
         );
 
-    let instance = vk_safe::create_instance(&INSTANCE_INFO).unwrap();
+    let instance = vk::create_instance(&INSTANCE_INFO).unwrap();
 
     println!("-------");
     println!("{instance:?}");
 
-    scope(&instance, |instance| {
+    vk::scope(&instance, |instance| {
         let physical_devices = instance
             .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
             .unwrap();
@@ -50,7 +46,7 @@ fn main() {
 
         println!("-------");
         for pd in physical_devices.iter() {
-            scope(&pd, |pd| {
+            vk::scope(&pd, |pd| {
                 println!("{:#?}", pd.get_physical_device_properties());
                 println!("-------");
 
@@ -74,9 +70,8 @@ fn main() {
                     pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
                 println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
 
-                const PARAMS:
-                    vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParameters =
-                    vk_safe::physical_device::GetPhysicalDeviceImageFormatPropertiesParameters::new(
+                const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
+                    vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
                         vk::Format::R8G8B8A8_SRGB,
                         vk::ImageType::TYPE_2D,
                         vk::ImageTiling::OPTIMAL,
@@ -110,7 +105,7 @@ fn main() {
 
                 // just assume that 10 is the max number of queues we will see fo now
                 let standard_queue_priorities =
-                    unsafe { vk_safe::physical_device::QueuePriorities::new_unchecked(&[1.0; 10]) };
+                    unsafe { vk::QueuePriorities::new_unchecked(&[1.0; 10]) };
 
                 let queue_family_configurations =
                     queue_family_properties.configure_create_info(Vec::new(), |config| {
@@ -126,13 +121,13 @@ fn main() {
                 println!("{:#?}", queue_family_configurations);
 
                 let device_create_info =
-                    DeviceCreateInfo::new(DeviceContext, &queue_family_configurations);
+                    vk::DeviceCreateInfo::new(DeviceContext, &queue_family_configurations);
 
                 let device = pd.create_device(&device_create_info).unwrap();
 
-                scope(&device, |device| {
+                vk::scope(&device, |device| {
                     let mem_type = mem_props.choose_type(0);
-                    let alloc_info = vk_safe::device::allocate_memory::MemoryAllocateInfo::new(
+                    let alloc_info = vk::MemoryAllocateInfo::new(
                         std::num::NonZeroU64::new(100).unwrap(),
                         mem_type,
                     );

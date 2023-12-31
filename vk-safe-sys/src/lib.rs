@@ -9,7 +9,7 @@
 //! generated using the generator crate
 
 #[macro_use]
-mod generated_vulkan;
+pub mod generated_vulkan;
 
 #[link(name = "vulkan")]
 extern "system" {

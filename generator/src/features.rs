@@ -92,7 +92,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                     use super::super::has_command::*;
                     {@* {@instance_traits}}
                     {@* {@instance_macros}}
-                    pub mod structs {
+                    pub(crate) mod structs {
                         use super::super::super::*;
                         {@* {@instance_structs}}
                     }
@@ -102,7 +102,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                     use super::super::has_command::*;
                     {@* {@device_traits}}
                     {@* {@device_macros}}
-                    pub mod structs {
+                    pub(crate) mod structs {
                         use super::super::super::*;
                         {@* {@device_structs}}
                     }
@@ -112,7 +112,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                     use super::super::has_command::*;
                     {@* {@entry_traits}}
                     {@* {@entry_macros}}
-                    pub mod structs {
+                    pub(crate) mod structs {
                         use super::super::super::*;
                         {@* {@entry_structs}}
                     }

@@ -5,7 +5,7 @@ use vk_safe_sys as vk;
 use std::fmt;
 
 use crate::array_storage::ArrayStorage;
-use crate::instance::Instance;
+use crate::instance_type::Instance;
 
 pub struct PhysicalDevices<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> {
     instance: I,
@@ -95,22 +95,19 @@ impl<'s, I: Instance, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
     }
 }
 
-mod create_device;
-mod enumerate_device_extension_properties;
-mod enumerate_device_layer_properties;
-mod get_physical_device_features;
-mod get_physical_device_format_properties;
-mod get_physical_device_image_format_properties;
-mod get_physical_device_memory_properties;
-mod get_physical_device_properties;
-mod get_physical_device_queue_family_properties;
-mod get_physical_device_sparse_image_format_properties;
+pub(crate) mod create_device;
+pub(crate) mod enumerate_device_extension_properties;
+pub(crate) mod enumerate_device_layer_properties;
+pub(crate) mod get_physical_device_features;
+pub(crate) mod get_physical_device_format_properties;
+pub(crate) mod get_physical_device_image_format_properties;
+pub(crate) mod get_physical_device_memory_properties;
+pub(crate) mod get_physical_device_properties;
+pub(crate) mod get_physical_device_queue_family_properties;
+pub(crate) mod get_physical_device_sparse_image_format_properties;
 
-// use get_physical_device_features::*;
-// use get_physical_device_format_properties::*;
-pub use get_physical_device_image_format_properties::GetPhysicalDeviceImageFormatPropertiesParameters;
-// use get_physical_device_properties::*;
-use create_device::*;
-pub use create_device::{DeviceCreateInfo, QueuePriorities};
-pub use get_physical_device_memory_properties::*;
-use get_physical_device_queue_family_properties::*;
+pub mod physical_device_exports {
+    use super::*;
+    pub use create_device::{DeviceCreateInfo, QueuePriorities};
+    pub use get_physical_device_image_format_properties::GetPhysicalDeviceImageFormatPropertiesParameters;
+}

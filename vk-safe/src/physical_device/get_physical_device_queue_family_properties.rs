@@ -1,6 +1,9 @@
+use super::create_device::{
+    DeviceQueueCreateInfo, DeviceQueueCreateInfoArray, DeviceQueueCreateInfoConfiguration,
+};
 use super::*;
 use crate::error::Error;
-use crate::instance::Instance;
+use crate::instance_type::Instance;
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
@@ -96,7 +99,7 @@ impl<S, QA: ArrayStorage<QueueFamilyProperties<S>>> QueueFamilies<S, QA> {
         mut filter: impl for<'properties, 'initializer, 'storage> FnMut(
             DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S>,
         ),
-    ) -> crate::physical_device::DeviceQueueCreateInfoArray<'params, IA, S> {
+    ) -> DeviceQueueCreateInfoArray<'params, IA, S> {
         let len = || {
             let mut protected_count = 0;
             for properties in self.families.as_ref().iter() {
