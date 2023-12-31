@@ -141,24 +141,6 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
     }
 }
 
-mod command_impl_prelude {
-    pub use super::ScopedInstanceType;
-    pub use crate::array_storage::{ArrayStorage, VulkanLenType};
-    pub use vk_safe_sys as vk;
-    pub use vk_safe_sys::{VulkanExtension, VulkanVersion};
-}
-
-// This is how each safe command can be implemented on top of each raw command
-// macro_rules! impl_safe_instance_interface {
-//     ( $interface:ident { $($code:tt)* }) => {
-//         impl<'scope, C: InstanceConfig> ScopedInstance<'scope, C>
-//         where
-//             C::Commands: GetCommand<vk::$interface> {
-//             $($code)*
-//         }
-//     };
-// }
-
 mod enumerate_physical_devices;
 
 pub mod instance_exports {
