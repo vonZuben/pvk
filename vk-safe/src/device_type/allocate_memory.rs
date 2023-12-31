@@ -8,13 +8,13 @@ use vk::has_command::{AllocateMemory, FreeMemory};
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 
-pub trait DeviceMemoryConfig: Deref<Target = Self::Device> {
+pub trait DeviceMemoryConfig {
     type Commands: FreeMemory;
     type Device: Device<Commands = Self::Commands>;
 }
 
 pub struct Config<D> {
-    device: D,
+    _device: PhantomData<D>,
 }
 
 impl<D: Device> DeviceMemoryConfig for Config<D>
@@ -25,14 +25,6 @@ where
     type Device = D;
 }
 
-impl<D: Device> Deref for Config<D> {
-    type Target = D;
-
-    fn deref(&self) -> &Self::Target {
-        &self.device
-    }
-}
-
 pub trait DeviceMemory: Deref<Target = DeviceMemoryType<Self::Config>> {
     type Config: DeviceMemoryConfig<Device = Self::Device>;
     type Device;
@@ -40,7 +32,7 @@ pub trait DeviceMemory: Deref<Target = DeviceMemoryType<Self::Config>> {
 
 pub struct DeviceMemoryType<D: DeviceMemoryConfig> {
     pub(crate) handle: vk::DeviceMemory,
-    device: D,
+    device: D::Device,
 }
 
 impl<D: DeviceMemoryConfig> Deref for DeviceMemoryType<D> {
@@ -57,7 +49,7 @@ impl<D: DeviceMemoryConfig> DeviceMemory for DeviceMemoryType<D> {
 }
 
 impl<D: DeviceMemoryConfig> DeviceMemoryType<D> {
-    fn new(handle: vk::DeviceMemory, device: D) -> Self {
+    fn new(handle: vk::DeviceMemory, device: D::Device) -> Self {
         Self { handle, device }
     }
 }
@@ -77,22 +69,17 @@ impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C> {
         C::Commands: AllocateMemory,
         S::Commands: FreeMemory,
     {
-        let fptr = self.commands.AllocateMemory().get_fptr();
+        let fptr = self.deref().commands.AllocateMemory().get_fptr();
         let mut memory = MaybeUninit::uninit();
         unsafe {
             let ret = fptr(
-                self.inner().handle,
+                self.deref().handle,
                 &info.inner,
                 std::ptr::null(),
                 memory.as_mut_ptr(),
             );
             check_raw_err!(ret);
-            Ok(DeviceMemoryType::new(
-                memory.assume_init(),
-                Config {
-                    device: self.to_scope(),
-                },
-            ))
+            Ok(DeviceMemoryType::new(memory.assume_init(), self.as_scope()))
         }
     }
 }

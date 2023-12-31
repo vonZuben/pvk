@@ -57,6 +57,6 @@ impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
         }
 
         let handles = enumerator_code2!(self.commands.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
-        Ok(PhysicalDevices::new(handles, self.to_scope()))
+        Ok(PhysicalDevices::new(handles, self.as_scope()))
     }
 }

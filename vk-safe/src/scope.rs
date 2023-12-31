@@ -89,15 +89,20 @@ pub struct RefScope<S, T> {
 }
 
 impl<S, H> RefScope<S, H> {
-    pub(crate) fn to_scope(&self) -> S {
-        // this is safe because
+    /// Get the original Scope<'_, H>
+    pub(crate) fn as_scope(&self) -> S {
+        // this is sound because
         // - we only construct RefScope as RefScope<Scope<'scope, H>, H>
         // - Scope and RefScope are compatible types as discussed in Deref for Scope
         // - thus, this is just reverting back to the original Scope
         unsafe { std::mem::transmute_copy(self) }
     }
 
-    pub(crate) fn inner(&self) -> &H {
+    /// manually get Deref target
+    ///
+    /// this is helpful because rust-analyzer seems to have trouble with autocompletion
+    /// in some more complex uses of RefScope, when going through auto-deref
+    pub(crate) fn deref(&self) -> &H {
         &**self
     }
 }
