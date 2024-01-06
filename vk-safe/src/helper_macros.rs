@@ -123,6 +123,69 @@ macro_rules! simple_struct_wrapper_scoped {
     };
 }
 
+macro_rules! input_struct_wrapper {
+    (
+        $name:ident $(impl $($t:ident),+ $(,)?)?
+    ) => {
+        #[repr(transparent)]
+        pub struct $name<'a, S> {
+            inner: vk_safe_sys::$name,
+            _params: std::marker::PhantomData<&'a ()>,
+            _scope: std::marker::PhantomData<S>,
+        }
+
+        // impl<'a, S> $name<'a, S> {
+        //     pub(crate) fn inner(inner: vk_safe_sys::$name) -> Self {
+        //         Self {
+        //             inner,
+        //             _params: std::marker::PhantomData,
+        //             _scope: std::marker::PhantomData,
+        //         }
+        //     }
+        // }
+
+        unsafe impl<'a, S> crate::type_conversions::SafeTransmute<$name<'a, S>>
+            for vk_safe_sys::$name
+        {
+        }
+        unsafe impl<'a, S> crate::type_conversions::SafeTransmute<vk_safe_sys::$name>
+            for $name<'a, S>
+        {
+        }
+
+        $( $( input_struct_wrapper!( @IMPL $t $name ); )+ )?
+    };
+
+    ( @IMPL Deref $name:ident ) => {
+        impl<S> std::ops::Deref for $name<'_, S> {
+            type Target = vk_safe_sys::$name;
+            fn deref(&self) -> &Self::Target {
+                &self.inner
+            }
+        }
+    };
+
+    ( @IMPL Debug $name:ident ) => {
+        impl<S> std::fmt::Debug for $name<'_, S> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                self.inner.fmt(f)
+            }
+        }
+    };
+
+    ( @IMPL Clone $name:ident ) => {
+        impl<S> Clone for $name<'_, S> {
+            fn clone(&self) -> Self {
+                Self::new(self.inner)
+            }
+        }
+    };
+
+    ( @IMPL Copy $name:ident ) => {
+        impl<S> Copy for $name<'_, S> { }
+    };
+}
+
 macro_rules! get_str {
     (
         $name:ident

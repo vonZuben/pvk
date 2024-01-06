@@ -103,40 +103,39 @@ fn main() {
                 let mem_props = pd.get_physical_device_memory_properties();
                 println!("{:#?}", mem_props);
 
-                // just assume that 10 is the max number of queues we will see fo now
-                let standard_queue_priorities =
-                    unsafe { vk::QueuePriorities::new_unchecked(&[1.0; 10]) };
-
-                let queue_family_configurations =
-                    queue_family_properties.configure_create_info(Vec::new(), |config| {
-                        let queue_count = config.family_properties.queue_count;
-                        config
-                            .push_config(
-                                standard_queue_priorities.with_num_queues(queue_count as _),
-                                vk::DeviceQueueCreateFlags::empty(),
+                queue_family_properties.config_scope(|qp| {
+                    let mut queue_configs = vec![];
+                    let priorities = vk::QueuePriorities::new(&[1.0; 10]);
+                    for p in qp {
+                        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+                            queue_configs.push(
+                                vk::DeviceQueueCreateInfo::new(
+                                    priorities.with_num_queues(p.queue_count),
+                                    p,
+                                )
+                                .unwrap(),
                             )
-                            .expect("problem writing queue config");
-                    });
+                        }
+                    }
 
-                println!("{:#?}", queue_family_configurations);
+                    let device_create_info =
+                        vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
-                let device_create_info =
-                    vk::DeviceCreateInfo::new(DeviceContext, &queue_family_configurations);
+                    let device = pd.create_device(&device_create_info).unwrap();
 
-                let device = pd.create_device(&device_create_info).unwrap();
+                    vk::scope(&device, |device| {
+                        let mem_type = mem_props.choose_type(0);
+                        let alloc_info = vk::MemoryAllocateInfo::new(
+                            std::num::NonZeroU64::new(100).unwrap(),
+                            mem_type,
+                        );
+                        let mem = device.allocate_memory(&alloc_info);
+                        println!("{mem:?}");
+                    })();
 
-                vk::scope(&device, |device| {
-                    let mem_type = mem_props.choose_type(0);
-                    let alloc_info = vk::MemoryAllocateInfo::new(
-                        std::num::NonZeroU64::new(100).unwrap(),
-                        mem_type,
-                    );
-                    let mem = device.allocate_memory(&alloc_info);
-                    println!("{mem:?}");
-                })();
-
-                println!("-------");
-                println!("{device:#?}");
+                    println!("-------");
+                    println!("{device:#?}");
+                });
             })();
         }
     })();

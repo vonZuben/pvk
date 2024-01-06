@@ -1,9 +1,12 @@
-use super::create_device::{
-    DeviceQueueCreateInfo, DeviceQueueCreateInfoArray, DeviceQueueCreateInfoConfiguration,
-};
+use std::convert::TryInto;
+use std::marker::PhantomData;
+
 use super::*;
+
 use crate::error::Error;
 use crate::instance_type::Instance;
+use crate::scope::ScopeId;
+
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
@@ -14,7 +17,7 @@ use std::fmt;
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
 */
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_queue_family_properties<A: ArrayStorage<QueueFamilyProperties<S>>>(
+    pub fn get_physical_device_queue_family_properties<A: ArrayStorage<vk::QueueFamilyProperties>>(
         &self,
         mut storage: A,
     ) -> Result<QueueFamilies<S, A>, Error>
@@ -22,7 +25,10 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         I::Commands: GetPhysicalDeviceQueueFamilyProperties,
     {
         let families = enumerator_code2!(self.instance.commands.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
-        Ok(QueueFamilies { families })
+        Ok(QueueFamilies {
+            families,
+            _scope: PhantomData,
+        })
     }
 }
 
@@ -63,28 +69,33 @@ const _VUID: () = {
     }
 };
 
-simple_struct_wrapper_scoped!(QueueFamilyProperties impl Deref, Debug);
-
 /// Properties for queue families by family index
 ///
-/// ths implements Deref<Target = [QueueFamilyProperties]>
-/// the index of each QueueFamilyProperties is the queue family index
-///
-/// this is a wrapper type to ensure that the array of QueueFamilyProperties is not mutated
-/// since the relationship between the properties and family index is an important invariant
-pub struct QueueFamilies<S, A: ArrayStorage<QueueFamilyProperties<S>>> {
+/// The index of each QueueFamilyProperties is the queue family index.
+pub struct QueueFamilies<S, A: ArrayStorage<vk::QueueFamilyProperties>> {
     families: A::InitStorage,
+    _scope: PhantomData<S>,
 }
 
-impl<S, A: ArrayStorage<QueueFamilyProperties<S>>> std::ops::Deref for QueueFamilies<S, A> {
-    type Target = [QueueFamilyProperties<S>];
+impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> QueueFamilies<S, A> {
+    pub fn config_scope(&self, f: impl for<'s> FnOnce(QueueConfigScope<'s, S>)) {
+        f(QueueConfigScope {
+            families: self.families.as_ref(),
+            _id: Default::default(),
+            _pd: PhantomData,
+        })
+    }
+}
+
+impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> std::ops::Deref for QueueFamilies<S, A> {
+    type Target = [vk::QueueFamilyProperties];
 
     fn deref(&self) -> &Self::Target {
         self.families.as_ref()
     }
 }
 
-impl<S, A: ArrayStorage<QueueFamilyProperties<S>>> fmt::Debug for QueueFamilies<S, A> {
+impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> fmt::Debug for QueueFamilies<S, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.families.as_ref().iter())
@@ -92,40 +103,62 @@ impl<S, A: ArrayStorage<QueueFamilyProperties<S>>> fmt::Debug for QueueFamilies<
     }
 }
 
-impl<S, QA: ArrayStorage<QueueFamilyProperties<S>>> QueueFamilies<S, QA> {
-    pub fn configure_create_info<'params, IA: ArrayStorage<DeviceQueueCreateInfo<'params, S>>>(
-        &self,
-        mut storage: IA,
-        mut filter: impl for<'properties, 'initializer, 'storage> FnMut(
-            DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S>,
-        ),
-    ) -> DeviceQueueCreateInfoArray<'params, IA, S> {
-        let len = || {
-            let mut protected_count = 0;
-            for properties in self.families.as_ref().iter() {
-                use vk::queue_flag_bits::*;
-                if properties.queue_flags.contains(PROTECTED_BIT) && properties.queue_count > 1 {
-                    protected_count += 1;
-                }
-            }
-            Ok(self.families.as_ref().len() + protected_count)
-        };
-        storage
-            .allocate(len)
-            .expect("error in configure_create_info: could not allocate storage");
+pub struct QueueConfigScope<'scope, S> {
+    families: &'scope [vk::QueueFamilyProperties],
+    _id: ScopeId<'scope>,
+    _pd: PhantomData<S>,
+}
 
-        let mut initializer =
-            crate::array_storage::UninitArrayInitializer::new(storage.uninit_slice().iter_mut());
-        for (index, properties) in self.families.as_ref().iter().enumerate() {
-            filter(DeviceQueueCreateInfoConfiguration::new(
-                index as u32,
-                &mut initializer,
-                properties,
-            ));
+impl<S> std::ops::Deref for QueueConfigScope<'_, S> {
+    type Target = [vk::QueueFamilyProperties];
+
+    fn deref(&self) -> &Self::Target {
+        self.families
+    }
+}
+
+impl<'scope, S> IntoIterator for QueueConfigScope<'scope, S> {
+    type Item = QueueFamily<'scope, (S, Self)>;
+
+    type IntoIter = QueueFamilyIter<'scope, (S, Self)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        QueueFamilyIter {
+            iter: self.families.as_ref().iter().enumerate(),
+            _scope: PhantomData,
         }
+    }
+}
 
-        let init_count = initializer.initialized_count();
-        assert!(init_count > 0, "must configure at least one queue family");
-        DeviceQueueCreateInfoArray::new(storage.finalize(init_count))
+pub struct QueueFamilyIter<'a, S> {
+    iter: std::iter::Enumerate<std::slice::Iter<'a, vk::QueueFamilyProperties>>,
+    _scope: PhantomData<S>,
+}
+
+impl<'a, S> Iterator for QueueFamilyIter<'a, S> {
+    type Item = QueueFamily<'a, S>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (index, properties) = self.iter.next()?;
+        let family_index: u32 = index.try_into().ok()?;
+        Some(QueueFamily {
+            properties,
+            family_index,
+            _scope: PhantomData,
+        })
+    }
+}
+
+pub struct QueueFamily<'a, S> {
+    properties: &'a vk::QueueFamilyProperties,
+    pub family_index: u32,
+    _scope: PhantomData<S>,
+}
+
+impl<S> std::ops::Deref for QueueFamily<'_, S> {
+    type Target = vk::QueueFamilyProperties;
+
+    fn deref(&self) -> &Self::Target {
+        &self.properties
     }
 }

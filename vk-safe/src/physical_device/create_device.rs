@@ -1,11 +1,11 @@
-use super::get_physical_device_queue_family_properties::QueueFamilyProperties;
+use super::get_physical_device_queue_family_properties::QueueFamily;
 use super::*;
 use crate::device_type::{Config, DeviceType};
 use crate::error::Error;
 use crate::instance_type::Instance;
 use vk_safe_sys as vk;
 
-use crate::type_conversions::{transmute_slice, SafeTransmute};
+use crate::type_conversions::transmute_slice;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -18,9 +18,9 @@ use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionPrope
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
 impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn create_device<C>(
+    pub fn create_device<C, Q>(
         &self,
-        create_info: &DeviceCreateInfo<C, S>,
+        create_info: &DeviceCreateInfo<C, (S, Q)>,
     ) -> Result<DeviceType<Config<C, S>>, Error>
     where
         I::Commands: CreateDevice + EnumerateDeviceExtensionProperties,
@@ -76,7 +76,8 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             "one describes protected-capable queues and one describes queues that are not protected-capable"
             }
 
-            // handled by DeviceQueueCreateInfoConfiguration
+            // DeviceQueueCreateInfo is created by consuming QueueFamily(with unique index)
+            // each one can only be consumed once within the queue config scope
         }
 
         #[allow(unused_labels)]
@@ -89,7 +90,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             "in the pQueueFamilyProperties[queueFamilyIndex]"
             }
 
-            // handled by DeviceQueueCreateInfoConfiguration
+            // this is currently not supported
         }
 
         #[allow(unused_labels)]
@@ -611,27 +612,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
     }
 }
 
-/// A safe to use [vk::DeviceQueueCreateInfo]
-#[repr(transparent)]
-pub struct DeviceQueueCreateInfo<'a, S> {
-    inner: vk::DeviceQueueCreateInfo,
-    _refs: PhantomData<&'a ()>,
-    _scope: PhantomData<S>,
-}
-
-unsafe impl<S> SafeTransmute<vk::DeviceQueueCreateInfo> for DeviceQueueCreateInfo<'_, S> {}
-
-impl<S> DeviceQueueCreateInfo<'_, S> {
-    array!(queue_priorities, p_queue_priorities, queue_count, f32);
-}
-
-impl<S> std::ops::Deref for DeviceQueueCreateInfo<'_, S> {
-    type Target = vk::DeviceQueueCreateInfo;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
+input_struct_wrapper!(DeviceQueueCreateInfo);
 
 impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -645,37 +626,139 @@ impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
     }
 }
 
-pub struct DeviceQueueCreateInfoArray<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> {
-    infos: A::InitStorage,
-    _a: PhantomData<&'a ()>,
-    _scope: PhantomData<S>,
-}
+impl<'a, S> DeviceQueueCreateInfo<'a, S> {
+    array!(queue_priorities, p_queue_priorities, queue_count, f32);
 
-impl<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> fmt::Debug
-    for DeviceQueueCreateInfoArray<'a, A, S>
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.infos.as_ref().iter()).finish()
-    }
-}
+    pub fn new(priorities: QueuePriorities<'a>, family: QueueFamily<S>) -> Result<Self, Error> {
+        check_vuids::check_vuids!(DeviceQueueCreateInfo);
 
-impl<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> std::ops::Deref
-    for DeviceQueueCreateInfoArray<'a, A, S>
-{
-    type Target = [DeviceQueueCreateInfo<'a, S>];
+        let priorities_len: u32 = priorities.len().try_into()?;
 
-    fn deref(&self) -> &Self::Target {
-        &self.infos.as_ref()
-    }
-}
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties"
+            }
 
-impl<'a, A: ArrayStorage<DeviceQueueCreateInfo<'a, S>>, S> DeviceQueueCreateInfoArray<'a, A, S> {
-    pub(crate) fn new(infos: A::InitStorage) -> Self {
-        Self {
-            infos,
-            _a: PhantomData,
-            _scope: PhantomData,
+            // QueueFamily invariant
         }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueCount_00382: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties"
+            "structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]"
+            }
+
+            assert!(priorities_len <= family.queue_count)
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive"
+            }
+
+            // [QueuePriorities]
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_02861: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If the protectedMemory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT"
+            "bit of flags must not be set"
+            }
+
+            // TODO: features not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_06449: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If flags includes VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT, queueFamilyIndex must be the"
+            "index of a queue family that includes the VK_QUEUE_PROTECTED_BIT capability"
+            }
+
+            // flags not supported for now
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_sType_sType: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO"
+            }
+
+            // set below
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pNext_pNext: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoKHR"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_sType_unique: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "The sType value of each struct in the pNext chain must be unique"
+            }
+
+            // TODO: p_next not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_flags_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "flags must be a valid combination of VkDeviceQueueCreateFlagBits values"
+            }
+
+            // vk::DeviceQueueCreateFlags, and checking VUID_VkDeviceQueueCreateInfo_flags_06449 above
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pQueuePriorities must be a valid pointer to an array of queueCount float values"
+            }
+
+            // QueuePriorities
+        }
+
+        #[allow(unused_labels)]
+        'VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "queueCount must be greater than 0"
+            }
+
+            // QueuePriorities
+        }
+
+        Ok(Self {
+            inner: vk::DeviceQueueCreateInfo {
+                s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
+                p_next: std::ptr::null(),
+                flags: vk::DeviceQueueCreateFlags::empty(),
+                queue_family_index: family.family_index,
+                queue_count: priorities_len,
+                p_queue_priorities: priorities.as_ptr(),
+            },
+            _params: PhantomData,
+            _scope: PhantomData,
+        })
     }
 }
 
@@ -700,8 +783,9 @@ impl<'a> QueuePriorities<'a> {
     pub unsafe fn new_unchecked(priorities: &'a [f32]) -> Self {
         Self { priorities }
     }
-    pub fn with_num_queues(&self, num_queues: usize) -> Self {
+    pub fn with_num_queues(&self, num_queues: u32) -> Self {
         assert!(num_queues > 0);
+        let num_queues: usize = num_queues.try_into().unwrap();
         unsafe { QueuePriorities::new_unchecked(&self.priorities.as_ref()[..num_queues]) }
     }
     pub fn len(&self) -> usize {
@@ -709,350 +793,5 @@ impl<'a> QueuePriorities<'a> {
     }
     pub fn as_ptr(&self) -> *const f32 {
         self.priorities.as_ref().as_ptr()
-    }
-}
-
-/// Builder for [DeviceQueueCreateInfo]
-/// initially created with sane defaults
-/// user must provide their own p_queue_priorities
-pub struct DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S> {
-    family_index: u32,
-    to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<
-        'storage,
-        DeviceQueueCreateInfo<'params, S>,
-    >,
-    pub family_properties: &'properties QueueFamilyProperties<S>,
-}
-
-impl<'params, 'properties, 'initializer, 'storage, S>
-    DeviceQueueCreateInfoConfiguration<'params, 'properties, 'initializer, 'storage, S>
-{
-    /// internal only method to be called from [QueueFamilies::create_info_builder_iter]
-    /// should pass the current queue_family_index, and set queue_count to max possible
-    pub(crate) fn new(
-        family_index: u32,
-        to_write: &'initializer mut crate::array_storage::UninitArrayInitializer<
-            'storage,
-            DeviceQueueCreateInfo<'params, S>,
-        >,
-        family_properties: &'properties QueueFamilyProperties<S>,
-    ) -> Self {
-        Self {
-            family_index,
-            to_write,
-            family_properties,
-        }
-    }
-    /// configure DeviceQueueCreateInfo for this family to use priorities.len queues with the given priorities, and with given flag
-    pub fn push_config(
-        self,
-        priorities: QueuePriorities,
-        flags: vk::DeviceQueueCreateFlags,
-    ) -> crate::array_storage::InitResult {
-        check_vuids::check_vuids!(DeviceQueueCreateInfo);
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties"
-            }
-
-            // Self.family_index should be valid from QueueFamilies.configure_create_info
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_queueCount_00382: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties"
-            "structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]"
-            }
-
-            assert!(priorities.len() <= self.family_properties.queue_count as usize)
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive"
-            }
-
-            // [QueuePriorities]
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_flags_02861: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "If the protectedMemory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT"
-            "bit of flags must not be set"
-            }
-
-            // TODO: features not supported
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_flags_06449: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "If flags includes VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT, queueFamilyIndex must be the"
-            "index of a queue family that includes the VK_QUEUE_PROTECTED_BIT capability"
-            }
-
-            assert!(
-                !flags.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT),
-                "must not push_config with PROTECTED_BIT. use push_config_with_protected instead"
-            );
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_sType_sType: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO"
-            }
-
-            // set below
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_pNext_pNext: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoKHR"
-            }
-
-            // TODO: p_next not supported
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_sType_unique: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "The sType value of each struct in the pNext chain must be unique"
-            }
-
-            // TODO: p_next not supported
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_flags_parameter: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "flags must be a valid combination of VkDeviceQueueCreateFlagBits values"
-            }
-
-            // vk::DeviceQueueCreateFlags, and checking VUID_VkDeviceQueueCreateInfo_flags_06449 above
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "pQueuePriorities must be a valid pointer to an array of queueCount float values"
-            }
-
-            // QueuePriorities
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "queueCount must be greater than 0"
-            }
-
-            // QueuePriorities
-        }
-
-        let info = DeviceQueueCreateInfo {
-            inner: vk::DeviceQueueCreateInfo {
-                s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
-                flags: flags,
-                p_next: std::ptr::null(),
-                queue_family_index: self.family_index,
-                queue_count: priorities.len() as u32, // the assert already confirms no overflow from conversion
-                p_queue_priorities: priorities.as_ptr(),
-            },
-            _refs: PhantomData,
-            _scope: PhantomData,
-        };
-        self.to_write.push(info)
-    }
-    /// like [configure], but will configure two [DeviceQueueCreateInfo] where one must be protected, and the other not
-    /// based on rules in:
-    /// VUID-VkDeviceCreateInfo-queueFamilyIndex-02802
-    /// VUID-VkDeviceCreateInfo-pQueueCreateInfos-06755
-    pub fn push_config_with_protected<A: AsRef<[f32]> + 'params>(
-        self,
-        priorities_for_non_protected: QueuePriorities,
-        flags_for_non_protected: vk::DeviceQueueCreateFlags,
-        priorities_for_protected: QueuePriorities,
-        flags_for_protected: vk::DeviceQueueCreateFlags,
-    ) -> crate::array_storage::InitResult {
-        check_vuids::check_vuids!(DeviceQueueCreateInfo);
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties"
-            }
-
-            // Self.family_index should be valid from QueueFamilies.configure_create_info
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_queueCount_00382: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties"
-            "structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]"
-            }
-
-            assert!(
-                priorities_for_non_protected.len() + priorities_for_protected.len()
-                    <= self.family_properties.queue_count as usize
-            );
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive"
-            }
-
-            // [QueuePriorities]
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_flags_02861: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "If the protectedMemory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT"
-            "bit of flags must not be set"
-            }
-
-            // TODO: features not supported
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_flags_06449: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "If flags includes VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT, queueFamilyIndex must be the"
-            "index of a queue family that includes the VK_QUEUE_PROTECTED_BIT capability"
-            }
-
-            assert!(self
-                .family_properties
-                .queue_flags
-                .contains(vk::QueueFlags::PROTECTED_BIT));
-            assert!(
-                !flags_for_non_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT),
-                "flags_for_non_protected should not include PROTECTED_BIT"
-            );
-            assert!(
-                flags_for_protected.contains(vk::DeviceQueueCreateFlags::PROTECTED_BIT),
-                "flags_for_protected must include PROTECTED_BIT"
-            );
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_sType_sType: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO"
-            }
-
-            // set below
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_pNext_pNext: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoKHR"
-            }
-
-            // TODO: p_next not supported
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_sType_unique: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "The sType value of each struct in the pNext chain must be unique"
-            }
-
-            // TODO: p_next not supported
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_flags_parameter: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "flags must be a valid combination of VkDeviceQueueCreateFlagBits values"
-            }
-
-            // vk::DeviceQueueCreateFlags, and checking VUID_VkDeviceQueueCreateInfo_flags_06449 above
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "pQueuePriorities must be a valid pointer to an array of queueCount float values"
-            }
-
-            // QueuePriorities
-        }
-
-        #[allow(unused_labels)]
-        'VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
-            "queueCount must be greater than 0"
-            }
-
-            // QueuePriorities
-        }
-
-        if priorities_for_non_protected.len() > 0 {
-            let non_protected_info = DeviceQueueCreateInfo {
-                inner: vk::DeviceQueueCreateInfo {
-                    s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
-                    flags: flags_for_non_protected,
-                    p_next: std::ptr::null(),
-                    queue_family_index: self.family_index,
-                    queue_count: priorities_for_non_protected.len() as u32, // the assert already confirms no overflow from conversion
-                    p_queue_priorities: priorities_for_non_protected.as_ptr(),
-                },
-                _refs: PhantomData,
-                _scope: PhantomData,
-            };
-            self.to_write.push(non_protected_info)?;
-        }
-
-        if priorities_for_protected.len() > 0 {
-            let protected_info = DeviceQueueCreateInfo {
-                inner: vk::DeviceQueueCreateInfo {
-                    s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
-                    flags: flags_for_protected,
-                    p_next: std::ptr::null(),
-                    queue_family_index: self.family_index,
-                    queue_count: priorities_for_protected.len() as u32, // the assert already confirms no overflow from conversion
-                    p_queue_priorities: priorities_for_protected.as_ptr(),
-                },
-                _refs: PhantomData,
-                _scope: PhantomData,
-            };
-            self.to_write.push(protected_info)?;
-        }
-
-        Ok(())
     }
 }

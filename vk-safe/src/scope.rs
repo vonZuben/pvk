@@ -10,12 +10,6 @@ use std::marker::PhantomData;
 #[derive(Default, Clone, Copy)]
 pub struct ScopeId<'id>(PhantomData<*mut &'id ()>);
 
-impl ScopeId<'_> {
-    pub const fn new() -> Self {
-        Self(PhantomData)
-    }
-}
-
 /// Wrapper for a reference to a type that should be limited to a specific scope marked by Id
 ///
 /// types which are only safe within a scope implement their methods through this wrapper
