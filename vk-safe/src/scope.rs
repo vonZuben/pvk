@@ -145,11 +145,11 @@ where
 }
 
 /// Create a task scope for a give T, by passing a scoped T to a given function or closure
-pub fn scope<'a, F, R, T>(this: &'a T, f: F) -> impl FnOnce() -> R + 'a
+pub fn scope<F, R, T>(this: T, f: F) -> impl FnOnce() -> R
 where
-    for<'scope> F: FnOnce(Scope<'scope, T>) -> R + 'a,
+    for<'scope> F: FnOnce(Scope<'scope, T>) -> R,
 {
-    move || f(Scope::new_scope(this))
+    move || f(Scope::new_scope(&this))
 }
 
 /// Create an async task scope for a given T, by passing a scoped T to a given async function or closure

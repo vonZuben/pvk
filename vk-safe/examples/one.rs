@@ -36,7 +36,7 @@ fn main() {
     println!("-------");
     println!("{instance:?}");
 
-    vk::scope(&instance, |instance| {
+    vk::scope(instance, |instance| {
         let physical_devices = instance
             .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
             .unwrap();
@@ -46,7 +46,7 @@ fn main() {
 
         println!("-------");
         for pd in physical_devices.iter() {
-            vk::scope(&pd, |pd| {
+            vk::scope(pd, |pd| {
                 println!("{:#?}", pd.get_physical_device_properties());
                 println!("-------");
 
@@ -123,7 +123,7 @@ fn main() {
 
                     let device = pd.create_device(&device_create_info).unwrap();
 
-                    vk::scope(&device, |device| {
+                    vk::scope(device, |device| {
                         let mem_type = mem_props.choose_type(0);
                         let alloc_info = vk::MemoryAllocateInfo::new(
                             std::num::NonZeroU64::new(100).unwrap(),
@@ -131,10 +131,10 @@ fn main() {
                         );
                         let mem = device.allocate_memory(&alloc_info);
                         println!("{mem:?}");
-                    })();
 
-                    println!("-------");
-                    println!("{device:#?}");
+                        println!("-------");
+                        println!("{device:#?}");
+                    })();
                 });
             })();
         }
