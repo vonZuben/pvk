@@ -46,97 +46,96 @@ fn main() {
 
         println!("-------");
         for pd in physical_devices.iter() {
-            vk::scope(pd, |pd| {
-                println!("{:#?}", pd.get_physical_device_properties());
-                println!("-------");
-
-                println!("{:#?}", pd.get_physical_device_features());
-
-                println!("---Device Extensions----");
-                println!(
-                    "{:#?}",
-                    pd.enumerate_device_extension_properties(None, Vec::new())
-                        .unwrap()
-                );
-
-                println!("---Device Layers----");
-                println!(
-                    "{:#?}",
-                    pd.enumerate_device_layer_properties(Vec::new()).unwrap()
-                );
-
-                //test getting format properties
-                let srgb_properties =
-                    pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
-                println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
-
-                const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
-                    vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
-                        vk::Format::R8G8B8A8_SRGB,
-                        vk::ImageType::TYPE_2D,
-                        vk::ImageTiling::OPTIMAL,
-                        vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT
-                            .or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
-                        vk::ImageCreateFlags::empty(),
-                    );
-                //test image format properties
-                let tst_image_format_properties = pd
-                    .get_physical_device_image_format_properties(PARAMS)
-                    .unwrap();
-                println!("{tst_image_format_properties:#?}");
-                let sparse_image_format_properties = pd
-                    .get_physical_device_sparse_image_format_properties(
-                        vk::SampleCountFlags::TYPE_1_BIT,
-                        tst_image_format_properties,
-                        Vec::new(),
-                    )
-                    .unwrap();
-                println!("---spare properties for above image format properties----");
-                println!("{sparse_image_format_properties:#?}");
-
-                println!("-------");
-                let queue_family_properties = pd
-                    .get_physical_device_queue_family_properties(Vec::new())
-                    .unwrap();
-                println!("{:#?}", queue_family_properties);
-                println!("-------");
-                let mem_props = pd.get_physical_device_memory_properties();
-                println!("{:#?}", mem_props);
-
-                queue_family_properties.config_scope(|qp| {
-                    let mut queue_configs = vec![];
-                    let priorities = vk::QueuePriorities::new(&[1.0; 10]);
-                    for p in qp {
-                        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
-                            queue_configs.push(
-                                vk::DeviceQueueCreateInfo::new(
-                                    priorities.with_num_queues(p.queue_count),
-                                    p,
-                                )
-                                .unwrap(),
-                            )
-                        }
-                    }
-
-                    let device_create_info =
-                        vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
-
-                    let device = pd.create_device(&device_create_info).unwrap();
-
-                    vk::scope(device, |device| {
-                        let mem_type = mem_props.choose_type(0);
-                        let alloc_info = vk::MemoryAllocateInfo::new(
-                            std::num::NonZeroU64::new(100).unwrap(),
-                            mem_type,
-                        );
-                        let mem = device.allocate_memory(&alloc_info);
-                        println!("{mem:?}");
-
-                        println!("-------");
-                        println!("{device:#?}");
-                    })();
-                });
-            })();
+            std::thread::scope(|scope| {
+                scope.spawn(vk::scope(pd, |pd| run_physical_device(pd)));
+            });
         }
     })();
+}
+
+fn run_physical_device<I: vk::Instance>(pd: impl vk::PhysicalDevice<Instance = I>)
+where
+    I::Commands: vk::instance::VERSION_1_1,
+{
+    println!("{:#?}", pd.get_physical_device_properties());
+    println!("-------");
+
+    println!("{:#?}", pd.get_physical_device_features());
+
+    println!("---Device Extensions----");
+    println!(
+        "{:#?}",
+        pd.enumerate_device_extension_properties(None, Vec::new())
+            .unwrap()
+    );
+
+    println!("---Device Layers----");
+    println!(
+        "{:#?}",
+        pd.enumerate_device_layer_properties(Vec::new()).unwrap()
+    );
+
+    //test getting format properties
+    let srgb_properties = pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
+    println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
+
+    const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
+        vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
+            vk::Format::R8G8B8A8_SRGB,
+            vk::ImageType::TYPE_2D,
+            vk::ImageTiling::OPTIMAL,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
+            vk::ImageCreateFlags::empty(),
+        );
+    //test image format properties
+    let tst_image_format_properties = pd
+        .get_physical_device_image_format_properties(PARAMS)
+        .unwrap();
+    println!("{tst_image_format_properties:#?}");
+    let sparse_image_format_properties = pd
+        .get_physical_device_sparse_image_format_properties(
+            vk::SampleCountFlags::TYPE_1_BIT,
+            tst_image_format_properties,
+            Vec::new(),
+        )
+        .unwrap();
+    println!("---spare properties for above image format properties----");
+    println!("{sparse_image_format_properties:#?}");
+
+    println!("-------");
+    let queue_family_properties = pd
+        .get_physical_device_queue_family_properties(Vec::new())
+        .unwrap();
+    println!("{:#?}", queue_family_properties);
+    println!("-------");
+    let mem_props = pd.get_physical_device_memory_properties();
+    println!("{:#?}", mem_props);
+
+    queue_family_properties.config_scope(|qp| {
+        let mut queue_configs = vec![];
+        let priorities = vk::QueuePriorities::new(&[1.0; 10]);
+        for p in qp {
+            if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+                queue_configs.push(
+                    vk::DeviceQueueCreateInfo::new(priorities.with_num_queues(p.queue_count), p)
+                        .unwrap(),
+                )
+            }
+        }
+
+        let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+
+        let device = pd.create_device(&device_create_info).unwrap();
+
+        vk::scope(device, |device| {
+            let mem_type = mem_props.choose_type(0);
+            let alloc_info =
+                vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
+            let mem = device.allocate_memory(&alloc_info);
+            println!("{mem:?}");
+
+            println!("-------");
+            println!("{device:#?}");
+        })();
+    });
 }
