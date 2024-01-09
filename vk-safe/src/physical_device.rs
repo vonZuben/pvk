@@ -34,11 +34,13 @@ pub type ScopedPhysicalDeviceType<S, I> = RefScope<S, PhysicalDeviceType<I>>;
 pub trait PhysicalDevice:
     std::ops::Deref<Target = ScopedPhysicalDeviceType<Self, Self::Instance>> + Copy
 {
-    type Instance: Instance;
+    type Instance: Instance<Commands = Self::Commands>;
+    type Commands;
 }
 
 impl<'scope, I: Instance> PhysicalDevice for Scope<'scope, PhysicalDeviceType<I>> {
     type Instance = I;
+    type Commands = I::Commands;
 }
 
 /// A PhysicalDevice handle that is limited to the scope of the associated Instance
