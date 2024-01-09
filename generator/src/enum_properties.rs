@@ -8,10 +8,14 @@ if applicable
 */
 
 mod format;
+mod queue;
 
 use krs_quote::{krs_quote_with, ToTokens, TokenStream};
 
 use crate::utils::VkTyName;
+
+pub trait Variants: Iterator<Item = VkTyName> + Clone {}
+impl<T> Variants for T where T: Iterator<Item = VkTyName> + Clone {}
 
 struct Properties<I> {
     target: VkTyName,
@@ -24,11 +28,14 @@ impl<I> Properties<I> {
     }
 }
 
-impl<I: Iterator<Item = VkTyName> + Clone> ToTokens for Properties<I> {
+impl<I: Variants> ToTokens for Properties<I> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self.target.as_str() {
             "VkFormat" => {
                 format::FormatProperties::delegate_to_tokens(self, tokens);
+            }
+            "VkQueueFlags" => {
+                queue::QueueProperties::delegate_to_tokens(self, tokens);
             }
             _ => {}
         }
@@ -39,9 +46,6 @@ trait ToTokensDelegate<I> {
     fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream);
 }
 
-pub fn properties<I: Iterator<Item = VkTyName> + Clone>(
-    target: VkTyName,
-    variants: I,
-) -> impl ToTokens {
+pub fn properties<I: Variants>(target: VkTyName, variants: I) -> impl ToTokens {
     Properties::new(target, variants)
 }
