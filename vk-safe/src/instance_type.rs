@@ -51,6 +51,9 @@ pub struct InstanceType<C: InstanceConfig> {
     pub(crate) commands: C::Commands,
 }
 
+unsafe impl<C: InstanceConfig> Send for InstanceType<C> {}
+unsafe impl<C: InstanceConfig> Sync for InstanceType<C> {}
+
 impl<C: InstanceConfig> InstanceType<C>
 where
     C::Commands: LoadCommands,

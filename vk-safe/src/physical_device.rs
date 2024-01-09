@@ -12,6 +12,9 @@ pub struct PhysicalDevices<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> {
     handles: A::InitStorage,
 }
 
+unsafe impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> Send for PhysicalDevices<I, A> {}
+unsafe impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> Sync for PhysicalDevices<I, A> {}
+
 impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, A> {
     pub(crate) fn new(handles: A::InitStorage, instance: I) -> Self {
         Self { instance, handles }
@@ -43,6 +46,9 @@ pub struct PhysicalDeviceType<I: Instance> {
     instance: I,
     handle: vk::PhysicalDevice,
 }
+
+unsafe impl<I: Instance> Send for PhysicalDeviceType<I> {}
+unsafe impl<I: Instance> Sync for PhysicalDeviceType<I> {}
 
 impl<I: Instance> PhysicalDeviceType<I> {
     pub(crate) fn new(instance: I, handle: vk::PhysicalDevice) -> Self {
