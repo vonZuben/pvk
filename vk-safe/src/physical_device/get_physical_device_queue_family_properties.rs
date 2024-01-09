@@ -6,6 +6,7 @@ use super::*;
 use crate::error::Error;
 use crate::instance_type::Instance;
 use crate::scope::ScopeId;
+use crate::type_conversions::{SafeTransmute, TransmuteRef};
 
 use vk_safe_sys as vk;
 
@@ -88,10 +89,10 @@ impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> QueueFamilies<S, A> {
 }
 
 impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> std::ops::Deref for QueueFamilies<S, A> {
-    type Target = [vk::QueueFamilyProperties];
+    type Target = QueueFamiliesRef<S>;
 
     fn deref(&self) -> &Self::Target {
-        self.families.as_ref()
+        self.families.as_ref().transmute_ref()
     }
 }
 
@@ -100,6 +101,21 @@ impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> fmt::Debug for QueueFamilies
         f.debug_list()
             .entries(self.families.as_ref().iter())
             .finish()
+    }
+}
+
+#[repr(transparent)]
+pub struct QueueFamiliesRef<S> {
+    _scope: PhantomData<S>,
+    families: [vk::QueueFamilyProperties],
+}
+unsafe impl<S> SafeTransmute<QueueFamiliesRef<S>> for [vk::QueueFamilyProperties] {}
+
+impl<S> std::ops::Deref for QueueFamiliesRef<S> {
+    type Target = [vk::QueueFamilyProperties];
+
+    fn deref(&self) -> &Self::Target {
+        &self.families
     }
 }
 

@@ -14,14 +14,32 @@ pub trait DeviceConfig {
     const VERSION: VkVersion;
     type Commands: DestroyDevice;
     type PhysicalDevice: PhysicalDevice;
+    fn queue_config(&self) -> &[vk::DeviceQueueCreateInfo];
+    fn queue_family_properties(&self) -> &[vk::QueueFamilyProperties];
 }
 
-pub struct Config<C, P> {
+pub struct Config<'a, C, P> {
     commands: PhantomData<C>,
     physical_device: PhantomData<P>,
+    queue_config_ref: &'a [vk::DeviceQueueCreateInfo],
+    queue_family_properties: &'a [vk::QueueFamilyProperties],
 }
 
-impl<C, P: PhysicalDevice> DeviceConfig for Config<C, P>
+impl<'a, C, P> Config<'a, C, P> {
+    pub(crate) fn new(
+        queue_config_ref: &'a [vk::DeviceQueueCreateInfo],
+        queue_family_properties: &'a [vk::QueueFamilyProperties],
+    ) -> Self {
+        Self {
+            commands: PhantomData,
+            physical_device: PhantomData,
+            queue_config_ref,
+            queue_family_properties,
+        }
+    }
+}
+
+impl<C, P: PhysicalDevice> DeviceConfig for Config<'_, C, P>
 where
     C: Commands,
     C::Commands: LoadCommands + DestroyDevice + Version,
@@ -33,6 +51,14 @@ where
     );
     type Commands = C::Commands;
     type PhysicalDevice = P;
+
+    fn queue_config(&self) -> &[vk::DeviceQueueCreateInfo] {
+        self.queue_config_ref
+    }
+
+    fn queue_family_properties(&self) -> &[vk::QueueFamilyProperties] {
+        self.queue_family_properties
+    }
 }
 
 pub type ScopedDeviceType<S, C> = RefScope<S, DeviceType<C>>;
@@ -52,6 +78,7 @@ impl<'scope, C: DeviceConfig> Device for Scope<'scope, DeviceType<C>> {
 pub struct DeviceType<C: DeviceConfig> {
     pub(crate) handle: vk::Device,
     pub(crate) commands: C::Commands,
+    config: C,
 }
 
 impl<C: DeviceConfig> std::fmt::Debug for DeviceType<C> {
@@ -67,11 +94,12 @@ impl<C: DeviceConfig> DeviceType<C>
 where
     C::Commands: LoadCommands,
 {
-    pub(crate) fn load_commands(handle: vk::Device) -> Result<Self, CommandLoadError> {
+    pub(crate) fn load_commands(handle: vk::Device, config: C) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
             commands: C::Commands::load(loader)?,
+            config,
         })
     }
 }
@@ -147,6 +175,7 @@ impl<C: DeviceConfig> Drop for DeviceType<C> {
 }
 
 pub mod allocate_memory;
+pub mod get_device_queue;
 
 pub mod device_exports {
     use super::*;

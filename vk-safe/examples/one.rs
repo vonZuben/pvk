@@ -125,7 +125,9 @@ where
 
         let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
-        let device = pd.create_device(&device_create_info).unwrap();
+        let device = pd
+            .create_device(&device_create_info, &queue_family_properties)
+            .unwrap();
 
         vk::scope(device, |device| {
             let mem_type = mem_props.choose_type(0);
@@ -136,6 +138,10 @@ where
 
             println!("-------");
             println!("{device:#?}");
+
+            for qf in device.get_configured_queue_families() {
+                println!("queue family: {:#?}", qf);
+            }
         })();
     });
 }

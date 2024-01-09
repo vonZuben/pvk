@@ -37,10 +37,23 @@ impl<'a, P> ToC<*const P> for Option<&'a P> {
 }
 
 /// Represent a type that can soundly transmute into another type T
-pub(crate) unsafe trait SafeTransmute<T> {}
+pub(crate) unsafe trait SafeTransmute<T: ?Sized> {}
 
 /// of course all T can transmute to themselves
-unsafe impl<T> SafeTransmute<T> for T {}
+unsafe impl<T: ?Sized> SafeTransmute<T> for T {}
+
+pub(crate) unsafe trait TransmuteRef<T: ?Sized> {
+    fn transmute_ref(&self) -> &T;
+}
+
+unsafe impl<T: ?Sized, U: ?Sized> TransmuteRef<U> for T
+where
+    T: SafeTransmute<U>,
+{
+    fn transmute_ref(&self) -> &U {
+        unsafe { std::mem::transmute_copy(&self) }
+    }
+}
 
 /// Extension trait intended for slices.
 /// Provides the operation of transmuting a slice of U to a slice of T when safe to do so

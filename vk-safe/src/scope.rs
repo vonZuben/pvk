@@ -185,3 +185,6 @@ mod scope_private {
 
     impl<'l, T> SealedScope for super::Scope<'l, T> {}
 }
+
+pub trait Captures<T> {}
+impl<T, U> Captures<T> for U {}

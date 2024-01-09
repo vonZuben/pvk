@@ -1,4 +1,4 @@
-use super::get_physical_device_queue_family_properties::QueueFamily;
+use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamily};
 use super::*;
 use crate::device_type::{Config, DeviceType};
 use crate::error::Error;
@@ -18,10 +18,11 @@ use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionPrope
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
 impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn create_device<C, Q>(
+    pub fn create_device<'a, C>(
         &self,
-        create_info: &DeviceCreateInfo<C, (S, Q)>,
-    ) -> Result<DeviceType<Config<C, S>>, Error>
+        create_info: &DeviceCreateInfo<'a, C, S>,
+        queue_properties: &'a QueueFamiliesRef<S>,
+    ) -> Result<DeviceType<Config<'a, C, S>>, Error>
     where
         I::Commands: CreateDevice + EnumerateDeviceExtensionProperties,
         C: Commands,
@@ -47,7 +48,16 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
                 device.as_mut_ptr(),
             );
             check_raw_err!(res);
-            Ok(DeviceType::load_commands(device.assume_init())?)
+            Ok(DeviceType::load_commands(
+                device.assume_init(),
+                Config::new(
+                    std::slice::from_raw_parts(
+                        create_info.inner.p_queue_create_infos,
+                        create_info.inner.queue_create_info_count.try_into()?,
+                    ),
+                    queue_properties,
+                ),
+            )?)
         }
     }
 }
@@ -629,7 +639,10 @@ impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
 impl<'a, S> DeviceQueueCreateInfo<'a, S> {
     array!(queue_priorities, p_queue_priorities, queue_count, f32);
 
-    pub fn new(priorities: QueuePriorities<'a>, family: QueueFamily<S>) -> Result<Self, Error> {
+    pub fn new<Q>(
+        priorities: QueuePriorities<'a>,
+        family: QueueFamily<(S, Q)>,
+    ) -> Result<Self, Error> {
         check_vuids::check_vuids!(DeviceQueueCreateInfo);
 
         let priorities_len: u32 = priorities.len().try_into()?;
