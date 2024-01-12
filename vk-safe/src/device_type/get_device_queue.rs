@@ -26,18 +26,19 @@ impl<'a, S, C: DeviceConfig> ScopedDeviceType<S, C> {
     }
 }
 
-unit_error!(pub QueueIndexOutOfRange);
+unit_error!(pub QueueIndexNotConfigured);
 
 impl<D: Device, Q: QueueCapability> QueueFamily<D, Q>
 where
     D::Commands: GetDeviceQueue,
 {
-    pub fn get_queue_family(
+    pub fn get_queue(
         &self,
         queue_index: u32,
-    ) -> Result<QueueType<Config<D, Q>>, QueueIndexOutOfRange> {
-        if queue_index < self.queue_family_properties().queue_count {
-            let family_index = self.queue_config().inner.queue_family_index;
+    ) -> Result<QueueType<Config<D, Q>>, QueueIndexNotConfigured> {
+        let config = self.queue_config();
+        if queue_index < config.inner.queue_count {
+            let family_index = config.inner.queue_family_index;
             let mut queue = MaybeUninit::uninit();
             unsafe {
                 let fptr = self.device.commands.GetDeviceQueue().get_fptr();
@@ -50,7 +51,7 @@ where
                 Ok(QueueType::new(queue.assume_init(), self.device))
             }
         } else {
-            Err(QueueIndexOutOfRange)
+            Err(QueueIndexNotConfigured)
         }
     }
 }
@@ -92,6 +93,7 @@ impl<D: Device, U> QueueFamily<D, U> {
                 .config
                 .queue_family_properties()
                 .get_unchecked(self.queue_config().inner.queue_family_index as usize)
+            // 'as' cast should be fine at this point since we should already know the index is valid
         }
     }
 

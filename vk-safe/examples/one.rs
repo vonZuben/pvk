@@ -139,10 +139,10 @@ fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice
             for qf in device.get_configured_queue_families() {
                 println!("queue family: {:#?}", qf);
 
-                vk::queue_capabilities!(Graphics: GRAPHICS_BIT);
-                let qf = qf.with_capability(Graphics).unwrap();
+                vk::queue_capabilities!(QCaps: GRAPHICS_BIT, COMPUTE_BIT, TRANSFER_BIT);
+                let qf = qf.with_capability(QCaps).unwrap();
 
-                let queue = qf.get_queue_family(0);
+                let queue = qf.get_queue(0);
                 println!("{queue:#?}");
             }
         })();
