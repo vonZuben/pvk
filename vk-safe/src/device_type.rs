@@ -3,7 +3,7 @@ use crate::type_conversions::ToC;
 use std::marker::PhantomData;
 use vk_safe_sys as vk;
 
-use crate::physical_device::PhysicalDevice;
+use crate::physical_device::{create_device::DeviceQueueCreateInfo, PhysicalDevice};
 use crate::scope::{RefScope, Scope};
 
 use vk::has_command::DestroyDevice;
@@ -14,20 +14,20 @@ pub trait DeviceConfig {
     const VERSION: VkVersion;
     type Commands: DestroyDevice;
     type PhysicalDevice: PhysicalDevice;
-    fn queue_config(&self) -> &[vk::DeviceQueueCreateInfo];
+    fn queue_config(&self) -> &[DeviceQueueCreateInfo<Self::PhysicalDevice>];
     fn queue_family_properties(&self) -> &[vk::QueueFamilyProperties];
 }
 
 pub struct Config<'a, C, P> {
     commands: PhantomData<C>,
     physical_device: PhantomData<P>,
-    queue_config_ref: &'a [vk::DeviceQueueCreateInfo],
+    queue_config_ref: &'a [DeviceQueueCreateInfo<'a, P>],
     queue_family_properties: &'a [vk::QueueFamilyProperties],
 }
 
 impl<'a, C, P> Config<'a, C, P> {
     pub(crate) fn new(
-        queue_config_ref: &'a [vk::DeviceQueueCreateInfo],
+        queue_config_ref: &'a [DeviceQueueCreateInfo<'a, P>],
         queue_family_properties: &'a [vk::QueueFamilyProperties],
     ) -> Self {
         Self {
@@ -52,7 +52,7 @@ where
     type Commands = C::Commands;
     type PhysicalDevice = P;
 
-    fn queue_config(&self) -> &[vk::DeviceQueueCreateInfo] {
+    fn queue_config(&self) -> &[DeviceQueueCreateInfo<P>] {
         self.queue_config_ref
     }
 

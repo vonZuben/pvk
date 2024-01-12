@@ -129,7 +129,7 @@ macro_rules! input_struct_wrapper {
     ) => {
         #[repr(transparent)]
         pub struct $name<'a, S> {
-            inner: vk_safe_sys::$name,
+            pub(crate) inner: vk_safe_sys::$name,
             _params: std::marker::PhantomData<&'a ()>,
             _scope: std::marker::PhantomData<S>,
         }

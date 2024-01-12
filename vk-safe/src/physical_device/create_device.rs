@@ -3,6 +3,7 @@ use super::*;
 use crate::device_type::{Config, DeviceType};
 use crate::error::Error;
 use crate::instance_type::Instance;
+use crate::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
 
 use crate::type_conversions::transmute_slice;
@@ -54,7 +55,8 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
                     std::slice::from_raw_parts(
                         create_info.inner.p_queue_create_infos,
                         create_info.inner.queue_create_info_count.try_into()?,
-                    ),
+                    )
+                    .safe_transmute_slice(),
                     queue_properties,
                 ),
             )?)
