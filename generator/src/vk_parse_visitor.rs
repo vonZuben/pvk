@@ -367,9 +367,17 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     extension_name: &extension.name,
                                     further_extended,
                                 };
+
+                                let (dependent_extensions, split) =
+                                    match (&extension.requires, &extension.depends) {
+                                        (Some(d), None) => (Some(d), ','),
+                                        (None, Some(d)) => (Some(d), '+'),
+                                        (None, None) => (None, '?'),
+                                        _ => panic!("unexpected extension dependency description"),
+                                    };
                                 visitor.visit_ex_require_node(ExtensionInfo {
                                     name_parts: parts,
-                                    required: extension.requires.as_ref().map(|req| req.split(',')),
+                                    required: dependent_extensions.map(|req| req.split(split)),
                                     kind: extension
                                         .ext_type
                                         .as_deref()
