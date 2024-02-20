@@ -229,14 +229,8 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 
         enum_variants.push_variant_once(constants::Constant3::new(name, ty, val, Some(target)));
     }
-    fn visit_ex_require_node<I: Iterator<Item = &'a str>>(
-        &mut self,
-        info: crate::vk_parse_visitor::ExtensionInfo<'a, I>,
-    ) {
-        let ex_name = extensions::ExtensionName::new(
-            info.name_parts.extension_name,
-            info.name_parts.further_extended,
-        );
+    fn visit_ex_require_node(&mut self, info: crate::vk_parse_visitor::ExtensionInfo<'a, '_>) {
+        let ex_name = extensions::ExtensionName::new(&info.name_parts);
 
         let kind = match info.kind {
             "instance" => extensions::ExtensionKind::Instance,
@@ -246,9 +240,14 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
 
         let mut extension_commands = extensions::ExtensionInfo::new(ex_name, kind);
 
-        match info.required {
-            Some(req) => extension_commands.require(req),
-            None => {}
+        match info.name_parts {
+            crate::vk_parse_visitor::VkParseExtensionParts::Base(_) => match info.dependencies {
+                Some(dep) => extension_commands.dependencies(dep),
+                None => {}
+            },
+            crate::vk_parse_visitor::VkParseExtensionParts::Extended(terms) => {
+                extension_commands.dependencies(terms)
+            }
         }
 
         self.extensions
@@ -265,7 +264,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
             .get_command_type(&cmd_name)
             .expect("error: feature identifies unknown command");
 
-        let ex_name = extensions::ExtensionName::new(parts.extension_name, parts.further_extended);
+        let ex_name = extensions::ExtensionName::new(parts);
         let ex = self
             .extensions
             .get_mut(ex_name)

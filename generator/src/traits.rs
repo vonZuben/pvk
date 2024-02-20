@@ -85,11 +85,6 @@ impl ToTokens for VulkanExtension {
             pub struct DeviceExtension;
 
             pub trait VulkanExtension {
-                /// This is intended to be an Hlist representing all other extension prerequisites for this extension
-                type Require;
-
-                const VK_NAME: *const c_char;
-
                 type ExtensionType;
 
                 type InstanceCommands;
@@ -97,9 +92,6 @@ impl ToTokens for VulkanExtension {
             }
 
             pub trait VulkanExtensionExtras {
-                /// This is intended to be an Hlist representing all other extension prerequisites for this extension
-                type Require;
-
                 type InstanceCommands;
                 type DeviceCommands;
             }

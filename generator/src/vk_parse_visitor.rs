@@ -5,7 +5,7 @@ pub trait VisitVkParse<'a> {
     fn visit_enum(&mut self, enm: &'a vk_parse::Type);
     fn visit_command(&mut self, def_wrapper: CommandDefWrapper<'a>);
     fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>);
-    fn visit_ex_require_node<I: Iterator<Item = &'a str>>(&mut self, info: ExtensionInfo<'a, I>);
+    fn visit_ex_require_node(&mut self, info: ExtensionInfo<'a, '_>);
     fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>);
     fn visit_struct_def(&mut self, def: StructDef<'a>);
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>);
@@ -356,28 +356,33 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     continue;
                                 }
                                 // assuming for now that feature and extension additions are exclusive
-                                let further_extended = match (required_feature, required_extension, depends) {
-                                    (Some(feature), None, None) => Some(feature.as_str().into()),
-                                    (None, Some(extension), None) => Some(extension.as_str().into()),
+                                let extended: Option<Term> = match (required_feature, required_extension, depends) {
+                                    (Some(_feature), None, None) => panic!("not implemented term parsing for old vk xml"),
+                                    (None, Some(_extension), None) => panic!("not implemented term parsing for old vk xml"),
                                     (None, None, Some(depends)) => Some(depends.as_str().into()),
                                     (None, None, None) => None,
                                     _ => panic!("error: not expecting feature, extension, and depends additions at the same time"),
                                 };
-                                let parts = VkParseExtensionParts {
-                                    extension_name: &extension.name,
-                                    further_extended,
+                                let parts = match extended {
+                                    Some(term) => VkParseExtensionParts::Extended(
+                                        term.prepend(&extension.name),
+                                    ),
+                                    None => VkParseExtensionParts::Base(&extension.name),
                                 };
 
-                                let (dependent_extensions, split) =
+                                let dependent_extensions =
                                     match (&extension.requires, &extension.depends) {
-                                        (Some(d), None) => (Some(d), ','),
-                                        (None, Some(d)) => (Some(d), '+'),
-                                        (None, None) => (None, '?'),
+                                        (Some(_), None) => {
+                                            panic!("not implemented term parsing for old vk xml")
+                                        }
+                                        (None, Some(d)) => Some(Term::from(d.as_str())),
+                                        (None, None) => None,
                                         _ => panic!("unexpected extension dependency description"),
                                     };
+
                                 visitor.visit_ex_require_node(ExtensionInfo {
-                                    name_parts: parts,
-                                    required: dependent_extensions.map(|req| req.split(split)),
+                                    name_parts: &parts,
+                                    dependencies: dependent_extensions,
                                     kind: extension
                                         .ext_type
                                         .as_deref()
@@ -476,56 +481,10 @@ pub struct VkParseEnumConstant<'a> {
     pub is_alias: bool,
 }
 
-#[derive(Clone, Copy)]
-pub struct VkParseExtensionParts<'a> {
-    pub extension_name: &'a str,
-    pub further_extended: Option<NameExtras<'a>>,
-}
-
-#[derive(Clone, Copy)]
-pub struct NameExtras<'a> {
-    extras: &'a str,
-}
-
-impl<'a> From<&'a str> for NameExtras<'a> {
-    fn from(extras: &'a str) -> Self {
-        Self { extras }
-    }
-}
-
-impl<'a> IntoIterator for NameExtras<'a> {
-    type Item = &'a str;
-
-    type IntoIter = NameExtrasIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        NameExtrasIter { text: self.extras }
-    }
-}
-
-pub struct NameExtrasIter<'a> {
-    text: &'a str,
-}
-
-impl<'a> Iterator for NameExtrasIter<'a> {
-    type Item = &'a str;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.text == "" {
-            None
-        } else {
-            for (i, c) in self.text.bytes().enumerate() {
-                if c == b',' || c == b'+' {
-                    let ret = &self.text[..i];
-                    self.text = &self.text[i + 1..];
-                    return Some(ret);
-                }
-            }
-            let ret = self.text;
-            self.text = "";
-            Some(ret)
-        }
-    }
+#[derive(Clone)]
+pub enum VkParseExtensionParts<'a> {
+    Base(&'a str),
+    Extended(Term<'a>),
 }
 
 pub struct StructDef<'a> {
@@ -605,15 +564,101 @@ impl<'a> Iterator for Members<'a> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum Term<'a> {
+    Single(&'a str),
+    And(Vec<Term<'a>>),
+    Or(Vec<Term<'a>>),
+}
+
+impl<'a> Term<'a> {
+    fn prepend(self, name: &'a str) -> Self {
+        match self {
+            Term::Single(other) => Term::And(vec![Term::Single(name), Term::Single(other)]),
+            Term::And(mut terms) => {
+                terms.insert(0, Term::Single(name));
+                Term::And(terms)
+            }
+            Term::Or(_) => Term::And(vec![Term::Single(name), self]),
+        }
+    }
+
+    pub fn name(&self) -> String {
+        fn recurse(this: &Term, accumulate: &mut String) {
+            match this {
+                Term::Single(name) => accumulate.push_str(name),
+                Term::And(terms) => {
+                    let mut iter = terms.iter().peekable();
+                    while let Some(term) = iter.next() {
+                        recurse(term, accumulate);
+                        if iter.peek().is_some() {
+                            accumulate.push_str("__AND__");
+                        }
+                    }
+                }
+                Term::Or(terms) => {
+                    let mut iter = terms.iter().peekable();
+                    while let Some(term) = iter.next() {
+                        recurse(term, accumulate);
+                        if iter.peek().is_some() {
+                            accumulate.push_str("__OR__");
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut name = String::new();
+        recurse(self, &mut name);
+        name
+    }
+}
+
+impl<'a> From<&'a str> for Term<'a> {
+    fn from(value: &'a str) -> Self {
+        let mut tokens = crate::simple_parse::TokenIter::new(value);
+        get_term(&mut tokens)
+    }
+}
+
+fn get_term<'a>(tokens: &mut crate::simple_parse::TokenIter<'a>) -> Term<'a> {
+    let mut names = vec![];
+    let mut and = true; // assume the terms are ANDed, and switch to OR (false) if a ',' is detected
+    let mut found_and = false; // confirmed 'and' should be true, and if OR is found after this, we panic
+    while let Some(token) = tokens.next() {
+        match token {
+            "(" => names.push(get_term(tokens)),
+            ")" => break,
+            "+" => found_and = true,
+            "," => {
+                assert!(
+                    !found_and,
+                    "Extension dependencies unclear mix of AND and OR conditions"
+                );
+                and = false
+            }
+            name => names.push(Term::Single(name)),
+        }
+    }
+
+    if names.len() == 1 {
+        names.pop().unwrap()
+    } else if and {
+        Term::And(names)
+    } else {
+        Term::Or(names)
+    }
+}
+
 pub enum MemberKind<'a> {
     Member(ctype::Cfield),
     Comment(&'a str),
     UnsupportedApi,
 }
 
-pub struct ExtensionInfo<'a, I> {
-    pub name_parts: VkParseExtensionParts<'a>,
-    pub required: Option<I>,
+pub struct ExtensionInfo<'a, 'p> {
+    pub name_parts: &'p VkParseExtensionParts<'a>,
+    pub dependencies: Option<Term<'a>>,
     pub kind: &'a str,
 }
 

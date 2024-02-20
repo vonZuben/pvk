@@ -20,7 +20,7 @@ impl<'a> Iterator for TokenIter<'a> {
             return None;
         } else {
             const SPECIAL_CHARS: &[char] = &[
-                '[', ']', '{', '}', '(', ')', ':', ';', ',', '*', '&', '|', '=', '\'', '\"',
+                '[', ']', '{', '}', '(', ')', ':', ';', ',', '*', '&', '|', '=', '+', '\'', '\"',
             ];
 
             // find start of next token
