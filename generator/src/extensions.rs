@@ -104,7 +104,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 0 => None,
                 _ => Some(ExtensionCommandMacros {
                     name: e.extension_name,
-                    mod_name: "instance",
+                    mod_name: "device",
                     commands: &e.device_command_names,
                 }),
             });
@@ -112,25 +112,24 @@ impl krs_quote::ToTokens for ExtensionCollection {
         // dependency macros
         let instance_dep_macros = extensions
             .clone()
-            .filter(|e| matches!(e.kind, ExtensionKind::Instance))
+            .filter(|e| e.instance_command_names.len() > 0)
             .map(|e| ExtensionDependencyMacros {
-                name: e.extension_name,
-                extension_kind: e.kind,
-                depends: e.dependencies.as_ref(),
+                info: e,
+                suffix: "instance_loads",
+                for_kind: ExtensionKind::Instance,
                 all_extensions: self,
             });
         let device_dep_macros = extensions
             .clone()
-            .filter(|e| matches!(e.kind, ExtensionKind::Device))
+            .filter(|e| e.device_command_names.len() > 0)
             .map(|e| ExtensionDependencyMacros {
-                name: e.extension_name,
-                extension_kind: e.kind,
-                depends: e.dependencies.as_ref(),
+                info: e,
+                suffix: "device_loads",
+                for_kind: ExtensionKind::Device,
                 all_extensions: self,
             });
 
         krs_quote_with!(tokens <-
-            {@* {@extensions}}
 
             #[doc(hidden)]
             pub mod extension {
@@ -177,20 +176,20 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 }
 
                 /// ensure each element in the list is the same type
-                unsafe trait SameAs<T> {}
+                unsafe trait ListOf<T> {}
 
-                unsafe impl<T> SameAs<T> for End {}
+                unsafe impl<T> ListOf<T> for End {}
 
-                unsafe impl<C: SameAs<T>, T> SameAs<T> for R<C, T> {}
+                unsafe impl<C: ListOf<T>, T> ListOf<T> for R<C, T> {}
 
-                impl<C, T> AsRef<[T]> for R<C, T> where Self: SameAs<T> + Len {
+                impl<C, T> AsRef<[T]> for R<C, T> where Self: ListOf<T> + Len {
                     fn as_ref(&self) -> &[T] {
                         let ptr: *const T = self as *const Self as *const T;
                         unsafe { std::slice::from_raw_parts(ptr, Self::LEN) }
                     }
                 }
 
-                pub mod extension_traits {
+                pub mod traits {
                     {@* pub trait {@extension_names} {} }
                 }
 
@@ -277,93 +276,92 @@ impl krs_quote::ToTokens for ExtensionCommandMacros<'_> {
 }
 
 struct ExtensionDependencyMacros<'a> {
-    name: ExtensionName,
-    extension_kind: ExtensionKind,
-    depends: Option<&'a DependencyTerm>,
+    info: &'a ExtensionInfo,
+    suffix: &'a str,
+    for_kind: ExtensionKind,
     all_extensions: &'a ExtensionCollection,
 }
 
 impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let name = self.name;
-        let loads: Option<&str> = match self.name {
-            ExtensionName::Base { ref name } => Some(name),
+        let name = self.info.extension_name;
+        let loads: Option<&str> = match name {
+            ExtensionName::Base { ref name } => match (self.for_kind, self.info.kind) {
+                (ExtensionKind::Instance, ExtensionKind::Instance) => Some(name),
+                (ExtensionKind::Device, ExtensionKind::Device) => Some(name),
+                _ => None,
+            },
             ExtensionName::Extra { .. } => None,
         };
 
-        let instance_dependencies = self.depends.and_then(|dep| {
+        let instance_dependencies = self.info.dependencies.as_ref().and_then(|dep| {
             get_instance_dependency_terms(self.all_extensions, dep).map(DependencyTermMeta::from)
         });
-        let device_dependencies = self.depends.and_then(|dep| {
+        let device_dependencies = self.info.dependencies.as_ref().and_then(|dep| {
             get_device_dependency_terms(self.all_extensions, dep).map(DependencyTermMeta::from)
         });
 
-        match self.extension_kind {
-            ExtensionKind::Instance => {
-                assert!(
-                    device_dependencies.is_none(),
-                    "instance extensions should not depend from device extensions"
-                );
+        let (main_dependencies, secondary_dependencies) = match self.for_kind {
+            ExtensionKind::Instance => (instance_dependencies, None),
+            ExtensionKind::Device => (device_dependencies, instance_dependencies),
+        };
 
-                let instance_dependency_traits = instance_dependencies
-                    .as_ref()
-                    .map(DependencyTermTraits::from);
+        let main_dependency_traits = main_dependencies.as_ref().map(DependencyTermTraits::from);
 
-                let macro_name = format!("{}_instance_deps", name.name_as_str()).as_code();
+        let main_dep_name = main_dependencies.as_ref().map(|dep| dep.name).into_iter();
 
-                krs_quote_with!(tokens <-
+        let main_options = main_dependencies.as_ref().map(|dep| {
+            String::from_iter(
+                (0..dep.number_of_options)
+                    .into_iter()
+                    .map(|n| format!("O{n},")),
+            )
+            .as_code()
+        });
 
-                    pub mod {@name} {
-                        use crate::dependencies::extension_traits::*;
-                        use crate::version::instance::*;
-                        {@instance_dependency_traits}
-                    }
+        let secondary_dependencies =
+            krs_quote::ToTokensClosure(|tokens: &mut krs_quote::TokenStream| {
+                if let Some(secondary_dependencies) = secondary_dependencies.as_ref() {
+                    let secondary_dependency_traits =
+                        DependencyTermTraits::from(secondary_dependencies);
 
-                    #[doc(hidden)]
-                    #[macro_export]
-                    macro_rules! {@macro_name} {
-                        ( $target:ident ) => {
-                            {@loads}
-                        }
-                    }
-                    pub use {@macro_name} as {@name};
-                );
-            }
-            ExtensionKind::Device => {
-                let macro_name = format!("{}_device_deps", name.name_as_str()).as_code();
-
-                let device_dependency_traits =
-                    device_dependencies.as_ref().map(DependencyTermTraits::from);
-
-                let instance_dependency_traits = instance_dependencies
-                    .as_ref()
-                    .map(DependencyTermTraits::from);
-
-                krs_quote_with!(tokens <-
-                    pub mod {@name} {
-                        pub mod device {
-                            use crate::dependencies::extension_traits::*;
-                            use crate::version::device::*;
-                            {@device_dependency_traits}
-                        }
+                    krs_quote_with!(tokens <-
                         pub mod instance {
-                            use crate::dependencies::extension_traits::*;
+                            use crate::dependencies::traits::*;
                             use crate::version::instance::*;
-                            {@instance_dependency_traits}
+                            {@secondary_dependency_traits}
                         }
-                    }
+                    )
+                }
+            });
 
-                    #[doc(hidden)]
-                    #[macro_export]
-                    macro_rules! {@macro_name} {
-                        ( $target:ident ) => {
-                            {@loads}
-                        }
-                    }
-                    pub use {@macro_name} as {@name};
-                );
+        krs_quote_with!(tokens <-
+
+            pub mod {@name} {
+                use crate::dependencies::traits::*;
+                use crate::version::instance::*;
+
+                pub const fn check_dependencies<T {@* : {@main_dep_name}<{@main_options}>, {@main_options} }>
+                    (_infer: std::marker::PhantomData<T>) {}
+
+                {@main_dependency_traits}
+
+                {@secondary_dependencies}
             }
-        }
+        );
+
+        let macro_name = format!("{}_{}", name.name_as_str(), self.suffix).as_code();
+
+        krs_quote_with!(tokens <-
+            #[doc(hidden)]
+            #[macro_export]
+            macro_rules! {@macro_name} {
+                ( $target:ident ) => {
+                    {@loads}
+                }
+            }
+            pub use {@macro_name} as {@name};
+        );
     }
 }
 
@@ -850,39 +848,5 @@ impl ExtensionInfo {
     }
     pub fn dependencies<'a>(&mut self, dependencies: impl Into<DependencyTerm>) {
         self.dependencies = Some(dependencies.into())
-    }
-}
-
-trait Captures<T> {}
-impl<T, U> Captures<T> for U {}
-
-impl krs_quote::ToTokens for ExtensionInfo {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let kind = self.kind;
-        let extension_name = &self.extension_name;
-        let raw_name = self.extension_name.name_as_str();
-
-        let dependencies = &self.dependencies;
-
-        if self.extension_name.is_base() {
-            krs_quote_with!(tokens <-
-                #[derive(Debug)]
-                pub struct {@extension_name};
-                impl VulkanExtension for {@extension_name} {
-                    type ExtensionType = {@kind};
-                    type InstanceCommands = extension::instance::structs::{@extension_name};
-                    type DeviceCommands = extension::device::structs::{@extension_name};
-                }
-            )
-        } else {
-            krs_quote_with!(tokens <-
-                #[derive(Debug)]
-                pub struct {@extension_name};
-                impl VulkanExtensionExtras for {@extension_name} {
-                    type InstanceCommands = extension::instance::structs::{@extension_name};
-                    type DeviceCommands = extension::device::structs::{@extension_name};
-                }
-            )
-        }
     }
 }
