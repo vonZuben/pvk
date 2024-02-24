@@ -315,6 +315,8 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
                 }
             });
 
+        let macro_name = format!("{}_{}", name.name_as_str(), self.suffix).as_code();
+
         krs_quote_with!(tokens <-
 
             pub mod {@name} {
@@ -328,11 +330,7 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
 
                 {@secondary_dependencies}
             }
-        );
 
-        let macro_name = format!("{}_{}", name.name_as_str(), self.suffix).as_code();
-
-        krs_quote_with!(tokens <-
             #[doc(hidden)]
             #[macro_export]
             macro_rules! {@macro_name} {
