@@ -44,69 +44,53 @@ impl krs_quote::ToTokens for ExtensionCollection {
         let extension_names = self.extensions.iter().map(|e| e.extension_name);
 
         // structs
-        let instance_structs =
-            extensions
-                .clone()
-                .filter_map(|e| match e.instance_command_names.len() {
-                    0 => None,
-                    _ => Some(ExtensionStruct {
-                        name: e.extension_name,
-                        commands: &e.instance_command_names,
-                    }),
-                });
-        let device_structs =
-            extensions
-                .clone()
-                .filter_map(|e| match e.device_command_names.len() {
-                    0 => None,
-                    _ => Some(ExtensionStruct {
-                        name: e.extension_name,
-                        commands: &e.device_command_names,
-                    }),
-                });
+        let instance_structs = extensions
+            .clone()
+            .filter(|e| e.instance_command_names.len() > 0)
+            .map(|e| ExtensionStruct {
+                name: e.extension_name,
+                commands: &e.instance_command_names,
+            });
+        let device_structs = extensions
+            .clone()
+            .filter(|e| e.device_command_names.len() > 0)
+            .map(|e| ExtensionStruct {
+                name: e.extension_name,
+                commands: &e.device_command_names,
+            });
 
         // traits
-        let instance_traits =
-            extensions
-                .clone()
-                .filter_map(|e| match e.instance_command_names.len() {
-                    0 => None,
-                    _ => Some(ExtensionTrait {
-                        name: e.extension_name,
-                        commands: &e.instance_command_names,
-                    }),
-                });
+        let instance_traits = extensions
+            .clone()
+            .filter(|e| e.instance_command_names.len() > 0)
+            .map(|e| ExtensionTrait {
+                name: e.extension_name,
+                commands: &e.instance_command_names,
+            });
         let device_traits = extensions
             .clone()
-            .filter_map(|e| match e.device_command_names.len() {
-                0 => None,
-                _ => Some(ExtensionTrait {
-                    name: e.extension_name,
-                    commands: &e.device_command_names,
-                }),
+            .filter(|e| e.device_command_names.len() > 0)
+            .map(|e| ExtensionTrait {
+                name: e.extension_name,
+                commands: &e.device_command_names,
             });
 
         // commands macro
-        let instance_macros =
-            extensions
-                .clone()
-                .filter_map(|e| match e.instance_command_names.len() {
-                    0 => None,
-                    _ => Some(ExtensionCommandMacros {
-                        name: e.extension_name,
-                        mod_name: "instance",
-                        commands: &e.instance_command_names,
-                    }),
-                });
+        let instance_macros = extensions
+            .clone()
+            .filter(|e| e.instance_command_names.len() > 0)
+            .map(|e| ExtensionCommandMacros {
+                name: e.extension_name,
+                mod_name: "instance",
+                commands: &e.instance_command_names,
+            });
         let device_macros = extensions
             .clone()
-            .filter_map(|e| match e.device_command_names.len() {
-                0 => None,
-                _ => Some(ExtensionCommandMacros {
-                    name: e.extension_name,
-                    mod_name: "device",
-                    commands: &e.device_command_names,
-                }),
+            .filter(|e| e.device_command_names.len() > 0)
+            .map(|e| ExtensionCommandMacros {
+                name: e.extension_name,
+                mod_name: "device",
+                commands: &e.device_command_names,
             });
 
         // dependency macros
@@ -194,14 +178,10 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 }
 
                 pub mod instance {
-                    use super::{R, End};
-
                     {@* {@instance_dep_macros}}
                 }
 
                 pub mod device {
-                    use super::{R, End};
-
                     {@* {@device_dep_macros}}
                 }
             }
