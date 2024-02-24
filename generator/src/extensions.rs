@@ -121,7 +121,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
                     use super::super::has_command::*;
                     {@* {@instance_traits}}
                     {@* {@instance_macros}}
-                    pub(crate) mod structs {
+                    pub mod structs {
                         use super::super::super::*;
                         {@* {@instance_structs}}
                     }
@@ -131,7 +131,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
                     use super::super::has_command::*;
                     {@* {@device_traits}}
                     {@* {@device_macros}}
-                    pub(crate) mod structs {
+                    pub mod structs {
                         use super::super::super::*;
                         {@* {@device_structs}}
                     }

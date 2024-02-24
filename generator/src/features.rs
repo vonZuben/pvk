@@ -83,16 +83,19 @@ impl krs_quote::ToTokens for FeatureCollection {
             commands: &v.entry_command_names,
         });
 
-        krs_quote_with!(tokens <-
-            {@* {@versions}}
+        let version_values = versions.clone().map(|v| VersionValues { feature: v });
 
+        krs_quote_with!(tokens <-
             #[doc(hidden)]
             pub mod version {
+                pub mod numbers {
+                    {@* {@version_values}}
+                }
                 pub mod instance {
                     use super::super::has_command::*;
                     {@* {@instance_traits}}
                     {@* {@instance_macros}}
-                    pub(crate) mod structs {
+                    pub mod structs {
                         use super::super::super::*;
                         {@* {@instance_structs}}
                     }
@@ -102,7 +105,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                     use super::super::has_command::*;
                     {@* {@device_traits}}
                     {@* {@device_macros}}
-                    pub(crate) mod structs {
+                    pub mod structs {
                         use super::super::super::*;
                         {@* {@device_structs}}
                     }
@@ -112,7 +115,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                     use super::super::has_command::*;
                     {@* {@entry_traits}}
                     {@* {@entry_macros}}
-                    pub(crate) mod structs {
+                    pub mod structs {
                         use super::super::super::*;
                         {@* {@entry_structs}}
                     }
@@ -186,6 +189,21 @@ impl krs_quote::ToTokens for VersionMacros<'_> {
             }
             pub use {@macro_name} as {@name};
         );
+    }
+}
+
+struct VersionValues<'a> {
+    feature: &'a Feature,
+}
+
+impl krs_quote::ToTokens for VersionValues<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.feature.version;
+        let version = parse_version(self.feature.version.as_str());
+
+        krs_quote_with!(tokens <-
+            const {@name}: (u32, u32, u32) = {@version};
+        )
     }
 }
 
@@ -300,25 +318,6 @@ impl Feature {
             Some(List::Entry(index)) => self.entry_command_names[*index].remove(),
             None => panic!("should not be trying to remove command that was never required"),
         }
-    }
-}
-
-impl krs_quote::ToTokens for Feature {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let version = self.version.as_code();
-
-        let version_triple = parse_version(&self.version);
-
-        krs_quote_with!( tokens <-
-            #[derive(Debug)]
-            pub struct {@version};
-            impl VulkanVersion for {@version} {
-                const VersionTriple: (u32, u32, u32) = {@version_triple};
-                type InstanceCommands = version::instance::structs::{@version};
-                type DeviceCommands = version::device::structs::{@version};
-                type EntryCommands = version::entry::structs::{@version};
-            }
-        );
     }
 }
 
