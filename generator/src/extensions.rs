@@ -286,34 +286,51 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
             ExtensionKind::Device => (device_dependencies, instance_dependencies),
         };
 
-        let main_dependency_traits = main_dependencies.as_ref().map(DependencyTermTraits::from);
-
-        let main_dep_name = main_dependencies.as_ref().map(|dep| dep.name).into_iter();
-
-        let main_options = main_dependencies.as_ref().map(|dep| {
-            String::from_iter(
-                (0..dep.number_of_options)
-                    .into_iter()
-                    .map(|n| format!("O{n},")),
+        fn dependency_parts(
+            dep: Option<&DependencyTermMeta>,
+        ) -> (
+            Option<DependencyTermTraits>,
+            impl Iterator<Item = VkTyName> + Clone,
+            Option<crate::utils::TokenWrapper>,
+        ) {
+            (
+                dep.map(DependencyTermTraits::from),
+                dep.map(|dep| dep.name).into_iter(),
+                dep.map(|dep| {
+                    String::from_iter(
+                        (0..dep.number_of_options)
+                            .into_iter()
+                            .map(|n| format!("O{n},")),
+                    )
+                    .as_code()
+                }),
             )
-            .as_code()
-        });
+        }
 
-        let secondary_dependencies =
-            krs_quote::ToTokensClosure(|tokens: &mut krs_quote::TokenStream| {
-                if let Some(secondary_dependencies) = secondary_dependencies.as_ref() {
-                    let secondary_dependency_traits =
-                        DependencyTermTraits::from(secondary_dependencies);
+        let (main_dependency_traits, main_dep_name, main_options) =
+            dependency_parts(main_dependencies.as_ref());
 
+        let (secondary_dependency_traits, secondary_dep_name, secondary_options) =
+            dependency_parts(secondary_dependencies.as_ref());
+
+        let secondary_deps = match self.for_kind {
+            ExtensionKind::Instance => None,
+            ExtensionKind::Device => Some(krs_quote::ToTokensClosure(
+                |tokens: &mut krs_quote::TokenStream| {
                     krs_quote_with!(tokens <-
                         pub mod instance {
                             use crate::dependencies::traits::*;
                             use crate::version::instance::*;
+
+                            pub trait HasDependency<O> {}
+                            impl<I, {@secondary_options}> HasDependency<({@secondary_options})> for I {@* where I: {@secondary_dep_name}<{@secondary_options}> } {}
+
                             {@secondary_dependency_traits}
                         }
                     )
-                }
-            });
+                },
+            )),
+        };
 
         let macro_name = format!("{}_{}", name.name_as_str(), self.suffix).as_code();
 
@@ -328,7 +345,7 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
 
                 {@main_dependency_traits}
 
-                {@secondary_dependencies}
+                {@secondary_deps}
             }
 
             #[doc(hidden)]
