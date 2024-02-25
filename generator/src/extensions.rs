@@ -382,9 +382,6 @@ impl ExtensionName {
             }
         }
     }
-    fn is_base(&self) -> bool {
-        matches!(self, ExtensionName::Base { .. })
-    }
     fn name_as_str(&self) -> &str {
         match self {
             ExtensionName::Base { name } => name,
