@@ -202,7 +202,7 @@ impl krs_quote::ToTokens for VersionValues<'_> {
         let version = parse_version(self.feature.version.as_str());
 
         krs_quote_with!(tokens <-
-            const {@name}: (u32, u32, u32) = {@version};
+            pub const {@name}: (u32, u32, u32) = {@version};
         )
     }
 }

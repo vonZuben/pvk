@@ -28,32 +28,30 @@ macro_rules! instance_context {
 
             mod commands {
                 $(
-                    use $crate::version::instance::$v_provider;
-                    $v_provider!($name);
+                    $crate::version::instance::$v_provider!($name);
                     impl $crate::commands::Version for $name {
-                        const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
+                        const VERSION_TRIPLE: (u32, u32, u32) = $crate::version::numbers::$v_provider;
                     }
                 )?
 
                 $(
                     $(
-                        use $crate::extension::instance::$e_provider;
-                        $e_provider!($name);
+                        $crate::extension::instance::$e_provider!($name);
                     )+
                 )?
 
                 #[allow(non_snake_case)]
                 pub struct $name {
-                    $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::InstanceCommands,)?
-                    $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::InstanceCommands),+ )?
+                    $( $v_provider: $crate::version::instance::structs::$v_provider, )?
+                    $( $($e_provider: $crate::extension::instance::structs::$e_provider),+ )?
                 }
 
                 impl $crate::LoadCommands for $name {
                     fn load(loader: impl $crate::FunctionLoader) -> std::result::Result<Self, $crate::CommandLoadError> {
                         Ok(
                             Self {
-                                $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::InstanceCommands::load(loader)?,)?
-                                $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::InstanceCommands::load(loader)?),+ )?
+                                $($v_provider: $crate::version::instance::structs::$v_provider::load(loader)?,)?
+                                $( $($e_provider: $crate::extension::instance::structs::$e_provider::load(loader)?),+ )?
                             }
                         )
                     }
@@ -81,32 +79,30 @@ macro_rules! device_context {
 
             mod commands {
                 $(
-                    use $crate::version::device::$v_provider;
-                    $v_provider!($name);
+                    $crate::version::device::$v_provider!($name);
                     impl $crate::commands::Version for $name {
-                        const VERSION_TRIPLE: (u32, u32, u32) = <$crate::$v_provider as $crate::VulkanVersion>::VersionTriple;
+                        const VERSION_TRIPLE: (u32, u32, u32) = $crate::version::numbers::$v_provider;
                     }
                 )?
 
                 $(
                     $(
-                        use $crate::extension::device::$e_provider;
-                        $e_provider!($name);
+                        $crate::extension::device::$e_provider!($name);
                     )+
                 )?
 
                 #[allow(non_snake_case)]
                 pub struct $name {
-                    $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::DeviceCommands,)?
-                    $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::DeviceCommands),+ )?
+                    $( $v_provider: $crate::version::device::structs::$v_provider, )?
+                    $( $($e_provider: $crate::extension::device::structs::$e_provider),+ )?
                 }
 
                 impl $crate::LoadCommands for $name {
                     fn load(loader: impl $crate::FunctionLoader) -> std::result::Result<Self, $crate::CommandLoadError> {
                         Ok(
                             Self {
-                                $($v_provider: <$crate::$v_provider as $crate::VulkanVersion>::DeviceCommands::load(loader)?,)?
-                                $( $($e_provider: <$crate::$e_provider as $crate::VulkanExtension>::DeviceCommands::load(loader)?),+ )?
+                                $($v_provider: $crate::version::device::structs::$v_provider::load(loader)?,)?
+                                $( $($e_provider: $crate::extension::device::structs::$e_provider::load(loader)?),+ )?
                             }
                         )
                     }
