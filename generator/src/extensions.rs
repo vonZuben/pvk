@@ -37,6 +37,14 @@ impl DerefMut for ExtensionCollection {
     }
 }
 
+fn instance_filter(info: &&ExtensionInfo) -> bool {
+    info.instance_command_names.len() > 0 || matches!(info.kind, ExtensionKind::Instance)
+}
+
+fn device_filter(info: &&ExtensionInfo) -> bool {
+    info.device_command_names.len() > 0 || matches!(info.kind, ExtensionKind::Device)
+}
+
 impl krs_quote::ToTokens for ExtensionCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let extensions = self.extensions.iter();
@@ -44,16 +52,17 @@ impl krs_quote::ToTokens for ExtensionCollection {
         let extension_names = self.extensions.iter().map(|e| e.extension_name);
 
         // structs
-        let instance_structs = extensions
-            .clone()
-            .filter(|e| e.instance_command_names.len() > 0)
-            .map(|e| ExtensionStruct {
-                name: e.extension_name,
-                commands: &e.instance_command_names,
-            });
+        let instance_structs =
+            extensions
+                .clone()
+                .filter(instance_filter)
+                .map(|e| ExtensionStruct {
+                    name: e.extension_name,
+                    commands: &e.instance_command_names,
+                });
         let device_structs = extensions
             .clone()
-            .filter(|e| e.device_command_names.len() > 0)
+            .filter(device_filter)
             .map(|e| ExtensionStruct {
                 name: e.extension_name,
                 commands: &e.device_command_names,
@@ -62,56 +71,60 @@ impl krs_quote::ToTokens for ExtensionCollection {
         // traits
         let instance_traits = extensions
             .clone()
-            .filter(|e| e.instance_command_names.len() > 0)
+            .filter(instance_filter)
             .map(|e| ExtensionTrait {
                 name: e.extension_name,
                 commands: &e.instance_command_names,
             });
         let device_traits = extensions
             .clone()
-            .filter(|e| e.device_command_names.len() > 0)
+            .filter(device_filter)
             .map(|e| ExtensionTrait {
                 name: e.extension_name,
                 commands: &e.device_command_names,
             });
 
         // commands macro
-        let instance_macros = extensions
-            .clone()
-            .filter(|e| e.instance_command_names.len() > 0)
-            .map(|e| ExtensionCommandMacros {
-                name: e.extension_name,
-                mod_name: "instance",
-                commands: &e.instance_command_names,
-            });
-        let device_macros = extensions
-            .clone()
-            .filter(|e| e.device_command_names.len() > 0)
-            .map(|e| ExtensionCommandMacros {
-                name: e.extension_name,
-                mod_name: "device",
-                commands: &e.device_command_names,
-            });
+        let instance_macros =
+            extensions
+                .clone()
+                .filter(instance_filter)
+                .map(|e| ExtensionCommandMacros {
+                    name: e.extension_name,
+                    mod_name: "instance",
+                    commands: &e.instance_command_names,
+                });
+        let device_macros =
+            extensions
+                .clone()
+                .filter(device_filter)
+                .map(|e| ExtensionCommandMacros {
+                    name: e.extension_name,
+                    mod_name: "device",
+                    commands: &e.device_command_names,
+                });
 
         // dependency macros
-        let instance_dep_macros = extensions
-            .clone()
-            .filter(|e| e.instance_command_names.len() > 0)
-            .map(|e| ExtensionDependencyMacros {
-                info: e,
-                suffix: "instance_loads",
-                for_kind: ExtensionKind::Instance,
-                all_extensions: self,
-            });
-        let device_dep_macros = extensions
-            .clone()
-            .filter(|e| e.device_command_names.len() > 0)
-            .map(|e| ExtensionDependencyMacros {
-                info: e,
-                suffix: "device_loads",
-                for_kind: ExtensionKind::Device,
-                all_extensions: self,
-            });
+        let instance_dep_macros =
+            extensions
+                .clone()
+                .filter(instance_filter)
+                .map(|e| ExtensionDependencyMacros {
+                    info: e,
+                    suffix: "instance_loads",
+                    for_kind: ExtensionKind::Instance,
+                    all_extensions: self,
+                });
+        let device_dep_macros =
+            extensions
+                .clone()
+                .filter(device_filter)
+                .map(|e| ExtensionDependencyMacros {
+                    info: e,
+                    suffix: "device_loads",
+                    for_kind: ExtensionKind::Device,
+                    all_extensions: self,
+                });
 
         krs_quote_with!(tokens <-
 
