@@ -118,9 +118,13 @@ impl krs_quote::ToTokens for ExtensionCollection {
             #[doc(hidden)]
             pub mod extension {
                 pub mod instance {
-                    use super::super::has_command::*;
-                    {@* {@instance_traits}}
-                    {@* {@instance_macros}}
+                    pub mod traits {
+                        use crate::has_command::*;
+                        {@* {@instance_traits}}
+                    }
+                    pub mod macros {
+                        {@* {@instance_macros}}
+                    }
                     pub mod structs {
                         use super::super::super::*;
                         {@* {@instance_structs}}
@@ -128,9 +132,13 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 }
 
                 pub mod device {
-                    use super::super::has_command::*;
-                    {@* {@device_traits}}
-                    {@* {@device_macros}}
+                    pub mod traits {
+                        use crate::has_command::*;
+                        {@* {@device_traits}}
+                    }
+                    pub mod macros {
+                        {@* {@device_macros}}
+                    }
                     pub mod structs {
                         use super::super::super::*;
                         {@* {@device_structs}}
@@ -320,7 +328,7 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
                     krs_quote_with!(tokens <-
                         pub mod instance {
                             use crate::dependencies::traits::*;
-                            use crate::version::instance::*;
+                            use crate::version::instance::traits::*;
 
                             pub trait HasDependency<O> {}
                             impl<I, {@secondary_options}> HasDependency<({@secondary_options})> for I {@* where I: {@secondary_dep_name}<{@secondary_options}> } {}
@@ -338,7 +346,7 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
 
             pub mod {@name} {
                 use crate::dependencies::traits::*;
-                use crate::version::instance::*;
+                use crate::version::instance::traits::*;
 
                 pub const fn check_dependencies<T {@* : {@main_dep_name}<{@main_options}>, {@main_options} }>
                     (_infer: std::marker::PhantomData<T>) {}

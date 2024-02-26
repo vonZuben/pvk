@@ -28,7 +28,7 @@ macro_rules! instance_context {
 
             mod commands {
                 $(
-                    $crate::version::instance::$v_provider!($name);
+                    $crate::version::instance::macros::$v_provider!($name);
                     impl $crate::commands::Version for $name {
                         const VERSION_TRIPLE: (u32, u32, u32) = $crate::version::numbers::$v_provider;
                     }
@@ -36,7 +36,7 @@ macro_rules! instance_context {
 
                 $(
                     $(
-                        $crate::extension::instance::$e_provider!($name);
+                        $crate::extension::instance::macros::$e_provider!($name);
                     )+
                 )?
 
@@ -79,7 +79,7 @@ macro_rules! device_context {
 
             mod commands {
                 $(
-                    $crate::version::device::$v_provider!($name);
+                    $crate::version::device::macros::$v_provider!($name);
                     impl $crate::commands::Version for $name {
                         const VERSION_TRIPLE: (u32, u32, u32) = $crate::version::numbers::$v_provider;
                     }
@@ -87,7 +87,7 @@ macro_rules! device_context {
 
                 $(
                     $(
-                        $crate::extension::device::$e_provider!($name);
+                        $crate::extension::device::macros::$e_provider!($name);
                     )+
                 )?
 

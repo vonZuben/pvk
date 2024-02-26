@@ -35,11 +35,11 @@ pub use physical_device::physical_device_exports::*;
 pub use scope::scope;
 
 pub mod instance {
-    pub use vk_safe_sys::extension::instance::*;
-    pub use vk_safe_sys::version::instance::*;
+    pub use vk_safe_sys::extension::instance::traits::*;
+    pub use vk_safe_sys::version::instance::traits::*;
 }
 
 pub mod device {
-    pub use vk_safe_sys::extension::device::*;
-    pub use vk_safe_sys::version::device::*;
+    pub use vk_safe_sys::extension::device::traits::*;
+    pub use vk_safe_sys::version::device::traits::*;
 }
