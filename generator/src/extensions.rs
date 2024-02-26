@@ -294,6 +294,11 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
             ExtensionKind::Device => (device_dependencies, instance_dependencies),
         };
 
+        let mod_name = match self.for_kind {
+            ExtensionKind::Instance => "instance".as_code(),
+            ExtensionKind::Device => "device".as_code(),
+        };
+
         fn dependency_parts(
             dep: Option<&DependencyTermMeta>,
         ) -> (
@@ -346,7 +351,7 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
 
             pub mod {@name} {
                 use crate::dependencies::traits::*;
-                use crate::version::instance::traits::*;
+                use crate::version::{@mod_name}::traits::*;
 
                 pub const fn check_dependencies<T {@* : {@main_dep_name}<{@main_options}>, {@main_options} }>
                     (_infer: std::marker::PhantomData<T>) {}
@@ -501,7 +506,7 @@ impl krs_quote::ToTokens for DependencyTermTraits<'_> {
 
                 krs_quote_with!(tokens <-
                     pub trait {@name}<O0, {@,* {@sub_options}}> {}
-                    {@* struct {@option_names};}
+                    {@* pub struct {@option_names};}
 
                     {@* impl<T, {@,* {@sub_options}}> {@name}<{@option_names}, {@,* {@sub_options}}> for T where T: {@sub_terms} {} }
                 );
