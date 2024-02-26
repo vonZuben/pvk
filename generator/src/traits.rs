@@ -28,7 +28,6 @@ impl ToTokens for VulkanCommand {
             /// ## Safety
             /// 'command' must be set to a valid c string pointer
             /// there is no check for this
-            #[derive(Debug)]
             pub struct CommandLoadError {
                 command: *const c_char,
             }
@@ -40,6 +39,12 @@ impl ToTokens for VulkanCommand {
                     // SAFETY : CommandLoadError can only be internally created, and we must ensure it is created with a pointer to a valid c string
                     let command_name = unsafe { std::ffi::CStr::from_ptr(self.command) };
                     write!(f, "failed to load {:?}", command_name)
+                }
+            }
+
+            impl std::fmt::Debug for CommandLoadError {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    std::fmt::Display::fmt(self, f)
                 }
             }
 
