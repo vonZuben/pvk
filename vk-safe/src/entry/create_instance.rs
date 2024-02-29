@@ -9,7 +9,7 @@ use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
-use vk::commands::{Commands, LoadCommands, Version};
+use vk::commands::{Commands, Extensions, LoadCommands, Version};
 use vk::has_command::DestroyInstance;
 
 /*
@@ -85,8 +85,8 @@ pub struct InstanceCreateInfo<'a, C> {
     _refs: PhantomData<&'a ()>,
 }
 
-impl<'a, C> InstanceCreateInfo<'a, C> {
-    pub const fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
+impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
+    pub fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
         check_vuids::check_vuids!(InstanceCreateInfo);
 
         #[allow(unused_labels)]
@@ -224,6 +224,9 @@ impl<'a, C> InstanceCreateInfo<'a, C> {
             // TODO: extensions not currently supported
         }
 
+        let extensions = C::list_of_extensions();
+        let extensions = extensions.as_ref();
+
         Self {
             inner: vk::InstanceCreateInfo {
                 s_type: vk::StructureType::INSTANCE_CREATE_INFO,
@@ -232,8 +235,11 @@ impl<'a, C> InstanceCreateInfo<'a, C> {
                 p_application_info: &app_info.inner,
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),
-                enabled_extension_count: 0,
-                pp_enabled_extension_names: std::ptr::null(),
+                enabled_extension_count: extensions
+                    .len()
+                    .try_into()
+                    .expect("list of extensions len bigger than u32::MAX"),
+                pp_enabled_extension_names: extensions.as_ptr(),
             },
             _config: PhantomData,
             _refs: PhantomData,

@@ -5,8 +5,8 @@ use vk_safe as vk;
 
 use vk::vk_str;
 
-vk::instance_context!(InstanceContext: VERSION_1_1);
-vk::device_context!(DeviceContext: VERSION_1_0);
+vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_wayland_surface + KHR_surface);
+vk::device_context!(DeviceContext: VERSION_1_0 + KHR_external_fence_fd + KHR_external_fence);
 
 fn main() {
     println!(
@@ -24,14 +24,13 @@ fn main() {
         println!("{e:#?}");
     }
 
-    const INSTANCE_INFO: vk::InstanceCreateInfo<InstanceContext::InstanceContext> =
-        vk::InstanceCreateInfo::new(
-            &vk::ApplicationInfo::new(InstanceContext)
-                .app_name(vk_str!("Example"))
-                .app_version(vk::VkVersion::new(0, 0, 1)),
-        );
+    let app_info = vk::ApplicationInfo::new(InstanceContext)
+        .app_name(vk_str!("Example"))
+        .app_version(vk::VkVersion::new(0, 0, 1));
 
-    let instance = vk::create_instance(&INSTANCE_INFO).unwrap();
+    let instance_info = vk::InstanceCreateInfo::new(&app_info);
+
+    let instance = vk::create_instance(&instance_info).unwrap();
 
     println!("-------");
     println!("{instance:?}");

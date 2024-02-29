@@ -12,7 +12,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use vk::commands::{Commands, LoadCommands, Version};
+use vk::commands::{Commands, Extensions, LoadCommands, Version};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 
 /*
@@ -73,7 +73,7 @@ pub struct DeviceCreateInfo<'a, C, S> {
 }
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
-    pub const fn new<C: Copy, S>(
+    pub fn new<C: Copy + Extensions, S>(
         _: C,
         queue_create_info: &'a [DeviceQueueCreateInfo<S>],
     ) -> DeviceCreateInfo<'a, C, S> {
@@ -604,6 +604,9 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             // checked in DeviceQueueCreateInfoConfiguration, but maybe I should change how this works
         }
 
+        let extensions = C::list_of_extensions();
+        let extensions = extensions.as_ref();
+
         DeviceCreateInfo {
             inner: vk::DeviceCreateInfo {
                 s_type: vk::StructureType::DEVICE_CREATE_INFO,
@@ -613,8 +616,11 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
                 p_queue_create_infos: transmute_slice(queue_create_info).as_ptr(),
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),
-                enabled_extension_count: 0,
-                pp_enabled_extension_names: std::ptr::null(),
+                enabled_extension_count: extensions
+                    .len()
+                    .try_into()
+                    .expect("list of extensions len bigger than u32::MAX"),
+                pp_enabled_extension_names: extensions.as_ptr(),
                 p_enabled_features: std::ptr::null(),
             },
             _config: PhantomData,

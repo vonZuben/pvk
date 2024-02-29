@@ -286,14 +286,16 @@ struct ExtensionDependencyMacros<'a> {
 impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.info.extension_name;
-        let loads: Option<&str> = match name {
+        let loads = match name {
             ExtensionName::Base { ref name } => match (self.for_kind, self.info.kind) {
-                (ExtensionKind::Instance, ExtensionKind::Instance) => Some(name),
-                (ExtensionKind::Device, ExtensionKind::Device) => Some(name),
+                (ExtensionKind::Instance, ExtensionKind::Instance) => Some(name.as_str()),
+                (ExtensionKind::Device, ExtensionKind::Device) => Some(name.as_str()),
                 _ => None,
             },
             ExtensionName::Extra { .. } => None,
-        };
+        }
+        .map(|s| format!("{s}{}{}", "\\", "0")) // building the null character in a way that is only seen as a null character in the generated code
+        .into_iter();
 
         let instance_dependencies = self.info.dependencies.as_ref().and_then(|dep| {
             get_instance_dependency_terms(self.all_extensions, dep).map(DependencyTermMeta::from)
@@ -377,8 +379,8 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
             #[doc(hidden)]
             #[macro_export]
             macro_rules! {@macro_name} {
-                ( $target:ident ) => {
-                    {@loads}
+                ( $list:ident ) => {
+                    {@* let $list = R($list, {@loads}.as_ptr() as *const c_char); } // this works in conjunction with macro code vk-safe-sys
                 }
             }
             pub use {@macro_name} as {@name};
