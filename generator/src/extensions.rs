@@ -380,7 +380,7 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
             #[macro_export]
             macro_rules! {@macro_name} {
                 ( $list:ident ) => {
-                    {@* let $list = R($list, {@loads}.as_ptr() as *const c_char); } // this works in conjunction with macro code vk-safe-sys
+                    {@* let $list = R($list, unsafe { $crate::VkStrRaw::new({@loads}.as_ptr().cast()) }); } // this works in conjunction with macro code vk-safe-sys
                 }
             }
             pub use {@macro_name} as {@name};

@@ -16,6 +16,23 @@ impl krs_quote::ToTokens for StaticCode {
 
             pub type PFN_vkVoidFunction = unsafe extern "system" fn() -> ();
 
+            /// raw c string that is guaranteed to be a valid string for use in Vulkan context
+            ///
+            /// this is only constructed in the vulkan code generator for strings in vk.xml in specific situations
+            #[derive(Clone, Copy)]
+            #[repr(transparent)]
+            pub struct VkStrRaw(*const std::ffi::c_char);
+
+            impl VkStrRaw {
+                pub unsafe fn new(ptr: *const std::ffi::c_char) -> Self {
+                    Self(ptr)
+                }
+
+                pub fn as_ptr(self) -> *const std::ffi::c_char {
+                    self.0
+                }
+            }
+
             macro_rules! vk_bitflags_wrapped {
                 ($name: ident, $ty_name: ty) => {
 

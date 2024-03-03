@@ -22,6 +22,20 @@ impl<'a> VkStr<'a> {
     }
 }
 
+impl std::cmp::PartialEq<vk_safe_sys::VkStrRaw> for VkStr<'_> {
+    fn eq(&self, other: &vk_safe_sys::VkStrRaw) -> bool {
+        let mut s1: *const std::ffi::c_char = self.0.as_ptr().cast();
+        let mut s2: *const std::ffi::c_char = other.as_ptr();
+        unsafe {
+            while *s1 == *s2 && *s1 != 0 {
+                s1 = s1.add(1);
+                s2 = s2.add(1);
+            }
+            *s1 == *s2
+        }
+    }
+}
+
 /// convenience macro to safely create a VkStr with a reference to a normal rust string
 /// will concat!() a null ending to ensure it is a proper c string
 #[macro_export]

@@ -1,5 +1,7 @@
 pub use crate::PFN_vkVoidFunction as VoidFunction;
 pub use crate::{CommandLoadError, LoadCommands};
+
+use crate::VkStrRaw;
 use crate::{FunctionLoader, VulkanCommand};
 
 pub trait Version {
@@ -10,8 +12,8 @@ pub trait Commands {
     type Commands: LoadCommands;
 }
 
-pub trait Extensions {
-    fn list_of_extensions() -> impl AsRef<[*const std::ffi::c_char]>;
+pub unsafe trait Extensions {
+    fn list_of_extensions() -> impl AsRef<[VkStrRaw]>;
 }
 
 /// define what API version and extensions should be used with an instance
@@ -48,8 +50,8 @@ macro_rules! instance_context {
                     };
                 )*
 
-                impl $crate::commands::Extensions for super::$name {
-                    fn list_of_extensions() -> impl AsRef<[*const std::ffi::c_char]> {
+                unsafe impl $crate::commands::Extensions for super::$name {
+                    fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
                         use std::ffi::c_char;
                         use $crate::commands::macro_helper::*;
                         let l = End;
@@ -113,8 +115,8 @@ macro_rules! device_context {
                     };
                 )*
 
-                impl $crate::commands::Extensions for super::$name {
-                    fn list_of_extensions() -> impl AsRef<[*const std::ffi::c_char]> {
+                unsafe impl $crate::commands::Extensions for super::$name {
+                    fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
                         use std::ffi::c_char;
                         use $crate::commands::macro_helper::*;
                         let l = End;
