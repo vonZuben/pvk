@@ -2,7 +2,7 @@ use super::command_impl_prelude::*;
 
 use std::mem::MaybeUninit;
 
-use crate::pretty_version::VkVersion;
+use crate::VkVersion;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceVersion.html

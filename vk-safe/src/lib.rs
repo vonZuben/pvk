@@ -1,8 +1,6 @@
 #[macro_use]
 mod error;
 
-mod pretty_version;
-
 #[macro_use]
 mod helper_macros;
 #[macro_use]
@@ -19,7 +17,7 @@ mod physical_device;
 mod queue_type;
 mod scope;
 
-pub use pretty_version::VkVersion;
+pub use vk_safe_sys::VkVersion;
 pub use vk_str::VkStr;
 
 pub use vk_safe_sys::generated_vulkan::bitmasks::*;

@@ -58,6 +58,22 @@ impl From<(u32, u32, u32)> for VkVersion {
     }
 }
 
+impl std::cmp::PartialEq for VkVersion {
+    fn eq(&self, other: &Self) -> bool {
+        // check if equal without the variant
+        VkVersion::from_triple(self.parts()).0 == VkVersion::from_triple(other.parts()).0
+    }
+}
+
+impl std::cmp::PartialOrd for VkVersion {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        // compare versions without the variant
+        VkVersion::from_triple(self.parts())
+            .0
+            .partial_cmp(&VkVersion::from_triple(other.parts()).0)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::VkVersion;

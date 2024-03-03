@@ -11,6 +11,8 @@
 #[macro_use]
 pub mod generated_vulkan;
 
+mod version_utils;
+
 #[link(name = "vulkan")]
 extern "system" {
     #[link_name = "vkGetInstanceProcAddr"]
@@ -30,3 +32,5 @@ pub mod commands;
 
 pub use generated_vulkan::has_command;
 pub use generated_vulkan::*;
+
+pub use version_utils::VkVersion;

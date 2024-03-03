@@ -3,7 +3,7 @@ use vk_safe_sys as vk;
 
 use crate::scope::{RefScope, Scope};
 
-use crate::pretty_version::VkVersion;
+use crate::VkVersion;
 
 use std::marker::PhantomData;
 
@@ -24,11 +24,7 @@ where
     C: Commands,
     C::Commands: LoadCommands + DestroyInstance + Version,
 {
-    const VERSION: VkVersion = VkVersion::new(
-        C::Commands::VERSION_TRIPLE.0,
-        C::Commands::VERSION_TRIPLE.1,
-        C::Commands::VERSION_TRIPLE.2,
-    );
+    const VERSION: VkVersion = C::Commands::VERSION;
     type Commands = C::Commands;
 }
 

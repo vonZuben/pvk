@@ -3,7 +3,7 @@ pub use crate::{CommandLoadError, LoadCommands};
 use crate::{FunctionLoader, VulkanCommand};
 
 pub trait Version {
-    const VERSION_TRIPLE: (u32, u32, u32);
+    const VERSION: crate::VkVersion;
 }
 
 pub trait Commands {
@@ -35,7 +35,7 @@ macro_rules! instance_context {
                     use $crate::version::instance::traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
                     $crate::version::instance::macros::$v_provider!($name);
                     impl $crate::commands::Version for $name {
-                        const VERSION_TRIPLE: (u32, u32, u32) = $crate::version::numbers::$v_provider;
+                        const VERSION: $crate::VkVersion = $crate::VkVersion::from_triple($crate::version::numbers::$v_provider);
                     }
                 )?
 
@@ -100,7 +100,7 @@ macro_rules! device_context {
                     use $crate::version::device::traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
                     $crate::version::device::macros::$v_provider!($name);
                     impl $crate::commands::Version for $name {
-                        const VERSION_TRIPLE: (u32, u32, u32) = $crate::version::numbers::$v_provider;
+                        const VERSION: $crate::VkVersion = $crate::VkVersion::from_triple($crate::version::numbers::$v_provider);
                     }
                 )?
 

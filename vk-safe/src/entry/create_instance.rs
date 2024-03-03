@@ -1,8 +1,8 @@
 use crate::error::Error;
 use crate::instance_type::{Config, InstanceType};
-use crate::pretty_version::VkVersion;
 use crate::type_conversions::ToC;
 use crate::vk_str::VkStr;
+use crate::VkVersion;
 
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
@@ -313,7 +313,7 @@ impl<'a> ApplicationInfo<'a, ()> {
             // ensured by VkStr
         }
 
-        let version = VkVersion::from_triple(C::Commands::VERSION_TRIPLE);
+        let version = C::Commands::VERSION;
         ApplicationInfo {
             inner: vk::ApplicationInfo {
                 s_type: vk::StructureType::APPLICATION_INFO,
