@@ -29,6 +29,60 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         C: Commands,
         C::Commands: DestroyDevice + LoadCommands + Version,
     {
+        check_vuids::check_vuids!(CreateDevice);
+
+        #[allow(unused_labels)]
+        'VUID_vkCreateDevice_ppEnabledExtensionNames_01387: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "All required device extensions for each extension in the VkDeviceCreateInfo::ppEnabledExtensionNames"
+            "list must also be present in that list"
+            }
+
+            // This is ensured by the context creation macros
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkCreateDevice_physicalDevice_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "physicalDevice must be a valid VkPhysicalDevice handle"
+            }
+
+            // ensured by PhysicalDevice creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkCreateDevice_pCreateInfo_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pCreateInfo must be a valid pointer to a valid VkDeviceCreateInfo structure"
+            }
+
+            // ensured by DeviceCreateInfo creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkCreateDevice_pAllocator_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
+            "structure"
+            }
+
+            // AllocationCallbacks not supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkCreateDevice_pDevice_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::cur_description! {
+            "pDevice must be a valid pointer to a VkDevice handle"
+            }
+
+            // MaybeUninit
+        }
+
         let mut device = MaybeUninit::uninit();
 
         // *********************************************
