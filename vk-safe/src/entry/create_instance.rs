@@ -31,7 +31,7 @@ where
         "list must also be present in that list"
         }
 
-        // checked in InstanceCreateInfo construction
+        // This is ensured by the context creation macros
     }
 
     #[allow(unused_labels)]
@@ -221,7 +221,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
             "to an array of enabledExtensionCount null-terminated UTF-8 strings"
             }
 
-            // TODO: extensions not currently supported
+            // a proper implementation of the unsafe Extensions trait ensures this
         }
 
         let extensions = C::list_of_extensions();
@@ -239,7 +239,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
                     .len()
                     .try_into()
                     .expect("list of extensions len bigger than u32::MAX"),
-                pp_enabled_extension_names: extensions.as_ptr(),
+                pp_enabled_extension_names: extensions.as_ptr().cast(),
             },
             _config: PhantomData,
             _refs: PhantomData,

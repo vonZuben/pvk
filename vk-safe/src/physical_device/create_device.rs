@@ -73,10 +73,13 @@ pub struct DeviceCreateInfo<'a, C, S> {
 }
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
-    pub fn new<C: Copy + Extensions, S>(
+    pub fn new<C: Copy + Extensions + Commands, S>(
         _: C,
         queue_create_info: &'a [DeviceQueueCreateInfo<S>],
-    ) -> DeviceCreateInfo<'a, C, S> {
+    ) -> DeviceCreateInfo<'a, C, S>
+    where
+        C::Commands: Version,
+    {
         check_vuids::check_vuids!(DeviceCreateInfo);
 
         #[allow(unused_labels)]
@@ -137,7 +140,13 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             "must not contain VK_AMD_negative_viewport_height"
             }
 
-            // TODO: extensions not yet supported
+            if C::Commands::VERSION >= crate::VkVersion::new(1, 1, 0) {
+                for e in C::list_of_extensions().as_ref().iter().copied() {
+                    if crate::vk_str!("VK_AMD_negative_viewport_height") == e {
+                        panic!("violated VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_01840")
+                    }
+                }
+            }
         }
 
         #[allow(unused_labels)]
@@ -147,7 +156,24 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             "ppEnabledExtensionNames must not contain both VK_KHR_maintenance1 and VK_AMD_negative_viewport_height"
             }
 
-            // TODO: extensions not yet supported
+            #[allow(non_snake_case)]
+            let mut VK_KHR_maintenance1 = false;
+            #[allow(non_snake_case)]
+            let mut VK_AMD_negative_viewport_height = false;
+
+            for e in C::list_of_extensions().as_ref().iter().copied() {
+                if crate::vk_str!("VK_KHR_maintenance1") == e {
+                    VK_KHR_maintenance1 = true;
+                }
+
+                if crate::vk_str!("VK_AMD_negative_viewport_height") == e {
+                    VK_AMD_negative_viewport_height = true;
+                }
+            }
+
+            if VK_AMD_negative_viewport_height && VK_KHR_maintenance1 {
+                panic!("violated VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_00374")
+            }
         }
 
         #[allow(unused_labels)]
@@ -157,7 +183,24 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             "ppEnabledExtensionNames must not contain both VK_KHR_buffer_device_address and VK_EXT_buffer_device_address"
             }
 
-            // TODO: extensions not yet supported
+            #[allow(non_snake_case)]
+            let mut VK_KHR_buffer_device_address = false;
+            #[allow(non_snake_case)]
+            let mut VK_EXT_buffer_device_address = false;
+
+            for e in C::list_of_extensions().as_ref().iter().copied() {
+                if crate::vk_str!("VK_KHR_buffer_device_address") == e {
+                    VK_KHR_buffer_device_address = true;
+                }
+
+                if crate::vk_str!("VK_EXT_buffer_device_address") == e {
+                    VK_EXT_buffer_device_address = true;
+                }
+            }
+
+            if VK_KHR_buffer_device_address && VK_EXT_buffer_device_address {
+                panic!("violated VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_03328")
+            }
         }
 
         #[allow(unused_labels)]
@@ -580,7 +623,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             "to an array of enabledExtensionCount null-terminated UTF-8 strings"
             }
 
-            // TODO: extensions not supported
+            // a proper implementation of the unsafe Extensions trait ensures this
         }
 
         #[allow(unused_labels)]
@@ -620,7 +663,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
                     .len()
                     .try_into()
                     .expect("list of extensions len bigger than u32::MAX"),
-                pp_enabled_extension_names: extensions.as_ptr(),
+                pp_enabled_extension_names: extensions.as_ptr().cast(),
                 p_enabled_features: std::ptr::null(),
             },
             _config: PhantomData,
