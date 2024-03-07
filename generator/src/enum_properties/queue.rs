@@ -1,8 +1,8 @@
 use super::*;
 
-pub struct QueueProperties;
+pub struct Delegate;
 
-impl<I: Variants> ToTokensDelegate<I> for QueueProperties {
+impl<I: Variants> ToTokensDelegate<I> for Delegate {
     fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream) {
         let variants = params.variants.clone();
 

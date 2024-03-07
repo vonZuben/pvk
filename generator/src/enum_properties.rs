@@ -8,7 +8,10 @@ if applicable
 */
 
 mod format;
+use format as VkFormat;
+
 mod queue;
+use queue as VkQueueFlags;
 
 use krs_quote::{krs_quote_with, ToTokens, TokenStream};
 
@@ -28,20 +31,28 @@ impl<I> Properties<I> {
     }
 }
 
-impl<I: Variants> ToTokens for Properties<I> {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        match self.target.as_str() {
-            "VkFormat" => {
-                format::FormatProperties::delegate_to_tokens(self, tokens);
-            }
-            "VkQueueFlags" => {
-                queue::QueueProperties::delegate_to_tokens(self, tokens);
-            }
+macro_rules! match_enums {
+    ( $from:ident $to:ident : $( $name:ident ),*) => {
+        match $from.target.as_str() {
+            $(
+                stringify!($name) => {
+                    $name::Delegate::delegate_to_tokens($from, $to);
+                }
+            )*
             _ => {}
         }
+    };
+}
+
+impl<I: Variants> ToTokens for Properties<I> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        match_enums!(self tokens: VkFormat, VkQueueFlags);
     }
 }
 
+/// trait to ensure each delegate has the same interface
+///
+/// not really needed, but nice to ensure the interface is well defined and consistent
 trait ToTokensDelegate<I> {
     fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream);
 }

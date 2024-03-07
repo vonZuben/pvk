@@ -1,8 +1,8 @@
 use super::*;
 
-pub struct FormatProperties;
+pub struct Delegate;
 
-impl<I: Iterator<Item = VkTyName> + Clone> ToTokensDelegate<I> for FormatProperties {
+impl<I: Iterator<Item = VkTyName> + Clone> ToTokensDelegate<I> for Delegate {
     fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream) {
         let target = params.target;
         let variants = &params.variants;
