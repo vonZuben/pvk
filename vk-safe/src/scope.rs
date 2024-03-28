@@ -78,7 +78,7 @@ impl<H> std::ops::Deref for Scope<'_, H> {
 /// to construct new references by Deref, then maybe there is no issue either way.
 #[repr(transparent)]
 pub struct RefScope<S, T> {
-    handle: *const T,
+    _handle: *const T,
     _scope: PhantomData<S>,
 }
 
@@ -110,14 +110,14 @@ impl<S, H> std::ops::Deref for RefScope<S, H> {
         // - thus, life of Scope >= RefScope<Scope, H>
         // - life of H >= Scope >= RefScope
         // - thus, we can create a &H with the shorter life of RefScope (from elided lifetime)
-        unsafe { &*self.handle }
+        unsafe { &*self._handle }
     }
 }
 
 impl<S, T> Clone for RefScope<S, T> {
     fn clone(&self) -> Self {
         RefScope {
-            handle: self.handle,
+            _handle: self._handle,
             _scope: PhantomData,
         }
     }
