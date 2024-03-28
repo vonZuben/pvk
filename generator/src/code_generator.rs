@@ -53,7 +53,7 @@ pub struct Generator<'a> {
     // code generation
     definitions: definitions::Definitions2,
     constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
-    enum_variants: utils::VecMap<utils::VkTyName, enumerations::EnumVariants<'a>>,
+    enum_variants: enumerations::EnumVariantsCollection<'a>,
     commands: commands::Commands2,
     feature_collection: features::FeatureCollection,
     extensions: extensions::ExtensionCollection,
@@ -126,8 +126,8 @@ impl<'a> Generator<'a> {
     }
 
     pub fn enum_variants(&self) -> String {
-        let enum_variants = self.enum_variants.iter();
-        krs_quote!({@* {@enum_variants} }).to_string()
+        let enum_variants = &self.enum_variants;
+        krs_quote!({@enum_variants}).to_string()
     }
 
     pub fn function_pointers(&self) -> String {

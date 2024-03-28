@@ -4,6 +4,57 @@ use crate::utils::{self, VkTyName};
 
 use crate::constants;
 
+#[derive(Default)]
+pub struct EnumVariantsCollection<'a> {
+    enum_variants: utils::VecMap<utils::VkTyName, EnumVariants<'a>>,
+}
+
+impl krs_quote::ToTokens for EnumVariantsCollection<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let variants = self.enum_variants.iter();
+
+        let flag_types = self.enum_variants.iter().map(|ev| FlagBitTypes(ev));
+
+        krs_quote_with!(tokens <-
+            {@* {@variants}}
+
+            /// Type level versions of all Flag bits
+            pub mod flag_types {
+                {@* {@flag_types}}
+            }
+        );
+    }
+}
+
+impl<'a> std::ops::Deref for EnumVariantsCollection<'a> {
+    type Target = utils::VecMap<utils::VkTyName, EnumVariants<'a>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.enum_variants
+    }
+}
+
+impl<'a> std::ops::DerefMut for EnumVariantsCollection<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.enum_variants
+    }
+}
+
+struct FlagBitTypes<'a>(&'a EnumVariants<'a>);
+
+impl krs_quote::ToTokens for FlagBitTypes<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let target = self.0.target;
+        let variant_names = self.0.variants.iter().map(|c| *c.name());
+
+        krs_quote_with!(tokens <-
+            pub mod {@target} {
+                {@* pub struct {@variant_names} { priv_phantom: std::marker::PhantomData<()> } }
+            }
+        )
+    }
+}
+
 pub enum EnumKind {
     Normal,
     BitFlags,
@@ -153,81 +204,3 @@ pub fn make_variant_name(enumeration_name: &str, variant_name: &str) -> String {
         const_name_string
     }
 }
-
-// pub fn make_enumeration_display_code<'a>(enums: &'a [(&String, &Vec<String>)]) -> impl Iterator<Item=TokenStream> + 'a {
-
-//     enums.iter().map( | (enum_name, variants) | {
-
-//         let display_cases = variants.iter().map( |enum_constant| {
-//             let const_name = make_variant_name(enum_name, enum_constant).as_code();
-//             quote!( Self::#const_name => Some(stringify!(#const_name)), )
-//         });
-
-//         let name = enum_name.as_code();
-
-//         if enum_name.contains("FlagBits") || enum_name.contains("Flags") {
-//             quote!{
-//                 impl ::std::fmt::Display for #name {
-//                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-//                         let match_flag_variant = |flags| match flags {
-//                             #( #display_cases )*
-//                             _ => None,
-//                         };
-
-//                         // first check if variant matches an 'ALL' flag e.g. SHADER_STAGE_ALL
-//                         if let Some(display) = match_flag_variant(*self) {
-//                             return write!(f, "{}", display);
-//                         }
-
-//                         // else, match and print each variant individually
-//                         let mut bitset = self.0 as i32;
-//                         while let Some(bit) = take_lowest_bit(&mut bitset) {
-//                             let display: Option<&'static str> =
-//                                 match_flag_variant( unsafe { ::std::mem::transmute::<_, Self>(bit) } );
-//                             if let Some(display) = display {
-//                                 if bitset == 0 {
-//                                     write!(f, "{}", display)?;
-//                                 }
-//                                 else {
-//                                     write!(f, "{} | ", display)?;
-//                                 }
-//                             }
-//                             else {
-//                                 break;
-//                             }
-//                         }
-//                         Ok(())
-//                     }
-//                 }
-//                 impl ::std::fmt::Debug for #name {
-//                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-//                         write!(f, concat!(#enum_name, "({}):[{}]"), self.0, self)
-//                     }
-//                 }
-//             }
-//         }
-//         else {
-//             quote!{
-//                 impl ::std::fmt::Display for #name {
-//                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-//                         let display: Option<&'static str> = match *self {
-//                             #( #display_cases )*
-//                             _ => None,
-//                         };
-//                         if let Some(display) = display {
-//                             write!(f, "{}", display)
-//                         }
-//                         else {
-//                             write!(f, "")
-//                         }
-//                     }
-//                 }
-//                 impl ::std::fmt::Debug for #name {
-//                     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-//                         write!(f, concat!(#enum_name, "({}):[{}]"), self.0, self)
-//                     }
-//                 }
-//             }
-//         }
-//     })
-// }
