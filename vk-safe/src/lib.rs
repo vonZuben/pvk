@@ -7,6 +7,7 @@ mod helper_macros;
 mod error_macros;
 
 mod array_storage;
+mod flags;
 mod type_conversions;
 mod vk_str;
 
@@ -31,6 +32,8 @@ pub use instance_type::instance_exports::*;
 pub use physical_device::physical_device_exports::*;
 
 pub use scope::scope;
+
+pub use flags::*;
 
 pub mod instance {
     pub use vk_safe_sys::extension::instance::traits::*;
