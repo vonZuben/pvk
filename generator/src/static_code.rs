@@ -69,22 +69,27 @@ impl krs_quote::ToTokens for StaticCode {
                             self.eq(Self::empty())
                         }
 
-                        #[doc = r" Returns whether `other` is a subset of `self`"]
                         #[inline]
-                        pub const fn contains(self, other: $name) -> bool {
-                            self.and(other).eq(other)
+                        pub const fn is_not_empty(self) -> bool {
+                            !self.is_empty()
                         }
 
-                        #[doc = r" Returns whether `self` includes any bits from `other`"]
+                        #[doc = r" Returns true if `other` is a subset of `self`; always false if other is empty"]
+                        #[inline]
+                        pub const fn contains(self, other: $name) -> bool {
+                            other.subset_of(self)
+                        }
+
+                        #[doc = r" Returns true if `self` includes any bits from `other`"]
                         #[inline]
                         pub const fn any_of(self, other: $name) -> bool {
                             !self.and(other).eq(Self::empty())
                         }
 
-                        #[doc = r" Returns whether `self` includes bits only from `other`"]
+                        #[doc = r" Returns true if `self` includes bits only from `other`; always false if self is empty"]
                         #[inline]
                         pub const fn subset_of(self, other: $name) -> bool {
-                            self.0 | other.0 == other.0
+                            self.or(other).eq(other) && self.is_not_empty()
                         }
 
                         /// compare equal for const
