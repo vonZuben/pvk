@@ -5,29 +5,39 @@ use crate::physical_device::get_physical_device_memory_properties::MemoryTypeCho
 
 use vk::has_command::{AllocateMemory, FreeMemory};
 
+use crate::flags::Flags;
+
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 
 pub trait DeviceMemoryConfig {
     type Commands: FreeMemory;
     type Device: Device<Commands = Self::Commands>;
+    type PropertyFlags: Flags;
+    type HeapFlags: Flags;
 }
 
-pub struct Config<D> {
-    _device: PhantomData<D>,
+pub struct Config<D, P, H> {
+    device: PhantomData<D>,
+    property_flags: PhantomData<P>,
+    heap_flags: PhantomData<H>,
 }
 
-impl<D: Device> DeviceMemoryConfig for Config<D>
+impl<D: Device, P: Flags, H: Flags> DeviceMemoryConfig for Config<D, P, H>
 where
     D::Commands: FreeMemory,
 {
     type Commands = D::Commands;
     type Device = D;
+    type PropertyFlags = P;
+    type HeapFlags = H;
 }
 
 pub trait DeviceMemory: Deref<Target = DeviceMemoryType<Self::Config>> {
     type Config: DeviceMemoryConfig<Device = Self::Device>;
     type Device;
+    type PropertyFlags: Flags;
+    type HeapFlags: Flags;
 }
 
 pub struct DeviceMemoryType<D: DeviceMemoryConfig> {
@@ -46,6 +56,8 @@ impl<D: DeviceMemoryConfig> Deref for DeviceMemoryType<D> {
 impl<D: DeviceMemoryConfig> DeviceMemory for DeviceMemoryType<D> {
     type Config = D;
     type Device = D::Device;
+    type PropertyFlags = D::PropertyFlags;
+    type HeapFlags = D::HeapFlags;
 }
 
 impl<D: DeviceMemoryConfig> DeviceMemoryType<D> {
@@ -61,10 +73,10 @@ impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemoryType<D> {
 }
 
 impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C> {
-    pub fn allocate_memory(
+    pub fn allocate_memory<P: Flags, H: Flags>(
         &self,
-        info: &MemoryAllocateInfo<C::PhysicalDevice>,
-    ) -> Result<DeviceMemoryType<Config<S>>, vk::Result>
+        info: &MemoryAllocateInfo<C::PhysicalDevice, P, H>,
+    ) -> Result<DeviceMemoryType<Config<S, P, H>>, vk::Result>
     where
         C::Commands: AllocateMemory,
         S::Commands: FreeMemory,
@@ -147,13 +159,18 @@ impl<D: DeviceMemoryConfig> Drop for DeviceMemoryType<D> {
     }
 }
 
-pub struct MemoryAllocateInfo<S> {
+pub struct MemoryAllocateInfo<S, P, H> {
     inner: vk::MemoryAllocateInfo,
-    _pd: std::marker::PhantomData<S>,
+    pd: PhantomData<S>,
+    property_flags: PhantomData<P>,
+    heap_flags: PhantomData<H>,
 }
 
-impl<S> MemoryAllocateInfo<S> {
-    pub const fn new(size: std::num::NonZeroU64, memory_type_choice: MemoryTypeChoice<S>) -> Self {
+impl<S, P, H> MemoryAllocateInfo<S, P, H> {
+    pub const fn new(
+        size: std::num::NonZeroU64,
+        memory_type_choice: MemoryTypeChoice<S, P, H>,
+    ) -> Self {
         #![allow(unused_labels)]
         check_vuids::check_vuids!(MemoryAllocateInfo);
 
@@ -843,7 +860,9 @@ impl<S> MemoryAllocateInfo<S> {
 
         Self {
             inner,
-            _pd: std::marker::PhantomData,
+            pd: PhantomData,
+            property_flags: PhantomData,
+            heap_flags: PhantomData,
         }
     }
 }

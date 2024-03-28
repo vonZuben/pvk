@@ -5,8 +5,12 @@ use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceMemoryProperties;
 
+use crate::flags::Flags;
+
 use std::fmt;
 use std::mem::MaybeUninit;
+
+use std::marker::PhantomData;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
@@ -55,15 +59,9 @@ simple_struct_wrapper_scoped!(PhysicalDeviceMemoryProperties);
 
 simple_struct_wrapper_scoped!(MemoryType impl Debug, Deref, Clone, Copy);
 
-impl<S> MemoryType<S> {
-    // helper method since the only way to get the property_flags normally
-    // is through Deref trait which is not possible const context
-    pub(crate) const fn property_flags(&self) -> vk::MemoryPropertyFlags {
-        self.inner.property_flags
-    }
-}
+simple_struct_wrapper_scoped!(MemoryHeap impl Debug, Deref, Clone, Copy);
 
-simple_struct_wrapper_scoped!(MemoryHeap impl Debug, Deref);
+unit_error!(pub InvalidMemoryType);
 
 impl<S> PhysicalDeviceMemoryProperties<S> {
     pub fn memory_types(&self) -> &[MemoryType<S>] {
@@ -82,20 +80,75 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
         (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute_slice()
     }
 
-    pub fn choose_type<'a>(&'a self, index: u32) -> MemoryTypeChoice<S> {
+    /// choose the given index as a memory type for other operations (e.g. to allocate)
+    /// Returns Ok with the chosen type if it has the correct MemoryPropertyFlags and MemoryHeapFlags
+    /// otherwise return an error indicating that the memory type is not appropriate
+    pub fn choose_type<
+        'a,
+        P: Flags<Type = vk::MemoryPropertyFlags>,
+        H: Flags<Type = vk::MemoryHeapFlags>,
+    >(
+        &'a self,
+        index: u32,
+        _property_flags: P,
+        _heap_flags: H,
+    ) -> Result<MemoryTypeChoice<S, P, H>, InvalidMemoryType> {
         let memory_types = self.memory_types();
-        assert!((index as usize) < memory_types.len());
-        MemoryTypeChoice {
-            ty: self.memory_types()[index as usize],
-            index,
+
+        if (index as usize) < memory_types.len() {
+            let ty = self.memory_types()[index as usize];
+            let heap = self.memory_heaps()[ty.heap_index as usize];
+
+            if ty.property_flags.contains(P::FLAGS) && !heap.flags.contains(H::NOT_FLAGS) {
+                return Ok(MemoryTypeChoice {
+                    scope: PhantomData,
+                    index,
+                    property_flags: PhantomData,
+                    heap_flags: PhantomData,
+                });
+            }
         }
+
+        Err(InvalidMemoryType)
+    }
+
+    /// find the first memory type that satisfies the given MemoryPropertyFlags and MemoryHeapFlags
+    ///
+    /// This is a convenience function. If employing more advanced memory management, it will be better to
+    /// consider all available memory types more carefully.
+    pub fn find_ty<
+        'a,
+        P: Flags<Type = vk::MemoryPropertyFlags>,
+        H: Flags<Type = vk::MemoryHeapFlags>,
+    >(
+        &'a self,
+        _property_flags: P,
+        _heap_flags: H,
+    ) -> Option<MemoryTypeChoice<S, P, H>> {
+        for (index, ty) in self.memory_types().iter().enumerate() {
+            let heap = self.memory_heaps()[ty.heap_index as usize];
+
+            if ty.property_flags.contains(P::FLAGS) && !heap.flags.contains(H::NOT_FLAGS) {
+                return Some(MemoryTypeChoice {
+                    scope: PhantomData,
+                    index: index as u32, // should be a safe as cast since we assume the number of memory types to enumerate is valid
+                    property_flags: PhantomData,
+                    heap_flags: PhantomData,
+                });
+            }
+        }
+
+        None
     }
 }
 
 #[derive(Clone, Copy)]
-pub struct MemoryTypeChoice<S> {
-    pub(crate) ty: MemoryType<S>,
+pub struct MemoryTypeChoice<S, P, H> {
+    scope: PhantomData<S>,
+    // pub(crate) ty: MemoryType<S>,
     pub(crate) index: u32,
+    property_flags: PhantomData<P>,
+    heap_flags: PhantomData<H>,
 }
 
 impl<S> fmt::Debug for PhysicalDeviceMemoryProperties<S> {
