@@ -125,12 +125,18 @@ fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice
             .create_device(&device_create_info, &queue_family_properties)
             .unwrap();
 
+        vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
+        vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
+
         vk::scope(device, |device| {
-            let mem_type = mem_props.choose_type(0);
+            let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
             let alloc_info =
                 vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
-            let mem = device.allocate_memory(&alloc_info);
+            let mem = device.allocate_memory(&alloc_info).unwrap();
             println!("{mem:?}");
+
+            let mapped_memory = device.map_memory(mem).unwrap();
+            println!("{mapped_memory:#?}");
 
             println!("-------");
             println!("{device:#?}");
