@@ -135,9 +135,11 @@ impl krs_quote::ToTokens for ExtensionCollection {
                         use crate::has_command::*;
                         {@* {@instance_traits}}
                     }
+                    #[doc(hidden)]
                     pub mod macros {
                         {@* {@instance_macros}}
                     }
+                    #[doc(hidden)]
                     pub mod structs {
                         use super::super::super::*;
                         {@* {@instance_structs}}
@@ -149,9 +151,11 @@ impl krs_quote::ToTokens for ExtensionCollection {
                         use crate::has_command::*;
                         {@* {@device_traits}}
                     }
+                    #[doc(hidden)]
                     pub mod macros {
                         {@* {@device_macros}}
                     }
+                    #[doc(hidden)]
                     pub mod structs {
                         use super::super::super::*;
                         {@* {@device_structs}}
@@ -159,7 +163,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 }
             }
 
-            #[doc(hidden)]
+            #[cfg(not(doc))]
             pub mod dependencies {
                 #[repr(C)]
                 pub struct R<C, T>(C, T);
@@ -194,14 +198,17 @@ impl krs_quote::ToTokens for ExtensionCollection {
                     }
                 }
 
+                #[doc(hidden)]
                 pub mod traits {
                     {@* pub trait {@extension_names} {} }
                 }
 
+                #[doc(hidden)]
                 pub mod instance {
                     {@* {@instance_dep_macros}}
                 }
 
+                #[doc(hidden)]
                 pub mod device {
                     {@* {@device_dep_macros}}
                 }
@@ -221,6 +228,7 @@ impl krs_quote::ToTokens for ExtensionStruct<'_> {
         let command = self.commands.iter();
 
         krs_quote_with!(tokens <-
+            #[doc(hidden)]
             pub struct {@name} {
                 {@* pub {@command}: {@command}, }
             }
@@ -346,10 +354,12 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
             ExtensionKind::Device => Some(krs_quote::ToTokensClosure(
                 |tokens: &mut krs_quote::TokenStream| {
                     krs_quote_with!(tokens <-
+                        #[doc(hidden)]
                         pub mod instance {
                             use crate::dependencies::traits::*;
                             use crate::version::instance::traits::*;
 
+                            #[doc(hidden)]
                             pub trait HasDependency<O> {}
                             impl<I, {@secondary_options}> HasDependency<({@secondary_options})> for I {@* where I: {@secondary_dep_name}<{@secondary_options}> } {}
 
@@ -364,10 +374,12 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
 
         krs_quote_with!(tokens <-
 
+            #[doc(hidden)]
             pub mod {@name} {
                 use crate::dependencies::traits::*;
                 use crate::version::{@mod_name}::traits::*;
 
+                #[doc(hidden)]
                 pub const fn check_dependencies<T {@* : {@main_dep_name}<{@main_options}>, {@main_options} }>
                     (_infer: std::marker::PhantomData<T>) {}
 
@@ -481,6 +493,7 @@ impl krs_quote::ToTokens for DependencyTermTraits<'_> {
                     .map(|n| format!("O{n}").as_code());
 
                 krs_quote_with!(tokens <-
+                    #[doc(hidden)]
                     pub trait {@name}<{@,* {@options}}> {}
                     impl<T, {@,* {@options}}> {@name}<{@,* {@options}}> for T where T: {@+* {@sub_terms}} {}
                 );
@@ -520,8 +533,9 @@ impl krs_quote::ToTokens for DependencyTermTraits<'_> {
                     .collect();
 
                 krs_quote_with!(tokens <-
+                    #[doc(hidden)]
                     pub trait {@name}<O0, {@,* {@sub_options}}> {}
-                    {@* pub struct {@option_names};}
+                    {@* #[doc(hidden)] pub struct {@option_names};}
 
                     {@* impl<T, {@,* {@sub_options}}> {@name}<{@option_names}, {@,* {@sub_options}}> for T where T: {@sub_terms} {} }
                 );
