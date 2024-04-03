@@ -130,9 +130,20 @@ impl krs_quote::ToTokens for ExtensionCollection {
 
             #[doc(hidden)]
             pub mod extension {
+                #[doc(hidden)]
+                /// Prevent extensions with no commends from having a blanket impl for all types
+                ///
+                /// some extensions have no commands, so the automatically generated impl would have no bounds
+                /// this pollutes the docs by showing pointless blanket trait implementations
+                /// it is also incorrect since the trait should only be implemented to indicate that you actually provide the extension
+                ///
+                /// If a type is going to provide extensions, it must first opt-in by implementing this trait
+                pub unsafe trait ExtensionProvider {}
+
                 pub mod instance {
                     pub mod traits {
                         use crate::has_command::*;
+                        use crate::extension::ExtensionProvider;
                         {@* {@instance_traits}}
                     }
                     #[doc(hidden)]
@@ -149,6 +160,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 pub mod device {
                     pub mod traits {
                         use crate::has_command::*;
+                        use crate::extension::ExtensionProvider;
                         {@* {@device_traits}}
                     }
                     #[doc(hidden)]
@@ -254,8 +266,8 @@ impl krs_quote::ToTokens for ExtensionTrait<'_> {
         let name = self.name;
         let commands = self.commands.iter();
         krs_quote_with!(tokens <-
-            pub trait {@name} : {@+* {@commands}} {}
-            impl<T> {@name} for T where T: {@+* {@commands}} {}
+            pub trait {@name} : ExtensionProvider {@* + {@commands}} {}
+            impl<T> {@name} for T where T: ExtensionProvider {@* + {@commands}} {}
         );
     }
 }
