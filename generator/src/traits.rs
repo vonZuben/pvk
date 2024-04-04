@@ -62,6 +62,8 @@ impl ToTokens for VulkanCommand {
                     unsafe { Ok(C::new(fptr)) }
                 }
             }
+
+            pub unsafe trait CommandProvider {}
         )
     }
 }

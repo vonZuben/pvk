@@ -12,21 +12,21 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use vk::commands::{Commands, Extensions, LoadCommands, Version};
+use vk::commands::{Commands, Extensions, InstanceDependencies, LoadCommands, Version};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
 impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn create_device<'a, C>(
+    pub fn create_device<'a, C, O>(
         &self,
         create_info: &DeviceCreateInfo<'a, C, S>,
         queue_properties: &'a QueueFamiliesRef<S>,
     ) -> Result<DeviceType<Config<'a, C, S>>, Error>
     where
         I::Commands: CreateDevice + EnumerateDeviceExtensionProperties,
-        C: Commands,
+        C: Commands + InstanceDependencies<I::Commands, O>,
         C::Commands: DestroyDevice + LoadCommands + Version,
     {
         check_vuids::check_vuids!(CreateDevice);

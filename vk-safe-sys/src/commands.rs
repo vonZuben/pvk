@@ -12,6 +12,8 @@ pub trait Commands {
     type Commands: LoadCommands;
 }
 
+pub unsafe trait InstanceDependencies<I, O> {}
+
 pub unsafe trait Extensions {
     fn list_of_extensions() -> impl AsRef<[VkStrRaw]>;
 }
@@ -32,7 +34,7 @@ macro_rules! instance_context {
                 type Commands = commands::$name;
             }
 
-            unsafe impl $crate::extension::ExtensionProvider for $name {}
+            unsafe impl $crate::CommandProvider for $name {}
 
             mod commands {
                 $(
@@ -51,6 +53,8 @@ macro_rules! instance_context {
                         $crate::dependencies::instance::$e_provider::check_dependencies(std::marker::PhantomData::<$name>)
                     };
                 )*
+
+                unsafe impl $crate::CommandProvider for $name {}
 
                 unsafe impl $crate::commands::Extensions for super::$name {
                     fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
@@ -99,7 +103,7 @@ macro_rules! device_context {
                 type Commands = commands::$name;
             }
 
-            unsafe impl $crate::extension::ExtensionProvider for $name {}
+            unsafe impl $crate::CommandProvider for $name {}
 
             mod commands {
                 $(
@@ -118,6 +122,12 @@ macro_rules! device_context {
                         $crate::dependencies::device::$e_provider::check_dependencies(std::marker::PhantomData::<$name>)
                     };
                 )*
+
+                unsafe impl $crate::CommandProvider for $name {}
+
+                #[allow(non_camel_case_types)]
+                unsafe impl<I $(, $e_provider)*> $crate::commands::InstanceDependencies<I, ( $($e_provider),* )> for super::$name
+                    where I: $crate::CommandProvider $( + $crate::dependencies::device::$e_provider::instance::HasDependency<$e_provider> )* {}
 
                 unsafe impl $crate::commands::Extensions for super::$name {
                     fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
