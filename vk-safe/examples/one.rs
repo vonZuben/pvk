@@ -148,7 +148,7 @@ fn run_physical_device<
             for qf in device.get_configured_queue_families() {
                 println!("queue family: {:#?}", qf);
 
-                vk::queue_capabilities!(QCaps: GRAPHICS_BIT, COMPUTE_BIT, TRANSFER_BIT);
+                vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
                 let qf = qf.with_capability(QCaps).unwrap();
 
                 let queue = qf.get_queue(0);

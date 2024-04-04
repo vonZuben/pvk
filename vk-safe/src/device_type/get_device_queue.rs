@@ -3,10 +3,10 @@ use super::*;
 use std::mem::MaybeUninit;
 
 use vk::has_command::GetDeviceQueue;
-use vk::queue_capability::QueueCapability;
 
 use crate::queue_type::{Config, QueueType};
 
+use crate::queue_type::QueueCapability;
 use crate::DeviceQueueCreateInfo;
 
 impl<'a, S, C: DeviceConfig> ScopedDeviceType<S, C> {
@@ -104,7 +104,7 @@ impl<D: Device, U> QueueFamily<D, U> {
         if self
             .queue_family_properties()
             .queue_flags
-            .contains(Q::CAPABILITY)
+            .contains(Q::FLAGS)
         {
             Ok(QueueFamily {
                 config_index: self.config_index,

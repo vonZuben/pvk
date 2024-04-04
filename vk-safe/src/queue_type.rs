@@ -3,8 +3,10 @@ use std::marker::PhantomData;
 use vk_safe_sys as vk;
 
 use crate::device_type::Device;
+use crate::flags::Flags;
 
-use vk::queue_capability::QueueCapability;
+pub trait QueueCapability: Flags<Type = vk::QueueFlags> {}
+impl<T> QueueCapability for T where T: Flags<Type = vk::QueueFlags> {}
 
 pub trait QueueConfig {
     type Device: Device;

@@ -24,7 +24,7 @@ pub use vk_str::VkStr;
 pub use vk_safe_sys::generated_vulkan::bitmasks::*;
 pub use vk_safe_sys::generated_vulkan::enum_variants::*;
 pub use vk_safe_sys::generated_vulkan::enumerations::*;
-pub use vk_safe_sys::{device_context, instance_context, queue_capabilities};
+pub use vk_safe_sys::{device_context, instance_context};
 
 pub use device_type::device_exports::*;
 pub use entry::*;
