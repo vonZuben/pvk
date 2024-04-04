@@ -14,7 +14,7 @@
 /*!
 # Example
 ```
-pub fn create_instance() -> Instance {
+pub fn create_instance() {
     check_vuids::check_vuids!(CreateInstance);
 
     #[allow(unused_labels)]

@@ -1,5 +1,9 @@
 // trace_macros!(true);
-#![recursion_limit = "256"]
+
+/*!
+This is an example program that grows along side with the development of the vk-safe API in order to test all functions together.
+Thus, I try to make use of all APIs here as I add them.
+ */
 
 use vk_safe as vk;
 
@@ -14,25 +18,23 @@ fn main() {
         vk::enumerate_instance_version().unwrap()
     );
 
-    println!("--Extensions--");
+    println!("--Supported instance extensions--");
     for e in vk::enumerate_instance_extension_properties(None, Vec::new()).unwrap() {
         println!("{e:#?}");
     }
 
-    println!("--Layers--");
+    println!("--Available instance layers--");
     for e in vk::enumerate_instance_layer_properties(Vec::new()).unwrap() {
         println!("{e:#?}");
     }
 
     let app_info = vk::ApplicationInfo::new(InstanceContext)
-        .app_name(vk_str!("Example"))
+        .app_name(vk_str!("Example App"))
         .app_version(vk::VkVersion::new(0, 0, 1));
-
     let instance_info = vk::InstanceCreateInfo::new(&app_info);
-
     let instance = vk::create_instance(&instance_info).unwrap();
 
-    println!("-------");
+    println!("--Example Instance handle--");
     println!("{instance:?}");
 
     vk::scope(instance, |instance| {
@@ -40,10 +42,10 @@ fn main() {
             .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
             .unwrap();
 
-        println!("-------");
+        println!("--Physical Devices on the system--");
         println!("{physical_devices:?}");
 
-        println!("-------");
+        println!("--For Each Physical Device--");
         for pd in physical_devices.iter() {
             std::thread::scope(|scope| {
                 scope.spawn(vk::scope(pd, |pd| run_physical_device(pd)));
@@ -57,27 +59,28 @@ fn run_physical_device<
 >(
     pd: impl vk::PhysicalDevice<Commands = C>,
 ) {
-    println!("{:#?}", pd.get_physical_device_properties());
     println!("-------");
+    println!("{:#?}", pd.get_physical_device_properties());
 
+    println!("-------");
     println!("{:#?}", pd.get_physical_device_features());
 
-    println!("---Device Extensions----");
+    println!("--Supported device extensions--");
     println!(
         "{:#?}",
         pd.enumerate_device_extension_properties(None, Vec::new())
             .unwrap()
     );
 
-    println!("---Device Layers----");
+    println!("--Available device layers (NOTE: device layers are depreciated by Vulkan)--");
     println!(
         "{:#?}",
         pd.enumerate_device_layer_properties(Vec::new()).unwrap()
     );
 
-    //test getting format properties
     let srgb_properties = pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
-    println!("R8G8B8A8_SRGB: {srgb_properties:#?}");
+    println!("--Example of device format propertied for R8G8B8A8_SRGB:");
+    println!("{srgb_properties:#?}");
 
     const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
         vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
@@ -87,11 +90,13 @@ fn run_physical_device<
             vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
             vk::ImageCreateFlags::empty(),
         );
-    //test image format properties
+
     let tst_image_format_properties = pd
         .get_physical_device_image_format_properties(PARAMS)
         .unwrap();
+    println!("--Example of device format propertied for R8G8B8A8_SRGB, 2D, Optimal tiling, to be used as Transfer destination and Color attachment:");
     println!("{tst_image_format_properties:#?}");
+
     let sparse_image_format_properties = pd
         .get_physical_device_sparse_image_format_properties(
             vk::SampleCountFlags::TYPE_1_BIT,
@@ -99,16 +104,17 @@ fn run_physical_device<
             Vec::new(),
         )
         .unwrap();
-    println!("---spare properties for above image format properties----");
+    println!("--Example sparse properties for above image format properties--");
     println!("{sparse_image_format_properties:#?}");
 
-    println!("-------");
     let queue_family_properties = pd
         .get_physical_device_queue_family_properties(Vec::new())
         .unwrap();
+    println!("--Queue family properties for this physical device--");
     println!("{:#?}", queue_family_properties);
-    println!("-------");
+
     let mem_props = pd.get_physical_device_memory_properties();
+    println!("--Memory properties for this physical device--");
     println!("{:#?}", mem_props);
 
     queue_family_properties.config_scope(|qp| {
@@ -129,6 +135,9 @@ fn run_physical_device<
             .create_device(&device_create_info, &queue_family_properties)
             .unwrap();
 
+        println!("--Example Device handle--");
+        println!("{device:#?}");
+
         vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
         vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
 
@@ -137,21 +146,22 @@ fn run_physical_device<
             let alloc_info =
                 vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
             let mem = device.allocate_memory(&alloc_info).unwrap();
+            println!("--Example allocated memory handle--");
             println!("{mem:?}");
 
             let mapped_memory = device.map_memory(mem).unwrap();
+            println!("--Example mapped memory handle--");
             println!("{mapped_memory:#?}");
 
-            println!("-------");
-            println!("{device:#?}");
-
             for qf in device.get_configured_queue_families() {
+                println!("--Queue family that was configured during device creation--");
                 println!("queue family: {:#?}", qf);
 
                 vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
                 let qf = qf.with_capability(QCaps).unwrap();
 
                 let queue = qf.get_queue(0);
+                println!("--Example Queue handle--");
                 println!("{queue:#?}");
             }
         })();
