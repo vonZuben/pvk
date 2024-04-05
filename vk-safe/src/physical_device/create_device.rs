@@ -16,6 +16,17 @@ use vk::commands::{Commands, Extensions, InstanceDependencies, LoadCommands};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 use vk::Version;
 
+pub trait VersionCheck<I> {
+    const VALID: ();
+}
+
+impl<I: Version, D: Version> VersionCheck<I> for D {
+    const VALID: () = {
+        if D::VERSION.raw() > I::VERSION.raw() {
+            panic!("version of Instance must be >= version of Device")
+        }
+    };
+}
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
@@ -27,10 +38,14 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         queue_properties: &'a QueueFamiliesRef<S>,
     ) -> Result<DeviceType<Config<'a, C, S>>, Error>
     where
-        I::Commands: CreateDevice + EnumerateDeviceExtensionProperties,
+        I::Commands: CreateDevice + Version,
         C: Commands + InstanceDependencies<I::Commands, O>,
-        C::Commands: DestroyDevice + LoadCommands + Version,
+        C::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<I::Commands>,
+        I::Commands: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
     {
+        // check version requirement
+        let _ = C::Commands::VALID;
+
         check_vuids::check_vuids!(CreateDevice);
 
         #[allow(unused_labels)]
