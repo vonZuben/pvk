@@ -2,8 +2,35 @@
 
 # Getting started
 
+At the outset, this API is meant for people who know how to use Vulkan, or maybe for those who want to learn Vulkan.
 This API is meant to be one-to-one with the C Vulkan API, as much as possible. Exceptions to this rule should be documented on a case by case basis.
-Thus, getting started with this API is very similar to getting started with Vulkan in C. There are many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
+Getting started with this API is very similar to getting started with Vulkan in C. There are many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
+
+In view of the above, it is best to use this API while understanding the C Vulkan API, and the differences here to make it more Rusty.
+
+# Key Differences from C Vulkan API
+
+#### Naming convention
+Vulkan items (commands, structs, etc.) are renamed in vk-safe to follow Rusty naming conventions.
+Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and then converting the remaining name in-line with
+[RFC 430](https://github.com/rust-lang/rfcs/blob/master/text/0430-finalizing-naming-conventions.md)
+
+#### Commands are methods
+Most Vulkan commands take a dispatchable handle as the first argument. In vk-safe, the dispatchable handle has methods corresponding to these commands.
+Few commands, such as [create_instance] take no dispatchable handle, and are plain functions.
+
+#### Returning Result
+All Vulkan commands that can fail will return a Result. There Err variant is currently a placeholder dyn Error type. This should be changed in future to an Error type
+that enables handling specific Vulkan errors more easily.
+
+#### Structs are read-only by default
+Most structs have a thin wrapper with a Deref implementation to provide read-only access. Some structs have more specific methods to provide safe access.
+Vulkan has many "Info" structs that the user creates and passes to commands, which have appropriate constructor methods to ensure valid usage. Some structs may have other
+methods for safely enabling specific use cases.
+
+#### Enumerator commands use ArrayStorage
+Vulkan has many "Enumerate" or "Get" commands which take a pointer / length for an array, to which return data will be written. Said commands can also be used to query length
+of data to be returned by passing a null pointer. **In vk-safe**, "Enumerate" or "Get" commands take a storage type which implements the [ArrayStorage] trait.
 
 ### Example (bare minimum to get a Device context)
 ```
@@ -76,7 +103,7 @@ I wanted to make this for the following reasons:
 4. to **experiment** with how far I can push the type system to create a zero overhead safe Vulkan API
 
 ## Comparison to other APIs
-- [Ash](https://github.com/ash-rs/ash) is a true low level Vulkan API for rust where everything is safe. (I want to build in safety)
+- [Ash](https://github.com/ash-rs/ash) is a true low level Vulkan API for rust where everything is unsafe. **Ash is actually a big inspiration for features vk-safe, other than safety**
 - [Vulkano](https://github.com/vulkano-rs/vulkano) calls itself a "low-levelish API" and a "High-level Rust API" (so I'll say Medium level lol), and it provides safety.
 Vulkano is far from zero overhead due to using thing like Arc, and performing potentially heavy verification for all api calls.
 (normally people using the c API would only use validation layers such as VK_LAYER_KHRONOS_validation during development, and then remove all validation in a release build, but
@@ -107,6 +134,8 @@ mod scope;
 
 pub use vk_safe_sys::VkVersion;
 pub use vk_str::VkStr;
+
+pub use array_storage::ArrayStorage;
 
 pub use vk_safe_sys::generated_vulkan::bitmasks::*;
 pub use vk_safe_sys::generated_vulkan::enum_variants::*;

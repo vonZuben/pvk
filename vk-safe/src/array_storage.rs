@@ -4,30 +4,38 @@ use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
-/// This is used for vulkan commands that enumerate or get multiple items,
-/// where the user needs to provide the space to store the items.
+/// A trait for handling storage space for "Enumerate" and "Get" commands in Vulkan
 ///
-/// This allows users to control how the want to allocate space.
+/// An implementor of this trait indicates "if" and "how" to allocate storage space;
+/// provides mutable access to uninitialized memory to write to; and finalizes the initialized storage.
 ///
-/// Implementations are provided for basic std type that are [T] like.
+/// Commands which take an `impl ArrayStorage` type will first call [ArrayStorage::allocate], which enables the implementation to query the length of to-be-returned data.
+/// Then [ArrayStorage::uninit_slice] will be called in order to get a slice of uninitialized data to be written to. Last, [ArrayStorage::finalize] will be called to allow the implementation to
+/// perform any last work needed to make a safe initialized memory type that can be returned to the user.
 ///
-/// Users can implement for custom types.
+/// Implementations of this are provided for [Vec] and slices / arrays of [MaybeUninit]. You may implement this trait yourself for any of your own array like types.
 pub trait ArrayStorage<T> {
     /// The final initialized storage type.
     type InitStorage: AsRef<[T]>;
-    /// Allow control of len of items to be returned.
-    /// If preallocated space is provided, then there is no reason to get len (e.g. for a slice).
-    fn allocate(&mut self, _len: impl FnOnce() -> Result<usize, vk::Result>) -> Result<(), Error> {
+
+    /// Query len of items to be returned, and allocate space for such.
+    ///
+    /// `len` is a closure which will call the underling Vulkan commands with a null pointer to query the length
+    ///
+    /// This method is provided as a no-op by default, which is useful when space is preallocated (e.g. for a slice).
+    fn allocate(&mut self, len: impl FnOnce() -> Result<usize, vk::Result>) -> Result<(), Error> {
+        let _ = len;
         Ok(())
     }
+
     /// Provide the uninitialized space to which the Vulkan command will write to.
     fn uninit_slice(&mut self) -> &mut [MaybeUninit<T>];
+
     /// Finalize len amount of initialized memory.
     /// # Safety
-    /// len comes from the Vulkan implementation, and *should* always be less than or equal to
-    /// the len of the slice returned from uninit_slice. However, there could be risk of faulty or
-    /// malicious Vulkan implementations, so it is recommended to assert! that len is not too long
-    /// for the capacity of your memory.
+    /// `len` represents how much memory was written to the slice from [ArrayStorage::uninit_slice]. `len` comes from the underlying Vulkan implementation
+    /// (i.e. the driver for your hardware), and *should* always be less than or equal to the len of the slice returned from [ArrayStorage::uninit_slice].
+    /// However, this is not validated and there could be a broken Vulkan implementation, so it is recommended to use min(len, your_memory_capacity).
     fn finalize(self, len: usize) -> Self::InitStorage;
 }
 
@@ -42,7 +50,7 @@ impl<T> ArrayStorage<T> for Vec<MaybeUninit<T>> {
         unsafe { std::slice::from_raw_parts_mut(self.as_mut_ptr(), self.capacity()) }
     }
     fn finalize(mut self, len: usize) -> Self::InitStorage {
-        assert!(len <= self.capacity());
+        let len = std::cmp::min(len, self.capacity());
         unsafe {
             self.set_len(len);
             std::mem::transmute(self)
