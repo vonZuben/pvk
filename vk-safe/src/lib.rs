@@ -1,12 +1,18 @@
 /*! vk-safe provides a safe low level rust api for vulkan
 
+## ⚠️ This is still very much a work in progress
+This library is going thorough a lot of experimentation to see how far the type system can be pushed to provide a zero-overhead safe API for Vulkan.
+At this stage, only a few Vulkan APIs are implemented. However, this should be a good representation of what the overall API will look like when done.
+i.e. the "tricks" currently used with the type system to make the API safe should currently be pretty representative of the final product, and from now,
+simply a lot of work needs to be put into implementing all the actual Vulkan APIs.
+
 # Getting started
 
 At the outset, this API is meant for people who know how to use Vulkan, or maybe for those who want to learn Vulkan.
 This API is meant to be one-to-one with the C Vulkan API, as much as possible. Exceptions to this rule should be documented on a case by case basis.
 Getting started with this API is very similar to getting started with Vulkan in C. There are many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
 
-In view of the above, it is best to use this API while understanding the C Vulkan API, and the differences here to make it more Rusty.
+In view of the above, it is best to use this API while first understanding the C Vulkan API, and then the differences in vk-safe to make it more Rusty.
 
 # Key Differences from C Vulkan API
 
@@ -18,6 +24,15 @@ Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and the
 #### Commands are methods
 Most Vulkan commands take a dispatchable handle as the first argument. In vk-safe, the dispatchable handle has methods corresponding to these commands.
 Few commands, such as [create_instance] take no dispatchable handle, and are plain functions.
+
+#### Dispatchable handle methods require 'Scope'
+vk-safe uses an invariant lifetime trick to "tag" instances of dispatchable handles within a "Scope". Resources which are later obtained from the dispatchable
+handle have the same "tag". This ensures that resources can only be used with the corresponding dispatchable handle from which they were created.
+
+#### Trait representations of handles
+Due to the above mentioned "tag" and "Scope" trick, the concrete types of handles are complex, since all handles are generic over their "tag". To alleviate this,
+the main way of specifying handle types is to do so generically with traits. Somewhat contrary to the above 'Naming convention' rule, the concrete type of a
+handle is `HandleNameType` (with 'Type' appended). There is then a corresponding `HandleName` trait which should be the main way of specifying the types you are using.
 
 #### Returning Result
 All Vulkan commands that can fail will return a Result. There Err variant is currently a placeholder dyn Error type. This should be changed in future to an Error type
@@ -31,6 +46,32 @@ methods for safely enabling specific use cases.
 #### Enumerator commands use ArrayStorage
 Vulkan has many "Enumerate" or "Get" commands which take a pointer / length for an array, to which return data will be written. Said commands can also be used to query length
 of data to be returned by passing a null pointer. **In vk-safe**, "Enumerate" or "Get" commands take a storage type which implements the [ArrayStorage] trait.
+
+#### Enumerations and BitFlags are structs with associated constants
+This allows unknown variants or bits to be explicitly handled. This is necessary because a Vulkan implementation working on a higher version than this library was generated with can lead to obtaining
+Unknown variants or bits. Since associated constants cannot currently be imported into the namespace with `use`, vk-safe also provides modules corresponding to each
+Enumeration and BitFlag type, with all variants or bits as plain constants which can be imported. The type and module names follow expected Rust convention.
+
+```
+pub struct StencilOp(pub(crate) i32);
+
+impl StencilOp {
+    pub const KEEP: Self = Self(0);
+    pub const ZERO: Self = Self(1);
+    pub const REPLACE: Self = Self(2);
+    // and more
+}
+
+pub mod stencil_op {
+    use super::StencilOp;
+    pub const KEEP: StencilOp = StencilOp::KEEP;
+    pub const ZERO: StencilOp = StencilOp::ZERO;
+    pub const REPLACE: StencilOp = StencilOp::REPLACE;
+    // and more
+}
+```
+
+#### TODO
 
 ### Example (bare minimum to get a Device context)
 ```
