@@ -7,8 +7,9 @@ use crate::VkVersion;
 
 use std::marker::PhantomData;
 
-use vk::commands::{CommandLoadError, Commands, LoadCommands, Version};
+use vk::commands::{CommandLoadError, Commands, LoadCommands};
 use vk::has_command::DestroyInstance;
+use vk::Version;
 
 pub trait InstanceConfig {
     const VERSION: VkVersion;

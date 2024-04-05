@@ -95,6 +95,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                     pub mod traits {
                         use crate::CommandProvider;
                         use crate::has_command::*;
+                        use crate::Version;
                         {@* {@instance_traits}}
                     }
                     pub mod macros {
@@ -110,6 +111,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                     pub mod traits {
                         use crate::CommandProvider;
                         use crate::has_command::*;
+                        use crate::Version;
                         {@* {@device_traits}}
                     }
                     pub mod macros {
@@ -124,6 +126,7 @@ impl krs_quote::ToTokens for FeatureCollection {
                 pub mod entry {
                     use crate::CommandProvider;
                     use crate::has_command::*;
+                    use crate::Version;
                     {@* {@entry_traits}}
                     {@* {@entry_macros}}
                     pub mod structs {
@@ -173,8 +176,8 @@ impl krs_quote::ToTokens for VersionTrait<'_> {
         let commands = self.commands.iter().filter(|c| c.is_require());
 
         krs_quote_with!(tokens <-
-            pub trait {@name} : CommandProvider {@* + {@commands}} {}
-            impl<T> {@name} for T where T: CommandProvider {@* + {@commands}} {}
+            pub trait {@name} : CommandProvider + Version {@* + {@commands}} {}
+            impl<T> {@name} for T where T: CommandProvider + Version {@* + {@commands}} {}
         );
     }
 }

@@ -9,8 +9,9 @@ use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
-use vk::commands::{Commands, Extensions, LoadCommands, Version};
+use vk::commands::{Commands, Extensions, LoadCommands};
 use vk::has_command::DestroyInstance;
+use vk::Version;
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html

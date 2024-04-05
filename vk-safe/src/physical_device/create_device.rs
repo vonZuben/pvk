@@ -12,8 +12,10 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use vk::commands::{Commands, Extensions, InstanceDependencies, LoadCommands, Version};
+use vk::commands::{Commands, Extensions, InstanceDependencies, LoadCommands};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
+use vk::Version;
+
 
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
