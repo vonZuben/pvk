@@ -17,17 +17,27 @@ In view of the above, it is best to use this API while first understanding the C
 # Key Differences from C Vulkan API
 
 #### Naming convention
-Vulkan items (commands, structs, etc.) are renamed in vk-safe to follow Rusty naming conventions.
+Vulkan items (commands, structs, etc.) are renamed in vk-safe to follow Rust naming conventions.
 Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and then converting the remaining name in-line with
 [RFC 430](https://github.com/rust-lang/rfcs/blob/master/text/0430-finalizing-naming-conventions.md)
 
 #### Commands are methods
-Most Vulkan commands take a dispatchable handle as the first argument. In vk-safe, the dispatchable handle has methods corresponding to these commands.
-Few commands, such as [create_instance] take no dispatchable handle, and are plain functions.
+Most Vulkan commands take a dispatchable handle as the first argument. In vk-safe, the dispatchable handle has methods corresponding to these commands, and the first parameter is
+set to the corresponding handle automatically. Few commands, such as [create_instance] take no dispatchable handle, and are plain functions.
 
 #### Dispatchable handle methods require 'Scope'
 vk-safe uses an invariant lifetime trick to "tag" instances of dispatchable handles within a "Scope". Resources which are later obtained from the dispatchable
 handle have the same "tag". This ensures that resources can only be used with the corresponding dispatchable handle from which they were created.
+
+In Rust today, it is only possible to make a 'Scope' at a function boundary. Thus, each handle you want to use needs to be passed into it's own function with [scope()], which creates
+closures, that can be considered as individual units or execution, and the user can decide how to handle them. One consequence of this is that in order to handle many different
+handles at the same time, it is necessary to make them into sub-scopes (closures within closures), or run the units of execution concurrently such as with threads or async rust. Sub-scopes are
+tightly bound to the structure of your code and are only a good choice when you already know how many handles you are using. For the case of handling dynamic numbers of handles,
+such as PhysicalDevice's, it is better to run concurrent units of execution (of course each handle could be used sequentially in a loop, but usually you want to use all the available
+PhysicalDevice's for the whole program runtime concurrently).
+
+ℹ️ I recently found [generativity crate](https://docs.rs/generativity/latest/generativity/), and I am investigating if it is sound, since it would be easier to use.
+In any event, it should still be necessary to make concurrent units of execution in order to use multiple handles at the same time.
 
 #### Trait representations of handles
 Due to the above mentioned "tag" and "Scope" trick, the concrete types of handles are complex, since all handles are generic over their "tag". To alleviate this,

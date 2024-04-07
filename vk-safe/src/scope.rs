@@ -114,7 +114,17 @@ where
     type Future = F;
 }
 
-/// Create a task scope for a give T, by passing a scoped T to a given function or closure
+/// Create a 'Scope'
+///
+/// Call this function with a handle that is to be scoped, and a function / closure that will use the scoped handle.
+///
+/// A scoped handle is mostly an implementation detail, but a user of a scoped handle needs to be aware of the limitations.
+/// A scoped handle has an invariant lifetime (see [Subtyping and Variance](https://doc.rust-lang.org/nomicon/subtyping.html) to learn more).
+/// The invariant lifetime is completely unique within the scope of the passed in function / closure, and it cannot be unified with other Scopes.
+/// This allows us to ensure that different instances of handles are handles separately.
+///
+/// ℹ️ I recently found [generativity crate](https://docs.rs/generativity/latest/generativity/), and I am investigating if it is sound.
+/// If it is sound, then I will consider depreciating this for a guard like api since it is easier to use.
 pub fn scope<F, R, T>(this: T, f: F) -> impl FnOnce() -> R
 where
     for<'scope> F: FnOnce(Scope<'scope, T>) -> R,
