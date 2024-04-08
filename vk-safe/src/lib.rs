@@ -64,6 +64,7 @@ Unknown variants or bits. Since associated constants cannot currently be importe
 Enumeration and BitFlag type, with all variants or bits as plain constants which can be imported. The type and module names follow expected Rust convention.
 
 ```
+# mod example {
 pub struct StencilOp(pub(crate) i32);
 
 impl StencilOp {
@@ -80,6 +81,7 @@ pub mod stencil_op {
     pub const REPLACE: StencilOp = StencilOp::REPLACE;
     // and more
 }
+# }
 ```
 
 #### TODO
