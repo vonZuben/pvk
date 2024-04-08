@@ -17,6 +17,8 @@
 pub fn create_instance() {
     check_vuids::check_vuids!(CreateInstance);
 
+    // with the above check_vuids! in place, the following code will be automatically generated
+    // after running the check_vuids bin tool.
     #[allow(unused_labels)]
     'VUID_vkCreateInstance_ppEnabledExtensionNames_01388: {
         check_vuids::version! {"1.3.268"}

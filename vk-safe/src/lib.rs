@@ -84,8 +84,6 @@ pub mod stencil_op {
 # }
 ```
 
-#### TODO
-
 ### Example (bare minimum to get a Device context)
 ```
 use vk_safe as vk;
@@ -140,6 +138,24 @@ vk::scope(instance, |instance| {
 })();
 
 ```
+
+## VUIDs (implementation detail)
+All Vulkan APIs have valid usage rules that must be followed. Each valid usage rule has a VUID (Valid Usage Identifier). For all v-safe APIs,
+the relevant VUIDs are *manually* checked against the Vulkan documentation. To help ensure that all VUIDs are checked and updated with changes
+to Vulkan, a [check_vuids] tool is provided for development purposes to help automatically include the VUID rules in the source code.
+
+After the rules are included in the source code, vk-safe attempts to ensure all ensure the rules are followed by designing the APIs to make use
+of the type system as much as reasonably possible.
+
+Some things are too complex to express in the type system (or it could be expressed but be too hard to use), so `const` computation is used when
+possible (a big example of this is with APIs that take image format, tiling, type, and related flags etc., which have many possible combinations
+and only a subset of valid / sensible combinations). It is recommended to make use of the `const` computation when possible to reduce runtime checks,
+and also get earlier compile time errors.
+
+Lastly, some things must be checked at runtime with regard to information that must be queried from the system. As much as possible, the API is
+designed to make the user perform the checks automatically simply by using the API normally. This, way there should be no *real* overhead since
+the user should need to do these checks anyway (the only exception to this would be for highly specialized software that will only run on very
+specific hardware known in advance).
 
 # About the documentation
 
