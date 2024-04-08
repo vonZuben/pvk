@@ -43,7 +43,7 @@ const _VUIDS: () = {
     #[allow(unused_labels)]
     'VUID_vkEnumerateInstanceLayerProperties_pPropertyCount_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "pPropertyCount must be a valid pointer to a uint32_t value"
         }
 
@@ -53,7 +53,7 @@ const _VUIDS: () = {
     #[allow(unused_labels)]
     'VUID_vkEnumerateInstanceLayerProperties_pProperties_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties"
         "must be a valid pointer to an array of pPropertyCount VkLayerProperties structures"
         }

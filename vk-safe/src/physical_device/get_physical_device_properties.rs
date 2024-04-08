@@ -32,7 +32,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceProperties_physicalDevice_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "physicalDevice must be a valid VkPhysicalDevice handle"
         }
 
@@ -42,7 +42,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceProperties_pProperties_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "pProperties must be a valid pointer to a VkPhysicalDeviceProperties structure"
         }
 

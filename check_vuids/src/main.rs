@@ -8,7 +8,7 @@ With no arguments passed, it will automatically search all source files in the w
 One argument for the desired search directory can be provided and searched instead
 
 # !!NOTE
-Do NOT tamper with the bodies of the version! and cur_description! macros.
+Do NOT tamper with the bodies of the version! and description! macros.
  */
 use std::env::{args_os, current_exe};
 use std::path::PathBuf;

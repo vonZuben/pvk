@@ -83,7 +83,7 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyInstance_instance_00629: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "All child objects created using instance must have been destroyed prior to destroying"
             "instance"
             }
@@ -97,7 +97,7 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyInstance_instance_00630: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If VkAllocationCallbacks were provided when instance was created, a compatible set"
             "of callbacks must be provided here"
             }
@@ -108,7 +108,7 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyInstance_instance_00631: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If no VkAllocationCallbacks were provided when instance was created, pAllocator must"
             "be NULL"
             }
@@ -119,7 +119,7 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyInstance_instance_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If instance is not NULL, instance must be a valid VkInstance handle"
             }
 
@@ -129,7 +129,7 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyInstance_pAllocator_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
             "structure"
             }

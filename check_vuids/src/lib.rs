@@ -5,7 +5,7 @@
 //! Add [check_vuids!] macro calls, e.g. `check_vuids!(CreateInstance)`, at the locations
 //! where you want to check the VUIDs for a particular Vulkan item. Then use `cargo run --bin check_vuids` and all files
 //! will be checked for check_vuids! and will ensure all VUID descriptions for the specified items are up to date by automatically adding/updating
-//! [version!], [cur_description!], and [old_description!] as appropriate.
+//! [version!], [description!], and [old_description!] as appropriate.
 //!
 //! A VUID's name is represented as a block label, and the contents of the block is the VUID information.
 //!
@@ -22,7 +22,7 @@ pub fn create_instance() {
     #[allow(unused_labels)]
     'VUID_vkCreateInstance_ppEnabledExtensionNames_01388: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames"
         "list must also be present in that list"
         }
@@ -51,7 +51,7 @@ macro_rules! version {
 /// Current description of the VUID to check
 /// check_vuids will check if this is up to date with the latest version that check_vuids was compiled with
 #[macro_export]
-macro_rules! cur_description {
+macro_rules! description {
     ($($desc:literal)*) => {};
 }
 

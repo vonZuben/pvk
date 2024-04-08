@@ -33,7 +33,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceFormatProperties_physicalDevice_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "physicalDevice must be a valid VkPhysicalDevice handle"
         }
 
@@ -43,7 +43,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceFormatProperties_format_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "format must be a valid VkFormat value"
         }
 
@@ -53,7 +53,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceFormatProperties_pFormatProperties_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "pFormatProperties must be a valid pointer to a VkFormatProperties structure"
         }
 

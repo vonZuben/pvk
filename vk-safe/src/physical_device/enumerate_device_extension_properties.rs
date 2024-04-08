@@ -25,7 +25,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkEnumerateDeviceExtensionProperties_physicalDevice_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "physicalDevice must be a valid VkPhysicalDevice handle"
             }
 
@@ -35,7 +35,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkEnumerateDeviceExtensionProperties_pLayerName_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pLayerName is not NULL, pLayerName must be a null-terminated UTF-8 string"
             }
 
@@ -45,7 +45,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkEnumerateDeviceExtensionProperties_pPropertyCount_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pPropertyCount must be a valid pointer to a uint32_t value"
             }
 
@@ -55,7 +55,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkEnumerateDeviceExtensionProperties_pProperties_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties"
             "must be a valid pointer to an array of pPropertyCount VkExtensionProperties structures"
             }

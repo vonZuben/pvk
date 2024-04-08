@@ -113,7 +113,7 @@ impl<C: DeviceConfig> Drop for DeviceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyDevice_device_05137: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "All child objects created on device must have been destroyed prior to destroying device"
             }
 
@@ -126,7 +126,7 @@ impl<C: DeviceConfig> Drop for DeviceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyDevice_device_00379: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If VkAllocationCallbacks were provided when device was created, a compatible set of"
             "callbacks must be provided here"
             }
@@ -138,7 +138,7 @@ impl<C: DeviceConfig> Drop for DeviceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyDevice_device_00380: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If no VkAllocationCallbacks were provided when device was created, pAllocator must"
             "be NULL"
             }
@@ -150,7 +150,7 @@ impl<C: DeviceConfig> Drop for DeviceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyDevice_device_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If device is not NULL, device must be a valid VkDevice handle"
             }
 
@@ -160,7 +160,7 @@ impl<C: DeviceConfig> Drop for DeviceType<C> {
         #[allow(unused_labels)]
         'VUID_vkDestroyDevice_pAllocator_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
             "structure"
             }

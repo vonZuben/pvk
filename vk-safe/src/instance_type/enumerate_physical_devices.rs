@@ -27,7 +27,7 @@ impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
         #[allow(unused_labels)]
         'VUID_vkEnumeratePhysicalDevices_instance_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "instance must be a valid VkInstance handle"
             }
 
@@ -37,7 +37,7 @@ impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
         #[allow(unused_labels)]
         'VUID_vkEnumeratePhysicalDevices_pPhysicalDeviceCount_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pPhysicalDeviceCount must be a valid pointer to a uint32_t value"
             }
 
@@ -47,7 +47,7 @@ impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
         #[allow(unused_labels)]
         'VUID_vkEnumeratePhysicalDevices_pPhysicalDevices_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the value referenced by pPhysicalDeviceCount is not 0, and pPhysicalDevices is"
             "not NULL, pPhysicalDevices must be a valid pointer to an array of pPhysicalDeviceCount"
             "VkPhysicalDevice handles"

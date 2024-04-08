@@ -69,7 +69,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_tiling_02248: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "tiling must not be VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT. (Use vkGetPhysicalDeviceImageFormatProperties2"
             "instead)"
             }
@@ -80,7 +80,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_physicalDevice_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "physicalDevice must be a valid VkPhysicalDevice handle"
             }
 
@@ -90,7 +90,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_format_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "format must be a valid VkFormat value"
             }
 
@@ -112,7 +112,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_type_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "type must be a valid VkImageType value"
             }
 
@@ -140,7 +140,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_tiling_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "tiling must be a valid VkImageTiling value"
             }
 
@@ -155,7 +155,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_usage_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "usage must be a valid combination of VkImageUsageFlagBits values"
             }
 
@@ -203,7 +203,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_usage_requiredbitmask: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "usage must not be 0"
             }
 
@@ -213,7 +213,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_flags_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "flags must be a valid combination of VkImageCreateFlagBits values"
             }
 
@@ -267,7 +267,7 @@ impl GetPhysicalDeviceImageFormatPropertiesParameters {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceImageFormatProperties_pImageFormatProperties_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pImageFormatProperties must be a valid pointer to a VkImageFormatProperties structure"
             }
 

@@ -33,7 +33,7 @@ where
     #[allow(unused_labels)]
     'VUID_vkCreateInstance_ppEnabledExtensionNames_01388: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "All required extensions for each extension in the VkInstanceCreateInfo::ppEnabledExtensionNames"
         "list must also be present in that list"
         }
@@ -44,7 +44,7 @@ where
     #[allow(unused_labels)]
     'VUID_vkCreateInstance_pCreateInfo_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "pCreateInfo must be a valid pointer to a valid VkInstanceCreateInfo structure"
         }
 
@@ -54,7 +54,7 @@ where
     #[allow(unused_labels)]
     'VUID_vkCreateInstance_pAllocator_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
         "structure"
         }
@@ -65,7 +65,7 @@ where
     #[allow(unused_labels)]
     'VUID_vkCreateInstance_pInstance_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "pInstance must be a valid pointer to a VkInstance handle"
         }
 
@@ -109,7 +109,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_pNext_04925: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain of VkInstanceCreateInfo includes a VkDebugReportCallbackCreateInfoEXT"
             "structure, the list of enabled extensions in ppEnabledExtensionNames must contain"
             "VK_EXT_debug_report"
@@ -121,7 +121,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_pNext_04926: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain of VkInstanceCreateInfo includes a VkDebugUtilsMessengerCreateInfoEXT"
             "structure, the list of enabled extensions in ppEnabledExtensionNames must contain"
             "VK_EXT_debug_utils"
@@ -133,7 +133,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_pNext_06779: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain includes a VkExportMetalObjectCreateInfoEXT structure, its exportObjectType"
             "member must be either VK_EXPORT_METAL_OBJECT_TYPE_METAL_DEVICE_BIT_EXT or VK_EXPORT_METAL_OBJECT_TYPE_METAL_COMMAND_QUEUE_BIT_EXT"
             }
@@ -144,7 +144,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_flags_06559: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If flags has the VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR bit set, the list"
             "of enabled extensions in ppEnabledExtensionNames must contain VK_KHR_portability_enumeration"
             }
@@ -155,7 +155,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_pNext: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain of VkInstanceCreateInfo includes a VkDirectDriverLoadingListLUNARG"
             "structure, the list of enabled extensions in ppEnabledExtensionNames must contain"
             "VK_LUNARG_direct_driver_loading"
@@ -167,7 +167,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_sType_sType: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "sType must be VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO"
             }
 
@@ -177,7 +177,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_pNext_pNext: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "Each pNext member of any structure (including this one) in the pNext chain must be"
             "either NULL or a pointer to a valid instance of VkDebugReportCallbackCreateInfoEXT,"
             "VkDebugUtilsMessengerCreateInfoEXT, VkDirectDriverLoadingListLUNARG, VkExportMetalObjectCreateInfoEXT,"
@@ -190,7 +190,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_sType_unique: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "The sType value of each struct in the pNext chain must be unique, with the exception"
             "of structures of type VkDebugUtilsMessengerCreateInfoEXT or VkExportMetalObjectCreateInfoEXT"
             }
@@ -201,7 +201,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_flags_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "flags must be a valid combination of VkInstanceCreateFlagBits values"
             }
 
@@ -211,7 +211,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_pApplicationInfo_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pApplicationInfo is not NULL, pApplicationInfo must be a valid pointer to a valid"
             "VkApplicationInfo structure"
             }
@@ -222,7 +222,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_ppEnabledLayerNames_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array"
             "of enabledLayerCount null-terminated UTF-8 strings"
             }
@@ -233,7 +233,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
         #[allow(unused_labels)]
         'VUID_VkInstanceCreateInfo_ppEnabledExtensionNames_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer"
             "to an array of enabledExtensionCount null-terminated UTF-8 strings"
             }
@@ -293,7 +293,7 @@ impl<'a> ApplicationInfo<'a, ()> {
         #[allow(unused_labels)]
         'VUID_VkApplicationInfo_apiVersion_04010: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If apiVersion is not 0, then it must be greater than or equal to VK_API_VERSION_1_0"
             }
 
@@ -303,7 +303,7 @@ impl<'a> ApplicationInfo<'a, ()> {
         #[allow(unused_labels)]
         'VUID_VkApplicationInfo_sType_sType: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "sType must be VK_STRUCTURE_TYPE_APPLICATION_INFO"
             }
 
@@ -313,7 +313,7 @@ impl<'a> ApplicationInfo<'a, ()> {
         #[allow(unused_labels)]
         'VUID_VkApplicationInfo_pNext_pNext: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pNext must be NULL"
             }
 
@@ -323,7 +323,7 @@ impl<'a> ApplicationInfo<'a, ()> {
         #[allow(unused_labels)]
         'VUID_VkApplicationInfo_pApplicationName_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pApplicationName is not NULL, pApplicationName must be a null-terminated UTF-8"
             "string"
             }
@@ -334,7 +334,7 @@ impl<'a> ApplicationInfo<'a, ()> {
         #[allow(unused_labels)]
         'VUID_VkApplicationInfo_pEngineName_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pEngineName is not NULL, pEngineName must be a null-terminated UTF-8 string"
             }
 

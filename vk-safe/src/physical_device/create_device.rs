@@ -51,7 +51,7 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkCreateDevice_ppEnabledExtensionNames_01387: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "All required device extensions for each extension in the VkDeviceCreateInfo::ppEnabledExtensionNames"
             "list must also be present in that list"
             }
@@ -62,7 +62,7 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkCreateDevice_physicalDevice_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "physicalDevice must be a valid VkPhysicalDevice handle"
             }
 
@@ -72,7 +72,7 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkCreateDevice_pCreateInfo_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pCreateInfo must be a valid pointer to a valid VkDeviceCreateInfo structure"
             }
 
@@ -82,7 +82,7 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkCreateDevice_pAllocator_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
             "structure"
             }
@@ -93,7 +93,7 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkCreateDevice_pDevice_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pDevice must be a valid pointer to a VkDevice handle"
             }
 
@@ -156,7 +156,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_queueFamilyIndex_02802: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "The queueFamilyIndex member of each element of pQueueCreateInfos must be unique within"
             "pQueueCreateInfos , except that two members can share the same queueFamilyIndex if"
             "one describes protected-capable queues and one describes queues that are not protected-capable"
@@ -169,7 +169,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pQueueCreateInfos_06755: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If multiple elements of pQueueCreateInfos share the same queueFamilyIndex, the sum"
             "of their queueCount members must be less than or equal to the queueCount member of"
             "the VkQueueFamilyProperties structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties"
@@ -182,7 +182,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pQueueCreateInfos_06654: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If multiple elements of pQueueCreateInfos share the same queueFamilyIndex, then all"
             "of such elements must have the same global priority level, which can be specified"
             "explicitly by the including a VkDeviceQueueGlobalPriorityCreateInfoKHR structure in"
@@ -195,7 +195,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pNext_00373: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain includes a VkPhysicalDeviceFeatures2 structure, then pEnabledFeatures"
             "must be NULL"
             }
@@ -206,7 +206,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_01840: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If VkPhysicalDeviceProperties::apiVersion advertises Vulkan 1.1 or later, ppEnabledExtensionNames"
             "must not contain VK_AMD_negative_viewport_height"
             }
@@ -223,7 +223,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_00374: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "ppEnabledExtensionNames must not contain both VK_KHR_maintenance1 and VK_AMD_negative_viewport_height"
             }
 
@@ -250,7 +250,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_03328: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "ppEnabledExtensionNames must not contain both VK_KHR_buffer_device_address and VK_EXT_buffer_device_address"
             }
 
@@ -277,7 +277,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pNext_04748: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain includes a VkPhysicalDeviceVulkan12Features structure and VkPhysicalDeviceVulkan12Features::bufferDeviceAddress"
             "is VK_TRUE, ppEnabledExtensionNames must not contain VK_EXT_buffer_device_address"
             }
@@ -288,7 +288,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pNext_02829: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain includes a VkPhysicalDeviceVulkan11Features structure, then it"
             "must not include a VkPhysicalDevice16BitStorageFeatures, VkPhysicalDeviceMultiviewFeatures,"
             "VkPhysicalDeviceVariablePointersFeatures, VkPhysicalDeviceProtectedMemoryFeatures,"
@@ -302,7 +302,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pNext_02830: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then it"
             "must not include a VkPhysicalDevice8BitStorageFeatures, VkPhysicalDeviceShaderAtomicInt64Features,"
             "VkPhysicalDeviceShaderFloat16Int8Features, VkPhysicalDeviceDescriptorIndexingFeatures,"
@@ -319,7 +319,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_04476: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If ppEnabledExtensionNames contains \"VK_KHR_shader_draw_parameters\" and the pNext"
             "chain includes a VkPhysicalDeviceVulkan11Features structure, then VkPhysicalDeviceVulkan11Features::shaderDrawParameters"
             "must be VK_TRUE"
@@ -331,7 +331,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02831: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If ppEnabledExtensionNames contains \"VK_KHR_draw_indirect_count\" and the pNext chain"
             "includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::drawIndirectCount"
             "must be VK_TRUE"
@@ -343,7 +343,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02832: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If ppEnabledExtensionNames contains \"VK_KHR_sampler_mirror_clamp_to_edge\" and the"
             "pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerMirrorClampToEdge"
             "must be VK_TRUE"
@@ -355,7 +355,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02833: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If ppEnabledExtensionNames contains \"VK_EXT_descriptor_indexing\" and the pNext chain"
             "includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::descriptorIndexing"
             "must be VK_TRUE"
@@ -367,7 +367,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02834: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If ppEnabledExtensionNames contains \"VK_EXT_sampler_filter_minmax\" and the pNext"
             "chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::samplerFilterMinmax"
             "must be VK_TRUE"
@@ -379,7 +379,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_02835: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If ppEnabledExtensionNames contains \"VK_EXT_shader_viewport_index_layer\" and the"
             "pNext chain includes a VkPhysicalDeviceVulkan12Features structure, then VkPhysicalDeviceVulkan12Features::shaderOutputViewportIndex"
             "and VkPhysicalDeviceVulkan12Features::shaderOutputLayer must both be VK_TRUE"
@@ -391,7 +391,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pNext_06532: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the pNext chain includes a VkPhysicalDeviceVulkan13Features structure, then it"
             "must not include a VkPhysicalDeviceDynamicRenderingFeatures, VkPhysicalDeviceImageRobustnessFeatures,"
             "VkPhysicalDeviceInlineUniformBlockFeatures, VkPhysicalDeviceMaintenance4Features,"
@@ -408,7 +408,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pProperties_04451: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the VK_KHR_portability_subset extension is included in pProperties of vkEnumerateDeviceExtensionProperties,"
             "ppEnabledExtensionNames must include \"VK_KHR_portability_subset\""
             }
@@ -424,7 +424,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_shadingRateImage_04478: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the shadingRateImage feature is enabled, the pipelineFragmentShadingRate feature"
             "must not be enabled"
             }
@@ -435,7 +435,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_shadingRateImage_04479: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the shadingRateImage feature is enabled, the primitiveFragmentShadingRate feature"
             "must not be enabled"
             }
@@ -446,7 +446,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_shadingRateImage_04480: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the shadingRateImage feature is enabled, the attachmentFragmentShadingRate feature"
             "must not be enabled"
             }
@@ -457,7 +457,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_fragmentDensityMap_04481: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the fragmentDensityMap feature is enabled, the pipelineFragmentShadingRate feature"
             "must not be enabled"
             }
@@ -468,7 +468,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_fragmentDensityMap_04482: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the fragmentDensityMap feature is enabled, the primitiveFragmentShadingRate feature"
             "must not be enabled"
             }
@@ -479,7 +479,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_fragmentDensityMap_04483: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the fragmentDensityMap feature is enabled, the attachmentFragmentShadingRate feature"
             "must not be enabled"
             }
@@ -490,7 +490,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_None_04896: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If sparseImageInt64Atomics is enabled, shaderImageInt64Atomics must be enabled"
             }
 
@@ -500,7 +500,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_None_04897: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If sparseImageFloat32Atomics is enabled, shaderImageFloat32Atomics must be enabled"
             }
 
@@ -510,7 +510,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_None_04898: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If sparseImageFloat32AtomicAdd is enabled, shaderImageFloat32AtomicAdd must be enabled"
             }
 
@@ -520,7 +520,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_sparseImageFloat32AtomicMinMax_04975: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If sparseImageFloat32AtomicMinMax is enabled, shaderImageFloat32AtomicMinMax must"
             "be enabled"
             }
@@ -531,7 +531,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_None_08095: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If descriptorBuffer is enabled, ppEnabledExtensionNames must not contain VK_AMD_shader_fragment_mask"
             }
 
@@ -541,7 +541,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_sType_sType: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "sType must be VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO"
             }
 
@@ -551,7 +551,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pNext_pNext: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "Each pNext member of any structure (including this one) in the pNext chain must be"
             "either NULL or a pointer to a valid instance of VkDeviceDeviceMemoryReportCreateInfoEXT,"
             "VkDeviceDiagnosticsConfigCreateInfoNV, VkDeviceGroupDeviceCreateInfo, VkDeviceMemoryOverallocationCreateInfoAMD,"
@@ -646,7 +646,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_sType_unique: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "The sType value of each struct in the pNext chain must be unique, with the exception"
             "of structures of type VkDeviceDeviceMemoryReportCreateInfoEXT or VkDevicePrivateDataCreateInfo"
             }
@@ -657,7 +657,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_flags_zerobitmask: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "flags must be 0"
             }
 
@@ -667,7 +667,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pQueueCreateInfos_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pQueueCreateInfos must be a valid pointer to an array of queueCreateInfoCount valid"
             "VkDeviceQueueCreateInfo structures"
             }
@@ -678,7 +678,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledLayerNames_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If enabledLayerCount is not 0, ppEnabledLayerNames must be a valid pointer to an array"
             "of enabledLayerCount null-terminated UTF-8 strings"
             }
@@ -689,7 +689,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_ppEnabledExtensionNames_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If enabledExtensionCount is not 0, ppEnabledExtensionNames must be a valid pointer"
             "to an array of enabledExtensionCount null-terminated UTF-8 strings"
             }
@@ -700,7 +700,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_pEnabledFeatures_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If pEnabledFeatures is not NULL, pEnabledFeatures must be a valid pointer to a valid"
             "VkPhysicalDeviceFeatures structure"
             }
@@ -711,7 +711,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         #[allow(unused_labels)]
         'VUID_VkDeviceCreateInfo_queueCreateInfoCount_arraylength: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "queueCreateInfoCount must be greater than 0"
             }
 
@@ -772,7 +772,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "queueFamilyIndex must be less than pQueueFamilyPropertyCount returned by vkGetPhysicalDeviceQueueFamilyProperties"
             }
 
@@ -782,7 +782,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_queueCount_00382: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "queueCount must be less than or equal to the queueCount member of the VkQueueFamilyProperties"
             "structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]"
             }
@@ -793,7 +793,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_00383: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive"
             }
 
@@ -803,7 +803,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_flags_02861: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the protectedMemory feature is not enabled, the VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT"
             "bit of flags must not be set"
             }
@@ -814,7 +814,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_flags_06449: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If flags includes VK_DEVICE_QUEUE_CREATE_PROTECTED_BIT, queueFamilyIndex must be the"
             "index of a queue family that includes the VK_QUEUE_PROTECTED_BIT capability"
             }
@@ -825,7 +825,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_sType_sType: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "sType must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO"
             }
 
@@ -835,7 +835,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_pNext_pNext: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pNext must be NULL or a pointer to a valid instance of VkDeviceQueueGlobalPriorityCreateInfoKHR"
             }
 
@@ -845,7 +845,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_sType_unique: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "The sType value of each struct in the pNext chain must be unique"
             }
 
@@ -855,7 +855,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_flags_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "flags must be a valid combination of VkDeviceQueueCreateFlagBits values"
             }
 
@@ -865,7 +865,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_pQueuePriorities_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pQueuePriorities must be a valid pointer to an array of queueCount float values"
             }
 
@@ -875,7 +875,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_queueCount_arraylength: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "queueCount must be greater than 0"
             }
 

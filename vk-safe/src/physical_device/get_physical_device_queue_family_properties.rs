@@ -40,7 +40,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceQueueFamilyProperties_physicalDevice_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "physicalDevice must be a valid VkPhysicalDevice handle"
         }
 
@@ -50,7 +50,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyPropertyCount_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "pQueueFamilyPropertyCount must be a valid pointer to a uint32_t value"
         }
 
@@ -60,7 +60,7 @@ const _VUID: () = {
     #[allow(unused_labels)]
     'VUID_vkGetPhysicalDeviceQueueFamilyProperties_pQueueFamilyProperties_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "If the value referenced by pQueueFamilyPropertyCount is not 0, and pQueueFamilyProperties"
         "is not NULL, pQueueFamilyProperties must be a valid pointer to an array of pQueueFamilyPropertyCount"
         "VkQueueFamilyProperties structures"

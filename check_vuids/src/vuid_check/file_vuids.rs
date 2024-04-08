@@ -71,7 +71,7 @@ pub struct VuidInfo<'a> {
     /// offset into the file to the first byte of version!("ver");
     info_start: Option<usize>,
 
-    /// offset into the file to the first byte after the cur_description!("desc");
+    /// offset into the file to the first byte after the description!("desc");
     info_end: Option<usize>,
 
     /// offset into the file to the end of the block containing the vuid info and check code
@@ -207,7 +207,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
                 }
             }
             LookingForVuidDescription => {
-                if &*range == "cur_description" {
+                if &*range == "description" {
                     self.state = DescriptionStart;
                 }
             }
@@ -279,7 +279,7 @@ impl<'a> crate::parse::RustFileVisitor<'a> for GatherVuids<'a> {
         match self.state {
             GetTarget => Err("check_vuids!(...) missing target")?,
             LookingForVuidVersion | GetVersion => Err("could not find version!(version_text)")?,
-            LookingForVuidDescription => Err("could not find cur_description!(description_text)")?,
+            LookingForVuidDescription => Err("could not find description!(description_text)")?,
             VersionEnd => self.state = LookingForVuidDescription,
             GetDescription => {
                 if kind != crate::parse::Delimiter::Brace {

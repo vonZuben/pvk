@@ -111,7 +111,7 @@ fn new_vuid(name: &str, (major, minor, patch): (usize, usize, usize), descriptio
         #[allow(unused_labels)]
         '{name}: {{
             check_vuids::version!{{\"{major}.{minor}.{patch}\"}}
-            check_vuids::cur_description!{{
+            check_vuids::description!{{
             {description}
             }}
 
@@ -133,7 +133,7 @@ fn updated_vuid_info<'a>(
     };
     format!(
         "check_vuids::version!{{\"{major}.{minor}.{patch}\"}}
-            check_vuids::cur_description!{{
+            check_vuids::description!{{
             {new_description}
             }}
             check_vuids::old_description!{{

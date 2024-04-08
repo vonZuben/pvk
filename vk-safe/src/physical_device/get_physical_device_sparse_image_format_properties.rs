@@ -26,7 +26,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_samples_01094: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "samples must be a bit value that is set in VkImageFormatProperties::sampleCounts returned"
             "by vkGetPhysicalDeviceImageFormatProperties with format, type, tiling, and usage equal"
             "to those in this command and flags equal to the value that is set in VkImageCreateInfo::flags"
@@ -45,7 +45,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_physicalDevice_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "physicalDevice must be a valid VkPhysicalDevice handle"
             }
 
@@ -55,7 +55,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_format_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "format must be a valid VkFormat value"
             }
 
@@ -65,7 +65,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_type_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "type must be a valid VkImageType value"
             }
 
@@ -75,7 +75,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_samples_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "samples must be a valid VkSampleCountFlagBits value"
             }
 
@@ -85,7 +85,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_usage_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "usage must be a valid combination of VkImageUsageFlagBits values"
             }
 
@@ -95,7 +95,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_usage_requiredbitmask: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "usage must not be 0"
             }
 
@@ -105,7 +105,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_tiling_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "tiling must be a valid VkImageTiling value"
             }
 
@@ -115,7 +115,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_pPropertyCount_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "pPropertyCount must be a valid pointer to a uint32_t value"
             }
 
@@ -125,7 +125,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         #[allow(unused_labels)]
         'VUID_vkGetPhysicalDeviceSparseImageFormatProperties_pProperties_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If the value referenced by pPropertyCount is not 0, and pProperties is not NULL, pProperties"
             "must be a valid pointer to an array of pPropertyCount VkSparseImageFormatProperties"
             "structures"

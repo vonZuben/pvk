@@ -28,7 +28,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_memory_00678: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "memory must not be currently host mapped"
             }
 
@@ -38,7 +38,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_offset_00679: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "offset must be less than the size of memory"
             }
 
@@ -48,7 +48,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_size_00680: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If size is not equal to VK_WHOLE_SIZE, size must be greater than 0"
             }
 
@@ -58,7 +58,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_size_00681: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size"
             "of the memory minus offset"
             }
@@ -69,7 +69,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_memory_00682: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "memory must have been created with a memory type that reports VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT"
             }
 
@@ -79,7 +79,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_memory_00683: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "memory must not have been allocated with multiple instances"
             }
 
@@ -97,7 +97,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_device_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "device must be a valid VkDevice handle"
             }
 
@@ -107,7 +107,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_memory_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "memory must be a valid VkDeviceMemory handle"
             }
 
@@ -117,7 +117,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_flags_zerobitmask: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "flags must be 0"
             }
 
@@ -127,7 +127,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_ppData_parameter: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "ppData must be a valid pointer to a pointer value"
             }
 
@@ -137,7 +137,7 @@ where
         #[allow(unused_labels)]
         'VUID_vkMapMemory_memory_parent: {
             check_vuids::version! {"1.3.268"}
-            check_vuids::cur_description! {
+            check_vuids::description! {
             "memory must have been created, allocated, or retrieved from device"
             }
 

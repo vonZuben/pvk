@@ -27,7 +27,7 @@ const _VUIDS: () = {
     #[allow(unused_labels)]
     'VUID_vkEnumerateInstanceVersion_pApiVersion_parameter: {
         check_vuids::version! {"1.3.268"}
-        check_vuids::cur_description! {
+        check_vuids::description! {
         "pApiVersion must be a valid pointer to a uint32_t value"
         }
 
