@@ -8,7 +8,7 @@ use crate::scope::{RefScope, Scope};
 
 use vk::has_command::DestroyDevice;
 
-use vk::commands::{CommandLoadError, Commands, LoadCommands};
+use vk::context::{CommandLoadError, Commands, LoadCommands};
 use vk::Version;
 
 pub trait DeviceConfig {

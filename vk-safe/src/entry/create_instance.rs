@@ -9,12 +9,18 @@ use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
-use vk::commands::{Commands, Extensions, LoadCommands};
+use vk::context::{Commands, Extensions, LoadCommands};
 use vk::has_command::DestroyInstance;
 use vk::Version;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html
+/**
+Create an instance
+
+In order to create an Instance, you first define the Version and Extensions you will use with [vk::instance_context]. You can then create an
+[ApplicationInfo] structure, and subsequently creating an [InstanceCreateInfo] structure for passing to this function.
+
+See also
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html>
 */
 pub fn create_instance<C: Commands>(
     create_info: &InstanceCreateInfo<C>,
@@ -79,7 +85,16 @@ where
     }
 }
 
-//===========InstanceCreateInfo
+/// Info for creating an instance
+///
+/// Those familiar with Vulkan will know that this is where you indicate what Extensions and Layers you want to use. In vk-safe
+/// Extensions are indicated with [vk::instance_context] and passed into [ApplicationInfo]. Layers are not currently supported, but are planned.
+///
+/// Currently, the only thing you need to create this structure is an instance of [ApplicationInfo].
+/// In future, support will be added for using p_next for additional functionality.
+///
+/// See also
+/// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstanceCreateInfo.html>
 pub struct InstanceCreateInfo<'a, C> {
     pub(crate) inner: vk::InstanceCreateInfo,
     _config: PhantomData<C>,
@@ -87,6 +102,7 @@ pub struct InstanceCreateInfo<'a, C> {
 }
 
 impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
+    /// Create InstanceCreateInfo from [ApplicationInfo]
     pub fn new(app_info: &'a ApplicationInfo<'a, C>) -> Self {
         check_vuids::check_vuids!(InstanceCreateInfo);
 
@@ -248,7 +264,15 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
     }
 }
 
-//===========ApplicationInfo
+/// Info about your application
+///
+/// The most important thing for ApplicationInfo is indicating what Vulkan Version you are targeting. Those familiar with Vulkan will
+/// know you set a numerical number for the version in this structure for a specific version, or 0 to default to 1.0.0. In vk-safe,
+/// you instead indicate the version you will use with [vk::instance_context].
+///
+/// You can optionally set you own App name / version, and Engine name / version which may be informative to the Vulkan driver.
+/// From what I understand, the Vulkan driver can use your App name and version to enable App and Engine specific fixes or optimizations.
+/// This is really only useful for well-known Apps and Engines (such as popular games and game engines).
 pub struct ApplicationInfo<'a, C> {
     inner: vk::ApplicationInfo,
     _config: PhantomData<C>,
@@ -256,11 +280,14 @@ pub struct ApplicationInfo<'a, C> {
 }
 
 impl<'a> ApplicationInfo<'a, ()> {
-    pub const fn new<C: Copy>(_: C) -> ApplicationInfo<'a, C>
+    /// create ApplicationInfo with a context created using [vk::instance_context]
+    pub const fn new<C: Copy>(context: C) -> ApplicationInfo<'a, C>
     where
         C: Commands,
         C::Commands: Version,
     {
+        let _ = context;
+
         check_vuids::check_vuids!(ApplicationInfo);
 
         #[allow(unused_labels)]
@@ -332,21 +359,25 @@ impl<'a> ApplicationInfo<'a, ()> {
 }
 
 impl<'a, C> ApplicationInfo<'a, C> {
+    /// Set your App name (default is nothing, which is expressed to Vulkan with a null pointer)
     pub const fn app_name(mut self, name: VkStr<'a>) -> Self {
         self.inner.p_application_name = name.as_ptr();
         self
     }
 
+    /// Set your App version (default is zero)
     pub const fn app_version(mut self, version: VkVersion) -> Self {
         self.inner.application_version = version.raw();
         self
     }
 
+    /// Set the name of the the Engine you are using (default is nothing, which is expressed to Vulkan with a null pointer)
     pub const fn engine_name(mut self, name: VkStr<'a>) -> Self {
         self.inner.p_engine_name = name.as_ptr();
         self
     }
 
+    /// Set the version of the the Engine you are using (default is zero)
     pub const fn engine_version(mut self, version: VkVersion) -> Self {
         self.inner.engine_version = version.raw();
         self

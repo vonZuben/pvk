@@ -12,7 +12,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use vk::commands::{Commands, Extensions, InstanceDependencies, LoadCommands};
+use vk::context::{Commands, Extensions, InstanceDependencies, LoadCommands};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 use vk::Version;
 

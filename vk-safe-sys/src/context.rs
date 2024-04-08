@@ -14,7 +14,39 @@ pub unsafe trait Extensions {
     fn list_of_extensions() -> impl AsRef<[VkStrRaw]>;
 }
 
-/// define what API version and extensions should be used with an instance
+/** define what Vulkan version and extensions will be used with an instance
+
+### Usage
+First provide the name for your context to be able to refer to it later. You can also indicate if it is `pub` to be accessible outside
+the defining scope. Then pass the Version you will use, and a list of zero or more extensions all prepended with a `+`.
+
+### Examples
+```
+# use vk_safe_sys::context as vk;
+vk::instance_context!(pub MyInstanceContext: VERSION_1_1 + KHR_wayland_surface + KHR_surface);
+vk::instance_context!(OnlyBaseVersion: VERSION_1_1);
+
+// There are no uses for an extension only context at this time, since you cannot create any of the core dispatchable handles with it
+// but it may be useful in future to indicate specific properties for sub-regions of your code.
+vk::instance_context!(OnlyExtensions: + EXT_swapchain_colorspace + KHR_surface);
+```
+
+## Safety
+Many Vulkan extensions depend on other Vulkan extensions, or base versions of Vulkan. e.g. in order to use KHR_wayland_surface, you must also use KHR_surface.
+The macro generated code uses some trait implementations in order to ensure that all dependencies for each extension are present. If you fail to specify a
+dependency of an extension you want to use, you will see any error such as `the trait bound `InstanceContext::commands::InstanceContext: vk_safe_sys::dependencies::traits::KHR_surface` is not satisfied`.
+The last part in the path indicates that, in this example, `KHR_surface` also needs to be specified.
+
+ℹ️ you may also see cases such as
+- `VERSION_1_1__AND__VK_KHR_get_surface_capabilities2`, which means that `VERSION_1_1` (or higher) **and** `KHR_get_surface_capabilities2` must be specified
+- `KHR_get_physical_device_properties2__AND__VK_KHR_surface__AND__VK_KHR_get_surface_capabilities2`, which means that `KHR_get_physical_device_properties2` **and** `KHR_surface` **and** `KHR_get_surface_capabilities2` must be specified
+- `KHR_external_fence__OR__VK_VERSION_1_1`, which means `KHR_external_fence` **or** `VERSION_1_1` must be specified (this is usually because the extension got promoted to a core vulkan version,
+i.e. `KHR_external_fence` was promoted to core when `VERSION_1_1` was released)
+
+ℹ️ Some extensions get promoted to core versions. e.g. `KHR_external_fence` was promoted to core when `VERSION_1_1` was released. Thus, if you specify `VERSION_1_1`, you should not also specify
+`KHR_external_fence`, or else there will be a conflict with how to load to associated commands, which is seen as a conflicting trait implementation error. i.e. If both `VERSION_1_1` and `KHR_external_fence`,
+are specified, you will see something like `type annotations needed ... cannot infer type` because multiple options are available for `KHR_external_fence__OR__VK_VERSION_1_1`
+*/
 #[macro_export]
 macro_rules! instance_context {
     ( $vis:vis $name:ident : $($v_provider:ident)? $( + $e_provider:ident )* ) => {
@@ -26,7 +58,7 @@ macro_rules! instance_context {
             #[derive(Copy, Clone)]
             pub struct $name;
 
-            impl $crate::commands::Commands for $name {
+            impl $crate::context::Commands for $name {
                 type Commands = commands::$name;
             }
 
@@ -52,10 +84,10 @@ macro_rules! instance_context {
 
                 unsafe impl $crate::CommandProvider for $name {}
 
-                unsafe impl $crate::commands::Extensions for super::$name {
+                unsafe impl $crate::context::Extensions for super::$name {
                     fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
                         use std::ffi::c_char;
-                        use $crate::commands::macro_helper::*;
+                        use $crate::context::macro_helper::*;
                         let l = End;
                         $( $crate::dependencies::instance::$e_provider!(l); )*
                         l
@@ -82,8 +114,24 @@ macro_rules! instance_context {
         }
     }
 }
+pub use instance_context;
 
-/// define what API version and extensions should be used with a device
+/** define what Vulkan version and extensions will be used with an device
+
+This is the same as [instance_context], except for device. The Usage and Safety considerations are the same.
+Some device specific example is provided below.
+
+### Examples
+```
+# use vk_safe_sys::context as vk;
+vk::device_context!(pub MyDeviceContext: VERSION_1_0 + EXT_descriptor_indexing + KHR_maintenance3);
+vk::device_context!(OnlyBaseVersion: VERSION_1_0);
+
+// There are no uses for an extension only context at this time, since you cannot create any of the core dispatchable handles with it
+// but it may be useful in future to indicate specific properties for sub-regions of your code.
+vk::device_context!(OnlyExtensions: + KHR_swapchain);
+```
+*/
 #[macro_export]
 macro_rules! device_context {
     ( $vis:vis $name:ident : $($v_provider:ident)? $( + $e_provider:ident)* ) => {
@@ -95,7 +143,7 @@ macro_rules! device_context {
             #[derive(Copy, Clone)]
             pub struct $name;
 
-            impl $crate::commands::Commands for $name {
+            impl $crate::context::Commands for $name {
                 type Commands = commands::$name;
             }
 
@@ -122,13 +170,13 @@ macro_rules! device_context {
                 unsafe impl $crate::CommandProvider for $name {}
 
                 #[allow(non_camel_case_types)]
-                unsafe impl<I $(, $e_provider)*> $crate::commands::InstanceDependencies<I, ( $($e_provider),* )> for super::$name
+                unsafe impl<I $(, $e_provider)*> $crate::context::InstanceDependencies<I, ( $($e_provider),* )> for super::$name
                     where I: $crate::CommandProvider $( + $crate::dependencies::device::$e_provider::instance::HasDependency<$e_provider> )* {}
 
-                unsafe impl $crate::commands::Extensions for super::$name {
+                unsafe impl $crate::context::Extensions for super::$name {
                     fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
                         use std::ffi::c_char;
-                        use $crate::commands::macro_helper::*;
+                        use $crate::context::macro_helper::*;
                         let l = End;
                         $( $crate::dependencies::device::$e_provider!(l); )*
                         l
@@ -155,6 +203,7 @@ macro_rules! device_context {
         }
     }
 }
+pub use device_context;
 
 /// The below code is for a trick to simplify the above macros
 ///

@@ -20,11 +20,11 @@ fn main() {
 
     unsafe { create_instance.get_fptr()(&info, std::ptr::null(), &mut instance) };
 
-    struct Commands<C: commands::Commands> {
+    struct Commands<C: context::Commands> {
         c: C::Commands,
     }
 
-    impl<C: commands::Commands> Commands<C> {
+    impl<C: context::Commands> Commands<C> {
         fn load(instance: Instance, _: C) -> Self {
             // reset since otherwise instance borrow is aliased
             let loader = |name| {

@@ -26,7 +26,7 @@ extern "system" {
     ) -> Option<generated_vulkan::PFN_vkVoidFunction>;
 }
 
-pub mod commands;
+pub mod context;
 
 pub use generated_vulkan::has_command;
 pub use generated_vulkan::*;

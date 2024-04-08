@@ -7,7 +7,7 @@ use crate::VkVersion;
 
 use std::marker::PhantomData;
 
-use vk::commands::{CommandLoadError, Commands, LoadCommands};
+use vk::context::{CommandLoadError, Commands, LoadCommands};
 use vk::has_command::DestroyInstance;
 use vk::Version;
 

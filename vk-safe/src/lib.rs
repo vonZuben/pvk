@@ -13,6 +13,7 @@ This API is meant to be one-to-one with the C Vulkan API, as much as possible. E
 Getting started with this API is very similar to getting started with Vulkan in C. There are many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
 
 In view of the above, it is best to use this API while first understanding the C Vulkan API, and then the differences in vk-safe to make it more Rusty.
+When you are ready, take a look at [create_instance()].
 
 # Key Differences from C Vulkan API
 
