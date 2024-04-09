@@ -7,13 +7,13 @@ use crate::VkVersion;
 
 use std::marker::PhantomData;
 
-use vk::context::{CommandLoadError, Commands, LoadCommands};
+use vk::context::{CommandLoadError, Context, LoadCommands};
 use vk::has_command::DestroyInstance;
 use vk::Version;
 
 pub trait InstanceConfig {
     const VERSION: VkVersion;
-    type Commands: DestroyInstance;
+    type Context: DestroyInstance;
 }
 
 pub struct Config<C> {
@@ -22,11 +22,11 @@ pub struct Config<C> {
 
 impl<C> InstanceConfig for Config<C>
 where
-    C: Commands,
+    C: Context,
     C::Commands: LoadCommands + DestroyInstance + Version,
 {
     const VERSION: VkVersion = C::Commands::VERSION;
-    type Commands = C::Commands;
+    type Context = C::Commands;
 }
 
 pub type ScopedInstanceType<S, C> = RefScope<S, InstanceType<C>>;
@@ -34,18 +34,18 @@ pub type ScopedInstanceType<S, C> = RefScope<S, InstanceType<C>>;
 pub trait Instance:
     std::ops::Deref<Target = ScopedInstanceType<Self, Self::Config>> + Copy
 {
-    type Config: InstanceConfig<Commands = Self::Commands>;
-    type Commands;
+    type Config: InstanceConfig<Context = Self::Context>;
+    type Context;
 }
 
 impl<'scope, C: InstanceConfig> Instance for Scope<'scope, InstanceType<C>> {
     type Config = C;
-    type Commands = C::Commands;
+    type Context = C::Context;
 }
 
 pub struct InstanceType<C: InstanceConfig> {
     handle: vk::Instance,
-    pub(crate) commands: C::Commands,
+    pub(crate) context: C::Context,
 }
 
 unsafe impl<C: InstanceConfig> Send for InstanceType<C> {}
@@ -53,13 +53,13 @@ unsafe impl<C: InstanceConfig> Sync for InstanceType<C> {}
 
 impl<C: InstanceConfig> InstanceType<C>
 where
-    C::Commands: LoadCommands,
+    C::Context: LoadCommands,
 {
     pub(crate) fn load_commands(handle: vk::Instance) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetInstanceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
-            commands: C::Commands::load(loader)?,
+            context: C::Context::load(loader)?,
         })
     }
 }
@@ -137,7 +137,7 @@ impl<C: InstanceConfig> Drop for InstanceType<C> {
             // TODO: VkAllocationCallbacks not currently supported
         }
 
-        unsafe { self.commands.DestroyInstance().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.context.DestroyInstance().get_fptr()(self.handle, None.to_c()) }
     }
 }
 

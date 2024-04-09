@@ -16,12 +16,12 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         params: GetPhysicalDeviceImageFormatPropertiesParameters,
     ) -> Result<ImageFormatProperties<S>, vk::Result>
     where
-        I::Commands: GetPhysicalDeviceImageFormatProperties,
+        I::Context: GetPhysicalDeviceImageFormatProperties,
     {
         let mut properties = MaybeUninit::uninit();
         let command = self
             .instance
-            .commands
+            .context
             .GetPhysicalDeviceImageFormatProperties()
             .get_fptr();
         unsafe {

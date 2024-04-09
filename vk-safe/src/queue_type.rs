@@ -25,7 +25,7 @@ impl<D: Device, Q: QueueCapability> QueueConfig for Config<D, Q> {
 
 pub trait Queue: std::ops::Deref<Target = QueueType<Self::Config>> {
     type Config: QueueConfig<Device = Self::Device>;
-    type Device: Device<Commands = Self::Commands>;
+    type Device: Device<Context = Self::Commands>;
     type Capability: QueueCapability;
     type Commands;
 }
@@ -34,7 +34,7 @@ impl<C: QueueConfig> Queue for QueueType<C> {
     type Config = C;
     type Device = C::Device;
     type Capability = C::Capability;
-    type Commands = <C::Device as Device>::Commands;
+    type Commands = <C::Device as Device>::Context;
 }
 
 pub struct QueueType<C: QueueConfig> {

@@ -19,7 +19,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         mut storage: A,
     ) -> Result<A::InitStorage, Error>
     where
-        I::Commands: GetPhysicalDeviceSparseImageFormatProperties,
+        I::Context: GetPhysicalDeviceSparseImageFormatProperties,
     {
         check_vuids::check_vuids!(GetPhysicalDeviceSparseImageFormatProperties);
 
@@ -134,7 +134,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
             // enumerator_code2!
         }
 
-        enumerator_code2!(self.instance.commands.GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
+        enumerator_code2!(self.instance.context.GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
             (
                 self.handle,
                 image_format_properties.params.format,

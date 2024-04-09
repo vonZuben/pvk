@@ -9,7 +9,7 @@ use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
 
-use vk::context::{Commands, Extensions, LoadCommands};
+use vk::context::{Context, Extensions, LoadCommands};
 use vk::has_command::DestroyInstance;
 use vk::Version;
 
@@ -22,7 +22,7 @@ In order to create an Instance, you first define the Version and Extensions you 
 See also
 <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html>
 */
-pub fn create_instance<C: Commands>(
+pub fn create_instance<C: Context>(
     create_info: &InstanceCreateInfo<C>,
 ) -> Result<InstanceType<Config<C>>, Error>
 where
@@ -283,7 +283,7 @@ impl<'a> ApplicationInfo<'a, ()> {
     /// create ApplicationInfo with a context created using [vk::instance_context]
     pub const fn new<C: Copy>(context: C) -> ApplicationInfo<'a, C>
     where
-        C: Commands,
+        C: Context,
         C::Commands: Version,
     {
         let _ = context;

@@ -12,12 +12,12 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalD
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     pub fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties<S>
     where
-        I::Commands: GetPhysicalDeviceFormatProperties,
+        I::Context: GetPhysicalDeviceFormatProperties,
     {
         let mut properties = MaybeUninit::uninit();
         unsafe {
             self.instance
-                .commands
+                .context
                 .GetPhysicalDeviceFormatProperties()
                 .get_fptr()(self.handle, format, properties.as_mut_ptr());
             FormatProperties::new(properties.assume_init())

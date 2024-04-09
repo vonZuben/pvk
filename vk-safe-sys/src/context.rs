@@ -4,7 +4,7 @@ pub use crate::{CommandLoadError, LoadCommands};
 use crate::VkStrRaw;
 use crate::{FunctionLoader, VulkanCommand};
 
-pub trait Commands {
+pub trait Context {
     type Commands: LoadCommands;
 }
 
@@ -61,7 +61,7 @@ macro_rules! instance_context {
             #[derive(Copy, Clone)]
             pub struct $name;
 
-            impl $crate::context::Commands for $name {
+            impl $crate::context::Context for $name {
                 type Commands = commands::$name;
             }
 
@@ -154,7 +154,7 @@ macro_rules! device_context {
             #[derive(Copy, Clone)]
             pub struct $name;
 
-            impl $crate::context::Commands for $name {
+            impl $crate::context::Context for $name {
                 type Commands = commands::$name;
             }
 

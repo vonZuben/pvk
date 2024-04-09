@@ -12,7 +12,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
-use vk::context::{Commands, Extensions, InstanceDependencies, LoadCommands};
+use vk::context::{Context, Extensions, InstanceDependencies, LoadCommands};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 use vk::Version;
 
@@ -38,10 +38,10 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         queue_properties: &'a QueueFamiliesRef<S>,
     ) -> Result<DeviceType<Config<'a, C, S>>, Error>
     where
-        I::Commands: CreateDevice + Version,
-        C: Commands + InstanceDependencies<I::Commands, O>,
-        C::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<I::Commands>,
-        I::Commands: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
+        I::Context: CreateDevice + Version,
+        C: Context + InstanceDependencies<I::Context, O>,
+        C::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<I::Context>,
+        I::Context: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
     {
         // check version requirement
         let _ = C::Commands::VALID;
@@ -113,7 +113,7 @@ impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
         }
         // *********************************************
         unsafe {
-            let res = self.instance.commands.CreateDevice().get_fptr()(
+            let res = self.instance.context.CreateDevice().get_fptr()(
                 self.handle,
                 &create_info.inner,
                 std::ptr::null(),
@@ -144,7 +144,7 @@ pub struct DeviceCreateInfo<'a, C, S> {
 }
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
-    pub fn new<C: Copy + Extensions + Commands, S>(
+    pub fn new<C: Copy + Extensions + Context, S>(
         _: C,
         queue_create_info: &'a [DeviceQueueCreateInfo<S>],
     ) -> DeviceCreateInfo<'a, C, S>

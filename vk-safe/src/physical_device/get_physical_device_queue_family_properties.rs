@@ -23,9 +23,9 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         mut storage: A,
     ) -> Result<QueueFamilies<S, A>, Error>
     where
-        I::Commands: GetPhysicalDeviceQueueFamilyProperties,
+        I::Context: GetPhysicalDeviceQueueFamilyProperties,
     {
-        let families = enumerator_code2!(self.instance.commands.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
+        let families = enumerator_code2!(self.instance.context.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
         Ok(QueueFamilies {
             families,
             _scope: PhantomData,

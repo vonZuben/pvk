@@ -30,7 +30,7 @@ unit_error!(pub QueueIndexNotConfigured);
 
 impl<D: Device, Q: QueueCapability> QueueFamily<D, Q>
 where
-    D::Commands: GetDeviceQueue,
+    D::Context: GetDeviceQueue,
 {
     pub fn get_queue(
         &self,
@@ -41,7 +41,7 @@ where
             let family_index = config.inner.queue_family_index;
             let mut queue = MaybeUninit::uninit();
             unsafe {
-                let fptr = self.device.commands.GetDeviceQueue().get_fptr();
+                let fptr = self.device.context.GetDeviceQueue().get_fptr();
                 fptr(
                     self.device.handle,
                     family_index,

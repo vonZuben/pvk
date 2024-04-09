@@ -20,7 +20,7 @@ impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
         mut storage: A,
     ) -> Result<PhysicalDevices<S, A>, Error>
     where
-        C::Commands: EnumeratePhysicalDevices,
+        C::Context: EnumeratePhysicalDevices,
     {
         check_vuids::check_vuids!(EnumeratePhysicalDevices);
 
@@ -56,7 +56,7 @@ impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
             //enumerator_code2!
         }
 
-        let handles = enumerator_code2!(self.commands.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
+        let handles = enumerator_code2!(self.context.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
         Ok(PhysicalDevices::new(handles, self.as_scope()))
     }
 }

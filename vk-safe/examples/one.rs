@@ -57,7 +57,7 @@ fn main() {
 fn run_physical_device<
     C: vk::instance::VERSION_1_0 + vk::instance::KHR_external_fence_capabilities,
 >(
-    pd: impl vk::PhysicalDevice<Commands = C>,
+    pd: impl vk::PhysicalDevice<Context = C>,
 ) {
     println!("-------");
     println!("{:#?}", pd.get_physical_device_properties());

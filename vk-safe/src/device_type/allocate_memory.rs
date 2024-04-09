@@ -12,7 +12,7 @@ use std::ops::Deref;
 
 pub trait DeviceMemoryConfig {
     type Commands: FreeMemory;
-    type Device: Device<Commands = Self::Commands>;
+    type Device: Device<Context = Self::Commands>;
     type PropertyFlags: Flags;
     type HeapFlags: Flags;
 }
@@ -25,9 +25,9 @@ pub struct Config<D, P, H> {
 
 impl<D: Device, P: Flags, H: Flags> DeviceMemoryConfig for Config<D, P, H>
 where
-    D::Commands: FreeMemory,
+    D::Context: FreeMemory,
 {
-    type Commands = D::Commands;
+    type Commands = D::Context;
     type Device = D;
     type PropertyFlags = P;
     type HeapFlags = H;
@@ -78,10 +78,10 @@ impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C> {
         info: &MemoryAllocateInfo<C::PhysicalDevice, P, H>,
     ) -> Result<DeviceMemoryType<Config<S, P, H>>, vk::Result>
     where
-        C::Commands: AllocateMemory,
-        S::Commands: FreeMemory,
+        C::Context: AllocateMemory,
+        S::Context: FreeMemory,
     {
-        let fptr = self.deref().commands.AllocateMemory().get_fptr();
+        let fptr = self.deref().context.AllocateMemory().get_fptr();
         let mut memory = MaybeUninit::uninit();
         unsafe {
             let ret = fptr(
@@ -98,7 +98,7 @@ impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C> {
 
 impl<D: DeviceMemoryConfig> Drop for DeviceMemoryType<D> {
     fn drop(&mut self) {
-        let fptr = self.device.commands.FreeMemory().get_fptr();
+        let fptr = self.device.context.FreeMemory().get_fptr();
         check_vuids::check_vuids!(FreeMemory);
 
         #[allow(unused_labels)]

@@ -8,19 +8,19 @@ use crate::scope::{RefScope, Scope};
 
 use vk::has_command::DestroyDevice;
 
-use vk::context::{CommandLoadError, Commands, LoadCommands};
+use vk::context::{CommandLoadError, Context, LoadCommands};
 use vk::Version;
 
 pub trait DeviceConfig {
     const VERSION: VkVersion;
-    type Commands: DestroyDevice;
+    type Context: DestroyDevice;
     type PhysicalDevice: PhysicalDevice;
     fn queue_config(&self) -> &[DeviceQueueCreateInfo<Self::PhysicalDevice>];
     fn queue_family_properties(&self) -> &[vk::QueueFamilyProperties];
 }
 
 pub struct Config<'a, C, P> {
-    commands: PhantomData<C>,
+    context: PhantomData<C>,
     physical_device: PhantomData<P>,
     queue_config_ref: &'a [DeviceQueueCreateInfo<'a, P>],
     queue_family_properties: &'a [vk::QueueFamilyProperties],
@@ -32,7 +32,7 @@ impl<'a, C, P> Config<'a, C, P> {
         queue_family_properties: &'a [vk::QueueFamilyProperties],
     ) -> Self {
         Self {
-            commands: PhantomData,
+            context: PhantomData,
             physical_device: PhantomData,
             queue_config_ref,
             queue_family_properties,
@@ -42,11 +42,11 @@ impl<'a, C, P> Config<'a, C, P> {
 
 impl<C, P: PhysicalDevice> DeviceConfig for Config<'_, C, P>
 where
-    C: Commands,
+    C: Context,
     C::Commands: LoadCommands + DestroyDevice + Version,
 {
     const VERSION: VkVersion = C::Commands::VERSION;
-    type Commands = C::Commands;
+    type Context = C::Commands;
     type PhysicalDevice = P;
 
     fn queue_config(&self) -> &[DeviceQueueCreateInfo<P>] {
@@ -61,20 +61,20 @@ where
 pub type ScopedDeviceType<S, C> = RefScope<S, DeviceType<C>>;
 
 pub trait Device: std::ops::Deref<Target = ScopedDeviceType<Self, Self::Config>> + Copy {
-    type Config: DeviceConfig<Commands = Self::Commands, PhysicalDevice = Self::PhysicalDevice>;
+    type Config: DeviceConfig<Context = Self::Context, PhysicalDevice = Self::PhysicalDevice>;
     type PhysicalDevice;
-    type Commands;
+    type Context;
 }
 
 impl<'scope, C: DeviceConfig> Device for Scope<'scope, DeviceType<C>> {
     type Config = C;
     type PhysicalDevice = C::PhysicalDevice;
-    type Commands = C::Commands;
+    type Context = C::Context;
 }
 
 pub struct DeviceType<C: DeviceConfig> {
     pub(crate) handle: vk::Device,
-    pub(crate) commands: C::Commands,
+    pub(crate) context: C::Context,
     config: C,
 }
 
@@ -89,13 +89,13 @@ impl<C: DeviceConfig> std::fmt::Debug for DeviceType<C> {
 
 impl<C: DeviceConfig> DeviceType<C>
 where
-    C::Commands: LoadCommands,
+    C::Context: LoadCommands,
 {
     pub(crate) fn load_commands(handle: vk::Device, config: C) -> Result<Self, CommandLoadError> {
         let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
         Ok(Self {
             handle,
-            commands: C::Commands::load(loader)?,
+            context: C::Context::load(loader)?,
             config,
         })
     }
@@ -106,7 +106,7 @@ https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyDevic
 */
 impl<C: DeviceConfig> Drop for DeviceType<C> {
     fn drop(&mut self) {
-        unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.context.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
 
         check_vuids::check_vuids!(DestroyDevice);
 

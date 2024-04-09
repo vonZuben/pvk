@@ -16,7 +16,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         mut storage: A,
     ) -> Result<A::InitStorage, Error>
     where
-        I::Commands: EnumerateDeviceLayerProperties,
+        I::Context: EnumerateDeviceLayerProperties,
     {
         check_vuids::check_vuids!(EnumerateDeviceLayerProperties);
 
@@ -51,7 +51,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
             // enumerator_code2!
         }
 
-        enumerator_code2!(self.instance.commands.EnumerateDeviceLayerProperties().get_fptr(); (self.handle) -> storage)
+        enumerator_code2!(self.instance.context.EnumerateDeviceLayerProperties().get_fptr(); (self.handle) -> storage)
     }
 }
 

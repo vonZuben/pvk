@@ -13,7 +13,7 @@ use vk::has_command::MapMemory;
 
 impl<D, C: DeviceConfig> ScopedDeviceType<D, C>
 where
-    C::Commands: MapMemory,
+    C::Context: MapMemory,
 {
     pub fn map_memory<
         P: Flag<HOST_VISIBLE_BIT>,
@@ -146,7 +146,7 @@ where
 
         let mut ptr = std::mem::MaybeUninit::uninit();
 
-        let fptr = self.deref().commands.MapMemory().get_fptr();
+        let fptr = self.deref().context.MapMemory().get_fptr();
         unsafe {
             let res = fptr(
                 self.deref().handle,
