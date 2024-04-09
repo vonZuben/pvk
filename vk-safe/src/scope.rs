@@ -11,10 +11,19 @@ use std::marker::PhantomData;
 #[repr(transparent)]
 pub struct ScopeId<'id>(PhantomData<*mut &'id ()>);
 
-/// Wrapper for a reference to a type that should be limited to a specific scope marked by Id
-///
-/// types which are only safe within a scope implement their methods through this wrapper
-/// (e.g. impl Scope<'id, Instance> {fn enumerate_physical_devices()})
+/** A scoped type
+
+*This is an implementation detail and you are not intended to directly use this*.
+
+Types which are only safe to use within a scope implement their methods through this wrapper, or more preferably,
+through the Deref Target [RefScope].
+
+#### implementation details
+This is just informative, and not to be relied upon, as it could change. `Scope` is `#[repr(transparent)]`, and is a
+wrapper around `&'scope T`, and an invariant lifetime. It is beneficial to be a simple reference because it is very
+light weight for passing around. The lifetime will be included in any event, so even if the T is owned, there is no
+benefit over just being a reference.
+*/
 #[repr(transparent)]
 pub struct Scope<'scope, T> {
     handle: &'scope T,
@@ -55,13 +64,32 @@ impl<T> std::ops::Deref for Scope<'_, T> {
     }
 }
 
-/// Deref target for Scope<'_, T>
-///
-/// This type will be internally constructed to be RefScope<Scope<'scope, T>, T>
-/// this is a trick to make the lifetime parameter vanish, while still keeping the lifetime information
-///
-/// I currently strongly believe that this should be completely sound. RefScope is a transparent wrapper around T,
-/// but will only ever exist as a reference, making it useful as &'scope T.
+/** Deref target for Scope<'_, T>
+
+*This is an implementation detail and you are not intended to directly use this*.
+
+Types which are only safe to use within a scope implement their methods through this wrapper.
+
+## Why does this exist?
+As part of my experimentation with using [Scope], I decided that specifying types in function signatures and
+structs etc. was tedious, and it was only made worse by the need to specify each unique lifetime for all the handles
+you wanted to use. Moreover, most handles in Vulkan have another handle as a parent, and the parent lifetimes
+show up in the child types.
+
+I decided to make handle traits, such as [Device](crate::Device) in order to provide a nicer way to specify the
+handle types you wanted to use while abstracting away the unique lifetimes. However, I also wanted the use of
+`Scope` to be as transparent as possible. [Deref](core::ops::Deref) is a nice way to achieve this. However, we cannot deref to
+the base handle type because that would allow it to escape the unique lifetime scope. We could deref to `Scope<'scope, T>`,
+but then we would need the lifetime to showup in the handle trait (defeating the purpose).
+
+Thus, RefScope is born as a trick to hide the lifetime and provide a nice `Deref<Target = RefScope<S, T>>`. Where `S`
+abstracts `Scope<'_, T>`, and `T` is the handle type.
+
+# Safety
+`RefScope` is VERY delicate. It is only ever sound to have an instance of RefScope which is created from dereferencing
+`Scope`. In this way, for some handle `T` and lifetime `'scope`, the concrete type will ALWAYS be `RefScope<Scope<'scope, T>, T>`,
+even though `Scope<'scope, T>` is abstracted away as a generic parameter `S`.
+ */
 #[repr(transparent)]
 pub struct RefScope<S, T: ?Sized> {
     scope: PhantomData<S>,
@@ -71,11 +99,10 @@ pub struct RefScope<S, T: ?Sized> {
 impl<S, T> RefScope<S, T> {
     /// Get the original Scope<'_, T>
     pub(crate) fn as_scope(&self) -> S {
-        // here, we want to reverse the Deref of Scope<'_, T>
-        // such as by transmute::<&RefScope<S, T>, S> (see Deref for Scope)
-        // but the compiler cannot know that S is correctly sized for all S
-        // Thus, we need to even more unsafely use transmute_copy
-        // This is sound so long as RefScope only exists as a result of Deref of Scope
+        // Here, we want to reverse the Deref of Scope<'_, T> such as by transmute::<&RefScope<S, T>, S> (see Deref for Scope).
+        // However, the compiler cannot know that S is correctly sized for all S,
+        // but WE know that S is ALWAYS `Scope<'_, T>` (or else it was improperly constructed).
+        // Thus, we can use transmute_copy.
         unsafe { std::mem::transmute_copy(&self) }
     }
 

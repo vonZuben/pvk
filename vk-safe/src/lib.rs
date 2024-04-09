@@ -45,6 +45,8 @@ Due to the above mentioned "tag" and "Scope" trick, the concrete types of handle
 the main way of specifying handle types is to do so generically with traits. Somewhat contrary to the above 'Naming convention' rule, the concrete type of a
 handle is `HandleNameType` (with 'Type' appended). There is then a corresponding `HandleName` trait which should be the main way of specifying the types you are using.
 
+The `HandleName` trait is normally implemented for [Scope<'_, HandleNameType>]. Some handles do not need scopes, and `HandleName` trait is implemented directly for `HandleNameType`.
+
 #### Returning Result
 All Vulkan commands that can fail will return a Result. There Err variant is currently a placeholder dyn Error type. This should be changed in future to an Error type
 that enables handling specific Vulkan errors more easily.
@@ -217,7 +219,7 @@ pub use entry::*;
 pub use instance_type::instance_exports::*;
 pub use physical_device::physical_device_exports::*;
 
-pub use scope::scope;
+pub use scope::{scope, RefScope, Scope};
 
 pub use flags::*;
 

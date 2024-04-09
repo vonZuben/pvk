@@ -26,8 +26,9 @@ the defining scope. Then pass the Version you will use, and a list of zero or mo
 vk::instance_context!(pub MyInstanceContext: VERSION_1_1 + KHR_wayland_surface + KHR_surface);
 vk::instance_context!(OnlyBaseVersion: VERSION_1_1);
 
-// There are no uses for an extension only context at this time, since you cannot create any of the core dispatchable handles with it
-// but it may be useful in future to indicate specific properties for sub-regions of your code.
+// There are no uses for an extension only context at this time, since you cannot
+// create any of the core dispatchable handles with it but it may be useful in
+// future to indicate specific properties for sub-regions of your code.
 vk::instance_context!(OnlyExtensions: + EXT_swapchain_colorspace + KHR_surface);
 ```
 
@@ -46,6 +47,8 @@ i.e. `KHR_external_fence` was promoted to core when `VERSION_1_1` was released)
 ℹ️ Some extensions get promoted to core versions. e.g. `KHR_external_fence` was promoted to core when `VERSION_1_1` was released. Thus, if you specify `VERSION_1_1`, you should not also specify
 `KHR_external_fence`, or else there will be a conflict with how to load to associated commands, which is seen as a conflicting trait implementation error. i.e. If both `VERSION_1_1` and `KHR_external_fence`,
 are specified, you will see something like `type annotations needed ... cannot infer type` because multiple options are available for `KHR_external_fence__OR__VK_VERSION_1_1`
+
+ℹ️ `#[diagnostic::on_unimplemented]` should be stable soon and I plan to use it here to make better error messages.
 */
 #[macro_export]
 macro_rules! instance_context {
@@ -121,14 +124,22 @@ pub use instance_context;
 This is the same as [instance_context], except for device. The Usage and Safety considerations are the same.
 Some device specific example is provided below.
 
+Extensions for a device may also depend on extensions or versions of the instance being used. These are checked
+in `create_device`, which is when we know what instance / device context combination you are using. The error
+may indicate that some "has_command" trait is missing, and may suggest that you need to implement an extension
+trait for your instance context to address the issue.
+
+ℹ️ `#[diagnostic::on_unimplemented]` should be stable soon and I plan to use it here to make better error messages.
+
 ### Examples
 ```
 # use vk_safe_sys::context as vk;
 vk::device_context!(pub MyDeviceContext: VERSION_1_0 + EXT_descriptor_indexing + KHR_maintenance3);
 vk::device_context!(OnlyBaseVersion: VERSION_1_0);
 
-// There are no uses for an extension only context at this time, since you cannot create any of the core dispatchable handles with it
-// but it may be useful in future to indicate specific properties for sub-regions of your code.
+// There are no uses for an extension only context at this time, since you cannot
+// create any of the core dispatchable handles with it but it may be useful in
+// future to indicate specific properties for sub-regions of your code.
 vk::device_context!(OnlyExtensions: + KHR_swapchain);
 ```
 */
