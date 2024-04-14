@@ -10,7 +10,7 @@ use vk_safe as vk;
 use vk::vk_str;
 
 vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
-vk::device_context!(DeviceContext: VERSION_1_0 + KHR_external_fence);
+vk::device_context!(DeviceContext: VERSION_1_0);
 
 fn main() {
     println!(
@@ -54,11 +54,7 @@ fn main() {
     })();
 }
 
-fn run_physical_device<
-    C: vk::instance::VERSION_1_0 + vk::instance::KHR_external_fence_capabilities,
->(
-    pd: impl vk::PhysicalDevice<Context = C>,
-) {
+fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice<Context = C>) {
     println!("-------");
     println!("{:#?}", pd.get_physical_device_properties());
 
