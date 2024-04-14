@@ -5,10 +5,13 @@ for each such macro call found, check if the VUIDs in the same block are up to d
 and update as necessary
 
 With no arguments passed, it will automatically search all source files in the workspace vk-safe/src
+
 One argument for the desired search directory can be provided and searched instead
 
 # !!NOTE
-Do NOT tamper with the bodies of the version! and description! macros.
+Do NOT tamper with the bodies of the generated version! and description! macro calls. You can
+(and should) delete the generated old_description! macro call after you are done checking the updated
+VUID.
  */
 use std::env::{args_os, current_exe};
 use std::path::PathBuf;

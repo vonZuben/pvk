@@ -6,9 +6,10 @@ This workspace contains Rust crates which are all in support of making a low-lev
 # 📋 List of crates
 
 - `vk-safe` is the main crate which provides the final API
-- `vk-safe-sys` contains unsafe generated code for interfacing with Vulkan
+- `vk-safe-sys` contains unsafe generated code for interfacing with Vulkan, used by vk-safe
 - `generator` generates the unsafe code for vk-safe-sys
-- `check-vuids` is a helper tool to ensure that all Vulkan valid usage rules are checked for each API item
+- `check-vuids` is a helper tool to ensure that all Vulkan valid usage rules are checked for each
+API item. vk-safe depends on a small shim lib from this
 - `krs-quote` is a [`quote`](https://docs.rs/quote/latest/quote/) *like* crate used in the generator
 
 #### NOTES
@@ -43,7 +44,8 @@ in the installed VulkanSDK.
 should already have this. However, it is also provided in the VulkanSDK.
 
 💁 It is possible to build everything in the workspace without the entire VulkanSDK installed. In this case, you will need to
-obtain valid copies of `vk.xml` and `validusage.json`, such as from [Vulkan-Headers GitHub](https://github.com/KhronosGroup/Vulkan-Headers/tree/main/registry)
+obtain valid copies of `vk.xml` and `validusage.json`, such as from
+[Vulkan-Headers GitHub](https://github.com/KhronosGroup/Vulkan-Headers/tree/main/registry)
 and put them in a folder of your choice. Then you need to set the following environment variables (you can change the file
 names too, but they need to be specified):
 - `VK_XML_OVERRIDE=**my-path**/vk.xml`
@@ -51,6 +53,6 @@ names too, but they need to be specified):
 
 ## ⚠️ This is still very much a work in progress
 
-This is VERY early in development and there are no published crates yet. Most of the interesting documentation is in rustdoc style comments
-and it is necessary to download this workspace and generate it with cargo doc (in which case you also need to be able to build the code
-as per the above details).
+This is VERY early in development and there are no published crates yet. Most of the interesting documentation is in rustdoc
+style comments and it is necessary to download this workspace and generate it with `cargo doc` (in which case you also need to be
+able to build the code as per the above details).
