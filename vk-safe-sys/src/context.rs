@@ -54,13 +54,10 @@ are specified, you will see something like `type annotations needed ... cannot i
 macro_rules! instance_context {
     ( $vis:vis $name:ident : $($v_provider:ident)? $( + $e_provider:ident )* ) => {
         #[allow(non_upper_case_globals)]
-        $vis const $name: $name::$name = $name::$name;
+        #[derive(Copy, Clone)]
+        $vis struct $name;
 
-        #[allow(non_snake_case)]
-        pub mod $name {
-            #[derive(Copy, Clone)]
-            pub struct $name;
-
+        const _: () = {
             impl $crate::context::Context for $name {
                 type Commands = commands::$name;
             }
@@ -114,7 +111,7 @@ macro_rules! instance_context {
                     }
                 }
             }
-        }
+        };
     }
 }
 pub use instance_context;
@@ -147,13 +144,10 @@ vk::device_context!(OnlyExtensions: + KHR_swapchain);
 macro_rules! device_context {
     ( $vis:vis $name:ident : $($v_provider:ident)? $( + $e_provider:ident)* ) => {
         #[allow(non_upper_case_globals)]
-        $vis const $name: $name::$name = $name::$name;
+        #[derive(Copy, Clone)]
+        $vis struct $name;
 
-        #[allow(non_snake_case)]
-        pub mod $name {
-            #[derive(Copy, Clone)]
-            pub struct $name;
-
+        const _: () = {
             impl $crate::context::Context for $name {
                 type Commands = commands::$name;
             }
@@ -211,7 +205,7 @@ macro_rules! device_context {
                     }
                 }
             }
-        }
+        };
     }
 }
 pub use device_context;

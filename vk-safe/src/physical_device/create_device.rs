@@ -155,13 +155,16 @@ pub struct DeviceCreateInfo<'a, C, S> {
 }
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
-    pub fn new<C: Copy + Extensions + Context, S>(
-        _: C,
+    pub fn new<C: Extensions + Context, S>(
+        context: C,
         queue_create_info: &'a [DeviceQueueCreateInfo<S>],
     ) -> DeviceCreateInfo<'a, C, S>
     where
         C::Commands: Version,
     {
+        // hide the fact that context is unused
+        let _ = context;
+
         check_vuids::check_vuids!(DeviceCreateInfo);
 
         #[allow(unused_labels)]
