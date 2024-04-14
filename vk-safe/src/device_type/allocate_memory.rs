@@ -33,10 +33,20 @@ where
     type HeapFlags = H;
 }
 
+/** DeviceMemory handle trait
+
+Represents a DeviceMemory
+
+*currently* DeviceMemory does not need to be scoped
+*/
 pub trait DeviceMemory: Deref<Target = DeviceMemoryType<Self::Config>> {
+    #[doc(hidden)]
     type Config: DeviceMemoryConfig<Device = Self::Device>;
+    /// The *specific* Device to which this DeviceMemory belongs
     type Device;
+    /// Properties of the memory type this DeviceMemory was allocated with
     type PropertyFlags: Flags;
+    /// Properties of the memory heap from which this DeviceMemory was allocated
     type HeapFlags: Flags;
 }
 

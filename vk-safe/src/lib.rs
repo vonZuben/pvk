@@ -13,7 +13,7 @@ This API is meant to be one-to-one with the C Vulkan API, as much as possible. E
 Getting started with this API is very similar to getting started with Vulkan in C. There are many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
 
 In view of the above, it is best to use this API while first understanding the C Vulkan API, and then the differences in vk-safe to make it more Rusty.
-When you are ready, take a look at [create_instance()].
+When you are ready, take a look at [`create_instance()`].
 
 # Key Differences from C Vulkan API
 
@@ -24,13 +24,13 @@ Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and the
 
 #### Commands are methods
 Most Vulkan commands take a dispatchable handle as the first argument. In vk-safe, the dispatchable handle has methods corresponding to these commands, and the first parameter is
-set to the corresponding handle automatically. Few commands, such as [create_instance] take no dispatchable handle, and are plain functions.
+set to the corresponding handle automatically. Few commands, such as [`create_instance()`] take no dispatchable handle, and are plain functions.
 
 #### Dispatchable handle methods require 'Scope'
 vk-safe uses an invariant lifetime trick to "tag" instances of dispatchable handles within a "Scope". Resources which are later obtained from the dispatchable
 handle have the same "tag". This ensures that resources can only be used with the corresponding dispatchable handle from which they were created.
 
-In Rust today, it is only possible to make a 'Scope' at a function boundary. Thus, each handle you want to use needs to be passed into it's own function with [scope()], which creates
+In Rust today, it is only possible to make a 'Scope' at a function boundary. Thus, each handle you want to use needs to be passed into it's own function with [`scope()`], which creates
 closures, that can be considered as individual units or execution, and the user can decide how to handle them. One consequence of this is that in order to handle many different
 handles at the same time, it is necessary to make them into sub-scopes (closures within closures), or run the units of execution concurrently such as with threads or async rust. Sub-scopes are
 tightly bound to the structure of your code and are only a good choice when you already know how many handles you are using. For the case of handling dynamic numbers of handles,
@@ -45,7 +45,7 @@ Due to the above mentioned "tag" and "Scope" trick, the concrete types of handle
 the main way of specifying handle types is to do so generically with traits. Somewhat contrary to the above 'Naming convention' rule, the concrete type of a
 handle is `HandleNameType` (with 'Type' appended). There is then a corresponding `HandleName` trait which should be the main way of specifying the types you are using.
 
-The `HandleName` trait is normally implemented for [Scope<'_, HandleNameType>]. Some handles do not need scopes, and `HandleName` trait is implemented directly for `HandleNameType`.
+The `HandleName` trait is normally implemented for [`Scope<'_, HandleNameType>`](Scope). Some handles do not need scopes, and `HandleName` trait is implemented directly for `HandleNameType`.
 
 #### Returning Result
 All Vulkan commands that can fail will return a Result. There Err variant is currently a placeholder dyn Error type. This should be changed in future to an Error type
@@ -58,7 +58,7 @@ methods for safely enabling specific use cases.
 
 #### Enumerator commands use ArrayStorage
 Vulkan has many "Enumerate" or "Get" commands which take a pointer / length for an array, to which return data will be written. Said commands can also be used to query length
-of data to be returned by passing a null pointer. **In vk-safe**, "Enumerate" or "Get" commands take a storage type which implements the [ArrayStorage] trait.
+of data to be returned by passing a null pointer. **In vk-safe**, "Enumerate" or "Get" commands take a storage type which implements the [`ArrayStorage`] trait.
 
 #### Enumerations and BitFlags are structs with associated constants
 This allows unknown variants or bits to be explicitly handled. This is necessary because a Vulkan implementation working on a higher version than this library was generated with can lead to obtaining
@@ -218,6 +218,7 @@ pub use device_type::device_exports::*;
 pub use entry::*;
 pub use instance_type::instance_exports::*;
 pub use physical_device::physical_device_exports::*;
+pub use queue_type::queue_exports::*;
 
 pub use scope::{scope, RefScope, Scope};
 

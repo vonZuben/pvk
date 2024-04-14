@@ -23,18 +23,28 @@ impl<D: Device, Q: QueueCapability> QueueConfig for Config<D, Q> {
     type Capability = Q;
 }
 
+/** Queue handle trait
+
+Represents a Queue
+
+*currently* Queue does not need to be scoped
+*/
 pub trait Queue: std::ops::Deref<Target = QueueType<Self::Config>> {
+    #[doc(hidden)]
     type Config: QueueConfig<Device = Self::Device>;
-    type Device: Device<Context = Self::Commands>;
+    /// The *specific* Device to which this Queue belongs
+    type Device: Device<Context = Self::Context>;
+    /// Flags representing the capabilities of the Queue (e.g. if the Queue supports graphics operations)
     type Capability: QueueCapability;
-    type Commands;
+    /// shortcut for the Device context such as the Version and Extensions being used
+    type Context;
 }
 
 impl<C: QueueConfig> Queue for QueueType<C> {
     type Config = C;
     type Device = C::Device;
     type Capability = C::Capability;
-    type Commands = <C::Device as Device>::Context;
+    type Context = <C::Device as Device>::Context;
 }
 
 pub struct QueueType<C: QueueConfig> {
@@ -63,4 +73,8 @@ impl<C: QueueConfig> std::fmt::Debug for QueueType<C> {
             .field("device", &self.device.deref())
             .finish()
     }
+}
+
+pub mod queue_exports {
+    pub use super::Queue;
 }

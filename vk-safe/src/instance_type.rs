@@ -31,10 +31,16 @@ where
 
 pub type ScopedInstanceType<S, C> = RefScope<S, InstanceType<C>>;
 
+/** Instance handle trait
+
+Represents a *specific* Instance which has been scoped.
+*/
 pub trait Instance:
     std::ops::Deref<Target = ScopedInstanceType<Self, Self::Config>> + Copy
 {
+    #[doc(hidden)]
     type Config: InstanceConfig<Context = Self::Context>;
+    /// Instance context such as the Version and Extensions being used
     type Context;
 }
 

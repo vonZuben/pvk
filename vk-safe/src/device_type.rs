@@ -60,9 +60,16 @@ where
 
 pub type ScopedDeviceType<S, C> = RefScope<S, DeviceType<C>>;
 
+/** Device handle trait
+
+Represents a *specific* Device which has been scoped.
+*/
 pub trait Device: std::ops::Deref<Target = ScopedDeviceType<Self, Self::Config>> + Copy {
+    #[doc(hidden)]
     type Config: DeviceConfig<Context = Self::Context, PhysicalDevice = Self::PhysicalDevice>;
+    /// The *specific* PhysicalDevice from which this logical Device was created
     type PhysicalDevice;
+    /// Device context such as the Version and Extensions being used
     type Context;
 }
 
@@ -181,4 +188,5 @@ pub mod device_exports {
 
     pub use super::Device;
     pub use allocate_memory::DeviceMemory;
+    pub use map_memory::MappedMemory;
 }

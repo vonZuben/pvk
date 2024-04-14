@@ -166,6 +166,7 @@ where
     }
 }
 
+/// DeviceMemory which has been mapped for host access
 #[derive(Debug)]
 pub struct MappedMemory<M> {
     memory: M,

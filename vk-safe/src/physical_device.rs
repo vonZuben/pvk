@@ -31,10 +31,16 @@ impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, A> {
 /// the PhysicalDevice new scope is itself limited with respect to the associated Instance scope
 pub type ScopedPhysicalDeviceType<S, I> = RefScope<S, PhysicalDeviceType<I>>;
 
+/** PhysicalDevice handle trait
+
+Represents a *specific* PhysicalDevice which has been scoped.
+*/
 pub trait PhysicalDevice:
     std::ops::Deref<Target = ScopedPhysicalDeviceType<Self, Self::Instance>> + Copy
 {
+    /// The *specific* Instance to which this PhysicalDevice belongs
     type Instance: Instance<Context = Self::Context>;
+    /// shortcut to the Instance context such as the Version and Extensions being used
     type Context;
 }
 
