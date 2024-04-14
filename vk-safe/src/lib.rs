@@ -1,4 +1,4 @@
-/*! vk-safe provides a safe low level rust api for vulkan
+/*! vk-safe provides a safe low level Rust API for vulkan
 
 ## ⚠️ This is still very much a work in progress
 This library is going thorough a lot of experimentation to see how far the type system can be pushed to provide a zero-overhead safe API for Vulkan.
@@ -32,7 +32,7 @@ handle have the same "tag". This ensures that resources can only be used with th
 
 In Rust today, it is only possible to make a 'Scope' at a function boundary. Thus, each handle you want to use needs to be passed into it's own function with [`scope()`], which creates
 closures, that can be considered as individual units or execution, and the user can decide how to handle them. One consequence of this is that in order to handle many different
-handles at the same time, it is necessary to make them into sub-scopes (closures within closures), or run the units of execution concurrently such as with threads or async rust. Sub-scopes are
+handles at the same time, it is necessary to make them into sub-scopes (closures within closures), or run the units of execution concurrently such as with threads or async Rust. Sub-scopes are
 tightly bound to the structure of your code and are only a good choice when you already know how many handles you are using. For the case of handling dynamic numbers of handles,
 such as PhysicalDevice's, it is better to run concurrent units of execution (of course each handle could be used sequentially in a loop, but usually you want to use all the available
 PhysicalDevice's for the whole program runtime concurrently).
@@ -159,31 +159,26 @@ and only a subset of valid / sensible combinations). It is recommended to make u
 and also get earlier compile time errors.
 
 Lastly, some things must be checked at runtime with regard to information that must be queried from the system. As much as possible, the API is
-designed to make the user perform the checks automatically simply by using the API normally. This, way there should be no *real* overhead since
-the user should need to do these checks anyway (the only exception to this would be for highly specialized software that will only run on very
-specific hardware known in advance).
+designed to make the user perform the checks automatically simply by using the API normally, and the type system is used to keep relevant information.
+This, way there should be no *real* overhead since the user should need to do these checks anyway when initially obtaining like memory properties,
+and then API's can rely on the information stored in the types.
 
-# About the documentation
+# 🤔 Why I made this
 
-Since this is generally mean to be as close to the c Vulkan API as possible, most methods do not have documentation here, and the official documentation should be checked,
-Links to the official documentation should be provided here per method.
-
-# Why I made this
-
-The intention is to provide an API that is as close as possible to the c vulkan api, while also being safe to use.
+The intention is to provide an API that is as close as possible to the C Vulkan API, while also being safe to use.
 I wanted to make this for the following reasons:
 1. to become better with Rust and Vulkan
 2. to create an API that provides a combination of "low level" and "safety" that I could not find with other Rust Vulkan APIs
 3. to create a safe Vulkan API that is as zero overhead as possible
-(In particular, I am interested in having access to low level memory APIs in Vulkan, while also having safety, for implementing a Wayland compositor)
-4. to **experiment** with how far I can push the type system to create a zero overhead safe Vulkan API
+4. to **experiment** with how far I can push Rust and the type system to create a zero overhead safe Vulkan API
+5. to code as a hobby (I can only spend my own limited free time on this and progress is very slow)
 
-## Comparison to other APIs
-- [Ash](https://github.com/ash-rs/ash) is a true low level Vulkan API for rust where everything is unsafe. **Ash is actually a big inspiration for features vk-safe, other than safety**
-- [Vulkano](https://github.com/vulkano-rs/vulkano) calls itself a "low-levelish API" and a "High-level Rust API" (so I'll say Medium level lol), and it provides safety.
-Vulkano is far from zero overhead due to using thing like Arc, and performing potentially heavy verification for all api calls.
-(normally people using the c API would only use validation layers such as VK_LAYER_KHRONOS_validation during development, and then remove all validation in a release build, but
-I am not sure this can be done with Vulkano at this time)
+## Other APIs
+- [Ash](https://github.com/ash-rs/ash) is a true low level Vulkan API for Rust where everything is unsafe. **Ash is actually a big inspiration for features vk-safe, other than safety**
+- [Vulkano](https://github.com/vulkano-rs/vulkano) calls itself a "low-levelish API" and a "High-level Rust API" in the README. From my own review, it seems pretty low level. However,
+Vulkano is far from zero overhead due to using thing like Arc, and performing potentially heavy verification for all API calls.
+(normally people using the c API would use validation layers such as VK_LAYER_KHRONOS_validation during development, and then remove all validation in a release build, but
+I am not sure this can be done with Vulkano since validation is built in as runtime checks). I want vk-safe to represent validation in the type system so there is no overhead.
 - [Wgpu](https://github.com/gfx-rs/wgpu) is a high level API that works on top of Vulkan, and other graphics APIs. Since it is not exclusive to Vulkan, it cannot provide the low level APIs I want.
 
 */
