@@ -1,3 +1,0 @@
-# not stable so instead I will just format the macros in a way there they rustfmt does not try yo format them
-# I hear that rustfmt does not attempt to format macros that use {}
-# skip_macro_invocations = ["check_vuids", "version", "description", "old_description"]

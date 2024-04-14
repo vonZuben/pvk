@@ -1,3 +1,4 @@
+# This is for testing the generated Vulkan code by generating and outputing it all into a single file
 
 default:
 	TMP_OUT_FILE=/tmp/tmp.rs cargo run --bin vk_stdout
