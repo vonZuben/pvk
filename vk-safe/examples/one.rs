@@ -9,8 +9,8 @@ use vk_safe as vk;
 
 use vk::vk_str;
 
-vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_wayland_surface + KHR_surface);
-vk::device_context!(DeviceContext: VERSION_1_0 + KHR_external_fence_fd + KHR_external_fence);
+vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
+vk::device_context!(DeviceContext: VERSION_1_0 + KHR_external_fence);
 
 fn main() {
     println!(
