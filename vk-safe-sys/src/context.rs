@@ -64,6 +64,16 @@ macro_rules! instance_context {
 
             unsafe impl $crate::CommandProvider for $name {}
 
+            unsafe impl $crate::context::Extensions for $name {
+                fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
+                    use std::ffi::c_char;
+                    use $crate::context::macro_helper::*;
+                    let l = End;
+                    $( $crate::dependencies::instance::$e_provider!(l); )*
+                    l
+                }
+            }
+
             mod commands {
                 $(
                     use $crate::version::instance::traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
@@ -83,16 +93,6 @@ macro_rules! instance_context {
                 )*
 
                 unsafe impl $crate::CommandProvider for $name {}
-
-                unsafe impl $crate::context::Extensions for super::$name {
-                    fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
-                        use std::ffi::c_char;
-                        use $crate::context::macro_helper::*;
-                        let l = End;
-                        $( $crate::dependencies::instance::$e_provider!(l); )*
-                        l
-                    }
-                }
 
                 #[allow(non_snake_case)]
                 pub struct $name {
@@ -154,6 +154,20 @@ macro_rules! device_context {
 
             unsafe impl $crate::CommandProvider for $name {}
 
+            #[allow(non_camel_case_types)]
+            unsafe impl<I $(, $e_provider)*> $crate::context::InstanceDependencies<I, ( $($e_provider),* )> for $name
+                where I: $crate::CommandProvider $( + $crate::dependencies::device::$e_provider::instance::HasDependency<$e_provider> )* {}
+
+            unsafe impl $crate::context::Extensions for $name {
+                fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
+                    use std::ffi::c_char;
+                    use $crate::context::macro_helper::*;
+                    let l = End;
+                    $( $crate::dependencies::device::$e_provider!(l); )*
+                    l
+                }
+            }
+
             mod commands {
                 $(
                     use $crate::version::device::traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
@@ -173,20 +187,6 @@ macro_rules! device_context {
                 )*
 
                 unsafe impl $crate::CommandProvider for $name {}
-
-                #[allow(non_camel_case_types)]
-                unsafe impl<I $(, $e_provider)*> $crate::context::InstanceDependencies<I, ( $($e_provider),* )> for super::$name
-                    where I: $crate::CommandProvider $( + $crate::dependencies::device::$e_provider::instance::HasDependency<$e_provider> )* {}
-
-                unsafe impl $crate::context::Extensions for super::$name {
-                    fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
-                        use std::ffi::c_char;
-                        use $crate::context::macro_helper::*;
-                        let l = End;
-                        $( $crate::dependencies::device::$e_provider!(l); )*
-                        l
-                    }
-                }
 
                 #[allow(non_snake_case)]
                 pub struct $name {
