@@ -31,17 +31,28 @@ impl<I: Version, D: Version> VersionCheck<I> for D {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I> {
+impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: CreateDevice + Version,
+    I::Context: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
+{
+    /**
+    Create a device
+
+    In order to create a Device, you first define the Version and Extensions you will use with [`vk::device_context!`]. You can then create an
+    [`DeviceCreateInfo`] structure along with an array of [`DeviceQueueCreateInfo`].
+
+    See also
+    <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html>
+    */
     pub fn create_device<'a, C, O>(
         &self,
         create_info: &DeviceCreateInfo<'a, C, S>,
         queue_properties: &'a QueueFamiliesRef<S>,
     ) -> Result<DeviceType<Config<'a, C, S>>, Error>
     where
-        I::Context: CreateDevice + Version,
         C: Context + InstanceDependencies<I::Context, O>,
         C::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<I::Context>,
-        I::Context: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
     {
         // check version requirement
         let _ = C::Commands::VALID;

@@ -16,8 +16,8 @@ use vk::Version;
 /**
 Create an instance
 
-In order to create an Instance, you first define the Version and Extensions you will use with [vk::instance_context]. You can then create an
-[ApplicationInfo] structure, and subsequently create an [InstanceCreateInfo] structure for passing to this function.
+In order to create an Instance, you first define the Version and Extensions you will use with [`vk::instance_context!`]. You can then create an
+[`ApplicationInfo`] structure, and subsequently create an [`InstanceCreateInfo`] structure for passing to this function.
 
 See also
 <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html>

@@ -121,7 +121,7 @@ pub use instance_context;
 
 /** define what Vulkan version and extensions will be used with an device
 
-This is the same as [instance_context], except for device. The Usage and Safety considerations are the same.
+This is the same as [`instance_context`], except for device. The Usage and Safety considerations are the same.
 Some device specific example is provided below.
 
 Extensions for a device may also depend on extensions or versions of the instance being used. These are checked

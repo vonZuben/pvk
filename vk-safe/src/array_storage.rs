@@ -9,11 +9,11 @@ use vk_safe_sys as vk;
 /// An implementor of this trait indicates "if" and "how" to allocate storage space;
 /// provides mutable access to uninitialized memory to write to; and finalizes the initialized storage.
 ///
-/// Commands which take an `impl ArrayStorage` type will first call [ArrayStorage::allocate], which enables the implementation to query the length of to-be-returned data.
-/// Then [ArrayStorage::uninit_slice] will be called in order to get a slice of uninitialized data to be written to. Last, [ArrayStorage::finalize] will be called to allow the implementation to
-/// perform any last work needed to make a safe initialized memory type that can be returned to the user.
+/// Commands which take an `impl ArrayStorage` type will first call [`ArrayStorage::allocate`], which enables the implementation to query the length of to-be-returned data.
+/// Then [`ArrayStorage::uninit_slice`] will be called in order to get a slice of uninitialized data to be written to. Last, [`ArrayStorage::finalize`] will be called to
+/// allow the implementation to perform any last work needed to make a safe initialized memory type that can be returned to the user.
 ///
-/// Implementations of this are provided for [Vec] and slices / arrays of [MaybeUninit]. You may implement this trait yourself for any of your own array like types.
+/// Implementations of this are provided for [`Vec`] and slices / arrays of [`MaybeUninit`]. You may implement this trait yourself for any of your own array like types.
 pub trait ArrayStorage<T> {
     /// The final initialized storage type.
     type InitStorage: AsRef<[T]>;
@@ -33,9 +33,9 @@ pub trait ArrayStorage<T> {
 
     /// Finalize len amount of initialized memory.
     /// # Safety
-    /// `len` represents how much memory was written to the slice from [ArrayStorage::uninit_slice]. `len` comes from the underlying Vulkan implementation
-    /// (i.e. the driver for your hardware), and *should* always be less than or equal to the len of the slice returned from [ArrayStorage::uninit_slice].
-    /// However, this is not validated and there could be a broken Vulkan implementation, so it is recommended to use min(len, your_memory_capacity).
+    /// `len` represents how much memory was written to the slice from [`ArrayStorage::uninit_slice`]. `len` comes from the underlying Vulkan implementation
+    /// (i.e. the driver for your hardware), and *should* always be less than or equal to the len of the slice returned from [`ArrayStorage::uninit_slice`].
+    /// However, this is not validated and there could be a broken Vulkan implementation, so it is recommended to use `min(len, your_memory_capacity)`.
     fn finalize(self, len: usize) -> Self::InitStorage;
 }
 
