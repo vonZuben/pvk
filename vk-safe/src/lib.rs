@@ -15,6 +15,61 @@ Getting started with this API is very similar to getting started with Vulkan in 
 In view of the above, it is best to use this API while first understanding the C Vulkan API, and then the differences in vk-safe to make it more Rusty.
 When you are ready, take a look at [`create_instance()`].
 
+### Example (bare minimum to get a Device context)
+```
+use vk_safe as vk;
+
+// declare the Vulkan version we are targeting
+// must satisfy Device version <= Instance version
+// (verified when used together)
+vk::instance_context!(InstanceContext: VERSION_1_0);
+vk::device_context!(DeviceContext: VERSION_1_0);
+
+// configure and create instance
+let app_info = vk::ApplicationInfo::new(InstanceContext);
+let instance_info = vk::InstanceCreateInfo::new(&app_info);
+let instance = vk::create_instance(&instance_info).unwrap();
+
+// create a scope in which to use the instance (See Scope documentation below)
+vk::scope(instance, |instance| {
+
+    // get physical devices
+    let physical_devices = instance
+        .enumerate_physical_devices(Vec::new())
+        .unwrap();
+
+    for physical_device in physical_devices.iter() {
+        vk::scope(physical_device, |physical_device| {
+            // discover queues on the physical device
+            let queue_family_properties = physical_device
+                .get_physical_device_queue_family_properties(Vec::new())
+                .unwrap();
+
+            // configure queues that support graphics
+            queue_family_properties.config_scope(|qp| {
+                let mut queue_configs = vec![];
+                let priorities = vk::QueuePriorities::new(&[1.0; 10]);
+                for p in qp {
+                    if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+                        queue_configs.push(
+                            vk::DeviceQueueCreateInfo::new(priorities.with_num_queues(p.queue_count), p)
+                                .unwrap(),
+                        )
+                    }
+                }
+
+                // configure and create device
+                let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+                let device = physical_device
+                    .create_device(&device_create_info, &queue_family_properties)
+                    .unwrap();
+            });
+        })();
+    }
+})();
+
+```
+
 # Key Differences from C Vulkan API
 
 #### Naming convention
@@ -88,61 +143,6 @@ pub mod stencil_op {
     // and more
 }
 # }
-```
-
-### Example (bare minimum to get a Device context)
-```
-use vk_safe as vk;
-
-// declare the Vulkan version we are targeting
-// must satisfy Device version <= Instance version
-// (verified when used together)
-vk::instance_context!(InstanceContext: VERSION_1_0);
-vk::device_context!(DeviceContext: VERSION_1_0);
-
-// configure and create instance
-let app_info = vk::ApplicationInfo::new(InstanceContext);
-let instance_info = vk::InstanceCreateInfo::new(&app_info);
-let instance = vk::create_instance(&instance_info).unwrap();
-
-// create a scope in which to use the instance (See Scope documentation below)
-vk::scope(instance, |instance| {
-
-    // get physical devices
-    let physical_devices = instance
-        .enumerate_physical_devices(Vec::new())
-        .unwrap();
-
-    for physical_device in physical_devices.iter() {
-        vk::scope(physical_device, |physical_device| {
-            // discover queues on the physical device
-            let queue_family_properties = physical_device
-                .get_physical_device_queue_family_properties(Vec::new())
-                .unwrap();
-
-            // configure queues that support graphics
-            queue_family_properties.config_scope(|qp| {
-                let mut queue_configs = vec![];
-                let priorities = vk::QueuePriorities::new(&[1.0; 10]);
-                for p in qp {
-                    if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
-                        queue_configs.push(
-                            vk::DeviceQueueCreateInfo::new(priorities.with_num_queues(p.queue_count), p)
-                                .unwrap(),
-                        )
-                    }
-                }
-
-                // configure and create device
-                let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
-                let device = physical_device
-                    .create_device(&device_create_info, &queue_family_properties)
-                    .unwrap();
-            });
-        })();
-    }
-})();
-
 ```
 
 ## VUIDs (implementation detail)
