@@ -6,8 +6,8 @@ const ERROR_MSG: &'static str = "ERROR: need to set Vulkan SDK path environment 
 
 #[cfg(target_os = "windows")]
 fn windows_env() -> Result<()> {
-    let sdk_lib_path = sdk::sdk_path().ok_or(ERROR_MSG).join("Lib");
-    println!("cargo:rustc-link-search={sdk_lib_path}");
+    let sdk_lib_path = sdk::sdk_path().ok_or(ERROR_MSG)?.join("Lib");
+    println!("cargo:rustc-link-search={}", sdk_lib_path.display());
     Ok(())
 }
 

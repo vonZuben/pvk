@@ -11,7 +11,8 @@
 #[macro_use]
 pub mod generated_vulkan;
 
-#[link(name = "vulkan")]
+#[cfg_attr(target_os = "linux", link(name = "vulkan"))]
+#[cfg_attr(target_os = "windows", link(name = "vulkan-1"))]
 extern "system" {
     #[link_name = "vkGetInstanceProcAddr"]
     pub fn GetInstanceProcAddr(
