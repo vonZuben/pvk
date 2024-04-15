@@ -16,13 +16,13 @@ pub struct ScopeId<'id>(PhantomData<*mut &'id ()>);
 *This is an implementation detail and you are not intended to directly use this*.
 
 Types which are only safe to use within a scope implement their methods through this wrapper, or more preferably,
-through the Deref Target [RefScope].
+through the Deref Target [`RefScope`].
 
 #### implementation details
 This is just informative, and not to be relied upon, as it could change. `Scope` is `#[repr(transparent)]`, and is a
-wrapper around `&'scope T`, and an invariant lifetime. It is beneficial to be a simple reference because it is very
-light weight for passing around. The lifetime will be included in any event, so even if the T is owned, there is no
-benefit over just being a reference.
+wrapper around `&'scope T`, and a `PhantomData` type to make trh lifetime invariant. It is beneficial to be a simple
+reference because it is very light weight for passing around. The lifetime will be included in any event, so even if
+the T is owned, there is no benefit over just being a reference.
 */
 #[repr(transparent)]
 pub struct Scope<'scope, T> {
@@ -70,25 +70,21 @@ impl<T> std::ops::Deref for Scope<'_, T> {
 
 Types which are only safe to use within a scope implement their methods through this wrapper.
 
-## Why does this exist?
-As part of my experimentation with using [Scope], I decided that specifying types in function signatures and
-structs etc. was tedious, and it was only made worse by the need to specify each unique lifetime for all the handles
-you wanted to use. Moreover, most handles in Vulkan have another handle as a parent, and the parent lifetimes
-show up in the child types.
+#### implementation details
+This is just informative, and not to be relied upon, as it could change. `RefScope` is a
+`#[repr(transparent)]` wrapper around a `T: ?Sized`, and a `PhantomData<S>`. [`Scope<'_, T>`](Scope)
+implements [`Deref`](core::ops::Deref) with `Target = RefScope<Self, T>`. In this way,
+`RefScope` can only ever exist as a reference bound to the lifetime of a [`Scope`], and
+the invariant lifetime information is capture in the generic `S` type parameter.
 
-I decided to make handle traits, such as [Device](crate::Device) in order to provide a nicer way to specify the
-handle types you wanted to use while abstracting away the unique lifetimes. However, I also wanted the use of
-`Scope` to be as transparent as possible. [Deref](core::ops::Deref) is a nice way to achieve this. However, we cannot deref to
-the base handle type because that would allow it to escape the unique lifetime scope. We could deref to `Scope<'scope, T>`,
-but then we would need the lifetime to showup in the handle trait (defeating the purpose).
-
-Thus, RefScope is born as a trick to hide the lifetime and provide a nice `Deref<Target = RefScope<S, T>>`. Where `S`
-abstracts `Scope<'_, T>`, and `T` is the handle type.
+vk-safe APIs can ensure different handles have the same scope (i.e. have the same Instance
+or Device parent handle) by using the same generic parameter `S`.
 
 # Safety
-`RefScope` is VERY delicate. It is only ever sound to have an instance of RefScope which is created from dereferencing
-`Scope`. In this way, for some handle `T` and lifetime `'scope`, the concrete type will ALWAYS be `RefScope<Scope<'scope, T>, T>`,
-even though `Scope<'scope, T>` is abstracted away as a generic parameter `S`.
+`RefScope` is VERY delicate. It is only ever sound to have an instance of RefScope which is
+created from dereferencing `Scope`. In this way, for some handle `T` and lifetime `'scope`,
+the concrete type will ALWAYS be `RefScope<Scope<'scope, T>, T>`, even though
+`Scope<'scope, T>` is abstracted away as a generic parameter `S`.
  */
 #[repr(transparent)]
 pub struct RefScope<S, T: ?Sized> {
