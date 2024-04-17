@@ -8,18 +8,16 @@ use vk_safe_sys as vk;
 
 use vk::has_command::EnumerateDeviceExtensionProperties;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceExtensionProperties.html
- */
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: EnumerateDeviceExtensionProperties,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceExtensionProperties.html>
     pub fn enumerate_device_extension_properties<A: ArrayStorage<ExtensionProperties<S>>>(
         &self,
         layer_name: Option<VkStr>,
         mut storage: A,
-    ) -> Result<A::InitStorage, Error>
-    where
-        I::Context: EnumerateDeviceExtensionProperties,
-    {
+    ) -> Result<A::InitStorage, Error> {
         check_vuids::check_vuids!(EnumerateDeviceExtensionProperties);
 
         #[allow(unused_labels)]

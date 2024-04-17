@@ -6,14 +6,12 @@ use vk::has_command::GetPhysicalDeviceFeatures;
 
 use std::mem::MaybeUninit;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html
-*/
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures<S>
-    where
-        I::Context: GetPhysicalDeviceFeatures,
-    {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: GetPhysicalDeviceFeatures,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html>
+    pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures<S> {
         let mut features = MaybeUninit::uninit();
         unsafe {
             self.instance.context.GetPhysicalDeviceFeatures().get_fptr()(

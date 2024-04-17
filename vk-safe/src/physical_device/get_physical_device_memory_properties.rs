@@ -12,14 +12,12 @@ use std::mem::MaybeUninit;
 
 use std::marker::PhantomData;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
-*/
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<S>
-    where
-        I::Context: GetPhysicalDeviceMemoryProperties,
-    {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: GetPhysicalDeviceMemoryProperties,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html>
+    pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<S> {
         let mut properties = MaybeUninit::uninit();
         unsafe {
             self.instance

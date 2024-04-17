@@ -123,7 +123,9 @@ pub(crate) mod get_physical_device_sparse_image_format_properties;
 pub mod physical_device_exports {
     use super::*;
     pub use create_device::{DeviceCreateInfo, DeviceQueueCreateInfo, QueuePriorities};
-    pub use get_physical_device_image_format_properties::GetPhysicalDeviceImageFormatPropertiesParameters;
+    pub use get_physical_device_image_format_properties::{
+        GetPhysicalDeviceImageFormatPropertiesParameters, ImageFormatProperties,
+    };
 
     pub use super::PhysicalDevice;
 }

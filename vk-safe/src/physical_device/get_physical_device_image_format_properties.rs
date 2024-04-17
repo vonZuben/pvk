@@ -6,18 +6,21 @@ use vk::has_command::GetPhysicalDeviceImageFormatProperties;
 
 use std::mem::MaybeUninit;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html
-*/
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: GetPhysicalDeviceImageFormatProperties,
+{
+    /// get image_format_properties
+    ///
+    /// This function takes the normal parameters via [`GetPhysicalDeviceImageFormatPropertiesParameters`], which
+    /// verifies that a valid combination of parameters is used.
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html>
     #[track_caller]
     pub fn get_physical_device_image_format_properties(
         &self,
         params: GetPhysicalDeviceImageFormatPropertiesParameters,
-    ) -> Result<ImageFormatProperties<S>, vk::Result>
-    where
-        I::Context: GetPhysicalDeviceImageFormatProperties,
-    {
+    ) -> Result<ImageFormatProperties<S>, vk::Result> {
         let mut properties = MaybeUninit::uninit();
         let command = self
             .instance
@@ -40,6 +43,16 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
     }
 }
 
+/// parameters for `get_physical_device_image_format_properties`
+///
+/// Used to create and verify parameters for [`get_physical_device_image_format_properties`](crate::RefScope::get_physical_device_image_format_properties)
+///
+/// Verification checks that valid usage rules for `vkGetPhysicalDeviceImageFormatProperties`
+/// are not violated, while considering that the parameters are to be **consumed by `vkCreateImage`
+/// (as members of `VkImageCreateInfo`)**.
+///
+/// Thus, the valid usage rules for `VkImageCreateInfo` are also verified, since image format
+/// properties for an image that cannot be created is meaningless, and probably undefined.
 #[derive(Clone, Copy)]
 pub struct GetPhysicalDeviceImageFormatPropertiesParameters {
     pub(crate) format: vk::Format,
@@ -50,6 +63,19 @@ pub struct GetPhysicalDeviceImageFormatPropertiesParameters {
 }
 
 impl GetPhysicalDeviceImageFormatPropertiesParameters {
+    /// create and verify parameters for [`get_physical_device_image_format_properties`](crate::RefScope::get_physical_device_image_format_properties)
+    ///
+    /// create and verify parameters while considering valid usage rules for
+    /// `vkGetPhysicalDeviceImageFormatProperties` and `VkImageCreateInfo`.
+    ///
+    /// # Panic
+    /// This function will panic if invalid parameters are provided.
+    ///
+    /// #### Why not return Result?
+    /// If you provide invalid parameters, there is no useful error other than "HEY!, do it right you silly goose!".
+    ///
+    /// It is possible (and recommended) to create and verify the parameters in a const context
+    /// to detect errors at compile time and avoid runtime checks.
     pub const fn new(
         format: vk::Format,
         image_type: vk::ImageType,

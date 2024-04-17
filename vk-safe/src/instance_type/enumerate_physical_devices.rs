@@ -11,17 +11,15 @@ use vk_safe_sys as vk;
 
 use vk::has_command::EnumeratePhysicalDevices;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html
-*/
-impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C> {
+impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C>
+where
+    C::Context: EnumeratePhysicalDevices,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html>
     pub fn enumerate_physical_devices<A: ArrayStorage<vk::PhysicalDevice>>(
         &self,
         mut storage: A,
-    ) -> Result<PhysicalDevices<S, A>, Error>
-    where
-        C::Context: EnumeratePhysicalDevices,
-    {
+    ) -> Result<PhysicalDevices<S, A>, Error> {
         check_vuids::check_vuids!(EnumeratePhysicalDevices);
 
         #[allow(unused_labels)]

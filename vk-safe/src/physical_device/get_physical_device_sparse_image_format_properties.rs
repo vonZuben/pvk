@@ -9,7 +9,15 @@ use super::get_physical_device_image_format_properties::ImageFormatProperties;
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: GetPhysicalDeviceSparseImageFormatProperties,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceSparseImageFormatProperties.html>
+    ///
+    /// *this currently takes [`ImageFormatProperties`](crate::ImageFormatProperties) which needs to be obtained in advance.
+    /// However this should probably be changed. I am considering a general purpose "image parameters" type which may replace
+    /// [`GetPhysicalDeviceImageFormatPropertiesParameters`](crate::GetPhysicalDeviceImageFormatPropertiesParameters) in future.*
     pub fn get_physical_device_sparse_image_format_properties<
         A: ArrayStorage<SparseImageFormatProperties<S>>,
     >(
@@ -17,10 +25,7 @@ impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
         samples: vk::SampleCountFlags,
         image_format_properties: ImageFormatProperties<S>,
         mut storage: A,
-    ) -> Result<A::InitStorage, Error>
-    where
-        I::Context: GetPhysicalDeviceSparseImageFormatProperties,
-    {
+    ) -> Result<A::InitStorage, Error> {
         check_vuids::check_vuids!(GetPhysicalDeviceSparseImageFormatProperties);
 
         #[allow(unused_labels)]

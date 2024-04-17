@@ -7,17 +7,15 @@ use vk_safe_sys as vk;
 
 use vk::has_command::EnumerateDeviceLayerProperties;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceLayerProperties.html
- */
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: EnumerateDeviceLayerProperties,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceLayerProperties.html>
     pub fn enumerate_device_layer_properties<A: ArrayStorage<LayerProperties<S>>>(
         &self,
         mut storage: A,
-    ) -> Result<A::InitStorage, Error>
-    where
-        I::Context: EnumerateDeviceLayerProperties,
-    {
+    ) -> Result<A::InitStorage, Error> {
         check_vuids::check_vuids!(EnumerateDeviceLayerProperties);
 
         #[allow(unused_labels)]

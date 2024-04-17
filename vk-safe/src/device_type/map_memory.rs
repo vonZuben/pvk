@@ -15,6 +15,13 @@ impl<D, C: DeviceConfig> ScopedDeviceType<D, C>
 where
     C::Context: MapMemory,
 {
+    /// Map memory for host access
+    ///
+    /// *currently this can only be used to map the whole memory range
+    /// there may be breaking change in future to make the API more inline
+    /// with `vkMapMemory`*
+    ///
+    /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html>
     pub fn map_memory<
         P: Flag<HOST_VISIBLE_BIT>,
         H: NotFlag<MULTI_INSTANCE_BIT>,

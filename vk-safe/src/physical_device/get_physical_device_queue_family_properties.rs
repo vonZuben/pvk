@@ -14,17 +14,17 @@ use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
 
 use std::fmt;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html
-*/
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_queue_family_properties<A: ArrayStorage<vk::QueueFamilyProperties>>(
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: GetPhysicalDeviceQueueFamilyProperties,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html>
+    pub fn get_physical_device_queue_family_properties<
+        A: ArrayStorage<vk::QueueFamilyProperties>,
+    >(
         &self,
         mut storage: A,
-    ) -> Result<QueueFamilies<S, A>, Error>
-    where
-        I::Context: GetPhysicalDeviceQueueFamilyProperties,
-    {
+    ) -> Result<QueueFamilies<S, A>, Error> {
         let families = enumerator_code2!(self.instance.context.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
         Ok(QueueFamilies {
             families,

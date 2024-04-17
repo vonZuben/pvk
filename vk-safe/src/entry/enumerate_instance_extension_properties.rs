@@ -22,9 +22,7 @@ impl fmt::Debug for ExtensionProperties {
     }
 }
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceExtensionProperties.html
-*/
+/// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceExtensionProperties.html>
 pub fn enumerate_instance_extension_properties<S: ArrayStorage<ExtensionProperties>>(
     layer_name: Option<VkStr>,
     mut storage: S,

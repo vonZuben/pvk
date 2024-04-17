@@ -11,6 +11,15 @@ use crate::DeviceQueueCreateInfo;
 
 impl<'a, S, C: DeviceConfig> ScopedDeviceType<S, C> {
     /// get the configured queue families
+    ///
+    /// In Vulkan, after creating a device, you normally use `vkGetDeviceQueue`
+    /// to get the queues that you configured during device creation.
+    ///
+    /// vk-safe does not have an exact method corresponding to `vkGetDeviceQueue`
+    ///
+    /// use this method instead to get the queue families that you configured.
+    /// Each queue family is represented with a [`QueueFamily`] which allows you
+    /// to get your configured queues after you verify the [`QueueFlags`](crate::QueueFlags).
     pub fn get_configured_queue_families(
         &self,
     ) -> impl Iterator<Item = QueueFamily<S, Unknown>> + crate::scope::Captures<&Self> {
@@ -32,6 +41,13 @@ impl<D: Device, Q: QueueCapability> QueueFamily<D, Q>
 where
     D::Context: GetDeviceQueue,
 {
+    /// Get a queue from a QueueFamily with known [`QueueFlags`](crate::QueueFlags)
+    ///
+    /// After determining what operations a QueueFamily supports, call this
+    /// method to get individual queues. This is where `vkGetDeviceQueue` will
+    /// actually be called.
+    ///
+    /// see also <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>
     pub fn get_queue(
         &self,
         queue_index: u32,
@@ -59,6 +75,9 @@ where
 #[derive(Debug)]
 pub struct Unknown;
 
+/// A configured queue family
+///
+/// provides access to individual queues in the family
 #[derive(Clone, Copy)]
 pub struct QueueFamily<D, Q> {
     config_index: usize,
@@ -97,8 +116,15 @@ impl<D: Device, U> QueueFamily<D, U> {
         }
     }
 
+    /// Ensure the QueueFamily has supports specific operations
+    ///
+    /// [`QueueFlags`](crate::QueueFlags) represents the operations that queues in the family supports.
+    /// Call this method to verify in the type system that this QueueFamily supports the
+    /// operations you want to use.
+    ///
+    /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkQueueFlagBits.html>
     pub fn with_capability<Q: QueueCapability>(
-        &self,
+        self,
         _capability: Q,
     ) -> Result<QueueFamily<D, Q>, CapabilityNotSupported> {
         if self

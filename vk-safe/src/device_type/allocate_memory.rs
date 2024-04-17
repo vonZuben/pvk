@@ -82,15 +82,18 @@ impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemoryType<D> {
     }
 }
 
-impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C> {
+impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C>
+where
+    C::Context: AllocateMemory,
+    S::Context: FreeMemory,
+{
+    /// allocate memory for use with a device
+    ///
+    /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html>
     pub fn allocate_memory<P: Flags, H: Flags>(
         &self,
         info: &MemoryAllocateInfo<C::PhysicalDevice, P, H>,
-    ) -> Result<DeviceMemoryType<Config<S, P, H>>, vk::Result>
-    where
-        C::Context: AllocateMemory,
-        S::Context: FreeMemory,
-    {
+    ) -> Result<DeviceMemoryType<Config<S, P, H>>, vk::Result> {
         let fptr = self.deref().context.AllocateMemory().get_fptr();
         let mut memory = MaybeUninit::uninit();
         unsafe {

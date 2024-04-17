@@ -4,9 +4,7 @@ use std::mem::MaybeUninit;
 
 use crate::VkVersion;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceVersion.html
-*/
+/// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceVersion.html>
 pub fn enumerate_instance_version() -> Result<VkVersion, vk::Result> {
     match super::entry_fn_loader::<vk::EnumerateInstanceVersion>() {
         Some(command) => {

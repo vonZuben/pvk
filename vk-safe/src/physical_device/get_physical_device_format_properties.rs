@@ -6,14 +6,12 @@ use vk::has_command::GetPhysicalDeviceFormatProperties;
 
 use std::mem::MaybeUninit;
 
-/*
-https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html
-*/
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I> {
-    pub fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties<S>
-    where
-        I::Context: GetPhysicalDeviceFormatProperties,
-    {
+impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+where
+    I::Context: GetPhysicalDeviceFormatProperties,
+{
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html>
+    pub fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties<S> {
         let mut properties = MaybeUninit::uninit();
         unsafe {
             self.instance

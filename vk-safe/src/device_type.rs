@@ -188,5 +188,6 @@ pub mod device_exports {
 
     pub use super::Device;
     pub use allocate_memory::DeviceMemory;
+    pub use get_device_queue::QueueFamily;
     pub use map_memory::MappedMemory;
 }
