@@ -124,12 +124,9 @@ This allows unknown variants or bits to be explicitly handled. This is necessary
 Unknown variants or bits. Since associated constants cannot currently be imported into the namespace with `use`, vk-safe also provides modules corresponding to each
 Enumeration and BitFlag type, with all variants or bits as plain constants which can be imported. The type and module names follow expected Rust convention.
 
-#### 🚧 AllocationCallbacks
-Vulkan supports AllocationCallbacks mostly for debugging purposes. These are not currently supported in vk-safe. Adding them will *most likely* be a breaking change, assuming that
-parameters will be added to the respective `create_*` commands. (e.g. [`create_instance()`] will likely have an allocation_callbacks parameter added).
-
 ```
 # mod example {
+// illustrative of actual implementation
 pub struct StencilOp(pub(crate) i32);
 
 impl StencilOp {
@@ -148,6 +145,10 @@ pub mod stencil_op {
 }
 # }
 ```
+
+#### 🚧 AllocationCallbacks
+Vulkan supports AllocationCallbacks mostly for debugging purposes. These are not currently supported in vk-safe. Adding them will *most likely* be a breaking change, assuming that
+parameters will be added to the respective `create_*` commands. (e.g. [`create_instance()`] will likely have an allocation_callbacks parameter added).
 
 ## VUIDs (implementation detail)
 All Vulkan APIs have valid usage rules that must be followed. Each valid usage rule has a VUID (Valid Usage Identifier). For all v-safe APIs,
