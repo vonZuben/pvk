@@ -25,10 +25,6 @@ impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, A> {
     }
 }
 
-/// A scoped PhysicalDevice
-///
-/// when you want to start using a PhysicalDevice, the PhysicalDevice defines a new scope
-/// the PhysicalDevice new scope is itself limited with respect to the associated Instance scope
 pub type ScopedPhysicalDeviceType<S, I> = RefScope<S, PhysicalDeviceType<I>>;
 
 /** PhysicalDevice handle trait
