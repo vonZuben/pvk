@@ -159,6 +159,8 @@ fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice
                 let queue = qf.get_queue(0);
                 println!("--Example Queue handle--");
                 println!("{queue:#?}");
+
+                device.wait_idle().unwrap();
             }
         })();
     });
