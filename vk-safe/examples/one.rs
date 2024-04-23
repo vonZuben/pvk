@@ -149,6 +149,8 @@ fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice
             println!("--Example mapped memory handle--");
             println!("{mapped_memory:#?}");
 
+            let _memory = device.unmap_memory(mapped_memory);
+
             for qf in device.get_configured_queue_families() {
                 println!("--Queue family that was configured during device creation--");
                 println!("queue family: {:#?}", qf);
