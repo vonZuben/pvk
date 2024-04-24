@@ -196,24 +196,32 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
     }
 }
 
+/// make a variant name by stripping the enumeration name from the beginning
+///
+/// In the Vulkan specification, enumeration variants are EnumNameVariant.
+/// This would be redundant in rust to refer to variants as EnumName::EnumNameVariant.
+/// Thus, we strip the EnumName from the variant.
 pub fn make_variant_name(enumeration_name: &str, variant_name: &str) -> String {
-    // check for both Flags and FlagBits and remove such
+    // Flags and FlagBits do not appear in the variants names
     let enumeration_name = enumeration_name
         .replace("FlagBits", "")
         .replace("Flags", "");
 
+    // convert format to match variant format
     let mut enum_name = utils::case::camel_to_snake(&enumeration_name);
     enum_name.make_ascii_uppercase();
     enum_name.push('_');
 
-    let const_name_string = variant_name.replace(&enum_name, ""); //.replace("_BIT", "");
+    let const_name_string = variant_name.replace(&enum_name, "");
 
-    let is_numeric = const_name_string
+    let is_first_char_numeric = const_name_string
         .chars()
         .nth(0)
         .map(char::is_numeric)
         .unwrap_or(false);
-    if is_numeric {
+
+    if is_first_char_numeric {
+        // identifiers cannot start with a number, so prepend something
         format!("TYPE_{}", const_name_string)
     } else {
         const_name_string
