@@ -41,6 +41,14 @@ impl<'a> Constant3<'a> {
     pub fn name(&self) -> &VkTyName {
         &self.name
     }
+
+    pub fn is_alias(&self) -> bool {
+        matches!(self.val.value, ValueKind::Enumref(..))
+    }
+
+    pub fn value(&self) -> TokenWrapper {
+        self.val.value()
+    }
 }
 
 impl krs_quote::ToTokens for Constant3<'_> {
@@ -178,12 +186,10 @@ impl<'a> ConstValue2<'a> {
             _ => panic!("unexpected unknown value"),
         }
     }
-}
 
-impl krs_quote::ToTokens for ConstValue2<'_> {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+    fn value(&self) -> TokenWrapper {
         use ValueKind::*;
-        let value = match self.value {
+        match self.value {
             Offset(calculated, negate) => match negate {
                 Negate2::False => calculated.to_string().as_code(),
                 Negate2::True => format!("-{}", calculated).as_code(),
@@ -203,10 +209,18 @@ impl krs_quote::ToTokens for ConstValue2<'_> {
                 .replace("f", "")
                 .replace("F", "")
                 .as_code(),
-        };
+        }
+    }
+}
+
+impl krs_quote::ToTokens for ConstValue2<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let value = self.value();
 
         match (self.context, self.value) {
-            (ConstantContext::Enum, Enumref(..)) => krs_quote_with!(tokens <- Self::{@value} ),
+            (ConstantContext::Enum, ValueKind::Enumref(..)) => {
+                krs_quote_with!(tokens <- Self::{@value} )
+            }
             (ConstantContext::Enum, _) => krs_quote_with!(tokens <- Self({@value}) ),
             (ConstantContext::GlobalConstant, _) => {
                 <TokenWrapper as krs_quote::ToTokens>::to_tokens(&value, tokens)

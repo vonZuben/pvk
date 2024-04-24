@@ -20,6 +20,8 @@ impl krs_quote::ToTokens for EnumVariantsCollection<'_> {
 
             /// Type level versions of all Flag bits
             pub mod flag_types {
+                #![allow(non_camel_case_types)]
+
                 {@* {@flag_types}}
             }
         );
@@ -45,11 +47,29 @@ struct FlagBitTypes<'a>(&'a EnumVariants<'a>);
 impl krs_quote::ToTokens for FlagBitTypes<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let target = self.0.target;
-        let variant_names = self.0.variants.iter().map(|c| *c.name());
+        let variants = self.0.variants.iter().map(|c| {
+            struct Variant<'a>(&'a constants::Constant3<'a>);
+            impl krs_quote::ToTokens for Variant<'_> {
+                fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+                    let name = self.0.name();
+                    if self.0.is_alias() {
+                        let value = self.0.value();
+                        krs_quote_with!(tokens <-
+                            pub type {@name} = {@value};
+                        )
+                    } else {
+                        krs_quote_with!(tokens <-
+                            pub struct {@name} { priv_phantom: std::marker::PhantomData<()> }
+                        )
+                    }
+                }
+            }
+            Variant(c)
+        });
 
         krs_quote_with!(tokens <-
             pub mod {@target} {
-                {@* pub struct {@variant_names} { priv_phantom: std::marker::PhantomData<()> } }
+                {@* {@variants} }
             }
         )
     }
