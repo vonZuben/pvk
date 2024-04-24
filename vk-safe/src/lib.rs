@@ -213,6 +213,7 @@ pub use vk_str::VkStr;
 
 pub use array_storage::ArrayStorage;
 
+pub use vk_safe_sys::generated_vulkan::bitmask_variants::*;
 pub use vk_safe_sys::generated_vulkan::bitmasks::*;
 pub use vk_safe_sys::generated_vulkan::enum_variants::*;
 pub use vk_safe_sys::generated_vulkan::enumerations::*;

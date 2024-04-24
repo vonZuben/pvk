@@ -9,11 +9,54 @@ pub struct EnumVariantsCollection<'a> {
     enum_variants: utils::VecMap<utils::VkTyName, EnumVariants<'a>>,
 }
 
-impl krs_quote::ToTokens for EnumVariantsCollection<'_> {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let variants = self.enum_variants.iter();
+pub struct Enumerations<'a>(&'a EnumVariantsCollection<'a>);
 
-        let flag_types = self.enum_variants.iter().map(|ev| FlagBitTypes(ev));
+impl<'a> Enumerations<'a> {
+    pub fn new(collection: &'a EnumVariantsCollection<'a>) -> Self {
+        Self(collection)
+    }
+}
+
+impl krs_quote::ToTokens for Enumerations<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let variants = self
+            .0
+            .enum_variants
+            .iter()
+            .filter(|ev| matches!(ev.kind, EnumKind::Normal));
+
+        let enum_types = variants.clone().map(|ev| FlagBitTypes(ev));
+
+        krs_quote_with!(tokens <-
+            {@* {@variants}}
+
+            /// Type level versions of all enumeration variants
+            pub mod enum_types {
+                #![allow(non_camel_case_types)]
+
+                {@* {@enum_types}}
+            }
+        );
+    }
+}
+
+pub struct Flags<'a>(&'a EnumVariantsCollection<'a>);
+
+impl<'a> Flags<'a> {
+    pub fn new(collection: &'a EnumVariantsCollection<'a>) -> Self {
+        Self(collection)
+    }
+}
+
+impl krs_quote::ToTokens for Flags<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let variants = self
+            .0
+            .enum_variants
+            .iter()
+            .filter(|ev| matches!(ev.kind, EnumKind::BitFlags));
+
+        let flag_types = variants.clone().map(|ev| FlagBitTypes(ev));
 
         krs_quote_with!(tokens <-
             {@* {@variants}}

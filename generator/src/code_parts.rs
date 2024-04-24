@@ -10,6 +10,7 @@ macro_rules! code_parts {
             vulkan_traits,
             c_type_defs,
             bitmasks,
+            bitmask_variants,
             structs,
             unions,
             handles,

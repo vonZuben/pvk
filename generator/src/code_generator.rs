@@ -53,7 +53,8 @@ pub struct Generator<'a> {
     // code generation
     definitions: definitions::Definitions2,
     constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
-    enum_variants: enumerations::EnumVariantsCollection<'a>,
+    // this includes all things traditionally considered enumerations, and things that are additionally considered as bitflags/bitmasks
+    enum_collection: enumerations::EnumVariantsCollection<'a>,
     commands: commands::Commands2,
     feature_collection: features::FeatureCollection,
     extensions: extensions::ExtensionCollection,
@@ -105,6 +106,11 @@ impl<'a> Generator<'a> {
         krs_quote!({@* {@bitmasks} }).to_string()
     }
 
+    pub fn bitmask_variants(&self) -> String {
+        let flag_variants = enumerations::Flags::new(&self.enum_collection);
+        krs_quote!({@flag_variants}).to_string()
+    }
+
     pub fn structs(&self) -> String {
         let structs = &self.definitions.structs;
         krs_quote!({@structs}).to_string()
@@ -126,7 +132,7 @@ impl<'a> Generator<'a> {
     }
 
     pub fn enum_variants(&self) -> String {
-        let enum_variants = &self.enum_variants;
+        let enum_variants = enumerations::Enumerations::new(&self.enum_collection);
         krs_quote!({@enum_variants}).to_string()
     }
 
@@ -212,7 +218,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         }
 
         let enum_variants = self
-            .enum_variants
+            .enum_collection
             .get_mut_or_default(target, enumerations::EnumVariants::new(target, kind));
 
         let name = enm.name.as_str();
@@ -344,7 +350,7 @@ impl<'a> VisitVkParse<'a> for Generator<'a> {
         assert!(!basetype.ptr);
         let name = utils::VkTyName::new(basetype.name);
         assert!(name.contains("Flags"));
-        self.enum_variants.contains_or_default(
+        self.enum_collection.contains_or_default(
             name,
             enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags),
         );
