@@ -5,7 +5,7 @@ use crate::error::Error;
 
 use allocate_memory::DeviceMemory;
 
-use crate::flags::{Flag, NotFlag};
+use crate::flags::{Excludes, Includes};
 
 use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
 use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
@@ -23,8 +23,8 @@ where
     ///
     /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html>
     pub fn map_memory<
-        P: Flag<HOST_VISIBLE_BIT>,
-        H: NotFlag<MULTI_INSTANCE_BIT>,
+        P: Includes<HOST_VISIBLE_BIT>,
+        H: Excludes<MULTI_INSTANCE_BIT>,
         M: DeviceMemory<Device = D, PropertyFlags = P, HeapFlags = H>,
     >(
         &self,

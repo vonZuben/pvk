@@ -1,3 +1,10 @@
+//! Vulkan flags (also referred to as bitmasks for FlagBits)
+//!
+//! 🚧 docs in progress
+
+pub use vk_safe_sys::generated_vulkan::bitmask_variants::*;
+pub use vk_safe_sys::generated_vulkan::bitmasks::*;
+
 /** Trait for representing bit flags
 
 Use the [`flags!`](crate::flags!()) macro to create a type which implements this trait.
@@ -6,32 +13,32 @@ It is not recommended to manually implement this trait.
 A type which implements this trait represents flags that **must** be **included** and **excluded**.
 Please check the documentation for APIs that require a `Flags` implementor.
 
-This trait is unsafe to implement because it **must** also be implemented consistently with [`Flag`] and [`NotFlag`] traits.
+This trait is unsafe to implement because it **must** also be implemented consistently with [`Includes`] and [`Excludes`] traits.
  */
 pub unsafe trait Flags {
-    /// The specific type of flags (e.g. [MemoryPropertyFlags](crate::MemoryPropertyFlags))
+    /// The specific type of flags (e.g. [MemoryPropertyFlags]
     type Type;
     /// Flags that **must** be **included**
-    const FLAGS: Self::Type;
+    const INCLUDES: Self::Type;
     /// Flags that **must** be **excluded**
-    const NOT_FLAGS: Self::Type;
+    const EXCLUDES: Self::Type;
 }
 
 /// Trait that represents if flag `F` is **included**
 ///
 /// Use the [`flags!`](crate::flags!()) macro to create a type which implements this trait.
 /// It is not recommended to manually implement this trait.
-pub unsafe trait Flag<F>: Flags {}
+pub unsafe trait Includes<F>: Flags {}
 
 /// Trait that represents if flag `F` is **excluded**
 ///
 /// Use the [`flags!`](crate::flags!()) macro to create a type which implements this trait.
 /// It is not recommended to manually implement this trait.
-pub unsafe trait NotFlag<F>: Flags {}
+pub unsafe trait Excludes<F>: Flags {}
 
 /// Create a type that represents flags that **must** be **included** and **excluded**.
 ///
-/// This will create a type with your provided name, and properly implement [`Flags`], [`Flag`], and [`NotFlag`]. Any flags
+/// This will create a type with your provided name, and properly implement [`Flags`], [`Includes`], and [`Excludes`]. Any flags
 /// not specified as included or excluded may or may not actually be included, and are considered unknown or don't care.
 ///
 /// *zero or more `+` includes must come before zero or more `-` excludes*
@@ -60,19 +67,20 @@ macro_rules! flags {
             $( use $f_type::$has; )*
             $( use $f_type::$not; )*
 
-            unsafe impl $crate::Flags for $name {
+            unsafe impl $crate::flags::Flags for $name {
                 type Type = vk_safe_sys::$f_type;
-                const FLAGS: Self::Type = ( Self::Type::empty() $( .or(Self::Type::$has) )* );
-                const NOT_FLAGS: Self::Type = ( Self::Type::empty() $( .or(Self::Type::$not) )* );
+                const INCLUDES: Self::Type = ( Self::Type::empty() $( .or(Self::Type::$has) )* );
+                const EXCLUDES: Self::Type = ( Self::Type::empty() $( .or(Self::Type::$not) )* );
             }
 
             $(
-                unsafe impl $crate::Flag<$has> for $name {}
+                unsafe impl $crate::flags::Includes<$has> for $name {}
             )*
 
             $(
-                unsafe impl $crate::NotFlag<$not> for $name {}
+                unsafe impl $crate::flags::Excludes<$not> for $name {}
             )*
         }
     };
 }
+pub use flags;

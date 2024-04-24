@@ -5,9 +5,9 @@ This is an example program that grows along side with the development of the vk-
 Thus, I try to make use of all APIs here as I add them.
  */
 
-use vk_safe as vk;
+use vk_safe::vk;
 
-use vk::vk_str;
+use vk_safe::vk_str;
 
 vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
 vk::device_context!(DeviceContext: VERSION_1_0);
@@ -30,7 +30,7 @@ fn main() {
 
     let app_info = vk::ApplicationInfo::new(InstanceContext)
         .app_name(vk_str!("Example App"))
-        .app_version(vk::VkVersion::new(0, 0, 1));
+        .app_version(vk_safe::VkVersion::new(0, 0, 1));
     let instance_info = vk::InstanceCreateInfo::new(&app_info);
     let instance = vk::create_instance(&instance_info).unwrap();
 

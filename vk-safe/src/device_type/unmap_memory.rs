@@ -4,17 +4,14 @@ use vk_safe_sys as vk;
 
 use vk::has_command::UnmapMemory;
 
-use crate::DeviceMemory;
+use crate::vk::{DeviceMemory, MappedMemory};
 
 impl<S, C: DeviceConfig> ScopedDeviceType<S, C>
 where
     C::Context: UnmapMemory,
 {
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkUnmapMemory.html>
-    pub fn unmap_memory<M: DeviceMemory<Device = S>>(
-        &self,
-        mapped_memory: crate::MappedMemory<M>,
-    ) -> M {
+    pub fn unmap_memory<M: DeviceMemory<Device = S>>(&self, mapped_memory: MappedMemory<M>) -> M {
         check_vuids::check_vuids!(UnmapMemory);
 
         #[allow(unused_labels)]

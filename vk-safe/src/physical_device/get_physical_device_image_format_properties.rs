@@ -45,7 +45,7 @@ where
 
 /// parameters for `get_physical_device_image_format_properties`
 ///
-/// Used to create and verify parameters for [`get_physical_device_image_format_properties`](crate::RefScope::get_physical_device_image_format_properties)
+/// Used to create and verify parameters for [`get_physical_device_image_format_properties`](crate::vk::RefScope::get_physical_device_image_format_properties)
 ///
 /// Verification checks that valid usage rules for `vkGetPhysicalDeviceImageFormatProperties`
 /// are not violated, while considering that the parameters are to be **consumed by `vkCreateImage`
@@ -63,7 +63,7 @@ pub struct GetPhysicalDeviceImageFormatPropertiesParameters {
 }
 
 impl GetPhysicalDeviceImageFormatPropertiesParameters {
-    /// create and verify parameters for [`get_physical_device_image_format_properties`](crate::RefScope::get_physical_device_image_format_properties)
+    /// create and verify parameters for [`get_physical_device_image_format_properties`](crate::vk::RefScope::get_physical_device_image_format_properties)
     ///
     /// create and verify parameters while considering valid usage rules for
     /// `vkGetPhysicalDeviceImageFormatProperties` and `VkImageCreateInfo`.

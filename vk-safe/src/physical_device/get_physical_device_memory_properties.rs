@@ -97,7 +97,7 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
             let ty = self.memory_types()[index as usize];
             let heap = self.memory_heaps()[ty.heap_index as usize];
 
-            if ty.property_flags.contains(P::FLAGS) && !heap.flags.contains(H::NOT_FLAGS) {
+            if ty.property_flags.contains(P::INCLUDES) && !heap.flags.contains(H::EXCLUDES) {
                 return Ok(MemoryTypeChoice {
                     scope: PhantomData,
                     index,
@@ -126,7 +126,7 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
         for (index, ty) in self.memory_types().iter().enumerate() {
             let heap = self.memory_heaps()[ty.heap_index as usize];
 
-            if ty.property_flags.contains(P::FLAGS) && !heap.flags.contains(H::NOT_FLAGS) {
+            if ty.property_flags.contains(P::INCLUDES) && !heap.flags.contains(H::EXCLUDES) {
                 return Some(MemoryTypeChoice {
                     scope: PhantomData,
                     index: index as u32, // should be a safe as cast since we assume the number of memory types to enumerate is valid

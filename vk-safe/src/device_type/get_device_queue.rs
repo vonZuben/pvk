@@ -7,7 +7,7 @@ use vk::has_command::GetDeviceQueue;
 use crate::queue_type::{Config, QueueType};
 
 use crate::queue_type::QueueCapability;
-use crate::DeviceQueueCreateInfo;
+use crate::vk::DeviceQueueCreateInfo;
 
 impl<'a, S, C: DeviceConfig> ScopedDeviceType<S, C> {
     /// get the configured queue families
@@ -19,7 +19,7 @@ impl<'a, S, C: DeviceConfig> ScopedDeviceType<S, C> {
     ///
     /// use this method instead to get the queue families that you configured.
     /// Each queue family is represented with a [`QueueFamily`] which allows you
-    /// to get your configured queues after you verify the [`QueueFlags`](crate::QueueFlags).
+    /// to get your configured queues after you verify the [`QueueFlags`](crate::vk::QueueFlags).
     pub fn get_configured_queue_families(
         &self,
     ) -> impl Iterator<Item = QueueFamily<S, Unknown>> + crate::scope::Captures<&Self> {
@@ -41,7 +41,7 @@ impl<D: Device, Q: QueueCapability> QueueFamily<D, Q>
 where
     D::Context: GetDeviceQueue,
 {
-    /// Get a queue from a QueueFamily with known [`QueueFlags`](crate::QueueFlags)
+    /// Get a queue from a QueueFamily with known [`QueueFlags`](crate::vk::QueueFlags)
     ///
     /// After determining what operations a QueueFamily supports, call this
     /// method to get individual queues. This is where `vkGetDeviceQueue` will
@@ -118,7 +118,7 @@ impl<D: Device, U> QueueFamily<D, U> {
 
     /// Ensure the QueueFamily has supports specific operations
     ///
-    /// [`QueueFlags`](crate::QueueFlags) represents the operations that queues in the family supports.
+    /// [`QueueFlags`](crate::vk::QueueFlags) represents the operations that queues in the family supports.
     /// Call this method to verify in the type system that this QueueFamily supports the
     /// operations you want to use.
     ///
@@ -130,7 +130,7 @@ impl<D: Device, U> QueueFamily<D, U> {
         if self
             .queue_family_properties()
             .queue_flags
-            .contains(Q::FLAGS)
+            .contains(Q::INCLUDES)
         {
             Ok(QueueFamily {
                 config_index: self.config_index,

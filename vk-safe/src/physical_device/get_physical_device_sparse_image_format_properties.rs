@@ -15,9 +15,9 @@ where
 {
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceSparseImageFormatProperties.html>
     ///
-    /// *this currently takes [`ImageFormatProperties`](crate::ImageFormatProperties) which needs to be obtained in advance.
+    /// *this currently takes [`ImageFormatProperties`](crate::vk::ImageFormatProperties) which needs to be obtained in advance.
     /// However this should probably be changed. I am considering a general purpose "image parameters" type which may replace
-    /// [`GetPhysicalDeviceImageFormatPropertiesParameters`](crate::GetPhysicalDeviceImageFormatPropertiesParameters) in future.*
+    /// [`GetPhysicalDeviceImageFormatPropertiesParameters`](crate::vk::GetPhysicalDeviceImageFormatPropertiesParameters) in future.*
     pub fn get_physical_device_sparse_image_format_properties<
         A: ArrayStorage<SparseImageFormatProperties<S>>,
     >(

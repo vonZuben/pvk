@@ -13,11 +13,11 @@ This API is meant to be one-to-one with the C Vulkan API, as much as possible. E
 Getting started with this API is very similar to getting started with Vulkan in C. There are many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
 
 In view of the above, it is best to use this API while first understanding the C Vulkan API, and then the differences in vk-safe to make it more Rusty.
-When you are ready, take a look at [`create_instance()`].
+When you are ready, take a look at [`create_instance()`](vk::create_instance).
 
 ### Example (bare minimum to get a Device context)
 ```
-use vk_safe as vk;
+use vk_safe::vk;
 
 // declare the Vulkan version we are targeting
 // must satisfy Device version <= Instance version
@@ -79,22 +79,22 @@ Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and the
 
 #### Commands are methods
 Most Vulkan commands take a dispatchable handle as the first argument. In vk-safe, the dispatchable handle has methods corresponding to these commands, and the first parameter is
-set to the corresponding handle automatically. Few commands, such as [`create_instance()`] take no dispatchable handle, and are plain functions.
+set to the corresponding handle automatically. Few commands, such as [`create_instance()`](vk::create_instance) take no dispatchable handle, and are plain functions.
 
 #### Dispatchable handle methods require 'Scope'
 vk-safe uses an invariant lifetime trick to "tag" instances of dispatchable handles within a "Scope". Resources which are later obtained from the dispatchable
 handle have the same "tag". This ensures that resources can only be used with the corresponding dispatchable handle from which they were created.
 
-In Rust today, it is only possible to make a 'Scope' at a function boundary. Thus, each handle you want to use needs to be passed into it's own function with [`scope()`], which creates
+In Rust today, it is only possible to make a 'Scope' at a function boundary. Thus, each handle you want to use needs to be passed into it's own function with [`scope()`](vk::scope), which creates
 closures, that can be considered as individual units of execution, and the user can decide how to handle them. One consequence of this is that in order to handle many different
 handles at the same time, it is necessary to make them into sub-scopes (closures within closures), or run the units of execution concurrently such as with threads or async Rust. Sub-scopes are
 tightly bound to the structure of your code and are only a good choice when you already know how many handles you are using. For the case of handling dynamic numbers of handles,
 such as PhysicalDevice's, it is better to run concurrent units of execution (of course each handle could be used sequentially in a loop, but usually you want to use all the available
 PhysicalDevice's for the whole program runtime concurrently).
 
-Please also see the [`Scope`] and [`RefScope`] types for implementation details.
+Please also see the [`Scope`](vk::Scope) and [`RefScope`](vk::RefScope) types for implementation details.
 
-A consequence of making handles only safe to use in scopes is that the methods of handles are implemented through [`RefScope`].
+A consequence of making handles only safe to use in scopes is that the methods of handles are implemented through [`RefScope`](vk::RefScope).
 
 ℹ️ I recently found [generativity crate](https://docs.rs/generativity/latest/generativity/), and I am investigating if it is sound, since it would be easier to use.
 In any event, it should still be necessary to make concurrent units of execution in order to use multiple handles at the same time.
@@ -104,7 +104,7 @@ Due to the above mentioned "tag" and "Scope" trick, the concrete types of handle
 the main way of specifying handle types is to do so generically with traits. Somewhat contrary to the above 'Naming convention' rule, the concrete type of a
 handle is `HandleNameType` (with 'Type' appended). There is then a corresponding `HandleName` trait which should be the main way of specifying the types you are using.
 
-The `HandleName` trait is normally implemented for [`Scope<'_, HandleNameType>`](Scope). Some handles do not need scopes, and `HandleName` trait is implemented directly for `HandleNameType`.
+The `HandleName` trait is normally implemented for [`Scope<'_, HandleNameType>`](vk::Scope). Some handles do not need scopes, and `HandleName` trait is implemented directly for `HandleNameType`.
 
 #### Returning Result
 All Vulkan commands that can fail will return a Result. There Err variant is currently a placeholder dyn Error type. This should be changed in future to an Error type
@@ -148,7 +148,7 @@ pub mod stencil_op {
 
 #### 🚧 AllocationCallbacks
 Vulkan supports AllocationCallbacks mostly for debugging purposes. These are not currently supported in vk-safe. Adding them will *most likely* be a breaking change, assuming that
-parameters will be added to the respective `create_*` commands. (e.g. [`create_instance()`] will likely have an allocation_callbacks parameter added).
+parameters will be added to the respective `create_*` commands. (e.g. [`create_instance()`](vk::create_instance) will likely have an allocation_callbacks parameter added).
 
 ## VUIDs (implementation detail)
 All Vulkan APIs have valid usage rules that must be followed. Each valid usage rule has a VUID (Valid Usage Identifier). For all v-safe APIs,
@@ -197,7 +197,6 @@ mod helper_macros;
 mod error_macros;
 
 mod array_storage;
-mod flags;
 mod type_conversions;
 mod vk_str;
 
@@ -213,28 +212,53 @@ pub use vk_str::VkStr;
 
 pub use array_storage::ArrayStorage;
 
-pub use vk_safe_sys::generated_vulkan::bitmask_variants::*;
-pub use vk_safe_sys::generated_vulkan::bitmasks::*;
-pub use vk_safe_sys::generated_vulkan::enum_variants::*;
-pub use vk_safe_sys::generated_vulkan::enumerations::*;
-pub use vk_safe_sys::{device_context, instance_context};
+pub mod flags;
 
-pub use device_type::device_exports::*;
-pub use entry::*;
-pub use instance_type::instance_exports::*;
-pub use physical_device::physical_device_exports::*;
-pub use queue_type::queue_exports::*;
-
-pub use scope::{scope, RefScope, Scope};
-
-pub use flags::*;
-
-pub mod instance {
-    pub use vk_safe_sys::extension::instance::traits::*;
-    pub use vk_safe_sys::version::instance::traits::*;
+/// Vulkan enumerations
+///
+/// 🚧 docs in progress
+pub mod enumerations {
+    pub use vk_safe_sys::generated_vulkan::enum_variants::*;
+    pub use vk_safe_sys::generated_vulkan::enumerations::*;
 }
 
-pub mod device {
-    pub use vk_safe_sys::extension::device::traits::*;
-    pub use vk_safe_sys::version::device::traits::*;
+/// Vulkan versions and extensions
+///
+/// 🚧 docs in progress
+pub mod context {
+    pub mod instance {
+        pub use vk_safe_sys::extension::instance::traits::*;
+        pub use vk_safe_sys::version::instance::traits::*;
+    }
+
+    pub mod device {
+        pub use vk_safe_sys::extension::device::traits::*;
+        pub use vk_safe_sys::version::device::traits::*;
+    }
+}
+
+/// prelude module
+///
+/// Everything in the Vulkan specification is defined in the same namespace. When actually
+/// writing code it is most natural to refer to everything simple as `vk::_`. This
+/// module simply reexports everything like a prelude module for this purpose.
+///
+/// When referring to the documentation, it is better to look at the different modules
+/// which are better organized.
+pub mod vk {
+    pub use vk_safe_sys::{device_context, instance_context};
+
+    pub use super::enumerations::*;
+    pub use super::flags::*;
+
+    pub use super::device_type::device_exports::*;
+    pub use super::entry::*;
+    pub use super::instance_type::instance_exports::*;
+    pub use super::physical_device::physical_device_exports::*;
+    pub use super::queue_type::queue_exports::*;
+
+    pub use super::scope::{scope, RefScope, Scope};
+
+    pub use super::context::device;
+    pub use super::context::instance;
 }
