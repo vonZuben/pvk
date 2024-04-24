@@ -199,15 +199,10 @@ impl krs_quote::ToTokens for EnumVariants<'_> {
 pub fn make_variant_name(enumeration_name: &str, variant_name: &str) -> String {
     // check for both Flags and FlagBits and remove such
     let enumeration_name = enumeration_name
-        .find("FlagBits")
-        .map(|i| &enumeration_name[..i])
-        .unwrap_or(enumeration_name);
-    let enumeration_name = enumeration_name
-        .find("Flags")
-        .map(|i| &enumeration_name[..i])
-        .unwrap_or(enumeration_name);
+        .replace("FlagBits", "")
+        .replace("Flags", "");
 
-    let mut enum_name = utils::case::camel_to_snake(enumeration_name);
+    let mut enum_name = utils::case::camel_to_snake(&enumeration_name);
     enum_name.make_ascii_uppercase();
     enum_name.push('_');
 
