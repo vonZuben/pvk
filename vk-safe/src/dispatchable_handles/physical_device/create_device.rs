@@ -1,8 +1,8 @@
 use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamily};
 use super::*;
-use crate::device_type::{Config, DeviceType};
+use crate::dispatchable_handles::device_type::{Config, DeviceType};
+use crate::dispatchable_handles::instance_type::Instance;
 use crate::error::Error;
-use crate::instance_type::Instance;
 use crate::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
 

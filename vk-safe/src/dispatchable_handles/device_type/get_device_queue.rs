@@ -4,9 +4,9 @@ use std::mem::MaybeUninit;
 
 use vk::has_command::GetDeviceQueue;
 
-use crate::queue_type::{Config, QueueType};
+use crate::dispatchable_handles::queue_type::{Config, QueueType};
 
-use crate::queue_type::QueueCapability;
+use crate::dispatchable_handles::queue_type::QueueCapability;
 use crate::vk::DeviceQueueCreateInfo;
 
 impl<'a, S, C: DeviceConfig> ScopedDeviceType<S, C> {

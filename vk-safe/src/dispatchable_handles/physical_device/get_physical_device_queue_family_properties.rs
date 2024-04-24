@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 use super::*;
 
+use crate::dispatchable_handles::instance_type::Instance;
 use crate::error::Error;
-use crate::instance_type::Instance;
 use crate::scope::ScopeId;
 use crate::type_conversions::{SafeTransmute, TransmuteRef};
 

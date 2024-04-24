@@ -1,8 +1,8 @@
 use crate::array_storage::ArrayStorage;
+use crate::dispatchable_handles::physical_device::PhysicalDevices;
 use crate::error::Error;
-use crate::physical_device::PhysicalDevices;
 
-use crate::instance_type::Instance;
+use crate::dispatchable_handles::instance_type::Instance;
 
 use super::InstanceConfig;
 use super::ScopedInstanceType;

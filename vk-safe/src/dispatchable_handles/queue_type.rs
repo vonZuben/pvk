@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
 
-use crate::device_type::Device;
+use crate::dispatchable_handles::device_type::Device;
 use crate::flags::Flags;
 
 pub trait QueueCapability: Flags<Type = vk::QueueFlags> {}

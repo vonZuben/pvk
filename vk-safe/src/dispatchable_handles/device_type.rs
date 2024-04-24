@@ -3,7 +3,9 @@ use crate::VkVersion;
 use std::marker::PhantomData;
 use vk_safe_sys as vk;
 
-use crate::physical_device::{create_device::DeviceQueueCreateInfo, PhysicalDevice};
+use crate::dispatchable_handles::physical_device::{
+    create_device::DeviceQueueCreateInfo, PhysicalDevice,
+};
 use crate::scope::{RefScope, Scope};
 
 use vk::has_command::DestroyDevice;

@@ -200,11 +200,7 @@ mod array_storage;
 mod type_conversions;
 mod vk_str;
 
-mod device_type;
 mod entry; // not finalized on if this should be pub
-mod instance_type;
-mod physical_device;
-mod queue_type;
 mod scope;
 
 pub use vk_safe_sys::VkVersion;
@@ -213,6 +209,8 @@ pub use vk_str::VkStr;
 pub use array_storage::ArrayStorage;
 
 pub mod flags;
+
+pub mod dispatchable_handles;
 
 /// Vulkan enumerations
 ///
@@ -251,11 +249,11 @@ pub mod vk {
     pub use super::enumerations::*;
     pub use super::flags::*;
 
-    pub use super::device_type::device_exports::*;
+    pub use super::dispatchable_handles::device_type::device_exports::*;
+    pub use super::dispatchable_handles::instance_type::instance_exports::*;
+    pub use super::dispatchable_handles::physical_device::physical_device_exports::*;
+    pub use super::dispatchable_handles::queue_type::queue_exports::*;
     pub use super::entry::*;
-    pub use super::instance_type::instance_exports::*;
-    pub use super::physical_device::physical_device_exports::*;
-    pub use super::queue_type::queue_exports::*;
 
     pub use super::scope::{scope, RefScope, Scope};
 
