@@ -212,9 +212,36 @@ pub mod flags;
 
 pub mod dispatchable_handles;
 
-/// Vulkan enumerations
+/// # Vulkan enumerations
 ///
 /// 🚧 docs in progress
+///
+/// Enumerations are implemented as structs that hold a single numerical value (currently always i32 but not guaranteed).
+/// All variants are represented as associated constants. Every enumeration also has a sibling module (just a module with
+/// the same name in snake_case), which also exposes all variants as standalone constants. This allows the enumeration
+/// variants of `SomeEnum` to be imported with `use some_enum::*;`.
+///
+/// ## illustrative implementation example
+/// ```
+/// # mod example {
+/// pub struct StencilOp(pub(crate) i32);
+///
+/// impl StencilOp {
+///     pub const KEEP: Self = Self(0);
+///     pub const ZERO: Self = Self(1);
+///     pub const REPLACE: Self = Self(2);
+///     // and more
+/// }
+///
+/// pub mod stencil_op {
+///     use super::StencilOp;
+///     pub const KEEP: StencilOp = StencilOp::KEEP;
+///     pub const ZERO: StencilOp = StencilOp::ZERO;
+///     pub const REPLACE: StencilOp = StencilOp::REPLACE;
+///     // and more
+/// }
+/// # }
+/// ```
 pub mod enumerations {
     pub use vk_safe_sys::generated_vulkan::enum_variants::*;
     pub use vk_safe_sys::generated_vulkan::enumerations::*;
