@@ -9,13 +9,11 @@ simply a lot of work needs to be put into implementing all the actual Vulkan API
 # Getting started
 
 At the outset, this API is meant for people who know how to use Vulkan, or maybe for those who want to learn Vulkan.
-This API is meant to be one-to-one with the C Vulkan API, as much as possible. Exceptions to this rule should be documented on a case by case basis.
-Getting started with this API is very similar to getting started with Vulkan in C. There are many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
+This API is meant to be one-to-one with the C Vulkan API, as much as possible. Exceptions to this rule should be documented
+on a case by case basis. Getting started with this API is very similar to getting started with Vulkan in C. There are
+many resources online, but a good start would be [Vulkan tutorial](https://vulkan-tutorial.com/).
 
-In view of the above, it is best to use this API while first understanding the C Vulkan API, and then the differences in vk-safe to make it more Rusty.
-When you are ready, take a look at [`create_instance()`](vk::create_instance).
-
-### Example (bare minimum to get a Device context)
+## Example (bare minimum to get a Device context)
 ```
 use vk_safe::vk;
 
@@ -70,85 +68,55 @@ vk::scope(instance, |instance| {
 
 ```
 
-# Key Differences from C Vulkan API
+# Scope
+A key concept in vk-safe is the use of [`Scope`](scope::Scope) and [`RefScope`](scope::RefScope).
+All dispatchable handles (e.g. Instance, Device, etc.) implement all commands as methods on
+[`RefScope`](scope::RefScope). This is because all dispatchable handles are like "parent"
+resources which are used to create "child" resources, and `Scope` ensures that the child resources
+can only be used with the correct parent resources, or other child resources with the same parent.
 
-#### Naming convention
+Scopes work by using invariant lifetimes to create unique instances of each dispatchable handle.
+
+Currently scoping is achieves with [`scope`](vk::scope), which requires a closure or function
+pointer. This is not so convenient and I am exploring the the
+[generativity crate](https://docs.rs/generativity/latest/generativity/) as an alternative.
+
+### Naming convention
 Vulkan items (commands, structs, etc.) are renamed in vk-safe to follow Rust naming conventions.
-Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and then converting the remaining name in-line with
+Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and then converting the
+remaining name in-line with
 [RFC 430](https://github.com/rust-lang/rfcs/blob/master/text/0430-finalizing-naming-conventions.md)
 
-#### Commands are methods
-Most Vulkan commands take a dispatchable handle as the first argument. In vk-safe, the dispatchable handle has methods corresponding to these commands, and the first parameter is
-set to the corresponding handle automatically. Few commands, such as [`create_instance()`](vk::create_instance) take no dispatchable handle, and are plain functions.
+### Trait representations of handles
+Due to the scope trick mentioned above, the concrete types of Vulkan handles are unwieldy.
+Moreover, the invariant lifetimes are annoying to explicitly specify. Thus, you are
+encouraged to use the [`dispatchable handles traits`](dispatchable_handles) which allow
+generically handling any specific instance of a handle.
 
-#### Dispatchable handle methods require 'Scope'
-vk-safe uses an invariant lifetime trick to "tag" instances of dispatchable handles within a "Scope". Resources which are later obtained from the dispatchable
-handle have the same "tag". This ensures that resources can only be used with the corresponding dispatchable handle from which they were created.
+### Returning Result
+All Vulkan commands that can fail will return a Result. There Err variant is currently
+a placeholder dyn Error type. This should be changed in future to an Error type that enables
+handling specific Vulkan errors more easily.
 
-In Rust today, it is only possible to make a 'Scope' at a function boundary. Thus, each handle you want to use needs to be passed into it's own function with [`scope()`](vk::scope), which creates
-closures, that can be considered as individual units of execution, and the user can decide how to handle them. One consequence of this is that in order to handle many different
-handles at the same time, it is necessary to make them into sub-scopes (closures within closures), or run the units of execution concurrently such as with threads or async Rust. Sub-scopes are
-tightly bound to the structure of your code and are only a good choice when you already know how many handles you are using. For the case of handling dynamic numbers of handles,
-such as PhysicalDevice's, it is better to run concurrent units of execution (of course each handle could be used sequentially in a loop, but usually you want to use all the available
-PhysicalDevice's for the whole program runtime concurrently).
+### Structs are read-only by default
+Most structs have a thin wrapper with a Deref implementation to provide read-only access.
+Some structs have more specific methods to provide safe access. Vulkan has many "Info"
+structs that the user creates and passes to commands, which have appropriate constructor
+methods to ensure valid usage. Some structs may have other methods for safely enabling
+specific use cases.
 
-Please also see the [`Scope`](vk::Scope) and [`RefScope`](vk::RefScope) types for implementation details.
+### Enumerator commands use ArrayStorage
+Vulkan has many "Enumerate" or "Get" commands which take a pointer / length for an array,
+to which return data will be written. Said commands can also be used to query length of
+data to be returned by passing a null pointer. In vk-safe, "Enumerate" or "Get" commands
+take a storage type which implements the [`ArrayStorage`] trait.
 
-A consequence of making handles only safe to use in scopes is that the methods of handles are implemented through [`RefScope`](vk::RefScope).
-
-ℹ️ I recently found [generativity crate](https://docs.rs/generativity/latest/generativity/), and I am investigating if it is sound, since it would be easier to use.
-In any event, it should still be necessary to make concurrent units of execution in order to use multiple handles at the same time.
-
-#### Trait representations of handles
-Due to the above mentioned "tag" and "Scope" trick, the concrete types of handles are complex, since all handles are generic over their "tag". To alleviate this,
-the main way of specifying handle types is to do so generically with traits. Somewhat contrary to the above 'Naming convention' rule, the concrete type of a
-handle is `HandleNameType` (with 'Type' appended). There is then a corresponding `HandleName` trait which should be the main way of specifying the types you are using.
-
-The `HandleName` trait is normally implemented for [`Scope<'_, HandleNameType>`](vk::Scope). Some handles do not need scopes, and `HandleName` trait is implemented directly for `HandleNameType`.
-
-#### Returning Result
-All Vulkan commands that can fail will return a Result. There Err variant is currently a placeholder dyn Error type. This should be changed in future to an Error type
-that enables handling specific Vulkan errors more easily.
-
-#### Structs are read-only by default
-Most structs have a thin wrapper with a Deref implementation to provide read-only access. Some structs have more specific methods to provide safe access.
-Vulkan has many "Info" structs that the user creates and passes to commands, which have appropriate constructor methods to ensure valid usage. Some structs may have other
-methods for safely enabling specific use cases.
-
-#### Enumerator commands use ArrayStorage
-Vulkan has many "Enumerate" or "Get" commands which take a pointer / length for an array, to which return data will be written. Said commands can also be used to query length
-of data to be returned by passing a null pointer. **In vk-safe**, "Enumerate" or "Get" commands take a storage type which implements the [`ArrayStorage`] trait.
-
-#### Enumerations and BitFlags are structs with associated constants
-This allows unknown variants or bits to be explicitly handled. This is necessary because a Vulkan implementation working on a higher version than this library was generated with can lead to obtaining
-Unknown variants or bits. Since associated constants cannot currently be imported into the namespace with `use`, vk-safe also provides modules corresponding to each
-Enumeration and BitFlag type, with all variants or bits as plain constants which can be imported. The type and module names follow expected Rust convention.
-
-```
-# mod example {
-// illustrative of actual implementation
-pub struct StencilOp(pub(crate) i32);
-
-impl StencilOp {
-    pub const KEEP: Self = Self(0);
-    pub const ZERO: Self = Self(1);
-    pub const REPLACE: Self = Self(2);
-    // and more
-}
-
-pub mod stencil_op {
-    use super::StencilOp;
-    pub const KEEP: StencilOp = StencilOp::KEEP;
-    pub const ZERO: StencilOp = StencilOp::ZERO;
-    pub const REPLACE: StencilOp = StencilOp::REPLACE;
-    // and more
-}
-# }
-```
-
-#### 🚧 AllocationCallbacks
-Vulkan supports AllocationCallbacks mostly for debugging purposes. These are not currently supported in vk-safe. Adding them will *most likely* be a breaking change, assuming that
-parameters will be added to the respective `create_*` commands. (e.g. [`create_instance()`](vk::create_instance) will likely have an allocation_callbacks parameter added).
+### 🚧 AllocationCallbacks
+Vulkan supports AllocationCallbacks mostly for debugging purposes. These are not currently
+supported in vk-safe. Adding them will *most likely* be a breaking change, assuming that
+parameters will be added to the respective `create_*` commands.
+(e.g. [`create_instance()`](vk::create_instance) will likely have an allocation_callbacks
+parameter added).
 
 ## VUIDs (implementation detail)
 All Vulkan APIs have valid usage rules that must be followed. Each valid usage rule has a VUID (Valid Usage Identifier). For all v-safe APIs,
