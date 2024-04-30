@@ -122,6 +122,7 @@ pub mod physical_device_exports {
     pub use get_physical_device_image_format_properties::{
         GetPhysicalDeviceImageFormatPropertiesParameters, ImageFormatProperties,
     };
+    pub use get_physical_device_memory_properties::*;
 
     pub use super::PhysicalDevice;
 }
