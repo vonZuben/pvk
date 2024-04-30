@@ -29,7 +29,7 @@ let instance_info = vk::InstanceCreateInfo::new(&app_info);
 let instance = vk::create_instance(&instance_info).unwrap();
 
 // create a scope in which to use the instance (See Scope documentation below)
-vk::scope(instance, |instance| {
+vk::scope!(instance);
 
     // get physical devices
     let physical_devices = instance
@@ -37,7 +37,8 @@ vk::scope(instance, |instance| {
         .unwrap();
 
     for physical_device in physical_devices.iter() {
-        vk::scope(physical_device, |physical_device| {
+        vk::scope!(physical_device);
+
             // discover queues on the physical device
             let queue_family_properties = physical_device
                 .get_physical_device_queue_family_properties(Vec::new())
@@ -62,24 +63,16 @@ vk::scope(instance, |instance| {
                     .create_device(&device_create_info, &queue_family_properties)
                     .unwrap();
             });
-        })();
     }
-})();
 
 ```
 
-# Scope
-A key concept in vk-safe is the use of [`Scope`](scope::Scope) and [`RefScope`](scope::RefScope).
-All dispatchable handles (e.g. Instance, Device, etc.) implement all commands as methods on
-[`RefScope`](scope::RefScope). This is because all dispatchable handles are like "parent"
-resources which are used to create "child" resources, and `Scope` ensures that the child resources
-can only be used with the correct parent resources, or other child resources with the same parent.
+# ⭐ Scope
+A **key** concept in vk-safe is the use of [`scope!`](scope::scope!), which uses an
+invariant lifetime trick to ensure different instances of a type (e.g. different Instances)
+are distinct from each other.
 
-Scopes work by using invariant lifetimes to create unique instances of each dispatchable handle.
-
-Currently scoping is achieves with [`scope`](vk::scope), which requires a closure or function
-pointer. This is not so convenient and I am exploring the the
-[generativity crate](https://docs.rs/generativity/latest/generativity/) as an alternative.
+See the [`scope`](mod@scope) module for more details.
 
 ### Naming convention
 Vulkan items (commands, structs, etc.) are renamed in vk-safe to follow Rust naming conventions.
@@ -169,12 +162,13 @@ mod type_conversions;
 mod vk_str;
 
 mod entry; // not finalized on if this should be pub
-mod scope;
 
 pub use vk_safe_sys::VkVersion;
 pub use vk_str::VkStr;
 
 pub use array_storage::ArrayStorage;
+
+pub mod scope;
 
 pub mod flags;
 

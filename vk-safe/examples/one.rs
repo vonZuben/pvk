@@ -37,21 +37,24 @@ fn main() {
     println!("--Example Instance handle--");
     println!("{instance:?}");
 
-    vk::scope(instance, |instance| {
-        let physical_devices = instance
-            .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
-            .unwrap();
+    vk::scope!(instance);
 
-        println!("--Physical Devices on the system--");
-        println!("{physical_devices:?}");
+    let physical_devices = instance
+        .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
+        .unwrap();
 
-        println!("--For Each Physical Device--");
-        for pd in physical_devices.iter() {
-            std::thread::scope(|scope| {
-                scope.spawn(vk::scope(pd, |pd| run_physical_device(pd)));
+    println!("--Physical Devices on the system--");
+    println!("{physical_devices:?}");
+
+    println!("--For Each Physical Device--");
+    for pd in physical_devices.iter() {
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                vk::scope!(pd);
+                run_physical_device(pd)
             });
-        }
-    })();
+        });
+    }
 }
 
 fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice<Context = C>) {
@@ -137,33 +140,33 @@ fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice
         vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
         vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
 
-        vk::scope(device, |device| {
-            let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
-            let alloc_info =
-                vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
-            let mem = device.allocate_memory(&alloc_info).unwrap();
-            println!("--Example allocated memory handle--");
-            println!("{mem:?}");
+        vk::scope!(device);
 
-            let mapped_memory = device.map_memory(mem).unwrap();
-            println!("--Example mapped memory handle--");
-            println!("{mapped_memory:#?}");
+        let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
+        let alloc_info =
+            vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
+        let mem = device.allocate_memory(&alloc_info).unwrap();
+        println!("--Example allocated memory handle--");
+        println!("{mem:?}");
 
-            let _memory = device.unmap_memory(mapped_memory);
+        let mapped_memory = device.map_memory(mem).unwrap();
+        println!("--Example mapped memory handle--");
+        println!("{mapped_memory:#?}");
 
-            for qf in device.get_configured_queue_families() {
-                println!("--Queue family that was configured during device creation--");
-                println!("queue family: {:#?}", qf);
+        let _memory = device.unmap_memory(mapped_memory);
 
-                vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
-                let qf = qf.with_capability(QCaps).unwrap();
+        for qf in device.get_configured_queue_families() {
+            println!("--Queue family that was configured during device creation--");
+            println!("queue family: {:#?}", qf);
 
-                let queue = qf.get_queue(0);
-                println!("--Example Queue handle--");
-                println!("{queue:#?}");
+            vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
+            let qf = qf.with_capability(QCaps).unwrap();
 
-                device.wait_idle().unwrap();
-            }
-        })();
+            let queue = qf.get_queue(0);
+            println!("--Example Queue handle--");
+            println!("{queue:#?}");
+
+            device.wait_idle().unwrap();
+        }
     });
 }
