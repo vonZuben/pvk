@@ -177,6 +177,12 @@ impl krs_quote::ToTokens for StaticCode {
                             other.subset_of(self)
                         }
 
+                        #[doc = r" Returns true if `other` is not a subset of `self`; always true if self or other is empty"]
+                        #[inline]
+                        pub const fn excludes(self, other: $name) -> bool {
+                            self.and(other).eq(Self::empty())
+                        }
+
                         #[doc = r" Returns true if `self` includes any bits from `other`"]
                         #[inline]
                         pub const fn any_of(self, other: $name) -> bool {

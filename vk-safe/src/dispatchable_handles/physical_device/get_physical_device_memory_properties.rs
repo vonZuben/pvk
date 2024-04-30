@@ -81,6 +81,8 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
     /// choose the given index as a memory type for other operations (e.g. to allocate)
     /// Returns Ok with the chosen type if it has the correct MemoryPropertyFlags and MemoryHeapFlags
     /// otherwise return an error indicating that the memory type is not appropriate
+    ///
+    /// **⚠️ VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD is not supported**
     pub fn choose_type<
         'a,
         P: Flags<Type = vk::MemoryPropertyFlags>,
@@ -97,23 +99,23 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
             let ty = self.memory_types()[index as usize];
             let heap = self.memory_heaps()[ty.heap_index as usize];
 
-            if ty.property_flags.contains(P::INCLUDES) && !heap.flags.contains(H::EXCLUDES) {
-                return Ok(MemoryTypeChoice {
-                    scope: PhantomData,
-                    index,
-                    property_flags: PhantomData,
-                    heap_flags: PhantomData,
-                });
-            }
+            MemoryTypeChoice::new(index, &ty, &heap).map_err(|e| match e {
+                InternalInvalidMemoryType::DesiredFlagsNotAvailable => InvalidMemoryType,
+                InternalInvalidMemoryType::NotSupportedDeviceCoherentBitAMD =>
+                panic!("This memory type includes VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD which is not currently supported by vk-safe.
+                Please select a different type or use `find_ty` to automatically choose an appropriate type if possible"),
+            })
+        } else {
+            Err(InvalidMemoryType)
         }
-
-        Err(InvalidMemoryType)
     }
 
     /// find the first memory type that satisfies the given MemoryPropertyFlags and MemoryHeapFlags
     ///
     /// This is a convenience function. If employing more advanced memory management, it will be better to
     /// consider all available memory types more carefully.
+    ///
+    /// **⚠️ VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD is not supported**
     pub fn find_ty<
         'a,
         P: Flags<Type = vk::MemoryPropertyFlags>,
@@ -123,16 +125,17 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
         _property_flags: P,
         _heap_flags: H,
     ) -> Option<MemoryTypeChoice<S, P, H>> {
+        if P::INCLUDES.contains(vk::MemoryPropertyFlags::DEVICE_COHERENT_BIT_AMD) {
+            panic!("Do not request VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD because it is not currently supported by vk-safe.")
+        }
+
         for (index, ty) in self.memory_types().iter().enumerate() {
             let heap = self.memory_heaps()[ty.heap_index as usize];
 
-            if ty.property_flags.contains(P::INCLUDES) && !heap.flags.contains(H::EXCLUDES) {
-                return Some(MemoryTypeChoice {
-                    scope: PhantomData,
-                    index: index as u32, // should be a safe as cast since we assume the number of memory types to enumerate is valid
-                    property_flags: PhantomData,
-                    heap_flags: PhantomData,
-                });
+            // index should be a safe to cast since we assume the number of memory types to enumerate is valid
+            match MemoryTypeChoice::new(index as u32, ty, &heap) {
+                Ok(choice) => return Some(choice),
+                Err(_) => {} // regardless of reason we cannot choose this type
             }
         }
 
@@ -147,6 +150,45 @@ pub struct MemoryTypeChoice<S, P, H> {
     pub(crate) index: u32,
     property_flags: PhantomData<P>,
     heap_flags: PhantomData<H>,
+}
+
+/// internal errors when choosing a memory type
+enum InternalInvalidMemoryType {
+    /// The users desired flag set is not available
+    DesiredFlagsNotAvailable,
+
+    /// VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD is not
+    /// supported because it requires a certain feature to be
+    /// enabled which is not currently checked
+    NotSupportedDeviceCoherentBitAMD,
+}
+
+impl<S, P: Flags<Type = vk::MemoryPropertyFlags>, H: Flags<Type = vk::MemoryHeapFlags>>
+    MemoryTypeChoice<S, P, H>
+{
+    fn new(
+        index: u32,
+        ty: &MemoryType<S>,
+        heap: &MemoryHeap<S>,
+    ) -> Result<Self, InternalInvalidMemoryType> {
+        if ty
+            .property_flags
+            .contains(vk::MemoryPropertyFlags::DEVICE_COHERENT_BIT_AMD)
+        {
+            return Err(InternalInvalidMemoryType::NotSupportedDeviceCoherentBitAMD);
+        }
+
+        if ty.property_flags.contains(P::INCLUDES) && heap.flags.excludes(H::EXCLUDES) {
+            Ok(Self {
+                scope: PhantomData,
+                index,
+                property_flags: PhantomData,
+                heap_flags: PhantomData,
+            })
+        } else {
+            Err(InternalInvalidMemoryType::DesiredFlagsNotAvailable)
+        }
+    }
 }
 
 impl<S> fmt::Debug for PhysicalDeviceMemoryProperties<S> {
