@@ -31,40 +31,39 @@ let instance = vk::create_instance(&instance_info).unwrap();
 // create a scope in which to use the instance (See Scope documentation below)
 vk::scope!(instance);
 
-    // get physical devices
-    let physical_devices = instance
-        .enumerate_physical_devices(Vec::new())
+// get physical devices
+let physical_devices = instance
+    .enumerate_physical_devices(Vec::new())
+    .unwrap();
+
+for physical_device in physical_devices.iter() {
+    vk::scope!(physical_device);
+
+    // discover queues on the physical device
+    let queue_family_properties = physical_device
+        .get_physical_device_queue_family_properties(Vec::new())
         .unwrap();
 
-    for physical_device in physical_devices.iter() {
-        vk::scope!(physical_device);
+    // configure queues that support graphics
+    queue_family_properties.config_scope(|qp| {
+        let mut queue_configs = vec![];
+        let priorities = vk::QueuePriorities::new(&[1.0; 10]);
+        for p in qp {
+            if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+                queue_configs.push(
+                    vk::DeviceQueueCreateInfo::new(priorities.with_num_queues(p.queue_count), p)
+                        .unwrap(),
+                )
+            }
+        }
 
-            // discover queues on the physical device
-            let queue_family_properties = physical_device
-                .get_physical_device_queue_family_properties(Vec::new())
-                .unwrap();
-
-            // configure queues that support graphics
-            queue_family_properties.config_scope(|qp| {
-                let mut queue_configs = vec![];
-                let priorities = vk::QueuePriorities::new(&[1.0; 10]);
-                for p in qp {
-                    if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
-                        queue_configs.push(
-                            vk::DeviceQueueCreateInfo::new(priorities.with_num_queues(p.queue_count), p)
-                                .unwrap(),
-                        )
-                    }
-                }
-
-                // configure and create device
-                let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
-                let device = physical_device
-                    .create_device(&device_create_info, &queue_family_properties)
-                    .unwrap();
-            });
-    }
-
+        // configure and create device
+        let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+        let device = physical_device
+            .create_device(&device_create_info, &queue_family_properties)
+            .unwrap();
+    });
+}
 ```
 
 # ⭐ Scope
