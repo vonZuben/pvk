@@ -1,4 +1,6 @@
 /*!
+Scopes for unique object handling
+
 All dispatchable handles (e.g. Instance, Device, etc.) implement all commands as methods on
 a special **scoped** version of the particular handle. This is used to ensure different
 handles are distinct.

@@ -211,12 +211,21 @@ pub mod enumerations {
 /// Vulkan versions and extensions
 ///
 /// 🚧 docs in progress
+///
+/// In Vulkan, you need to decide what core version and extensions, you want
+/// to use. vk-safe provides the [`instance_context!`](context::instance_context)
+/// and [`device_context!`](context::device_context) to define the
+/// version / extensions you want to use.
 pub mod context {
+    pub use vk_safe_sys::{device_context, instance_context};
+
+    /// available versions and extensions for Instance context
     pub mod instance {
         pub use vk_safe_sys::extension::instance::traits::*;
         pub use vk_safe_sys::version::instance::traits::*;
     }
 
+    /// available versions and extensions for Device context
     pub mod device {
         pub use vk_safe_sys::extension::device::traits::*;
         pub use vk_safe_sys::version::device::traits::*;
@@ -232,7 +241,7 @@ pub mod context {
 /// When referring to the documentation, it is better to look at the different modules
 /// which are better organized.
 pub mod vk {
-    pub use vk_safe_sys::{device_context, instance_context};
+    pub use super::context::{device_context, instance_context};
 
     pub use super::enumerations::*;
     pub use super::flags::*;

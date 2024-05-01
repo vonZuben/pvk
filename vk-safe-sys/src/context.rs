@@ -116,7 +116,7 @@ macro_rules! instance_context {
 }
 pub use instance_context;
 
-/** define what Vulkan version and extensions will be used with an device
+/** define what Vulkan version and extensions will be used with a device
 
 This is the same as [`instance_context`], except for device. The Usage and Safety considerations are the same.
 Some device specific example is provided below.
