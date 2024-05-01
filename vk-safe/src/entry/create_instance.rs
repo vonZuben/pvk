@@ -1,4 +1,4 @@
-use crate::dispatchable_handles::instance_type::{Config, InstanceType};
+use crate::dispatchable_handles::instance::concrete_type::{Config, Instance};
 use crate::error::Error;
 use crate::type_conversions::ToC;
 use crate::vk_str::VkStr;
@@ -24,7 +24,7 @@ See also
 */
 pub fn create_instance<C: Context>(
     create_info: &InstanceCreateInfo<C>,
-) -> Result<InstanceType<Config<C>>, Error>
+) -> Result<Instance<Config<C>>, Error>
 where
     C::Commands: DestroyInstance + Version + LoadCommands,
 {
@@ -81,7 +81,7 @@ where
     unsafe {
         let res = command(&create_info.inner, None.to_c(), instance.as_mut_ptr());
         check_raw_err!(res);
-        Ok(InstanceType::load_commands(instance.assume_init())?)
+        Ok(Instance::load_commands(instance.assume_init())?)
     }
 }
 

@@ -1,11 +1,24 @@
+/*!
+enumerate physical devices on the system
+
+After creating a scoped [`Instance`], you can enumerate the physical devices
+on the system that support Vulkan.
+
+use the [`enumerate_physical_devices`](ScopedInstanceType::enumerate_physical_devices)
+method on a scoped Instance.
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html>
+ */
+
 use crate::array_storage::ArrayStorage;
 use crate::dispatchable_handles::physical_device::PhysicalDevices;
 use crate::error::Error;
 
-use crate::dispatchable_handles::instance_type::Instance;
+use crate::dispatchable_handles::instance::Instance;
 
-use super::InstanceConfig;
-use super::ScopedInstanceType;
+use super::concrete_type::InstanceConfig;
+use super::concrete_type::ScopedInstanceType;
 
 use vk_safe_sys as vk;
 
@@ -15,7 +28,16 @@ impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C>
 where
     C::Context: EnumeratePhysicalDevices,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html>
+    /// enumerate physical devices on the system
+    ///
+    /// provide an [`ArrayStorage`] implementor to store the PhysicalDevices.
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # fn tst<C: vk::instance::VERSION_1_0>(instance: impl vk::Instance<Context = C>) {
+    /// let physical_devices = instance.enumerate_physical_devices(Vec::new());
+    /// # }
+    /// ```
     pub fn enumerate_physical_devices<A: ArrayStorage<vk::PhysicalDevice>>(
         &self,
         mut storage: A,

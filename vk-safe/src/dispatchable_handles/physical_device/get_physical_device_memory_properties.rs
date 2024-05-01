@@ -1,5 +1,5 @@
 use super::*;
-use crate::dispatchable_handles::instance_type::Instance;
+use crate::dispatchable_handles::instance::Instance;
 use crate::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
 

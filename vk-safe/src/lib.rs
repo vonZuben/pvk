@@ -247,7 +247,7 @@ pub mod vk {
     pub use super::flags::*;
 
     pub use super::dispatchable_handles::device_type::device_exports::*;
-    pub use super::dispatchable_handles::instance_type::instance_exports::*;
+    pub use super::dispatchable_handles::instance::*;
     pub use super::dispatchable_handles::physical_device::physical_device_exports::*;
     pub use super::dispatchable_handles::queue_type::queue_exports::*;
     pub use super::entry::*;
