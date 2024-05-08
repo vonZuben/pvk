@@ -1,8 +1,11 @@
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
-use super::*;
+use std::fmt;
 
+use super::concrete_type::ScopedPhysicalDeviceType;
+
+use crate::array_storage::ArrayStorage;
 use crate::dispatchable_handles::instance::Instance;
 use crate::error::Error;
 use crate::scope::ScopeId;
@@ -11,8 +14,6 @@ use crate::type_conversions::{SafeTransmute, TransmuteRef};
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
-
-use std::fmt;
 
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
 where
@@ -134,7 +135,7 @@ impl<S> std::ops::Deref for QueueConfigScope<'_, S> {
 }
 
 impl<'scope, S> IntoIterator for QueueConfigScope<'scope, S> {
-    type Item = QueueFamily<'scope, (S, Self)>;
+    type Item = QueueFamilyProperties<'scope, (S, Self)>;
 
     type IntoIter = QueueFamilyIter<'scope, (S, Self)>;
 
@@ -152,12 +153,12 @@ pub struct QueueFamilyIter<'a, S> {
 }
 
 impl<'a, S> Iterator for QueueFamilyIter<'a, S> {
-    type Item = QueueFamily<'a, S>;
+    type Item = QueueFamilyProperties<'a, S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (index, properties) = self.iter.next()?;
         let family_index: u32 = index.try_into().ok()?;
-        Some(QueueFamily {
+        Some(QueueFamilyProperties {
             properties,
             family_index,
             _scope: PhantomData,
@@ -165,13 +166,13 @@ impl<'a, S> Iterator for QueueFamilyIter<'a, S> {
     }
 }
 
-pub struct QueueFamily<'a, S> {
+pub struct QueueFamilyProperties<'a, S> {
     properties: &'a vk::QueueFamilyProperties,
     pub family_index: u32,
     _scope: PhantomData<S>,
 }
 
-impl<S> std::ops::Deref for QueueFamily<'_, S> {
+impl<S> std::ops::Deref for QueueFamilyProperties<'_, S> {
     type Target = vk::QueueFamilyProperties;
 
     fn deref(&self) -> &Self::Target {

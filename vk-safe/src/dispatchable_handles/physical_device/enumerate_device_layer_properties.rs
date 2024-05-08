@@ -1,4 +1,6 @@
-use super::*;
+use super::concrete_type::ScopedPhysicalDeviceType;
+
+use crate::dispatchable_handles::instance::Instance;
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
@@ -6,6 +8,8 @@ use crate::error::Error;
 use vk_safe_sys as vk;
 
 use vk::has_command::EnumerateDeviceLayerProperties;
+
+pub use crate::dispatchable_handles::common::layer_properties::LayerProperties;
 
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
 where
@@ -50,24 +54,5 @@ where
         }
 
         enumerator_code2!(self.instance.context.EnumerateDeviceLayerProperties().get_fptr(); (self.handle) -> storage)
-    }
-}
-
-simple_struct_wrapper_scoped!(LayerProperties);
-
-impl<S> LayerProperties<S> {
-    get_str!(layer_name);
-    get_str!(description);
-    pretty_version!(spec_version);
-}
-
-impl<S> std::fmt::Debug for LayerProperties<S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("LayerProperties")
-            .field("Name", &self.layer_name())
-            .field("Spec Version", &self.spec_version())
-            .field("Implementation version", &self.inner.implementation_version)
-            .field("Description", &self.description())
-            .finish()
     }
 }

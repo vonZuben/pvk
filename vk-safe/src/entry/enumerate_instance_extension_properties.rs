@@ -1,29 +1,12 @@
 use super::command_impl_prelude::*;
 
-use std::fmt;
-
+use crate::error::Error;
 use crate::vk_str::VkStr;
 
-use crate::error::Error;
-
-//===========ExtensionProperties
-simple_struct_wrapper!(ExtensionProperties);
-
-impl ExtensionProperties {
-    get_str!(extension_name);
-}
-
-impl fmt::Debug for ExtensionProperties {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExtensionProperties")
-            .field("Name", &self.extension_name())
-            .field("Spec Version", &self.spec_version)
-            .finish()
-    }
-}
+pub use crate::dispatchable_handles::common::extension_properties::ExtensionProperties;
 
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceExtensionProperties.html>
-pub fn enumerate_instance_extension_properties<S: ArrayStorage<ExtensionProperties>>(
+pub fn enumerate_instance_extension_properties<S: ArrayStorage<ExtensionProperties<()>>>(
     layer_name: Option<VkStr>,
     mut storage: S,
 ) -> Result<S::InitStorage, Error> {

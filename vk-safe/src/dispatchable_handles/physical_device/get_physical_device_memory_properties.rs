@@ -1,5 +1,9 @@
-use super::*;
+use std::fmt;
+
+use super::concrete_type::ScopedPhysicalDeviceType;
+
 use crate::dispatchable_handles::instance::Instance;
+
 use crate::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
 
@@ -7,7 +11,6 @@ use vk::has_command::GetPhysicalDeviceMemoryProperties;
 
 use crate::flags::Flags;
 
-use std::fmt;
 use std::mem::MaybeUninit;
 
 use std::marker::PhantomData;

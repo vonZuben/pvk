@@ -1,4 +1,6 @@
-use super::*;
+use super::concrete_type::ScopedPhysicalDeviceType;
+
+use crate::dispatchable_handles::instance::Instance;
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
@@ -7,6 +9,8 @@ use crate::vk_str::VkStr;
 use vk_safe_sys as vk;
 
 use vk::has_command::EnumerateDeviceExtensionProperties;
+
+pub use crate::dispatchable_handles::common::extension_properties::ExtensionProperties;
 
 impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
 where
@@ -62,20 +66,5 @@ where
         }
 
         enumerator_code2!(self.instance.context.EnumerateDeviceExtensionProperties().get_fptr(); (self.handle, layer_name) -> storage)
-    }
-}
-
-simple_struct_wrapper_scoped!(ExtensionProperties);
-
-impl<S> ExtensionProperties<S> {
-    get_str!(extension_name);
-}
-
-impl<S> std::fmt::Debug for ExtensionProperties<S> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ExtensionProperties")
-            .field("Name", &self.extension_name())
-            .field("Version", &self.inner.spec_version)
-            .finish()
     }
 }

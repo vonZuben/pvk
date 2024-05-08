@@ -41,26 +41,26 @@ macro_rules! enumerator_code2 {
 }
 
 // Use this to create wrappers around simple structs
-macro_rules! simple_struct_wrapper {
-    (
-        $name:ident
-    ) => {
-        #[repr(transparent)]
-        pub struct $name {
-            inner: vk_safe_sys::$name,
-        }
+// macro_rules! simple_struct_wrapper {
+//     (
+//         $name:ident
+//     ) => {
+//         #[repr(transparent)]
+//         pub struct $name {
+//             inner: vk_safe_sys::$name,
+//         }
 
-        unsafe impl crate::type_conversions::SafeTransmute<$name> for vk_safe_sys::$name {}
-        unsafe impl crate::type_conversions::SafeTransmute<vk_safe_sys::$name> for $name {}
+//         unsafe impl crate::type_conversions::SafeTransmute<$name> for vk_safe_sys::$name {}
+//         unsafe impl crate::type_conversions::SafeTransmute<vk_safe_sys::$name> for $name {}
 
-        impl std::ops::Deref for $name {
-            type Target = vk_safe_sys::$name;
-            fn deref(&self) -> &Self::Target {
-                &self.inner
-            }
-        }
-    };
-}
+//         impl std::ops::Deref for $name {
+//             type Target = vk_safe_sys::$name;
+//             fn deref(&self) -> &Self::Target {
+//                 &self.inner
+//             }
+//         }
+//     };
+// }
 
 pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
     s.iter().take_while(|&&c| c != 0).count()
@@ -230,5 +230,15 @@ macro_rules! bitmask {
     };
     ( $path:path : $($bit:ident)|* ) => {
         krs_hlist::hlist!( $( $path::$bit ),* )
+    };
+}
+
+macro_rules! pub_export_modules {
+    ( $( $name:ident );* $(;)? ) => {
+        $( pub mod $name; )*
+
+        pub(crate) mod export {
+            $( #[allow(unused_imports)] pub use super::$name::*; )*
+        }
     };
 }

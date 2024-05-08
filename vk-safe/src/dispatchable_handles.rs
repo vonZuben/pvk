@@ -4,11 +4,12 @@
 
 pub(crate) mod device_type;
 pub mod instance;
-pub(crate) mod physical_device;
+pub mod physical_device;
 pub(crate) mod queue_type;
 
+pub mod common;
+
 pub use device_type::Device;
-pub use physical_device::PhysicalDevice;
 pub use queue_type::Queue;
 
 #[cfg(doc)]
@@ -34,12 +35,13 @@ pub type _Instance<S, C> = crate::scope::RefScope<S, instance::concrete_type::In
 #[cfg(doc)]
 /// Example of concrete PhysicalDevice
 ///
-/// Given some <code>Pd: [PhysicalDevice]</code>, you will implicitly have access to a concrete type like this. All
+/// Given some <code>Pd: [PhysicalDevice](physical_device::PhysicalDevice)</code>, you will implicitly have access to a concrete type like this. All
 /// the methods shown below will be accessible so long as the appropriate Version or
 /// Extension is also enabled.
 ///
 /// 🛑 This is only generated for the documentation and is not usable in your code.
-pub type _PhysicalDevice<S, C> = crate::scope::RefScope<S, physical_device::PhysicalDeviceType<C>>;
+pub type _PhysicalDevice<S, C> =
+    crate::scope::RefScope<S, physical_device::concrete_type::PhysicalDevice<C>>;
 
 #[cfg(doc)]
 /// Example of concrete Queue

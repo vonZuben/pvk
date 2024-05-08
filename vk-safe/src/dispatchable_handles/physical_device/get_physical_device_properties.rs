@@ -1,5 +1,7 @@
-use super::*;
+use super::concrete_type::ScopedPhysicalDeviceType;
+
 use crate::dispatchable_handles::instance::Instance;
+
 use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceProperties;

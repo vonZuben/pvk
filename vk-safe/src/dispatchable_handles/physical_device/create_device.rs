@@ -1,5 +1,6 @@
-use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamily};
-use super::*;
+use super::concrete_type::ScopedPhysicalDeviceType;
+use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamilyProperties};
+use super::PhysicalDevice;
 use crate::dispatchable_handles::device_type::{Config, DeviceType};
 use crate::dispatchable_handles::instance::Instance;
 use crate::error::Error;
@@ -16,16 +17,22 @@ use vk::context::{Context, Extensions, InstanceDependencies, LoadCommands};
 use vk::has_command::{CreateDevice, DestroyDevice, EnumerateDeviceExtensionProperties};
 use vk::Version;
 
-pub trait VersionCheck<I> {
-    const VALID: ();
-}
+use private::VersionCheck;
 
-impl<I: Version, D: Version> VersionCheck<I> for D {
-    const VALID: () = {
-        if D::VERSION.raw() > I::VERSION.raw() {
-            panic!("version of Instance must be >= version of Device")
-        }
-    };
+mod private {
+    use vk_safe_sys::Version;
+
+    pub trait VersionCheck<I> {
+        const VALID: ();
+    }
+
+    impl<I: Version, D: Version> VersionCheck<I> for D {
+        const VALID: () = {
+            if D::VERSION.raw() > I::VERSION.raw() {
+                panic!("version of Instance must be >= version of Device")
+            }
+        };
+    }
 }
 
 /*
@@ -777,7 +784,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
 
     pub fn new<Q>(
         priorities: QueuePriorities<'a>,
-        family: QueueFamily<(S, Q)>,
+        family: QueueFamilyProperties<(S, Q)>,
     ) -> Result<Self, Error> {
         check_vuids::check_vuids!(DeviceQueueCreateInfo);
 
