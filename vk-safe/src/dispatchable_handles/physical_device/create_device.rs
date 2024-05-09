@@ -1,3 +1,31 @@
+/*!
+Create a device from the PhysicalDevice
+
+In order to create a Device, you first define the Version and Extensions you will use with [`vk::device_context!`]. You can then create an
+[`DeviceCreateInfo`] structure along with an array of [`DeviceQueueCreateInfo`].
+
+use the [`create_device`](ScopedPhysicalDeviceType::create_device) method on a scoped PhysicalDevice
+
+```rust
+# use vk_safe::vk;
+vk::device_context!(DeviceContext: VERSION_1_0);
+# fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>, S>
+#   (physical_device: P, queue_config: [vk::DeviceQueueCreateInfo<P>;1]) {
+let queue_family_properties = physical_device
+    .get_physical_device_queue_family_properties(Vec::new())
+    .unwrap();
+// let queue_config = TODO
+let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_config);
+
+let device = physical_device.create_device(&device_create_info, &queue_family_properties)
+    .unwrap();
+# }
+```
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html>
+*/
+
 use super::concrete_type::ScopedPhysicalDeviceType;
 use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamilyProperties};
 use super::PhysicalDevice;
@@ -44,13 +72,19 @@ where
     I::Context: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
 {
     /**
-    Create a device
+    Create a device from the PhysicalDevice
 
     In order to create a Device, you first define the Version and Extensions you will use with [`vk::device_context!`]. You can then create an
     [`DeviceCreateInfo`] structure along with an array of [`DeviceQueueCreateInfo`].
 
-    See also
-    <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html>
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P, create_info: &vk::DeviceCreateInfo<D, P>, queue_properties: &vk::QueueFamiliesRef<P>) {
+    let device = physical_device.create_device(create_info, queue_properties);
+    # }
+    ```
     */
     pub fn create_device<'a, C, O>(
         &self,
@@ -74,7 +108,7 @@ where
             "list must also be present in that list"
             }
 
-            // This is ensured by the context creation macros
+            // This is ensured by the context creation macros and InstanceDependencies trait
         }
 
         #[allow(unused_labels)]
@@ -153,7 +187,11 @@ where
     }
 }
 
-//===========InstanceCreateInfo
+/// info for creating a Device
+///
+/// To be used with [`create_device`](ScopedPhysicalDeviceType::create_device)
+///
+/// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDeviceCreateInfo.html>
 pub struct DeviceCreateInfo<'a, C, S> {
     pub(crate) inner: vk::DeviceCreateInfo,
     _config: PhantomData<C>,
@@ -162,6 +200,11 @@ pub struct DeviceCreateInfo<'a, C, S> {
 }
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
+    /// create DeviceCreateInfo
+    ///
+    /// Requires context from [`vk::device_context!`] (which expresses the core version and
+    /// extensions to use) and an array of [`DeviceQueueCreateInfo`], each element of which
+    /// signifies a Queue to be created with the Device.
     pub fn new<C: Extensions + Context, S>(
         context: C,
         queue_create_info: &'a [DeviceQueueCreateInfo<S>],
@@ -765,6 +808,8 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
     }
 }
 
+// TODO docs for structs created with macro???
+/// Info for creating a device Queue
 input_struct_wrapper!(DeviceQueueCreateInfo);
 
 impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
