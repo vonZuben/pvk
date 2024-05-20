@@ -30,7 +30,7 @@ get_physical_device_sparse_image_format_properties;
 Represents a *specific* PhysicalDevice which has been scoped.
 */
 pub trait PhysicalDevice:
-    std::ops::Deref<Target = concrete_type::ScopedPhysicalDeviceType<Self, Self::Instance>> + Copy
+    std::ops::Deref<Target = concrete_type::ScopedPhysicalDevice<Self, Self::Instance>> + Copy
 {
     /// The *specific* Instance to which this PhysicalDevice belongs
     type Instance: Instance<Context = Self::Context>;
@@ -98,7 +98,7 @@ pub(crate) mod concrete_type {
     use crate::array_storage::ArrayStorage;
     use crate::dispatchable_handles::instance::Instance;
 
-    pub type ScopedPhysicalDeviceType<S, I> = SecretScope<S, PhysicalDevice<I>>;
+    pub type ScopedPhysicalDevice<S, I> = SecretScope<S, PhysicalDevice<I>>;
 
     impl<'scope, I: Instance> super::PhysicalDevice for Scope<'scope, PhysicalDevice<I>> {
         type Instance = I;

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::concrete_type::ScopedPhysicalDeviceType;
+use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
 
@@ -15,7 +15,7 @@ use std::mem::MaybeUninit;
 
 use std::marker::PhantomData;
 
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceMemoryProperties,
 {

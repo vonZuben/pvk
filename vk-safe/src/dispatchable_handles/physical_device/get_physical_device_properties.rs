@@ -1,4 +1,4 @@
-use super::concrete_type::ScopedPhysicalDeviceType;
+use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
 
@@ -9,7 +9,7 @@ use vk::has_command::GetPhysicalDeviceProperties;
 use std::fmt;
 use std::mem::MaybeUninit;
 
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceProperties,
 {

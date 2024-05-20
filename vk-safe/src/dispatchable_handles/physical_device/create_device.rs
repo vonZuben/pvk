@@ -4,7 +4,7 @@ Create a device from the PhysicalDevice
 In order to create a Device, you first define the Version and Extensions you will use with [`vk::device_context!`]. You can then create an
 [`DeviceCreateInfo`] structure along with an array of [`DeviceQueueCreateInfo`].
 
-use the [`create_device`](ScopedPhysicalDeviceType::create_device) method on a scoped PhysicalDevice
+use the [`create_device`](ScopedPhysicalDevice::create_device) method on a scoped PhysicalDevice
 
 ```rust
 # use vk_safe::vk;
@@ -26,7 +26,7 @@ Vulkan docs:
 <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html>
 */
 
-use super::concrete_type::ScopedPhysicalDeviceType;
+use super::concrete_type::ScopedPhysicalDevice;
 use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamilyProperties};
 use super::PhysicalDevice;
 use crate::dispatchable_handles::device_type::{Config, DeviceType};
@@ -66,7 +66,7 @@ mod private {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDeviceType<S, I>
+impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: CreateDevice + Version,
     I::Context: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
@@ -189,7 +189,7 @@ where
 
 /// info for creating a Device
 ///
-/// To be used with [`create_device`](ScopedPhysicalDeviceType::create_device)
+/// To be used with [`create_device`](ScopedPhysicalDevice::create_device)
 ///
 /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDeviceCreateInfo.html>
 pub struct DeviceCreateInfo<'a, C, S> {

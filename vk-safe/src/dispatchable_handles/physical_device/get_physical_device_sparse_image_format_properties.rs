@@ -1,4 +1,4 @@
-use super::concrete_type::ScopedPhysicalDeviceType;
+use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
 
@@ -11,7 +11,7 @@ use super::get_physical_device_image_format_properties::ImageFormatProperties;
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 
-impl<S, I: Instance> ScopedPhysicalDeviceType<S, I>
+impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceSparseImageFormatProperties,
 {

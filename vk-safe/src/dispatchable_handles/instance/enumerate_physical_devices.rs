@@ -4,7 +4,7 @@ enumerate physical devices on the system
 After creating a scoped [`Instance`], you can enumerate the physical devices
 on the system that support Vulkan.
 
-use the [`enumerate_physical_devices`](ScopedInstanceType::enumerate_physical_devices)
+use the [`enumerate_physical_devices`](ScopedInstance::enumerate_physical_devices)
 method on a scoped Instance.
 
 Vulkan docs:
@@ -18,13 +18,13 @@ use crate::error::Error;
 use crate::dispatchable_handles::instance::Instance;
 
 use super::concrete_type::InstanceConfig;
-use super::concrete_type::ScopedInstanceType;
+use super::concrete_type::ScopedInstance;
 
 use vk_safe_sys as vk;
 
 use vk::has_command::EnumeratePhysicalDevices;
 
-impl<S: Instance, C: InstanceConfig> ScopedInstanceType<S, C>
+impl<S: Instance, C: InstanceConfig> ScopedInstance<S, C>
 where
     C::Context: EnumeratePhysicalDevices,
 {

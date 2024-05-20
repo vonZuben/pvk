@@ -14,7 +14,7 @@ pub mod enumerate_physical_devices;
 Represents a *specific* Instance which has been scoped.
 */
 pub trait Instance:
-    std::ops::Deref<Target = concrete_type::ScopedInstanceType<Self, Self::Config>> + Copy
+    std::ops::Deref<Target = concrete_type::ScopedInstance<Self, Self::Config>> + Copy
 {
     #[doc(hidden)]
     type Config: concrete_type::InstanceConfig<Context = Self::Context>;
@@ -33,7 +33,7 @@ pub(crate) mod concrete_type {
     use crate::type_conversions::ToC;
     use vk_safe_sys as vk;
 
-    use crate::scope::{SecretScope, Scope};
+    use crate::scope::{Scope, SecretScope};
 
     use crate::VkVersion;
 
@@ -61,7 +61,7 @@ pub(crate) mod concrete_type {
         type Context = C::Commands;
     }
 
-    pub type ScopedInstanceType<S, C> = SecretScope<S, Instance<C>>;
+    pub type ScopedInstance<S, C> = SecretScope<S, Instance<C>>;
 
     impl<'scope, C: InstanceConfig> super::Instance for Scope<'scope, Instance<C>> {
         type Config = C;
