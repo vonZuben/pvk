@@ -6,7 +6,7 @@ use vk_safe_sys as vk;
 use crate::dispatchable_handles::physical_device::{
     create_device::DeviceQueueCreateInfo, PhysicalDevice,
 };
-use crate::scope::{SecretScope, Scope};
+use crate::scope::{Scope, SecretScope};
 
 use vk::has_command::DestroyDevice;
 
