@@ -89,7 +89,7 @@ impl<'s, I: Instance, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
 }
 
 pub(crate) mod concrete_type {
-    use crate::scope::{RefScope, Scope};
+    use crate::scope::{Scope, SecretScope};
 
     use vk_safe_sys as vk;
 
@@ -98,7 +98,7 @@ pub(crate) mod concrete_type {
     use crate::array_storage::ArrayStorage;
     use crate::dispatchable_handles::instance::Instance;
 
-    pub type ScopedPhysicalDeviceType<S, I> = RefScope<S, PhysicalDevice<I>>;
+    pub type ScopedPhysicalDeviceType<S, I> = SecretScope<S, PhysicalDevice<I>>;
 
     impl<'scope, I: Instance> super::PhysicalDevice for Scope<'scope, PhysicalDevice<I>> {
         type Instance = I;

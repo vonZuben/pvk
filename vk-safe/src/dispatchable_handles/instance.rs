@@ -33,7 +33,7 @@ pub(crate) mod concrete_type {
     use crate::type_conversions::ToC;
     use vk_safe_sys as vk;
 
-    use crate::scope::{RefScope, Scope};
+    use crate::scope::{SecretScope, Scope};
 
     use crate::VkVersion;
 
@@ -61,7 +61,7 @@ pub(crate) mod concrete_type {
         type Context = C::Commands;
     }
 
-    pub type ScopedInstanceType<S, C> = RefScope<S, Instance<C>>;
+    pub type ScopedInstanceType<S, C> = SecretScope<S, Instance<C>>;
 
     impl<'scope, C: InstanceConfig> super::Instance for Scope<'scope, Instance<C>> {
         type Config = C;

@@ -10,7 +10,7 @@
 //! ## Type level Flags
 //!
 //! Flags can be used at the type level to ensure that certain properties are available. For example, the
-//! [`map_memory`](crate::scope::RefScope::map_memory) method requires the
+//! [`map_memory`](crate::scope::SecretScope::map_memory) method requires the
 //! memory to have been allocated from host visible memory that is not on a multi instance heap. This
 //! is expressed with [`Includes`] and [`Excludes`] traits, which can be collectively represented
 //! by a type which implements the [`Flags`] trait.

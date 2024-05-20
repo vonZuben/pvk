@@ -99,7 +99,7 @@ pub struct ScopeId<'id>(PhantomData<*mut &'id ()>);
 *This is an implementation detail and you are not intended to directly use this*.
 
 Types which are only safe to use within a scope implement their methods through this wrapper, or more preferably,
-through the Deref Target [`RefScope`].
+through the Deref Target [`SecretScope`].
 
 #### implementation details
 This is just informative, and not to be relied upon, as it could change. `Scope` is `#[repr(transparent)]`, and is a
@@ -137,13 +137,13 @@ impl<'id, T> Scope<'id, T> {
 }
 
 impl<T> std::ops::Deref for Scope<'_, T> {
-    type Target = RefScope<Self, T>;
+    type Target = SecretScope<Self, T>;
     fn deref(&self) -> &Self::Target {
         // this is safe because:
-        // - RefScope repr(transparent) wrapper for H
+        // - SecretScope repr(transparent) wrapper for H
         // - Scope repr(transparent) wrapper for &'_ H
-        // - Scope == &RefScope == &'_ H
-        unsafe { std::mem::transmute::<Self, &RefScope<Self, T>>(*self) }
+        // - Scope == &SecretScope == &'_ H
+        unsafe { std::mem::transmute::<Self, &SecretScope<Self, T>>(*self) }
     }
 }
 
@@ -175,31 +175,44 @@ pub use scope;
 Types which are only safe to use within a scope implement their methods through this wrapper.
 
 #### implementation details
-This is just informative, and not to be relied upon, as it could change. `RefScope` is a
+This is just informative, and not to be relied upon, as it could change. `SecretScope` is a
 `#[repr(transparent)]` wrapper around a `T: ?Sized`, and a `PhantomData<S>`. [`Scope<'_, T>`](Scope)
-implements [`Deref`](core::ops::Deref) with `Target = RefScope<Self, T>`. In this way,
-`RefScope` can only ever exist as a reference bound to the lifetime of a [`Scope`], and
-the invariant lifetime information is capture in the generic `S` type parameter.
+implements [`Deref`](core::ops::Deref) with `Target = SecretScope<Self, T>`. In this way,
+`SecretScope` can only ever exist as a reference bound to the lifetime of a [`Scope`], and
+the invariant lifetime information is captured in the generic `S` type parameter.
 
 vk-safe APIs can ensure different handles have the same scope (i.e. have the same Instance
 or Device parent handle) by using the same generic parameter `S`.
 
+The main reason to use this instead of [`Scope`] directly is to allow a "handle trait" pattern (See
+modules in [`dispatchable_handles`](crate::dispatchable_handles)). The handle traits have Deref with
+the scoped handle type as the Target. This allows the handle traits to abstract the `scopedness` of
+the handles while being transparently usable as the concrete type. `Scope` cannot be directly used
+because it has a lifetime, and we cannot write e.g. `trait Handle: Deref<Target = Scope<'scope, ConcreteHandle>>`
+because `'scope` is not defined. We cannot even use `for<'scope> Deref<Target = Scope<'scope, ConcreteHandle>>`
+because we get `error[E0582]: binding for associated type 'Target' references lifetime which does
+not appear in the trait input types`.
+
+`SecretScope` hides the lifetime by making `Scope` as a generic type parameter. We can then write
+e.g. `trait Handle: Deref<Target = SecretScope<Self, ConcreteHandle>>`, where `Self` will be
+`Scope<'_, ConcreteHandle>` as the implementor of the trait.
+
 # Safety
-`RefScope` is VERY delicate. It is only ever sound to have an instance of RefScope which is
+`SecretScope` is VERY delicate. It is only ever sound to have an instance of SecretScope which is
 created from dereferencing `Scope`. In this way, for some handle `T` and lifetime `'scope`,
-the concrete type will ALWAYS be `RefScope<Scope<'scope, T>, T>`, even though
+the concrete type will ALWAYS be `SecretScope<Scope<'scope, T>, T>`, even though
 `Scope<'scope, T>` is abstracted away as a generic parameter `S`.
  */
 #[repr(transparent)]
-pub struct RefScope<S, T: ?Sized> {
+pub struct SecretScope<S, T: ?Sized> {
     scope: PhantomData<S>,
     handle: T,
 }
 
-impl<S, T> RefScope<S, T> {
+impl<S, T> SecretScope<S, T> {
     /// Get the original Scope<'_, T>
     pub(crate) fn as_scope(&self) -> S {
-        // Here, we want to reverse the Deref of Scope<'_, T> such as by transmute::<&RefScope<S, T>, S> (see Deref for Scope).
+        // Here, we want to reverse the Deref of Scope<'_, T> such as by transmute::<&SecretScope<S, T>, S> (see Deref for Scope).
         // However, the compiler cannot know that S is correctly sized for all S,
         // but WE know that S is ALWAYS `Scope<'_, T>` (or else it was improperly constructed).
         // Thus, we can use transmute_copy.
@@ -209,13 +222,13 @@ impl<S, T> RefScope<S, T> {
     /// manually get Deref target
     ///
     /// this is helpful because rust-analyzer seems to have trouble with autocompletion
-    /// in some more complex uses of RefScope, when going through auto-deref
+    /// in some more complex uses of SecretScope, when going through auto-deref
     pub(crate) fn deref(&self) -> &T {
         &self
     }
 }
 
-impl<S, H> std::ops::Deref for RefScope<S, H> {
+impl<S, H> std::ops::Deref for SecretScope<S, H> {
     type Target = H;
     fn deref(&self) -> &Self::Target {
         &self.handle

@@ -6,7 +6,7 @@ use vk_safe_sys as vk;
 use crate::dispatchable_handles::physical_device::{
     create_device::DeviceQueueCreateInfo, PhysicalDevice,
 };
-use crate::scope::{RefScope, Scope};
+use crate::scope::{SecretScope, Scope};
 
 use vk::has_command::DestroyDevice;
 
@@ -60,7 +60,7 @@ where
     }
 }
 
-pub type ScopedDeviceType<S, C> = RefScope<S, DeviceType<C>>;
+pub type ScopedDeviceType<S, C> = SecretScope<S, DeviceType<C>>;
 
 /** Device handle trait
 
