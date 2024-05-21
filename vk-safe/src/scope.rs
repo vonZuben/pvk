@@ -195,7 +195,11 @@ not appear in the trait input types`.
 
 `SecretScope` hides the lifetime by making `Scope` as a generic type parameter. We can then write
 e.g. `trait Handle: Deref<Target = SecretScope<Self, ConcreteHandle>>`, where `Self` will be
-`Scope<'_, ConcreteHandle>` as the implementor of the trait.
+`Scope<'_, ConcreteHandle>` as the implementor of the trait. Auto-deref then lets us seamlessly
+call the concrete handle methods; e.g. given
+`fn mf_fn(instance: impl Instance<Context: VERSION_1_0>) { let pds = instance.enumerate_physical_devices(Vec::new); }`,
+the `Instance` trait implies `Deref` to some concrete instance type, which has an `enumerate_physical_devices`
+method (see details about context and version in [`context`](crate::context)).
 
 # Safety
 `SecretScope` is VERY delicate. It is only ever sound to have an instance of SecretScope which is
