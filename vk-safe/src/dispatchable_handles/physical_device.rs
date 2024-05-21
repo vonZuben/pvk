@@ -1,3 +1,12 @@
+//! representation of a Vulkan implementation on the system
+//!
+//! A `PhysicalDevice` lets you query details about the Vulkan implementation (e.g.
+//! memory properties). A logical [`Device`](crate::dispatchable_handles::device_type) (*TODO: fix link, will be public module later*)
+//! can be created from a `PhysicalDevice` with [`create_device`].
+//!
+//! Vulkan doc:
+//! <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDevice.html>
+
 use vk_safe_sys as vk;
 
 use crate::array_storage::ArrayStorage;
