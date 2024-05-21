@@ -1,3 +1,15 @@
+/*!
+Query the device level extensions supported by the PhysicalDevice
+
+Returns properties of the extensions that are available on the PhysicalDevice. Some extensions may
+be provided by a layer, which can be queried by providing the layer name.
+
+use the [`enumerate_device_extension_properties`](ScopedPhysicalDevice::enumerate_device_extension_properties) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceExtensionProperties.html>
+*/
+
 use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
@@ -16,7 +28,23 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: EnumerateDeviceExtensionProperties,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceExtensionProperties.html>
+    /**
+    Query the device level extensions supported by the PhysicalDevice
+
+    If `layer_name` is `None`, only extensions provided by the Vulkan implementation. If `layer_name`
+    is `Some(layer_name)`, device extensions provided by that layer are returned.
+
+    Must also provide the storage space to return the extension properties.
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P) {
+    let extension_properties = physical_device.enumerate_device_extension_properties(None, Vec::new());
+    # }
+    ```
+    */
     pub fn enumerate_device_extension_properties<A: ArrayStorage<ExtensionProperties<S>>>(
         &self,
         layer_name: Option<VkStr>,
