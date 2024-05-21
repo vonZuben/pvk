@@ -6,3 +6,4 @@ vk.xml
 out.ppm
 validation.sh
 .cargo
+doc_server.sh
