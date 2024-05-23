@@ -1,11 +1,32 @@
 use std::fmt;
 
-simple_struct_wrapper_scoped!(LayerProperties);
+simple_struct_wrapper_scoped!(
+/// properties of an instance or device layer
+///
+/// provides the name, description, spec version, and implementation version.
+///
+/// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtensionProperties.html>
+LayerProperties);
 
 impl<S> LayerProperties<S> {
-    get_str!(layer_name);
-    get_str!(description);
-    pretty_version!(spec_version);
+    get_str!(
+        /// Returns the name of the layer
+        layer_name);
+
+    get_str!(
+        /// Returns the description of th layer
+        description);
+
+    pretty_version!(
+        /// Returns the Vulkan version the layer was written to
+        spec_version);
+
+    /// Return the layers implementation version
+    ///
+    /// It is an integer, increasing with backward compatible changes.
+    pub fn implementation_version(&self) -> u32 {
+        self.inner.implementation_version
+    }
 }
 
 impl<S> std::fmt::Debug for LayerProperties<S> {
