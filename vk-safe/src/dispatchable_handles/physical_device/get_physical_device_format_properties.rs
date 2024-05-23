@@ -1,3 +1,12 @@
+/*!
+Query the format properties of the PhysicalDevice
+
+use the [`get_physical_device_format_properties`](ScopedPhysicalDevice::get_physical_device_format_properties) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html>
+*/
+
 use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
@@ -12,7 +21,21 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceFormatProperties,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFormatProperties.html>
+    /**
+    Query the format properties of the PhysicalDevice
+
+    Provide the [`Format`](crate::vk::Format) to get the properties of that format
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P) {
+    let format_properties =
+        physical_device.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);
+    # }
+    ```
+    */
     pub fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties<S> {
         let mut properties = MaybeUninit::uninit();
         unsafe {
