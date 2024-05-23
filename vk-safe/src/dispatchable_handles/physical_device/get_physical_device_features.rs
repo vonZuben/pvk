@@ -1,3 +1,12 @@
+/*!
+Query the features supported by the PhysicalDevice
+
+use the [`get_physical_device_features`](ScopedPhysicalDevice::get_physical_device_features) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html>
+*/
+
 use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
@@ -12,7 +21,18 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceFeatures,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceFeatures.html>
+    /**
+    Query the features supported by the PhysicalDevice
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P) {
+    let features = physical_device.get_physical_device_features();
+    # }
+    ```
+    */
     pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures<S> {
         let mut features = MaybeUninit::uninit();
         unsafe {
