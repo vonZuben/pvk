@@ -1,3 +1,12 @@
+/*!
+Query the memory properties of the PhysicalDevice
+
+use the [`get_physical_device_memory_properties`](ScopedPhysicalDevice::get_physical_device_memory_properties) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceMemoryProperties.html>
+*/
+
 use std::fmt;
 
 use super::concrete_type::ScopedPhysicalDevice;
@@ -19,7 +28,18 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceMemoryProperties,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html>
+    /**
+    Query the memory properties of the PhysicalDevice
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P) {
+    let memory_properties = physical_device.get_physical_device_memory_properties();
+    # }
+    ```
+    */
     pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<S> {
         let mut properties = MaybeUninit::uninit();
         unsafe {
