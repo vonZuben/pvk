@@ -1,3 +1,12 @@
+/*!
+Query the image format properties of the PhysicalDevice
+
+use the [`get_physical_device_image_format_properties`](ScopedPhysicalDevice::get_physical_device_image_format_properties) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html>
+*/
+
 use std::fmt;
 
 use super::concrete_type::ScopedPhysicalDevice;
@@ -14,12 +23,30 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceImageFormatProperties,
 {
-    /// get image_format_properties
-    ///
-    /// This function takes the normal parameters via [`GetPhysicalDeviceImageFormatPropertiesParameters`], which
-    /// verifies that a valid combination of parameters is used.
-    ///
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceImageFormatProperties.html>
+    /**
+    Query the image format properties of the PhysicalDevice
+
+    Provide [`GetPhysicalDeviceImageFormatPropertiesParameters`] with the parameters of an image,
+    to get the format properties of an image created with such parameters
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P) {
+    const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
+        vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
+            vk::Format::R8G8B8A8_SRGB,
+            vk::ImageType::TYPE_2D,
+            vk::ImageTiling::OPTIMAL,
+            vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
+            vk::ImageCreateFlags::empty(),
+        );
+    let image_format_properties =
+        physical_device.get_physical_device_image_format_properties(PARAMS);
+    # }
+    ```
+    */
     #[track_caller]
     pub fn get_physical_device_image_format_properties(
         &self,
