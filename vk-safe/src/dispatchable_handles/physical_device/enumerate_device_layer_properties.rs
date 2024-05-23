@@ -1,3 +1,14 @@
+/*!
+Query the device level layers supported by the PhysicalDevice
+
+Returns properties of available physical device layers.
+
+use the [`enumerate_device_layer_properties`](ScopedPhysicalDevice::enumerate_device_layer_properties) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceLayerProperties.html>
+*/
+
 use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
@@ -15,7 +26,20 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: EnumerateDeviceLayerProperties,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateDeviceLayerProperties.html>
+    /**
+    Query the device level layers supported by the PhysicalDevice
+
+    Must provide the storage space to return the layer properties.
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P) {
+    let layer_properties = physical_device.enumerate_device_layer_properties(Vec::new());
+    # }
+    ```
+    */
     pub fn enumerate_device_layer_properties<A: ArrayStorage<LayerProperties<S>>>(
         &self,
         mut storage: A,
