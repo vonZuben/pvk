@@ -69,8 +69,10 @@ pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
 // Use this to create wrappers around simple structs that are scoped
 macro_rules! simple_struct_wrapper_scoped {
     (
+        $(#[$($attributes:tt)*])*
         $name:ident $(impl $($t:ident),+ $(,)?)?
     ) => {
+        $(#[$($attributes)*])*
         #[repr(transparent)]
         pub struct $name<S> {
             inner: vk_safe_sys::$name,
@@ -188,8 +190,10 @@ macro_rules! input_struct_wrapper {
 
 macro_rules! get_str {
     (
+        $(#[$($attributes:tt)*])*
         $name:ident
     ) => {
+        $(#[$($attributes)*])*
         pub fn $name(&self) -> &str {
             let unchecked_utf8;
             unsafe {
@@ -202,8 +206,10 @@ macro_rules! get_str {
 
 macro_rules! pretty_version {
     (
+        $(#[$($attributes:tt)*])*
         $version_param:ident
     ) => {
+        $(#[$($attributes)*])*
         pub fn $version_param(&self) -> crate::VkVersion {
             unsafe { crate::VkVersion::from_raw(self.inner.$version_param) }
         }
@@ -212,8 +218,10 @@ macro_rules! pretty_version {
 
 macro_rules! array {
     (
+        $(#[$($attributes:tt)*])*
         $name:ident, $array_ptr:ident, $array_len:ident, $ty:ty
     ) => {
+        $(#[$($attributes)*])*
         pub fn $name(&self) -> &[$ty] {
             unsafe {
                 std::slice::from_raw_parts(self.inner.$array_ptr, self.inner.$array_len as usize)
