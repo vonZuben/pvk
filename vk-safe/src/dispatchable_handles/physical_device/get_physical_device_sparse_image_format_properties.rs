@@ -1,3 +1,12 @@
+/*!
+Query the sparse image format properties of the PhysicalDevice
+
+use the [`get_physical_device_sparse_image_format_properties`](ScopedPhysicalDevice::get_physical_device_sparse_image_format_properties) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceSparseImageFormatProperties.html>
+*/
+
 use super::concrete_type::ScopedPhysicalDevice;
 
 use crate::dispatchable_handles::instance::Instance;
@@ -15,11 +24,31 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceSparseImageFormatProperties,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceSparseImageFormatProperties.html>
-    ///
-    /// *this currently takes [`ImageFormatProperties`] which needs to be obtained in advance.
-    /// However this should probably be changed. I am considering a general purpose "image parameters" type which may replace
-    /// [`GetPhysicalDeviceImageFormatPropertiesParameters`](crate::vk::GetPhysicalDeviceImageFormatPropertiesParameters) in future.*
+    /**
+    Query the sparse image format properties of the PhysicalDevice
+
+    ### Note
+    *this currently takes [`ImageFormatProperties`] which needs to be obtained in advance from
+    [`get_physical_device_image_format_properties`](ScopedPhysicalDevice::get_physical_device_image_format_properties).
+    However this should probably be changed. I am considering a general purpose "image parameters" type which may replace
+    [`GetPhysicalDeviceImageFormatPropertiesParameters`](crate::vk::GetPhysicalDeviceImageFormatPropertiesParameters) in future.*
+
+    Must provide the storage space to return the properties to.
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P, image_format_properties: vk::ImageFormatProperties<P>) {
+    let sparse_image_format_properties =
+        physical_device.get_physical_device_sparse_image_format_properties(
+            vk::SampleCountFlags::TYPE_1_BIT,
+            image_format_properties,
+            Vec::new(),
+        );
+    # }
+    ```
+    */
     pub fn get_physical_device_sparse_image_format_properties<
         A: ArrayStorage<SparseImageFormatProperties<S>>,
     >(
