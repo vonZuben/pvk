@@ -1,9 +1,23 @@
 use std::fmt;
 
-simple_struct_wrapper_scoped!(ExtensionProperties);
+simple_struct_wrapper_scoped!(
+/// properties of an instance or device extension
+///
+/// provides the name and version of the extension.
+///
+/// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtensionProperties.html>
+ExtensionProperties);
 
 impl<S> ExtensionProperties<S> {
-    get_str!(extension_name);
+    get_str!(
+        /// Returns the name of the extension as a &str
+        extension_name);
+    /// Returns the version of the extension
+    ///
+    /// It is an integer, incremented with backward compatible changes.
+    pub fn version(&self) -> u32 {
+        self.inner.spec_version
+    }
 }
 
 impl<S> std::fmt::Debug for ExtensionProperties<S> {
