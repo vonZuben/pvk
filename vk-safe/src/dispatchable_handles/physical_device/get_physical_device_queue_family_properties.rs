@@ -1,3 +1,12 @@
+/*!
+Query the queue family properties of the PhysicalDevice
+
+use the [`get_physical_device_queue_family_properties`](ScopedPhysicalDevice::get_physical_device_queue_family_properties) method on a scoped PhysicalDevice
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceQueueFamilyProperties.html>
+*/
+
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
@@ -19,7 +28,20 @@ impl<S, I: Instance> ScopedPhysicalDevice<S, I>
 where
     I::Context: GetPhysicalDeviceQueueFamilyProperties,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html>
+    /**
+    Query the queue family properties of the PhysicalDevice
+
+    Must provide the storage space to return the properties to.
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    #   (physical_device: P) {
+    let queue_family_properties = physical_device.get_physical_device_queue_family_properties(Vec::new());
+    # }
+    ```
+    */
     pub fn get_physical_device_queue_family_properties<
         A: ArrayStorage<vk::QueueFamilyProperties>,
     >(
