@@ -1,4 +1,8 @@
-use super::*;
+use std::marker::PhantomData;
+
+use super::concrete_type;
+use super::Device;
+
 use vk_safe_sys as vk;
 
 use crate::dispatchable_handles::physical_device::get_physical_device_memory_properties::MemoryTypeChoice;
@@ -10,79 +14,11 @@ use crate::flags::Flags;
 use std::mem::MaybeUninit;
 use std::ops::Deref;
 
-pub trait DeviceMemoryConfig {
-    type Commands: FreeMemory;
-    type Device: Device<Context = Self::Commands>;
-    type PropertyFlags: Flags;
-    type HeapFlags: Flags;
-}
+use crate::non_dispatchable_handles::device_memory::{
+    concrete_type::Config, concrete_type::DeviceMemoryConfig, ConcreteDeviceMemory,
+};
 
-pub struct Config<D, P, H> {
-    device: PhantomData<D>,
-    property_flags: PhantomData<P>,
-    heap_flags: PhantomData<H>,
-}
-
-impl<D: Device, P: Flags, H: Flags> DeviceMemoryConfig for Config<D, P, H>
-where
-    D::Context: FreeMemory,
-{
-    type Commands = D::Context;
-    type Device = D;
-    type PropertyFlags = P;
-    type HeapFlags = H;
-}
-
-/** DeviceMemory handle trait
-
-Represents a DeviceMemory
-
-*currently* DeviceMemory does not need to be scoped
-*/
-pub trait DeviceMemory: Deref<Target = DeviceMemoryType<Self::Config>> {
-    #[doc(hidden)]
-    type Config: DeviceMemoryConfig<Device = Self::Device>;
-    /// The *specific* Device to which this DeviceMemory belongs
-    type Device;
-    /// Properties of the memory type this DeviceMemory was allocated with
-    type PropertyFlags: Flags;
-    /// Properties of the memory heap from which this DeviceMemory was allocated
-    type HeapFlags: Flags;
-}
-
-pub struct DeviceMemoryType<D: DeviceMemoryConfig> {
-    pub(crate) handle: vk::DeviceMemory,
-    device: D::Device,
-}
-
-impl<D: DeviceMemoryConfig> Deref for DeviceMemoryType<D> {
-    type Target = Self;
-
-    fn deref(&self) -> &Self::Target {
-        self
-    }
-}
-
-impl<D: DeviceMemoryConfig> DeviceMemory for DeviceMemoryType<D> {
-    type Config = D;
-    type Device = D::Device;
-    type PropertyFlags = D::PropertyFlags;
-    type HeapFlags = D::HeapFlags;
-}
-
-impl<D: DeviceMemoryConfig> DeviceMemoryType<D> {
-    fn new(handle: vk::DeviceMemory, device: D::Device) -> Self {
-        Self { handle, device }
-    }
-}
-
-impl<D: DeviceMemoryConfig> std::fmt::Debug for DeviceMemoryType<D> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.handle.fmt(f)
-    }
-}
-
-impl<S: Device, C: DeviceConfig> ScopedDeviceType<S, C>
+impl<S: Device, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C>
 where
     C::Context: AllocateMemory,
     S::Context: FreeMemory,
@@ -93,7 +29,7 @@ where
     pub fn allocate_memory<P: Flags, H: Flags>(
         &self,
         info: &MemoryAllocateInfo<C::PhysicalDevice, P, H>,
-    ) -> Result<DeviceMemoryType<Config<S, P, H>>, vk::Result> {
+    ) -> Result<ConcreteDeviceMemory<Config<S, P, H>>, vk::Result> {
         check_vuids::check_vuids!(AllocateMemory);
 
         #[allow(unused_labels)]
@@ -200,70 +136,10 @@ where
                 memory.as_mut_ptr(),
             );
             check_raw_err!(ret);
-            Ok(DeviceMemoryType::new(memory.assume_init(), self.as_scope()))
-        }
-    }
-}
-
-impl<D: DeviceMemoryConfig> Drop for DeviceMemoryType<D> {
-    fn drop(&mut self) {
-        let fptr = self.device.context.FreeMemory().get_fptr();
-        check_vuids::check_vuids!(FreeMemory);
-
-        #[allow(unused_labels)]
-        'VUID_vkFreeMemory_memory_00677: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::description! {
-            "All submitted commands that refer to memory (via images or buffers) must have completed"
-            "execution"
-            }
-
-            // the memory will be borrowed by objects using the memory, such that the Memory cannot be dropped until done being used
-        }
-
-        #[allow(unused_labels)]
-        'VUID_vkFreeMemory_device_parameter: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::description! {
-            "device must be a valid VkDevice handle"
-            }
-
-            // valid from creation
-        }
-
-        #[allow(unused_labels)]
-        'VUID_vkFreeMemory_memory_parameter: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::description! {
-            "If memory is not VK_NULL_HANDLE, memory must be a valid VkDeviceMemory handle"
-            }
-
-            // valid from creation
-        }
-
-        #[allow(unused_labels)]
-        'VUID_vkFreeMemory_pAllocator_parameter: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::description! {
-            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
-            "structure"
-            }
-
-            // TODO: VkAllocationCallbacks not currently supported
-        }
-
-        #[allow(unused_labels)]
-        'VUID_vkFreeMemory_memory_parent: {
-            check_vuids::version! {"1.3.268"}
-            check_vuids::description! {
-            "If memory is a valid handle, it must have been created, allocated, or retrieved from"
-            "device"
-            }
-
-            // DeviceMemoryType knows what device it came from
-        }
-        unsafe {
-            fptr(self.device.handle, self.handle, std::ptr::null());
+            Ok(ConcreteDeviceMemory::new(
+                memory.assume_init(),
+                self.as_scope(),
+            ))
         }
     }
 }

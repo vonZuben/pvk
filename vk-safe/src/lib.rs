@@ -172,6 +172,7 @@ pub mod scope;
 pub mod flags;
 
 pub mod dispatchable_handles;
+pub mod non_dispatchable_handles;
 
 /// # Vulkan enumerations
 ///
@@ -246,7 +247,8 @@ pub mod vk {
     pub use super::enumerations::*;
     pub use super::flags::*;
 
-    pub use super::dispatchable_handles::device_type::device_exports::*;
+    pub use super::dispatchable_handles::device::export::*;
+    pub use super::dispatchable_handles::device::*;
     pub use super::dispatchable_handles::instance::*;
     pub use super::dispatchable_handles::physical_device::export::*;
     pub use super::dispatchable_handles::physical_device::*;

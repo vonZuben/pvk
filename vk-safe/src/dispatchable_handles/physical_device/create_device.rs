@@ -29,7 +29,7 @@ Vulkan docs:
 use super::concrete_type::ScopedPhysicalDevice;
 use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamilyProperties};
 use super::PhysicalDevice;
-use crate::dispatchable_handles::device_type::{Config, DeviceType};
+use crate::dispatchable_handles::device::concrete_type::{self, Config};
 use crate::dispatchable_handles::instance::Instance;
 use crate::error::Error;
 use crate::type_conversions::TransmuteSlice;
@@ -90,7 +90,7 @@ where
         &self,
         create_info: &DeviceCreateInfo<'a, C, S>,
         queue_properties: &'a QueueFamiliesRef<S>,
-    ) -> Result<DeviceType<Config<'a, C, S>>, Error>
+    ) -> Result<concrete_type::Device<Config<'a, C, S>>, Error>
     where
         C: Context + InstanceDependencies<I::Context, O>,
         C::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<I::Context>,
@@ -172,7 +172,7 @@ where
                 device.as_mut_ptr(),
             );
             check_raw_err!(res);
-            Ok(DeviceType::load_commands(
+            Ok(concrete_type::Device::load_commands(
                 device.assume_init(),
                 Config::new(
                     std::slice::from_raw_parts(

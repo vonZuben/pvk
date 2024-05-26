@@ -3,7 +3,7 @@ use vk_safe_sys as vk;
 
 use crate::error::Error;
 
-use allocate_memory::DeviceMemory;
+use crate::non_dispatchable_handles::device_memory::{DeviceMemory, MappedMemory};
 
 use crate::flags::{Excludes, Includes};
 
@@ -11,7 +11,7 @@ use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
 use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
 use vk::has_command::MapMemory;
 
-impl<D, C: DeviceConfig> ScopedDeviceType<D, C>
+impl<D, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<D, C>
 where
     C::Context: MapMemory,
 {
@@ -165,17 +165,7 @@ where
             );
             check_raw_err!(res);
 
-            Ok(MappedMemory {
-                memory,
-                ptr: ptr.assume_init(),
-            })
+            Ok(MappedMemory::new(memory, ptr.assume_init()))
         }
     }
-}
-
-/// DeviceMemory which has been mapped for host access
-#[derive(Debug)]
-pub struct MappedMemory<M> {
-    pub(crate) memory: M,
-    ptr: *const std::ffi::c_void,
 }

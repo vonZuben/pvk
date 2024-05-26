@@ -1,15 +1,20 @@
 use super::*;
 
+use concrete_type::DeviceConfig;
+
+use std::marker::PhantomData;
+
 use std::mem::MaybeUninit;
+
+use vk_safe_sys as vk;
 
 use vk::has_command::GetDeviceQueue;
 
-use crate::dispatchable_handles::queue_type::{Config, QueueType};
+use crate::dispatchable_handles::queue_type::{Config, QueueCapability, QueueType};
 
-use crate::dispatchable_handles::queue_type::QueueCapability;
 use crate::vk::DeviceQueueCreateInfo;
 
-impl<'a, S, C: DeviceConfig> ScopedDeviceType<S, C> {
+impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C> {
     /// get the configured queue families
     ///
     /// In Vulkan, after creating a device, you normally use `vkGetDeviceQueue`

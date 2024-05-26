@@ -1,7 +1,7 @@
 //! representation of a Vulkan implementation on the system
 //!
 //! A `PhysicalDevice` lets you query details about the Vulkan implementation (e.g.
-//! memory properties). A logical [`Device`](crate::dispatchable_handles::device_type) (*TODO: fix link, will be public module later*)
+//! memory properties). A logical [`Device`](crate::dispatchable_handles::device::ConcreteDevice)
 //! can be created from a `PhysicalDevice` with [`create_device`].
 //!
 //! Vulkan doc:

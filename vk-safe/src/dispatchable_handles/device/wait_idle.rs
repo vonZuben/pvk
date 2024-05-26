@@ -1,11 +1,11 @@
-use super::{DeviceConfig, ScopedDeviceType};
+use super::*;
 use crate::error::Error;
 
 use vk_safe_sys as vk;
 
 use vk::has_command::DeviceWaitIdle;
 
-impl<S, C: DeviceConfig> ScopedDeviceType<S, C>
+impl<S, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C>
 where
     C::Context: DeviceWaitIdle,
 {

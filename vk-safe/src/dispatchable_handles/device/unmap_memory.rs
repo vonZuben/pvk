@@ -1,12 +1,12 @@
-use super::{DeviceConfig, ScopedDeviceType};
+use super::*;
 
 use vk_safe_sys as vk;
 
 use vk::has_command::UnmapMemory;
 
-use crate::vk::{DeviceMemory, MappedMemory};
+use crate::non_dispatchable_handles::device_memory::{DeviceMemory, MappedMemory};
 
-impl<S, C: DeviceConfig> ScopedDeviceType<S, C>
+impl<S, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C>
 where
     C::Context: UnmapMemory,
 {
