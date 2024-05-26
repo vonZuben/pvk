@@ -1,3 +1,14 @@
+/*!
+Allocate memory on the Device
+
+Returns returns a [`ConcreteDeviceMemory`] handle that can be used as backing storage for buffers and images.
+
+use the [`allocate_memory`](concrete_type::ScopedDevice::allocate_memory) method on a scoped Device
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDeviceMemory.html>
+*/
+
 use std::marker::PhantomData;
 
 use super::concrete_type;
@@ -12,20 +23,29 @@ use vk::has_command::{AllocateMemory, FreeMemory};
 use crate::flags::Flags;
 
 use std::mem::MaybeUninit;
-use std::ops::Deref;
 
-use crate::non_dispatchable_handles::device_memory::{
-    concrete_type::Config, concrete_type::DeviceMemoryConfig, ConcreteDeviceMemory,
-};
+use crate::non_dispatchable_handles::device_memory::{concrete_type::Config, ConcreteDeviceMemory};
 
-impl<S: Device, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C>
+impl<S: Device, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C>
 where
     C::Context: AllocateMemory,
     S::Context: FreeMemory,
 {
-    /// allocate memory for use with a device
-    ///
-    /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html>
+    /**
+    Allocate memory on the Device
+
+    Provide a [`MemoryAllocateInfo`] structure with the information
+    about amount and type of memory you want to allocate.
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # fn tst<C: vk::device::VERSION_1_0, D: vk::Device<Context = C>, P: vk::Flags, H: vk::Flags>
+    #   (device: D, alloc_info: vk::MemoryAllocateInfo<D::PhysicalDevice, P, H>) {
+    let memory = device.allocate_memory(&alloc_info);
+    # }
+    ```
+    */
     pub fn allocate_memory<P: Flags, H: Flags>(
         &self,
         info: &MemoryAllocateInfo<C::PhysicalDevice, P, H>,
