@@ -1,3 +1,12 @@
+/*!
+Map memory for host access
+
+use the [`map_memory`](concrete_type::ScopedDevice::map_memory) method on a scoped Device
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html>
+*/
+
 use super::*;
 use vk_safe_sys as vk;
 
@@ -15,13 +24,28 @@ impl<D, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<D, C>
 where
     C::Context: MapMemory,
 {
-    /// Map memory for host access
-    ///
-    /// *currently this can only be used to map the whole memory range
-    /// there may be breaking change in future to make the API more inline
-    /// with `vkMapMemory`*
-    ///
-    /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html>
+    /**
+    Map memory for host access
+
+    ```rust
+    # use vk_safe::vk;
+    # vk::device_context!(D: VERSION_1_0);
+    # use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
+    # use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
+    # fn tst<
+    #    C: vk::device::VERSION_1_0, D: vk::Device<Context = C>,
+    #    P: vk::Includes<HOST_VISIBLE_BIT>,
+    #    H: vk::Excludes<MULTI_INSTANCE_BIT>
+    # >
+    #   (device: D, memory: impl vk::DeviceMemory<Device = D, PropertyFlags = P, HeapFlags = H>) {
+    let mapped_memory = device.map_memory(memory);
+    # }
+    ```
+
+    ### Note
+    *currently this can only be used to map the whole memory range. There may be breaking change in
+    future to make the API more inline with the real `vkMapMemory`, which allows mapping sub ranges*
+    */
     pub fn map_memory<
         P: Includes<HOST_VISIBLE_BIT>,
         H: Excludes<MULTI_INSTANCE_BIT>,

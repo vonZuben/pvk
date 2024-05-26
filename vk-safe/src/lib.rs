@@ -255,6 +255,8 @@ pub mod vk {
     pub use super::dispatchable_handles::queue_type::queue_exports::*;
     pub use super::entry::*;
 
+    pub use super::non_dispatchable_handles::exports::*;
+
     pub use super::scope::{scope, Scope, SecretScope};
 
     pub use super::context::device;
