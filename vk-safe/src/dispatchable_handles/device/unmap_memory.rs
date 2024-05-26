@@ -1,3 +1,12 @@
+/*!
+Unmap memory for host access
+
+use the [`unmap_memory`](concrete_type::ScopedDevice::unmap_memory) method on a scoped Device
+
+Vulkan docs:
+<https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkUnmapMemory.html>
+*/
+
 use super::*;
 
 use vk_safe_sys as vk;
@@ -10,7 +19,21 @@ impl<S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C>
 where
     C::Context: UnmapMemory,
 {
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkUnmapMemory.html>
+    /**
+    Unmap memory for host access
+
+    ```rust
+    # use vk_safe::vk;
+    # fn tst<
+    #    C: vk::device::VERSION_1_0,
+    #    D: vk::Device<Context = C>,
+    #    M: vk::DeviceMemory<Device = D>,
+    # >
+    #   (device: D, mapped_memory: vk::MappedMemory<M>) {
+    let memory = device.unmap_memory(mapped_memory);
+    # }
+    ```
+    */
     pub fn unmap_memory<M: DeviceMemory<Device = S>>(&self, mapped_memory: MappedMemory<M>) -> M {
         check_vuids::check_vuids!(UnmapMemory);
 

@@ -33,7 +33,8 @@ where
     # use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
     # use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
     # fn tst<
-    #    C: vk::device::VERSION_1_0, D: vk::Device<Context = C>,
+    #    C: vk::device::VERSION_1_0,
+    #    D: vk::Device<Context = C>,
     #    P: vk::Includes<HOST_VISIBLE_BIT>,
     #    H: vk::Excludes<MULTI_INSTANCE_BIT>
     # >

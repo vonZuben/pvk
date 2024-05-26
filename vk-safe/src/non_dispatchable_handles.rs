@@ -7,5 +7,5 @@ pub mod device_memory;
 pub(crate) mod exports {
     use super::*;
 
-    pub use device_memory::DeviceMemory;
+    pub use device_memory::{DeviceMemory, MappedMemory};
 }
