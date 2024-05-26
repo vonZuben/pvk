@@ -19,7 +19,7 @@ wait_idle;
 Represents a *specific* Device which has been scoped.
 */
 pub trait Device:
-    std::ops::Deref<Target = concrete_type::ScopedDeviceType<Self, Self::Config>> + Copy
+    std::ops::Deref<Target = concrete_type::ScopedDevice<Self, Self::Config>> + Copy
 {
     #[doc(hidden)]
     type Config: concrete_type::DeviceConfig<
@@ -98,7 +98,7 @@ pub(crate) mod concrete_type {
         }
     }
 
-    pub type ScopedDeviceType<S, C> = SecretScope<S, Device<C>>;
+    pub type ScopedDevice<S, C> = SecretScope<S, Device<C>>;
 
     impl<'scope, C: DeviceConfig> super::Device for Scope<'scope, Device<C>> {
         type Config = C;

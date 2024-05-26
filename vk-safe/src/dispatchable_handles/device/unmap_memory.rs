@@ -6,7 +6,7 @@ use vk::has_command::UnmapMemory;
 
 use crate::non_dispatchable_handles::device_memory::{DeviceMemory, MappedMemory};
 
-impl<S, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C>
+impl<S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C>
 where
     C::Context: UnmapMemory,
 {

@@ -14,7 +14,7 @@ use crate::dispatchable_handles::queue_type::{Config, QueueCapability, QueueType
 
 use crate::vk::DeviceQueueCreateInfo;
 
-impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C> {
+impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C> {
     /// get the configured queue families
     ///
     /// In Vulkan, after creating a device, you normally use `vkGetDeviceQueue`

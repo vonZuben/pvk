@@ -5,7 +5,7 @@ use vk_safe_sys as vk;
 
 use vk::has_command::DeviceWaitIdle;
 
-impl<S, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<S, C>
+impl<S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C>
 where
     C::Context: DeviceWaitIdle,
 {

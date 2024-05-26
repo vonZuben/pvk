@@ -11,7 +11,7 @@ use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
 use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
 use vk::has_command::MapMemory;
 
-impl<D, C: concrete_type::DeviceConfig> concrete_type::ScopedDeviceType<D, C>
+impl<D, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<D, C>
 where
     C::Context: MapMemory,
 {
