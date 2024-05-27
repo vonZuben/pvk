@@ -39,7 +39,7 @@ get_physical_device_sparse_image_format_properties;
 Represents a *specific* PhysicalDevice which has been scoped.
 */
 pub trait PhysicalDevice:
-    std::ops::Deref<Target = concrete_type::ScopedPhysicalDevice<Self, Self::Instance>> + Copy
+    std::ops::DerefMut<Target = concrete_type::ScopedPhysicalDevice<Self, Self::Instance>> + Copy
 {
     /// The *specific* Instance to which this PhysicalDevice belongs
     type Instance: Instance<Context = Self::Context>;

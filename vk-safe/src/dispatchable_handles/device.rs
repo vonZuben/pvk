@@ -19,7 +19,7 @@ wait_idle;
 Represents a *specific* Device which has been scoped.
 */
 pub trait Device:
-    std::ops::Deref<Target = concrete_type::ScopedDevice<Self, Self::Config>> + Copy
+    std::ops::DerefMut<Target = concrete_type::ScopedDevice<Self, Self::Config>> + Copy
 {
     #[doc(hidden)]
     type Config: concrete_type::DeviceConfig<

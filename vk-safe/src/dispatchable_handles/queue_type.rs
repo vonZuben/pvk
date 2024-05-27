@@ -29,7 +29,7 @@ Represents a Queue
 
 *currently* Queue does not need to be scoped
 */
-pub trait Queue: std::ops::Deref<Target = QueueType<Self::Config>> {
+pub trait Queue: std::ops::DerefMut<Target = QueueType<Self::Config>> {
     #[doc(hidden)]
     type Config: QueueConfig<Device = Self::Device>;
     /// The *specific* Device to which this Queue belongs
@@ -62,6 +62,12 @@ impl<C: QueueConfig> std::ops::Deref for QueueType<C> {
     type Target = Self;
 
     fn deref(&self) -> &Self::Target {
+        self
+    }
+}
+
+impl<C: QueueConfig> std::ops::DerefMut for QueueType<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         self
     }
 }

@@ -147,6 +147,13 @@ impl<T> std::ops::Deref for Scope<'_, T> {
     }
 }
 
+impl<T> std::ops::DerefMut for Scope<'_, T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        // see comments in Deref impl for safety comment
+        unsafe { std::mem::transmute::<Self, &mut SecretScope<Self, T>>(*self) }
+    }
+}
+
 /// create a scoped type
 ///
 /// Creates a [`Scope<'scope, T>`](Scope) with a provided `T`.
@@ -162,7 +169,8 @@ macro_rules! scope {
     ( $name:ident ) => {
         let anchor = unsafe { $crate::scope::Anchor::new() };
         let bounds = unsafe { $crate::scope::ScopeBounds::new(&anchor) };
-        let $name = unsafe { $crate::scope::Scope::new(&$name, &bounds) };
+        #[allow(unused_mut)]
+        let mut $name = unsafe { $crate::scope::Scope::new(&$name, &bounds) };
     };
 }
 #[doc(inline)]

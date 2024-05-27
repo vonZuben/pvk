@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::ops::DerefMut;
 
 use crate::flags::Flags;
 
@@ -8,7 +8,7 @@ Represents a DeviceMemory
 
 *currently* DeviceMemory does not need to be scoped
 */
-pub trait DeviceMemory: Deref<Target = concrete_type::DeviceMemory<Self::Config>> {
+pub trait DeviceMemory: DerefMut<Target = concrete_type::DeviceMemory<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::DeviceMemoryConfig<Device = Self::Device>;
     /// The *specific* Device to which this DeviceMemory belongs
@@ -36,7 +36,7 @@ impl<M> MappedMemory<M> {
 
 pub(crate) mod concrete_type {
     use std::marker::PhantomData;
-    use std::ops::Deref;
+    use std::ops::{Deref, DerefMut};
 
     use vk_safe_sys as vk;
 
@@ -77,6 +77,12 @@ pub(crate) mod concrete_type {
         type Target = Self;
 
         fn deref(&self) -> &Self::Target {
+            self
+        }
+    }
+
+    impl<D: DeviceMemoryConfig> DerefMut for DeviceMemory<D> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
             self
         }
     }

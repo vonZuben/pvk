@@ -14,7 +14,7 @@ pub mod enumerate_physical_devices;
 Represents a *specific* Instance which has been scoped.
 */
 pub trait Instance:
-    std::ops::Deref<Target = concrete_type::ScopedInstance<Self, Self::Config>> + Copy
+    std::ops::DerefMut<Target = concrete_type::ScopedInstance<Self, Self::Config>> + Copy
 {
     #[doc(hidden)]
     type Config: concrete_type::InstanceConfig<Context = Self::Context>;
