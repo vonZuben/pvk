@@ -808,9 +808,12 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
     }
 }
 
-// TODO docs for structs created with macro???
-/// Info for creating a device Queue
-input_struct_wrapper!(DeviceQueueCreateInfo);
+input_struct_wrapper!(
+/// Info struct for creating DeviceQueues
+///
+/// When creating a [`Device`](concrete_type::Device), this struct provides
+/// information about the Queues to be created therewith.
+DeviceQueueCreateInfo);
 
 impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -827,8 +830,17 @@ impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
 impl<'a, S> DeviceQueueCreateInfo<'a, S> {
     array!(queue_priorities, p_queue_priorities, queue_count, f32);
 
+    /// Create DeviceQueueCreateInfo
+    ///
+    /// When creating a [`Device`](concrete_type::Device), create
+    /// `priorities.len()` number of Queues, with respective
+    /// priorities. **Must** create at least one Queue.
+    ///
+    /// # Panic
+    /// `priorities` must have a `len >= 1`. This function panic if
+    /// `priorities.len() < 1`
     pub fn new<Q>(
-        priorities: QueuePriorities<'a>,
+        priorities: &'a [QueuePriority],
         family: QueueFamilyProperties<(S, Q)>,
     ) -> Result<Self, Error> {
         check_vuids::check_vuids!(DeviceQueueCreateInfo);
@@ -863,7 +875,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
             "Each element of pQueuePriorities must be between 0.0 and 1.0 inclusive"
             }
 
-            // [QueuePriorities]
+            // [Priority]
         }
 
         #[allow(unused_labels)]
@@ -935,7 +947,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
             "pQueuePriorities must be a valid pointer to an array of queueCount float values"
             }
 
-            // QueuePriorities
+            // rust reference, and `Priority` is #[repr(transparent)] f32
         }
 
         #[allow(unused_labels)]
@@ -945,7 +957,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
             "queueCount must be greater than 0"
             }
 
-            // QueuePriorities
+            assert!(priorities.len() > 0);
         }
 
         Ok(Self {
@@ -955,7 +967,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
                 flags: vk::DeviceQueueCreateFlags::empty(),
                 queue_family_index: family.family_index,
                 queue_count: priorities_len,
-                p_queue_priorities: priorities.as_ptr(),
+                p_queue_priorities: priorities.safe_transmute_slice().as_ptr(),
             },
             _params: PhantomData,
             _scope: PhantomData,
@@ -963,36 +975,45 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
     }
 }
 
-/// an array of queue priorities
-/// len must be > 0
-/// all values must fall in 0.0..=1.0
-#[derive(Clone, Copy)]
-pub struct QueuePriorities<'a> {
-    priorities: &'a [f32],
+unit_error!(pub InvalidPriorityValue);
+
+/// Priority of a Queue
+///
+/// Always has a value between 0.0 and 1.0 (inclusive)
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy)]
+pub struct QueuePriority {
+    priority: f32,
 }
 
-impl<'a> QueuePriorities<'a> {
-    pub fn new(priorities: &'a [f32]) -> Self {
-        assert!(priorities.as_ref().len() > 0);
-        for p in priorities.as_ref().iter().copied() {
-            assert!(0.0 <= p && p <= 1.0)
+unsafe impl crate::type_conversions::SafeTransmute<f32> for QueuePriority {}
+
+impl QueuePriority {
+    /// Create a new Priority
+    ///
+    /// Will create a new priority with a value between 0.0 and 1.0 (inclusive)
+    ///
+    /// Will return an error if the provided value is outside the allowed range
+    pub fn new(priority: f32) -> Result<Self, InvalidPriorityValue> {
+        match priority {
+            0.0..=1.0 => Ok(Self { priority }),
+            _ => Err(InvalidPriorityValue),
         }
-        unsafe { Self::new_unchecked(priorities) }
     }
-    /// Safety
-    /// must ensure that priorities.as_ref().len() > 0, and all values are in the range 0.0..=1.0
-    pub unsafe fn new_unchecked(priorities: &'a [f32]) -> Self {
-        Self { priorities }
+
+    /// Create a new Priority without checking that it has a valid value
+    ///
+    /// The caller must ensure that the priority is between 0.0 and 1.0 (inclusive)
+    pub unsafe fn new_unchecked(priority: f32) -> Self {
+        Self { priority }
     }
-    pub fn with_num_queues(&self, num_queues: u32) -> Self {
-        assert!(num_queues > 0);
-        let num_queues: usize = num_queues.try_into().unwrap();
-        unsafe { QueuePriorities::new_unchecked(&self.priorities.as_ref()[..num_queues]) }
-    }
-    pub fn len(&self) -> usize {
-        self.priorities.as_ref().len()
-    }
-    pub fn as_ptr(&self) -> *const f32 {
-        self.priorities.as_ref().as_ptr()
+}
+
+impl std::default::Default for QueuePriority {
+    /// Returns a Priority of 0.0
+    fn default() -> Self {
+        Self {
+            priority: Default::default(),
+        }
     }
 }

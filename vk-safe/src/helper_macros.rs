@@ -127,8 +127,10 @@ macro_rules! simple_struct_wrapper_scoped {
 
 macro_rules! input_struct_wrapper {
     (
+        $(#[$($attributes:tt)*])*
         $name:ident $(impl $($t:ident),+ $(,)?)?
     ) => {
+        $(#[$($attributes)*])*
         #[repr(transparent)]
         pub struct $name<'a, S> {
             pub(crate) inner: vk_safe_sys::$name,

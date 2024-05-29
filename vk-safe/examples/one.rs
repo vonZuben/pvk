@@ -118,11 +118,11 @@ fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice
 
     queue_family_properties.config_scope(|qp| {
         let mut queue_configs = vec![];
-        let priorities = vk::QueuePriorities::new(&[1.0; 10]);
+        let priorities = [vk::QueuePriority::default(); 10];
         for p in qp {
             if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
                 queue_configs.push(
-                    vk::DeviceQueueCreateInfo::new(priorities.with_num_queues(p.queue_count), p)
+                    vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
                         .unwrap(),
                 )
             }
