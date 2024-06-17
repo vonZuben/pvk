@@ -85,6 +85,18 @@ impl Drop for ScopeBounds<'_> {
     }
 }
 
+/// Indicate that is it ok to create a [`Shared`] with the implementor type
+///
+/// This **MUST NOT** be implemented at the same time as [`Mutable`]
+#[doc(hidden)]
+pub unsafe trait Shareable {}
+
+/// Indicate that is it ok to DerefMut with the Scoped implementor type
+///
+/// This **MUST NOT** be implemented at the same time as [`Shareable`]
+#[doc(hidden)]
+pub unsafe trait Mutable {}
+
 /// This represents an ID for a scope based on an invariant lifetime
 ///
 /// by creating this and passing it to a closure with Higher-Rank Trait Bound lifetime (i.e. for<'scope>)
@@ -145,8 +157,11 @@ impl<T> Deref for Scope<'_, T> {
     }
 }
 
-impl<T> DerefMut for Scope<'_, T> {
-    /// DerefMut to SecretScope to hide the lifetime
+impl<T: Mutable> DerefMut for Scope<'_, T> {
+    /// DerefMut to SecretScope to hide the lifetime if T is `Mutable`
+    ///
+    /// `Mutable` is an internal trait that is implemented for handle types
+    /// that do not need to be shared and can have methods that take `&mut Self`
     fn deref_mut(&mut self) -> &mut Self::Target {
         // see comments in Deref impl for safety comment
         unsafe { std::mem::transmute::<*mut T, &mut SecretScope<Self, T>>(self.scope_inner) }
@@ -161,13 +176,12 @@ impl<T> DerefMut for Scope<'_, T> {
 /// # Safety
 /// This type does **NOT** borrow the `Scope`, and only holds
 /// a pointer to the data that is alive for 'scope. While, the data
-/// is guaranteed to be alive, it should be considered to always be
-/// aliased if a parent handle gives out this type. Thus, no safe
-/// api relying on &mut access can be created on `Scope` or
-/// `SecretScope`.
+/// is guaranteed to be alive, it should be assumed to always be
+/// aliased. Thus, no safe api relying on &mut access can be created
+/// for `Scope` or `SecretScope` if `Shared` will exist.
 ///
-/// # TODO
-/// make some marker traits to ensure handles can use `Shared` XOR `&mut api`
+/// A type may be [`Shareable] XOR [`Mutable`] to allow creation
+/// of [`Shared`] XOR `&mut api()`.
 ///
 /// ## implementation detail
 /// This type only holds a mutable pointer to unit type and a
@@ -292,12 +306,14 @@ pub struct SecretScope<S, T: ?Sized> {
     inner: T,
 }
 
-impl<S, T: ?Sized> SecretScope<S, T> {
+impl<S, T: ?Sized + Shareable> SecretScope<S, T> {
     /// Get a Shared Scope
     pub(crate) fn shared(&self) -> Shared<S> {
         unsafe { Shared::new(self) }
     }
+}
 
+impl<S, T: ?Sized> SecretScope<S, T> {
     /// manually get Deref target
     ///
     /// this is helpful because rust-analyzer seems to have trouble with autocompletion

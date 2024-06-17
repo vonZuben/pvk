@@ -33,7 +33,7 @@ pub(crate) mod concrete_type {
     use crate::type_conversions::ToC;
     use vk_safe_sys as vk;
 
-    use crate::scope::{Scope, SecretScope};
+    use crate::scope::{Scope, SecretScope, Shareable};
 
     use crate::VkVersion;
 
@@ -72,6 +72,8 @@ pub(crate) mod concrete_type {
         pub(crate) handle: vk::Instance,
         pub(crate) context: C::Context,
     }
+
+    unsafe impl<C: InstanceConfig> Shareable for Instance<C> {}
 
     unsafe impl<C: InstanceConfig> Send for Instance<C> {}
     unsafe impl<C: InstanceConfig> Sync for Instance<C> {}
