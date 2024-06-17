@@ -26,16 +26,10 @@ where
 
     *Can fail in exceptional situations. Will return Ok(()) on success.*
 
-    # TODO
-    For this method, host access to all VkQueue objects created from device must be externally synchronized.
-    Use of `&mut self` ensures synchronization. However, it also makes this method
-    essentially useless. This is because all child object have phantom references to the parent.
-    Thus, it is only possible to wait_idle on the Device if all child objects are dropped,
-    forgotten, or just never used again. It's not even possible for a user to use a Mutex
-    or the like since the children are internally holding the phantom references to the parent.
-    On one hand, I think it is good to encourage better idle waiting, by using semaphores, fences, or
-    waiting on individual queue, which should still be possible since they are leaf child objects.
-    *However, it may be best if this is an unsafe method to at least let the user have the option.*
+    # SAFETY
+    You **must not** call and methods on any [`Queue`](crate::vk::Queue) object
+    created from this Device, on any other threads at the same time as calling
+    this method.
 
     ```rust
     # use vk_safe::vk;
@@ -44,11 +38,11 @@ where
     #    D: vk::Device<Context = C>,
     # >
     #   (mut device: D) {
-    let result = device.wait_idle();
+    let result = unsafe { device.wait_idle() };
     # }
     ```
     */
-    pub fn wait_idle(&mut self) -> Result<(), Error> {
+    pub unsafe fn wait_idle(&self) -> Result<(), Error> {
         let fptr = self.context.DeviceWaitIdle().get_fptr();
 
         check_vuids::check_vuids!(DeviceWaitIdle);

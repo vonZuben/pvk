@@ -77,6 +77,6 @@ where
         }
 
         let handles = enumerator_code2!(self.context.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
-        Ok(PhysicalDevices::new(handles, self.as_scope()))
+        Ok(PhysicalDevices::new(handles, self.shared()))
     }
 }

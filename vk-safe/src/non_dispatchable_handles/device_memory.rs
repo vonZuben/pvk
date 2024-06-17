@@ -38,6 +38,8 @@ pub(crate) mod concrete_type {
     use std::marker::PhantomData;
     use std::ops::{Deref, DerefMut};
 
+    use crate::scope::Shared;
+
     use vk_safe_sys as vk;
 
     use vk::has_command::FreeMemory;
@@ -70,7 +72,7 @@ pub(crate) mod concrete_type {
 
     pub struct DeviceMemory<D: DeviceMemoryConfig> {
         pub(crate) handle: vk::DeviceMemory,
-        device: D::Device,
+        device: Shared<D::Device>,
     }
 
     impl<D: DeviceMemoryConfig> Deref for DeviceMemory<D> {
@@ -95,7 +97,7 @@ pub(crate) mod concrete_type {
     }
 
     impl<D: DeviceMemoryConfig> DeviceMemory<D> {
-        pub(crate) fn new(handle: vk::DeviceMemory, device: D::Device) -> Self {
+        pub(crate) fn new(handle: vk::DeviceMemory, device: Shared<D::Device>) -> Self {
             Self { handle, device }
         }
     }

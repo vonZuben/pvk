@@ -14,13 +14,13 @@ unmap_memory;
 wait_idle;
 );
 
+use crate::scope::HandleScope;
+
 /** Device handle trait
 
 Represents a *specific* Device which has been scoped.
 */
-pub trait Device:
-    std::ops::DerefMut<Target = concrete_type::ScopedDevice<Self, Self::Config>> + Copy
-{
+pub trait Device: HandleScope<concrete_type::Device<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::DeviceConfig<
         Context = Self::Context,
@@ -100,7 +100,7 @@ pub(crate) mod concrete_type {
 
     pub type ScopedDevice<S, C> = SecretScope<S, Device<C>>;
 
-    impl<'scope, C: DeviceConfig> super::Device for Scope<'scope, Device<C>> {
+    impl<C: DeviceConfig> super::Device for Scope<'_, Device<C>> {
         type Config = C;
         type PhysicalDevice = C::PhysicalDevice;
         type Context = C::Context;

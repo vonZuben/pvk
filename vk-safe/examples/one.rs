@@ -57,7 +57,7 @@ fn main() {
     }
 }
 
-fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice<Context = C>) {
+fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSION_1_0>) {
     println!("-------");
     println!("{:#?}", pd.get_physical_device_properties());
 
@@ -116,57 +116,59 @@ fn run_physical_device<C: vk::instance::VERSION_1_0>(pd: impl vk::PhysicalDevice
     println!("--Memory properties for this physical device--");
     println!("{:#?}", mem_props);
 
-    queue_family_properties.config_scope(|qp| {
-        let mut queue_configs = vec![];
-        let priorities = [vk::QueuePriority::default(); 10];
-        for p in qp {
-            if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
-                queue_configs.push(
-                    vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
-                        .unwrap(),
-                )
-            }
+    let queue_family_properties_tmp = &*queue_family_properties;
+    vk::scope!(queue_family_properties_tmp);
+
+    let mut queue_configs = vec![];
+    let priorities = [vk::QueuePriority::default(); 10];
+    for p in queue_family_properties_tmp {
+        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+            queue_configs.push(
+                vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),
+            )
         }
+    }
 
-        let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+    let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
-        let device = pd
-            .create_device(&device_create_info, &queue_family_properties)
-            .unwrap();
+    let device = pd
+        .create_device(&device_create_info, &queue_family_properties)
+        .unwrap();
 
-        println!("--Example Device handle--");
-        println!("{device:#?}");
+    println!("--Example Device handle--");
+    println!("{device:#?}");
 
-        vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
-        vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
+    vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
+    vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
 
-        vk::scope!(device);
+    vk::scope!(device);
 
-        let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
-        let alloc_info =
-            vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
-        let mem = device.allocate_memory(&alloc_info).unwrap();
-        println!("--Example allocated memory handle--");
-        println!("{mem:?}");
+    let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
+    let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
+    let mem = device.allocate_memory(&alloc_info).unwrap();
+    println!("--Example allocated memory handle--");
+    println!("{mem:?}");
 
-        let mapped_memory = device.map_memory(mem).unwrap();
-        println!("--Example mapped memory handle--");
-        println!("{mapped_memory:#?}");
+    let mapped_memory = device.map_memory(mem).unwrap();
+    println!("--Example mapped memory handle--");
+    println!("{mapped_memory:#?}");
 
-        let _memory = device.unmap_memory(mapped_memory);
+    let _memory = device.unmap_memory(mapped_memory);
 
-        for qf in device.get_configured_queue_families() {
-            println!("--Queue family that was configured during device creation--");
-            println!("queue family: {:#?}", qf);
+    for qf in device.get_configured_queue_families() {
+        println!("--Queue family that was configured during device creation--");
+        println!("queue family: {:#?}", qf);
 
-            vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
-            let qf = qf.with_capability(QCaps).unwrap();
+        vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
+        let qf = qf.with_capability(QCaps).unwrap();
 
-            let queue = qf.get_queue(0);
-            println!("--Example Queue handle--");
-            println!("{queue:#?}");
-        }
+        let queue = qf.get_queue(0);
+        println!("--Example Queue handle--");
+        println!("{queue:#?}");
+    }
 
+    unsafe {
+        // safe since everything is one one thread
         device.wait_idle().unwrap();
-    });
+    }
 }

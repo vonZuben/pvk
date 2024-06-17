@@ -17,7 +17,7 @@ use super::concrete_type::ScopedPhysicalDevice;
 use crate::array_storage::ArrayStorage;
 use crate::dispatchable_handles::instance::Instance;
 use crate::error::Error;
-use crate::scope::ScopeId;
+use crate::scope::Scope;
 use crate::type_conversions::{SafeTransmute, TransmuteRef};
 
 use vk_safe_sys as vk;
@@ -32,6 +32,11 @@ where
     Query the queue family properties of the PhysicalDevice
 
     Must provide the storage space to return the properties to.
+
+    # Scope
+    The returned [`QueueFamilies`] **must** be scoped with
+    [`scope!`](crate::vk::scope) in order to be usable for
+    device Queue configuration. See ...
 
     ```rust
     # use vk_safe::vk;
@@ -101,16 +106,6 @@ pub struct QueueFamilies<S, A: ArrayStorage<vk::QueueFamilyProperties>> {
     _scope: PhantomData<S>,
 }
 
-impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> QueueFamilies<S, A> {
-    pub fn config_scope(&self, f: impl for<'s> FnOnce(QueueConfigScope<'s, S>)) {
-        f(QueueConfigScope {
-            families: self.families.as_ref(),
-            _id: Default::default(),
-            _pd: PhantomData,
-        })
-    }
-}
-
 impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> std::ops::Deref for QueueFamilies<S, A> {
     type Target = QueueFamiliesRef<S>;
 
@@ -127,6 +122,10 @@ impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> fmt::Debug for QueueFamilies
     }
 }
 
+/// Reference to QueueFamilies
+///
+/// This is mainly for abstracting away the [`ArrayStorage`] generics
+/// of [`QueueFamilies`].
 #[repr(transparent)]
 pub struct QueueFamiliesRef<S> {
     _scope: PhantomData<S>,
@@ -142,28 +141,29 @@ impl<S> std::ops::Deref for QueueFamiliesRef<S> {
     }
 }
 
-pub struct QueueConfigScope<'scope, S> {
-    families: &'scope [vk::QueueFamilyProperties],
-    _id: ScopeId<'scope>,
-    _pd: PhantomData<S>,
-}
+impl<'a, S, A: ArrayStorage<vk::QueueFamilyProperties>> IntoIterator
+    for Scope<'_, &'a QueueFamilies<S, A>>
+{
+    type Item = QueueFamilyProperties<'a, (S, Self)>;
 
-impl<S> std::ops::Deref for QueueConfigScope<'_, S> {
-    type Target = [vk::QueueFamilyProperties];
-
-    fn deref(&self) -> &Self::Target {
-        self.families
-    }
-}
-
-impl<'scope, S> IntoIterator for QueueConfigScope<'scope, S> {
-    type Item = QueueFamilyProperties<'scope, (S, Self)>;
-
-    type IntoIter = QueueFamilyIter<'scope, (S, Self)>;
+    type IntoIter = QueueFamilyIter<'a, (S, Self)>;
 
     fn into_iter(self) -> Self::IntoIter {
         QueueFamilyIter {
-            iter: self.families.as_ref().iter().enumerate(),
+            iter: self.iter().enumerate(),
+            _scope: PhantomData,
+        }
+    }
+}
+
+impl<'a, S> IntoIterator for Scope<'_, &'a QueueFamiliesRef<S>> {
+    type Item = QueueFamilyProperties<'a, (S, Self)>;
+
+    type IntoIter = QueueFamilyIter<'a, (S, Self)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        QueueFamilyIter {
+            iter: self.iter().enumerate(),
             _scope: PhantomData,
         }
     }

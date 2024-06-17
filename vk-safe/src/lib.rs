@@ -45,24 +45,25 @@ for physical_device in physical_devices.iter() {
         .unwrap();
 
     // configure queues that support graphics
-    queue_family_properties.config_scope(|qp| {
-        let mut queue_configs = vec![];
-        let priorities = [vk::QueuePriority::default(); 10];
-        for p in qp {
-            if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
-                queue_configs.push(
-                    vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
-                        .unwrap(),
-                )
-            }
-        }
+    let qp = &queue_family_properties;
+    vk::scope!(qp);
 
-        // configure and create device
-        let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
-        let device = physical_device
-            .create_device(&device_create_info, &queue_family_properties)
-            .unwrap();
-    });
+    let mut queue_configs = vec![];
+    let priorities = [vk::QueuePriority::default(); 10];
+    for p in qp {
+        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+            queue_configs.push(
+                vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
+                    .unwrap(),
+            )
+        }
+    }
+
+    // configure and create device
+    let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+    let device = physical_device
+        .create_device(&device_create_info, &queue_family_properties)
+        .unwrap();
 }
 ```
 

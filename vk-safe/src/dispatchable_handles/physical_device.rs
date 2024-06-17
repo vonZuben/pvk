@@ -34,13 +34,13 @@ get_physical_device_queue_family_properties;
 get_physical_device_sparse_image_format_properties;
 );
 
+use crate::scope::{HandleScope, Shared};
+
 /** PhysicalDevice handle trait
 
 Represents a *specific* PhysicalDevice which has been scoped.
 */
-pub trait PhysicalDevice:
-    std::ops::DerefMut<Target = concrete_type::ScopedPhysicalDevice<Self, Self::Instance>> + Copy
-{
+pub trait PhysicalDevice: HandleScope<concrete_type::PhysicalDevice<Self::Instance>> {
     /// The *specific* Instance to which this PhysicalDevice belongs
     type Instance: Instance<Context = Self::Context>;
     /// shortcut to the Instance context such as the Version and Extensions being used
@@ -50,7 +50,7 @@ pub trait PhysicalDevice:
 pub use concrete_type::PhysicalDevice as ConcretePhysicalDevice;
 
 pub struct PhysicalDevices<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> {
-    instance: I,
+    instance: Shared<I>,
     handles: A::InitStorage,
 }
 
@@ -58,7 +58,7 @@ unsafe impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> Send for PhysicalD
 unsafe impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> Sync for PhysicalDevices<I, A> {}
 
 impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, A> {
-    pub(crate) fn new(handles: A::InitStorage, instance: I) -> Self {
+    pub(crate) fn new(handles: A::InitStorage, instance: Shared<I>) -> Self {
         Self { instance, handles }
     }
 
@@ -68,7 +68,7 @@ impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, A> {
 }
 
 pub struct PhysicalDeviceIter<'s, I: Instance> {
-    instance: I,
+    instance: Shared<I>,
     iter: std::iter::Copied<std::slice::Iter<'s, vk::PhysicalDevice>>,
 }
 
@@ -98,7 +98,7 @@ impl<'s, I: Instance, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
 }
 
 pub(crate) mod concrete_type {
-    use crate::scope::{Scope, SecretScope};
+    use crate::scope::{Scope, SecretScope, Shared};
 
     use vk_safe_sys as vk;
 
@@ -109,14 +109,14 @@ pub(crate) mod concrete_type {
 
     pub type ScopedPhysicalDevice<S, I> = SecretScope<S, PhysicalDevice<I>>;
 
-    impl<'scope, I: Instance> super::PhysicalDevice for Scope<'scope, PhysicalDevice<I>> {
+    impl<I: Instance> super::PhysicalDevice for Scope<'_, PhysicalDevice<I>> {
         type Instance = I;
         type Context = I::Context;
     }
 
     /// A PhysicalDevice handle that is limited to the scope of the associated Instance
     pub struct PhysicalDevice<I: Instance> {
-        pub(crate) instance: I,
+        pub(crate) instance: Shared<I>,
         pub(crate) handle: vk::PhysicalDevice,
     }
 
@@ -124,7 +124,7 @@ pub(crate) mod concrete_type {
     unsafe impl<I: Instance> Sync for PhysicalDevice<I> {}
 
     impl<I: Instance> PhysicalDevice<I> {
-        pub(crate) fn new(instance: I, handle: vk::PhysicalDevice) -> Self {
+        pub(crate) fn new(instance: Shared<I>, handle: vk::PhysicalDevice) -> Self {
             Self { instance, handle }
         }
     }

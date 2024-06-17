@@ -9,13 +9,13 @@
 
 pub mod enumerate_physical_devices;
 
+use crate::scope::HandleScope;
+
 /** Instance handle trait
 
 Represents a *specific* Instance which has been scoped.
 */
-pub trait Instance:
-    std::ops::DerefMut<Target = concrete_type::ScopedInstance<Self, Self::Config>> + Copy
-{
+pub trait Instance: HandleScope<concrete_type::Instance<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::InstanceConfig<Context = Self::Context>;
     /// Instance context such as the Version and Extensions being used
@@ -63,7 +63,7 @@ pub(crate) mod concrete_type {
 
     pub type ScopedInstance<S, C> = SecretScope<S, Instance<C>>;
 
-    impl<'scope, C: InstanceConfig> super::Instance for Scope<'scope, Instance<C>> {
+    impl<C: InstanceConfig> super::Instance for Scope<'_, Instance<C>> {
         type Config = C;
         type Context = C::Context;
     }

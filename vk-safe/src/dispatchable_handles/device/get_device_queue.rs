@@ -3,15 +3,13 @@ use super::*;
 use concrete_type::DeviceConfig;
 
 use std::marker::PhantomData;
-
 use std::mem::MaybeUninit;
 
+use vk::has_command::GetDeviceQueue;
 use vk_safe_sys as vk;
 
-use vk::has_command::GetDeviceQueue;
-
 use crate::dispatchable_handles::queue_type::{Config, QueueCapability, QueueType};
-
+use crate::scope::Shared;
 use crate::vk::DeviceQueueCreateInfo;
 
 impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C> {
@@ -32,9 +30,9 @@ impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C> {
             .queue_config()
             .iter()
             .enumerate()
-            .map(|(i, _)| QueueFamily {
+            .map(move |(i, _)| QueueFamily {
                 config_index: i,
-                device: self.as_scope(),
+                device: self.shared(),
                 capability: PhantomData,
             })
     }
@@ -69,7 +67,7 @@ where
                     queue_index,
                     queue.as_mut_ptr(),
                 );
-                Ok(QueueType::new(queue.assume_init(), self.device))
+                Ok(QueueType::new(queue.assume_init(), self.device.clone()))
             }
         } else {
             Err(QueueIndexNotConfigured)
@@ -86,7 +84,7 @@ pub struct Unknown;
 #[derive(Clone, Copy)]
 pub struct QueueFamily<D, Q> {
     config_index: usize,
-    device: D,
+    device: Shared<D>,
     capability: PhantomData<Q>,
 }
 

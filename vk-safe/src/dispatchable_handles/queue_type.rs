@@ -5,6 +5,8 @@ use vk_safe_sys as vk;
 use crate::dispatchable_handles::device::Device;
 use crate::flags::Flags;
 
+use crate::scope::Shared;
+
 pub trait QueueCapability: Flags<Type = vk::QueueFlags> {}
 impl<T> QueueCapability for T where T: Flags<Type = vk::QueueFlags> {}
 
@@ -49,11 +51,11 @@ impl<C: QueueConfig> Queue for QueueType<C> {
 
 pub struct QueueType<C: QueueConfig> {
     handle: vk::Queue,
-    device: C::Device,
+    device: Shared<C::Device>,
 }
 
 impl<C: QueueConfig> QueueType<C> {
-    pub(crate) fn new(handle: vk::Queue, device: C::Device) -> Self {
+    pub(crate) fn new(handle: vk::Queue, device: Shared<<C as QueueConfig>::Device>) -> Self {
         Self { handle, device }
     }
 }
