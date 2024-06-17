@@ -198,7 +198,7 @@ pub struct Shared<S> {
 }
 
 impl<S> Shared<S> {
-    unsafe fn new<T: ?Sized>(ss: &SecretScope<S, T>) -> Self {
+    unsafe fn new<T: ?Sized + Shareable>(ss: &SecretScope<S, T>) -> Self {
         // Here, we want to reverse the Deref of Scope<'_, T> such as by transmute (see Deref for Scope).
         // However, the compiler cannot know that S is correctly sized for all S,
         // but WE know that S is ALWAYS `Scope<'_, T>` (or else it was improperly constructed).
