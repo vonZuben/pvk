@@ -44,13 +44,11 @@ for physical_device in physical_devices.iter() {
         .get_physical_device_queue_family_properties(Vec::new())
         .unwrap();
 
-    // configure queues that support graphics
-    let qp = &queue_family_properties;
-    vk::scope!(qp);
+    vk::tag!(families_tag);
 
     let mut queue_configs = vec![];
     let priorities = [vk::QueuePriority::default(); 10];
-    for p in qp {
+    for p in queue_family_properties.properties_iter(families_tag) {
         if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
             queue_configs.push(
                 vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
@@ -258,7 +256,7 @@ pub mod vk {
 
     pub use super::non_dispatchable_handles::exports::*;
 
-    pub use super::scope::{scope, Scope, SecretScope};
+    pub use super::scope::{scope, tag, Scope, SecretScope};
 
     pub use super::context::device;
     pub use super::context::instance;

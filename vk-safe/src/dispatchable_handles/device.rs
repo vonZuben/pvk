@@ -42,7 +42,7 @@ pub(crate) mod concrete_type {
     use crate::dispatchable_handles::physical_device::{
         create_device::DeviceQueueCreateInfo, PhysicalDevice,
     };
-    use crate::scope::{Scope, SecretScope, Shareable};
+    use crate::scope::{Scope, SecretScope, Shareable, ToScope};
     use crate::type_conversions::ToC;
     use crate::VkVersion;
 
@@ -113,6 +113,8 @@ pub(crate) mod concrete_type {
     }
 
     unsafe impl<C: DeviceConfig> Shareable for Device<C> {}
+
+    impl<C: DeviceConfig> ToScope for Device<C> {}
 
     impl<C: DeviceConfig> std::fmt::Debug for Device<C> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

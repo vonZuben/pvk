@@ -98,7 +98,7 @@ impl<'s, I: Instance, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
 }
 
 pub(crate) mod concrete_type {
-    use crate::scope::{Scope, SecretScope, Shared};
+    use crate::scope::{Scope, SecretScope, Shared, ToScope};
 
     use vk_safe_sys as vk;
 
@@ -119,6 +119,8 @@ pub(crate) mod concrete_type {
         pub(crate) instance: Shared<I>,
         pub(crate) handle: vk::PhysicalDevice,
     }
+
+    impl<I: Instance> ToScope for PhysicalDevice<I> {}
 
     unsafe impl<I: Instance> Send for PhysicalDevice<I> {}
     unsafe impl<I: Instance> Sync for PhysicalDevice<I> {}

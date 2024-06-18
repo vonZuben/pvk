@@ -17,7 +17,7 @@ use super::concrete_type::ScopedPhysicalDevice;
 use crate::array_storage::ArrayStorage;
 use crate::dispatchable_handles::instance::Instance;
 use crate::error::Error;
-use crate::scope::Scope;
+use crate::scope::Tag;
 use crate::type_conversions::{SafeTransmute, TransmuteRef};
 
 use vk_safe_sys as vk;
@@ -100,7 +100,15 @@ const _VUID: () = {
 
 /// Properties for queue families by family index
 ///
-/// The index of each QueueFamilyProperties is the queue family index.
+/// This is a wrapper for an array of [`QueueFamilyProperties`](vk_safe_sys::QueueFamilyProperties).
+/// The index of the properties is the queue family index. The wrapper ensures
+/// that the index relationship is maintained.
+///
+/// # Device configuration
+/// A key step in configuring a logical Device is configuring the Queues
+/// with [`DeviceQueueCreateInfo`](crate::vk::DeviceQueueCreateInfo).
+/// The `QueueFamilyProperties` are needed to determine what the Queues
+/// of each family can do, and how many Queues can be made for the family.
 pub struct QueueFamilies<S, A: ArrayStorage<vk::QueueFamilyProperties>> {
     families: A::InitStorage,
     _scope: PhantomData<S>,
@@ -133,6 +141,22 @@ pub struct QueueFamiliesRef<S> {
 }
 unsafe impl<S> SafeTransmute<QueueFamiliesRef<S>> for [vk::QueueFamilyProperties] {}
 
+impl<S> QueueFamiliesRef<S> {
+    /// Iterate over [`QueueFamilyProperties`] with a provided [`Tag`]
+    ///
+    /// The `tag` ensures that all `properties` are related to the same
+    /// collection. The `properties` are not Copy/Clone to ensure that each one
+    /// can only be used once per tag. This is because you may only configure
+    /// each QueueFamily once per logical Device created.
+    pub fn properties_iter<'id>(&self, tag: Tag<'id>) -> QueueFamilyIter<(S, Tag<'id>)> {
+        let _ = tag;
+        QueueFamilyIter {
+            iter: self.iter().enumerate(),
+            _scope: PhantomData,
+        }
+    }
+}
+
 impl<S> std::ops::Deref for QueueFamiliesRef<S> {
     type Target = [vk::QueueFamilyProperties];
 
@@ -141,34 +165,7 @@ impl<S> std::ops::Deref for QueueFamiliesRef<S> {
     }
 }
 
-impl<'a, S, A: ArrayStorage<vk::QueueFamilyProperties>> IntoIterator
-    for Scope<'_, &'a QueueFamilies<S, A>>
-{
-    type Item = QueueFamilyProperties<'a, (S, Self)>;
-
-    type IntoIter = QueueFamilyIter<'a, (S, Self)>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        QueueFamilyIter {
-            iter: self.iter().enumerate(),
-            _scope: PhantomData,
-        }
-    }
-}
-
-impl<'a, S> IntoIterator for Scope<'_, &'a QueueFamiliesRef<S>> {
-    type Item = QueueFamilyProperties<'a, (S, Self)>;
-
-    type IntoIter = QueueFamilyIter<'a, (S, Self)>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        QueueFamilyIter {
-            iter: self.iter().enumerate(),
-            _scope: PhantomData,
-        }
-    }
-}
-
+/// An iterator over QueueFamilyProperties
 pub struct QueueFamilyIter<'a, S> {
     iter: std::iter::Enumerate<std::slice::Iter<'a, vk::QueueFamilyProperties>>,
     _scope: PhantomData<S>,
@@ -188,6 +185,15 @@ impl<'a, S> Iterator for QueueFamilyIter<'a, S> {
     }
 }
 
+/// Properties of a Queue Family
+///
+/// Acquire by iterating over [`QueueFamilies`] via
+/// [`properties_iter`](QueueFamiliesRef::properties_iter).
+///
+/// Each Queue family may only be configured 0 or 1 times.
+/// A `tag` is needed to ensure that all `QueueFamilyProperties`
+/// are related to the same collection. They are also
+/// not Copy/Clone to ensure each one can only be used once.
 pub struct QueueFamilyProperties<'a, S> {
     properties: &'a vk::QueueFamilyProperties,
     pub family_index: u32,

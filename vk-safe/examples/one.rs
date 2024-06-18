@@ -116,12 +116,11 @@ fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSIO
     println!("--Memory properties for this physical device--");
     println!("{:#?}", mem_props);
 
-    let queue_family_properties_tmp = &*queue_family_properties;
-    vk::scope!(queue_family_properties_tmp);
+    vk::tag!(families_tag);
 
     let mut queue_configs = vec![];
     let priorities = [vk::QueuePriority::default(); 10];
-    for p in queue_family_properties_tmp {
+    for p in queue_family_properties.properties_iter(families_tag) {
         if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
             queue_configs.push(
                 vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),

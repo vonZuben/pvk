@@ -16,12 +16,13 @@ Use the [`scope!`] macro to create scoped versions of handles.
 ```
 use vk_safe::vk;
 
-// merely illustrative
-// would be a real Instance, Device, etc.
-let instance1 = ();
+# vk::instance_context!(InstanceContext: VERSION_1_0);
+# let app_info = vk::ApplicationInfo::new(InstanceContext);
+# let instance_info = vk::InstanceCreateInfo::new(&app_info);
+# let instance1 = vk::create_instance(&instance_info).unwrap();
+# let instance2 = vk::create_instance(&instance_info).unwrap();
+#
 vk::scope!(instance1);
-
-let instance2 = ();
 vk::scope!(instance2);
 
 // below will fail to compile because an array
@@ -108,6 +109,24 @@ pub unsafe trait Mutable {}
 #[doc(hidden)]
 pub struct ScopeId<'id>(PhantomData<*mut &'id ()>);
 
+/// A tag that uniquely identifies a specific region of code
+///
+/// Create using the [`tag!()`] macro.
+///
+/// Can be used in certain vk_safe apis that require maintaining
+/// specific relationships between specific instances of things
+pub struct Tag<'id>(ScopeId<'id>);
+
+impl<'id> Tag<'id> {
+    /// helper method
+    ///
+    /// do NOT use directly. Use [`tag!()`]
+    #[doc(hidden)]
+    pub unsafe fn new(_bounds: &ScopeBounds<'id>) -> Self {
+        Self(Default::default())
+    }
+}
+
 /** A scoped type
 
 *This is an implementation detail and you are not intended to directly use this*.
@@ -121,7 +140,7 @@ wrapper around `*mut T`, and a `PhantomData` type to hold an invariant lifetime.
 specific region of code. The `Scope` is considered to own the data it points to.
 */
 #[repr(transparent)]
-pub struct Scope<'id, T> {
+pub struct Scope<'id, T: ?Sized> {
     scope_inner: *mut T,
     _id: ScopeId<'id>,
 }
@@ -132,7 +151,7 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Scope<'_, T> {
     }
 }
 
-impl<'id, T> Scope<'id, T> {
+impl<'id, T: ?Sized> Scope<'id, T> {
     /// DO NOT USE
     ///
     /// use [`scope!`]
@@ -165,6 +184,30 @@ impl<T: Mutable> DerefMut for Scope<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         // see comments in Deref impl for safety comment
         unsafe { std::mem::transmute::<*mut T, &mut SecretScope<Self, T>>(self.scope_inner) }
+    }
+}
+
+/// How a type should be scoped
+///
+/// Allow a type determine the proper way to scope it. Handle types
+/// generally need to be Scoped by taking ownership of the handle.
+/// However, some types may have use for being scoped, but it may
+/// be sufficient to only use a borrow. This trait can be implemented
+/// by types to allow taking ownership or borrowing accordingly.
+#[doc(hidden)]
+#[diagnostic::on_unimplemented(
+    message = "A Scope cannot be created with {Self}",
+    label = "{Self} used here does not support being scoped",
+    note = "`ToScope` is an implementation detail and is not public",
+    note = "This is likely caused by using `scope!()` with a type defined outside of vk_safe",
+    note = "Refer to vk_safe documentation for types that can/should be scoped"
+)]
+pub trait ToScope {
+    unsafe fn to_scope<'id>(
+        to_scope: &'id mut UnsafeCell<Self>,
+        bounds: &ScopeBounds<'id>,
+    ) -> Scope<'id, Self> {
+        Scope::new(to_scope, bounds)
     }
 }
 
@@ -254,11 +297,30 @@ macro_rules! scope {
         let mut cell = std::cell::UnsafeCell::new($name);
         let bounds = unsafe { $crate::scope::ScopeBounds::new(&anchor) };
         #[allow(unused_mut)]
-        let mut $name = unsafe { $crate::scope::Scope::new(&mut cell, &bounds) };
+        let mut $name = unsafe { $crate::scope::ToScope::to_scope(&mut cell, &bounds) };
     };
 }
 #[doc(inline)]
 pub use scope;
+
+/// create a scope tag
+///
+/// Creates a [`Tag<'id>`](Tag) with the provided name.
+///
+/// The created [`Tag`] will be bound the the unique region of code
+/// that it is defined in (i.e. a scope). Different invocations of [`tag!`] will
+/// create different unique tags.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! tag {
+    ( $name:ident ) => {
+        let anchor = unsafe { $crate::scope::Anchor::new() };
+        let bounds = unsafe { $crate::scope::ScopeBounds::new(&anchor) };
+        let $name = unsafe { $crate::scope::Tag::new(&bounds) };
+    };
+}
+#[doc(inline)]
+pub use tag;
 
 /** Deref target for Scope<'_, T>
 
