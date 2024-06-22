@@ -9,7 +9,6 @@ use vk::has_command::GetDeviceQueue;
 use vk_safe_sys as vk;
 
 use crate::dispatchable_handles::queue_type::{Config, QueueCapability, QueueType};
-use crate::scope::Shared;
 use crate::vk::DeviceQueueCreateInfo;
 
 impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C> {
@@ -32,7 +31,7 @@ impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C> {
             .enumerate()
             .map(move |(i, _)| QueueFamily {
                 config_index: i,
-                device: self.shared(),
+                device: self.scope_ref(),
                 capability: PhantomData,
             })
     }
@@ -40,7 +39,7 @@ impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C> {
 
 unit_error!(pub QueueIndexNotConfigured);
 
-impl<D: Device, Q: QueueCapability> QueueFamily<D, Q>
+impl<D: Device, Q: QueueCapability> QueueFamily<'_, D, Q>
 where
     D::Context: GetDeviceQueue,
 {
@@ -67,7 +66,10 @@ where
                     queue_index,
                     queue.as_mut_ptr(),
                 );
-                Ok(QueueType::new(queue.assume_init(), self.device.clone()))
+                Ok(QueueType::new(
+                    queue.assume_init(),
+                    Config::new(self.device),
+                ))
             }
         } else {
             Err(QueueIndexNotConfigured)
@@ -82,13 +84,13 @@ pub struct Unknown;
 ///
 /// provides access to individual queues in the family
 #[derive(Clone, Copy)]
-pub struct QueueFamily<D, Q> {
+pub struct QueueFamily<'a, D, Q> {
     config_index: usize,
-    device: Shared<D>,
+    device: &'a D,
     capability: PhantomData<Q>,
 }
 
-impl<D: Device, Q> std::fmt::Debug for QueueFamily<D, Q> {
+impl<D: Device, Q> std::fmt::Debug for QueueFamily<'_, D, Q> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("QueueFamily")
             .field("config", self.queue_config())
@@ -99,7 +101,7 @@ impl<D: Device, Q> std::fmt::Debug for QueueFamily<D, Q> {
 
 unit_error!(pub CapabilityNotSupported);
 
-impl<D: Device, U> QueueFamily<D, U> {
+impl<'a, D: Device, U> QueueFamily<'a, D, U> {
     fn queue_config(&self) -> &DeviceQueueCreateInfo<D::PhysicalDevice> {
         unsafe {
             self.device
@@ -129,7 +131,7 @@ impl<D: Device, U> QueueFamily<D, U> {
     pub fn with_capability<Q: QueueCapability>(
         self,
         _capability: Q,
-    ) -> Result<QueueFamily<D, Q>, CapabilityNotSupported> {
+    ) -> Result<QueueFamily<'a, D, Q>, CapabilityNotSupported> {
         if self
             .queue_family_properties()
             .queue_flags

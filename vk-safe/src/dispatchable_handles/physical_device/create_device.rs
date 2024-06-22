@@ -29,8 +29,9 @@ Vulkan docs:
 use super::concrete_type::ScopedPhysicalDevice;
 use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamilyProperties};
 use super::PhysicalDevice;
+use super::PhysicalDeviceConfig;
 use crate::dispatchable_handles::device::concrete_type::{self, Config};
-use crate::dispatchable_handles::instance::Instance;
+
 use crate::error::Error;
 use crate::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
@@ -66,10 +67,10 @@ mod private {
 /*
 https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html
 */
-impl<S: PhysicalDevice, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S: PhysicalDevice, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: CreateDevice + Version,
-    I::Context: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
+    C::Context: CreateDevice + Version,
+    C::Context: EnumerateDeviceExtensionProperties, // This is meant to be for a temporary safety check. Should be removed.
 {
     /**
     Create a device from the PhysicalDevice
@@ -86,17 +87,17 @@ where
     # }
     ```
     */
-    pub fn create_device<'a, C, O>(
+    pub fn create_device<'a, DeviceConfig, O>(
         &self,
-        create_info: &DeviceCreateInfo<'a, C, S>,
+        create_info: &DeviceCreateInfo<'a, DeviceConfig, S>,
         queue_properties: &'a QueueFamiliesRef<S>,
-    ) -> Result<concrete_type::Device<Config<'a, C, S>>, Error>
+    ) -> Result<concrete_type::Device<Config<'a, DeviceConfig, S>>, Error>
     where
-        C: Context + InstanceDependencies<I::Context, O>,
-        C::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<I::Context>,
+        DeviceConfig: Context + InstanceDependencies<C::Context, O>,
+        DeviceConfig::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<C::Context>,
     {
         // check version requirement
-        let _ = C::Commands::VALID;
+        let _ = DeviceConfig::Commands::VALID;
 
         check_vuids::check_vuids!(CreateDevice);
 
@@ -165,7 +166,7 @@ where
         }
         // *********************************************
         unsafe {
-            let res = self.instance.context.CreateDevice().get_fptr()(
+            let res = self.instance().context.CreateDevice().get_fptr()(
                 self.handle,
                 &create_info.inner,
                 std::ptr::null(),

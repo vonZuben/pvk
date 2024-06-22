@@ -8,8 +8,7 @@ Vulkan docs:
 */
 
 use super::concrete_type::ScopedPhysicalDevice;
-
-use crate::dispatchable_handles::instance::Instance;
+use super::PhysicalDeviceConfig;
 
 use vk_safe_sys as vk;
 
@@ -17,9 +16,9 @@ use vk::has_command::GetPhysicalDeviceFeatures;
 
 use std::mem::MaybeUninit;
 
-impl<S, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: GetPhysicalDeviceFeatures,
+    C::Context: GetPhysicalDeviceFeatures,
 {
     /**
     Query the features supported by the PhysicalDevice
@@ -36,10 +35,10 @@ where
     pub fn get_physical_device_features(&self) -> PhysicalDeviceFeatures<S> {
         let mut features = MaybeUninit::uninit();
         unsafe {
-            self.instance.context.GetPhysicalDeviceFeatures().get_fptr()(
-                self.handle,
-                features.as_mut_ptr(),
-            );
+            self.instance()
+                .context
+                .GetPhysicalDeviceFeatures()
+                .get_fptr()(self.handle, features.as_mut_ptr());
             PhysicalDeviceFeatures::new(features.assume_init())
         }
     }

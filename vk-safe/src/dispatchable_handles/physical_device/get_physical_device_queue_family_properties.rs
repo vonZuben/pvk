@@ -13,9 +13,10 @@ use std::marker::PhantomData;
 use std::fmt;
 
 use super::concrete_type::ScopedPhysicalDevice;
+use super::PhysicalDeviceConfig;
 
 use crate::array_storage::ArrayStorage;
-use crate::dispatchable_handles::instance::Instance;
+
 use crate::error::Error;
 use crate::scope::Tag;
 use crate::type_conversions::{SafeTransmute, TransmuteRef};
@@ -24,9 +25,9 @@ use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
 
-impl<S, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: GetPhysicalDeviceQueueFamilyProperties,
+    C::Context: GetPhysicalDeviceQueueFamilyProperties,
 {
     /**
     Query the queue family properties of the PhysicalDevice
@@ -53,7 +54,7 @@ where
         &self,
         mut storage: A,
     ) -> Result<QueueFamilies<S, A>, Error> {
-        let families = enumerator_code2!(self.instance.context.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
+        let families = enumerator_code2!(self.instance().context.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
         Ok(QueueFamilies {
             families,
             _scope: PhantomData,

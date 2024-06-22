@@ -10,8 +10,7 @@ Vulkan docs:
 */
 
 use super::concrete_type::ScopedPhysicalDevice;
-
-use crate::dispatchable_handles::instance::Instance;
+use super::PhysicalDeviceConfig;
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
@@ -22,9 +21,9 @@ use vk::has_command::EnumerateDeviceLayerProperties;
 
 pub use crate::dispatchable_handles::common::layer_properties::LayerProperties;
 
-impl<S, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: EnumerateDeviceLayerProperties,
+    C::Context: EnumerateDeviceLayerProperties,
 {
     /**
     Query the device level layers supported by the PhysicalDevice
@@ -77,6 +76,6 @@ where
             // enumerator_code2!
         }
 
-        enumerator_code2!(self.instance.context.EnumerateDeviceLayerProperties().get_fptr(); (self.handle) -> storage)
+        enumerator_code2!(self.instance().context.EnumerateDeviceLayerProperties().get_fptr(); (self.handle) -> storage)
     }
 }

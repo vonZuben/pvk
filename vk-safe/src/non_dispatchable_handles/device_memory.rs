@@ -38,8 +38,6 @@ pub(crate) mod concrete_type {
     use std::marker::PhantomData;
     use std::ops::{Deref, DerefMut};
 
-    use crate::scope::Shared;
-
     use vk_safe_sys as vk;
 
     use vk::has_command::FreeMemory;
@@ -52,15 +50,26 @@ pub(crate) mod concrete_type {
         type Device: Device<Context = Self::Commands>;
         type PropertyFlags: Flags;
         type HeapFlags: Flags;
+        fn device(&self) -> &Self::Device;
     }
 
-    pub struct Config<D, P, H> {
-        device: PhantomData<D>,
+    pub struct Config<'a, D, P, H> {
+        device: &'a D,
         property_flags: PhantomData<P>,
         heap_flags: PhantomData<H>,
     }
 
-    impl<D: Device, P: Flags, H: Flags> DeviceMemoryConfig for Config<D, P, H>
+    impl<'a, D, P, H> Config<'a, D, P, H> {
+        pub(crate) fn new(device: &'a D) -> Self {
+            Self {
+                device,
+                property_flags: PhantomData,
+                heap_flags: PhantomData,
+            }
+        }
+    }
+
+    impl<'a, D: Device, P: Flags, H: Flags> DeviceMemoryConfig for Config<'a, D, P, H>
     where
         D::Context: FreeMemory,
     {
@@ -68,14 +77,18 @@ pub(crate) mod concrete_type {
         type Device = D;
         type PropertyFlags = P;
         type HeapFlags = H;
+
+        fn device(&self) -> &Self::Device {
+            &self.device
+        }
     }
 
-    pub struct DeviceMemory<D: DeviceMemoryConfig> {
+    pub struct DeviceMemory<C: DeviceMemoryConfig> {
         pub(crate) handle: vk::DeviceMemory,
-        device: Shared<D::Device>,
+        config: C,
     }
 
-    impl<D: DeviceMemoryConfig> Deref for DeviceMemory<D> {
+    impl<C: DeviceMemoryConfig> Deref for DeviceMemory<C> {
         type Target = Self;
 
         fn deref(&self) -> &Self::Target {
@@ -83,22 +96,22 @@ pub(crate) mod concrete_type {
         }
     }
 
-    impl<D: DeviceMemoryConfig> DerefMut for DeviceMemory<D> {
+    impl<C: DeviceMemoryConfig> DerefMut for DeviceMemory<C> {
         fn deref_mut(&mut self) -> &mut Self::Target {
             self
         }
     }
 
-    impl<D: DeviceMemoryConfig> super::DeviceMemory for DeviceMemory<D> {
-        type Config = D;
-        type Device = D::Device;
-        type PropertyFlags = D::PropertyFlags;
-        type HeapFlags = D::HeapFlags;
+    impl<C: DeviceMemoryConfig> super::DeviceMemory for DeviceMemory<C> {
+        type Config = C;
+        type Device = C::Device;
+        type PropertyFlags = C::PropertyFlags;
+        type HeapFlags = C::HeapFlags;
     }
 
-    impl<D: DeviceMemoryConfig> DeviceMemory<D> {
-        pub(crate) fn new(handle: vk::DeviceMemory, device: Shared<D::Device>) -> Self {
-            Self { handle, device }
+    impl<C: DeviceMemoryConfig> DeviceMemory<C> {
+        pub(crate) fn new(handle: vk::DeviceMemory, config: C) -> Self {
+            Self { handle, config }
         }
     }
 
@@ -110,7 +123,7 @@ pub(crate) mod concrete_type {
 
     impl<D: DeviceMemoryConfig> Drop for DeviceMemory<D> {
         fn drop(&mut self) {
-            let fptr = self.device.context.FreeMemory().get_fptr();
+            let fptr = self.config.device().context.FreeMemory().get_fptr();
             check_vuids::check_vuids!(FreeMemory);
 
             #[allow(unused_labels)]
@@ -166,7 +179,7 @@ pub(crate) mod concrete_type {
                 // DeviceMemoryType knows what device it came from
             }
             unsafe {
-                fptr(self.device.handle, self.handle, std::ptr::null());
+                fptr(self.config.device().handle, self.handle, std::ptr::null());
             }
         }
     }

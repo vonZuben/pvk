@@ -34,13 +34,17 @@ get_physical_device_queue_family_properties;
 get_physical_device_sparse_image_format_properties;
 );
 
-use crate::scope::{HandleScope, Shared};
+use crate::scope::HandleScope;
+
+use concrete_type::PhysicalDeviceConfig;
 
 /** PhysicalDevice handle trait
 
 Represents a *specific* PhysicalDevice which has been scoped.
 */
-pub trait PhysicalDevice: HandleScope<concrete_type::PhysicalDevice<Self::Instance>> {
+pub trait PhysicalDevice: HandleScope<concrete_type::PhysicalDevice<Self::Config>> {
+    #[doc(hidden)]
+    type Config: PhysicalDeviceConfig<Context = Self::Context>;
     /// The *specific* Instance to which this PhysicalDevice belongs
     type Instance: Instance<Context = Self::Context>;
     /// shortcut to the Instance context such as the Version and Extensions being used
@@ -49,56 +53,62 @@ pub trait PhysicalDevice: HandleScope<concrete_type::PhysicalDevice<Self::Instan
 
 pub use concrete_type::PhysicalDevice as ConcretePhysicalDevice;
 
-pub struct PhysicalDevices<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> {
-    instance: Shared<I>,
+pub struct PhysicalDevices<C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> {
+    config: C,
     handles: A::InitStorage,
 }
 
-unsafe impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> Send for PhysicalDevices<I, A> {}
-unsafe impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> Sync for PhysicalDevices<I, A> {}
+unsafe impl<C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> Send
+    for PhysicalDevices<C, A>
+{
+}
+unsafe impl<C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> Sync
+    for PhysicalDevices<C, A>
+{
+}
 
-impl<I: Instance, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<I, A> {
-    pub(crate) fn new(handles: A::InitStorage, instance: Shared<I>) -> Self {
-        Self { instance, handles }
+impl<C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> PhysicalDevices<C, A> {
+    pub(crate) fn new(handles: A::InitStorage, config: C) -> Self {
+        Self { config, handles }
     }
 
-    pub fn iter<'s>(&'s self) -> PhysicalDeviceIter<'s, I> {
+    pub fn iter<'s>(&'s self) -> PhysicalDeviceIter<'s, C> {
         self.into_iter()
     }
 }
 
-pub struct PhysicalDeviceIter<'s, I: Instance> {
-    instance: Shared<I>,
+pub struct PhysicalDeviceIter<'s, C: PhysicalDeviceConfig> {
+    config: C,
     iter: std::iter::Copied<std::slice::Iter<'s, vk::PhysicalDevice>>,
 }
 
-impl<I: Instance> Iterator for PhysicalDeviceIter<'_, I> {
-    type Item = concrete_type::PhysicalDevice<I>;
+impl<C: PhysicalDeviceConfig> Iterator for PhysicalDeviceIter<'_, C> {
+    type Item = concrete_type::PhysicalDevice<C>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|pd| concrete_type::PhysicalDevice::new(self.instance, pd))
+            .map(|pd| concrete_type::PhysicalDevice::new(self.config, pd))
     }
 }
 
-impl<'s, I: Instance, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
-    for &'s PhysicalDevices<I, S>
+impl<'s, C: PhysicalDeviceConfig, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
+    for &'s PhysicalDevices<C, S>
 {
-    type Item = concrete_type::PhysicalDevice<I>;
+    type Item = concrete_type::PhysicalDevice<C>;
 
-    type IntoIter = PhysicalDeviceIter<'s, I>;
+    type IntoIter = PhysicalDeviceIter<'s, C>;
 
     fn into_iter(self) -> Self::IntoIter {
         PhysicalDeviceIter {
-            instance: self.instance,
+            config: self.config,
             iter: self.handles.as_ref().into_iter().copied(),
         }
     }
 }
 
 pub(crate) mod concrete_type {
-    use crate::scope::{Scope, SecretScope, Shared, ToScope};
+    use crate::scope::{Scope, SecretScope, ToScope};
 
     use vk_safe_sys as vk;
 
@@ -107,37 +117,77 @@ pub(crate) mod concrete_type {
     use crate::array_storage::ArrayStorage;
     use crate::dispatchable_handles::instance::Instance;
 
-    pub type ScopedPhysicalDevice<S, I> = SecretScope<S, PhysicalDevice<I>>;
+    pub type ScopedPhysicalDevice<S, C> = SecretScope<S, PhysicalDevice<C>>;
 
-    impl<I: Instance> super::PhysicalDevice for Scope<'_, PhysicalDevice<I>> {
-        type Instance = I;
-        type Context = I::Context;
+    impl<C: PhysicalDeviceConfig> super::PhysicalDevice for Scope<'_, PhysicalDevice<C>> {
+        type Config = C;
+        type Instance = C::Instance;
+        type Context = <C::Instance as Instance>::Context;
     }
 
-    /// A PhysicalDevice handle that is limited to the scope of the associated Instance
-    pub struct PhysicalDevice<I: Instance> {
-        pub(crate) instance: Shared<I>,
-        pub(crate) handle: vk::PhysicalDevice,
+    pub trait PhysicalDeviceConfig: Copy {
+        type Instance: Instance<Context = Self::Context>;
+        type Context;
+        fn instance(&self) -> &Self::Instance;
     }
 
-    impl<I: Instance> ToScope for PhysicalDevice<I> {}
+    pub struct Config<'a, I> {
+        instance: &'a I,
+    }
 
-    unsafe impl<I: Instance> Send for PhysicalDevice<I> {}
-    unsafe impl<I: Instance> Sync for PhysicalDevice<I> {}
-
-    impl<I: Instance> PhysicalDevice<I> {
-        pub(crate) fn new(instance: Shared<I>, handle: vk::PhysicalDevice) -> Self {
-            Self { instance, handle }
+    impl<'a, I> Config<'a, I> {
+        pub(crate) fn new(instance: &'a I) -> Self {
+            Self { instance }
         }
     }
 
-    impl<I: Instance> fmt::Debug for PhysicalDevice<I> {
+    impl<I> Clone for Config<'_, I> {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    impl<I> Copy for Config<'_, I> {}
+
+    impl<I: Instance> PhysicalDeviceConfig for Config<'_, I> {
+        type Instance = I;
+        type Context = I::Context;
+
+        fn instance(&self) -> &Self::Instance {
+            &self.instance
+        }
+    }
+
+    /// A PhysicalDevice handle that is limited to the scope of the associated Instance
+    pub struct PhysicalDevice<C: PhysicalDeviceConfig> {
+        config: C,
+        pub(crate) handle: vk::PhysicalDevice,
+    }
+
+    impl<C: PhysicalDeviceConfig> ToScope for PhysicalDevice<C> {}
+
+    unsafe impl<C: PhysicalDeviceConfig> Send for PhysicalDevice<C> {}
+    unsafe impl<C: PhysicalDeviceConfig> Sync for PhysicalDevice<C> {}
+
+    impl<C: PhysicalDeviceConfig> PhysicalDevice<C> {
+        pub(crate) fn new(config: C, handle: vk::PhysicalDevice) -> Self {
+            Self { config, handle }
+        }
+
+        pub(crate) fn instance(&self) -> &C::Instance {
+            self.config.instance()
+        }
+    }
+
+    impl<C: PhysicalDeviceConfig> fmt::Debug for PhysicalDevice<C> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             self.handle.fmt(f)
         }
     }
 
-    impl<I: Instance, S: ArrayStorage<vk::PhysicalDevice>> fmt::Debug for super::PhysicalDevices<I, S> {
+    impl<C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> fmt::Debug
+        for super::PhysicalDevices<C, A>
+    {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             write!(f, "PhysicalDevices")?;
             f.debug_list()

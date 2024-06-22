@@ -32,7 +32,6 @@ vk::scope!(instance2);
 ```
 */
 
-use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 
@@ -86,18 +85,6 @@ impl Drop for ScopeBounds<'_> {
     }
 }
 
-/// Indicate that is it ok to create a [`Shared`] with the implementor type
-///
-/// This **MUST NOT** be implemented at the same time as [`Mutable`]
-#[doc(hidden)]
-pub unsafe trait Shareable {}
-
-/// Indicate that is it ok to DerefMut with the Scoped implementor type
-///
-/// This **MUST NOT** be implemented at the same time as [`Shareable`]
-#[doc(hidden)]
-pub unsafe trait Mutable {}
-
 /// This represents an ID for a scope based on an invariant lifetime
 ///
 /// by creating this and passing it to a closure with Higher-Rank Trait Bound lifetime (i.e. for<'scope>)
@@ -140,8 +127,8 @@ wrapper around `*mut T`, and a `PhantomData` type to hold an invariant lifetime.
 specific region of code. The `Scope` is considered to own the data it points to.
 */
 #[repr(transparent)]
-pub struct Scope<'id, T: ?Sized> {
-    scope_inner: *mut T,
+pub struct Scope<'id, T> {
+    scope_inner: T,
     _id: ScopeId<'id>,
 }
 
@@ -151,14 +138,14 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Scope<'_, T> {
     }
 }
 
-impl<'id, T: ?Sized> Scope<'id, T> {
+impl<'id, T> Scope<'id, T> {
     /// DO NOT USE
     ///
     /// use [`scope!`]
     #[doc(hidden)]
-    pub unsafe fn new(to_scope: &'id mut UnsafeCell<T>, _bounds: &ScopeBounds<'id>) -> Self {
+    pub unsafe fn new(to_scope: T, _bounds: &ScopeBounds<'id>) -> Self {
         Self {
-            scope_inner: to_scope.get(),
+            scope_inner: to_scope,
             _id: Default::default(),
         }
     }
@@ -170,20 +157,17 @@ impl<T> Deref for Scope<'_, T> {
     fn deref(&self) -> &Self::Target {
         // this is safe because:
         // - SecretScope repr(transparent) wrapper for T
-        // - Scope repr(transparent) wrapper for *mut T
-        // - Scope -> *mut T -> &T -> &SecretScope
-        unsafe { std::mem::transmute::<*mut T, &SecretScope<Self, T>>(self.scope_inner) }
+        // - Scope repr(transparent) wrapper for T
+        // - &Scope -> &T -> &SecretScope
+        unsafe { std::mem::transmute::<&Self, &SecretScope<Self, T>>(self) }
     }
 }
 
-impl<T: Mutable> DerefMut for Scope<'_, T> {
+impl<T> DerefMut for Scope<'_, T> {
     /// DerefMut to SecretScope to hide the lifetime if T is `Mutable`
-    ///
-    /// `Mutable` is an internal trait that is implemented for handle types
-    /// that do not need to be shared and can have methods that take `&mut Self`
     fn deref_mut(&mut self) -> &mut Self::Target {
         // see comments in Deref impl for safety comment
-        unsafe { std::mem::transmute::<*mut T, &mut SecretScope<Self, T>>(self.scope_inner) }
+        unsafe { std::mem::transmute::<&mut Self, &mut SecretScope<Self, T>>(self) }
     }
 }
 
@@ -202,73 +186,9 @@ impl<T: Mutable> DerefMut for Scope<'_, T> {
     note = "This is likely caused by using `scope!()` with a type defined outside of vk_safe",
     note = "Refer to vk_safe documentation for types that can/should be scoped"
 )]
-pub trait ToScope {
-    unsafe fn to_scope<'id>(
-        to_scope: &'id mut UnsafeCell<Self>,
-        bounds: &ScopeBounds<'id>,
-    ) -> Scope<'id, Self> {
+pub trait ToScope: Sized {
+    unsafe fn to_scope<'id>(to_scope: Self, bounds: &ScopeBounds<'id>) -> Scope<'id, Self> {
         Scope::new(to_scope, bounds)
-    }
-}
-
-/// Provide only immutable access to Scope
-///
-/// This is used when child handles need access to the parent handle
-/// to ensure that no mutable methods can be accessed.
-///
-/// # Safety
-/// This type does **NOT** borrow the `Scope`, and only holds
-/// a pointer to the data that is alive for 'scope. While, the data
-/// is guaranteed to be alive, it should be assumed to always be
-/// aliased. Thus, no safe api relying on &mut access can be created
-/// for `Scope` or `SecretScope` if `Shared` will exist.
-///
-/// A type may be [`Shareable] XOR [`Mutable`] to allow creation
-/// of [`Shared`] XOR `&mut api()`.
-///
-/// ## implementation detail
-/// This type only holds a mutable pointer to unit type and a
-/// PhantomData to S. We can assume that S is always some
-/// `Scope<'_, T>` because it is only created frm a `SecretScope`
-/// which can only be created from a `Scope`. Thus, we can
-/// deref to S by transmuting the inner pointer to a `Scope`
-/// since the layout is the same.
-#[doc(hidden)]
-#[repr(transparent)]
-pub struct Shared<S> {
-    scope_layout: *mut (),
-    scope: PhantomData<S>,
-}
-
-impl<S> Shared<S> {
-    unsafe fn new<T: ?Sized + Shareable>(ss: &SecretScope<S, T>) -> Self {
-        // Here, we want to reverse the Deref of Scope<'_, T> such as by transmute (see Deref for Scope).
-        // However, the compiler cannot know that S is correctly sized for all S,
-        // but WE know that S is ALWAYS `Scope<'_, T>` (or else it was improperly constructed).
-        // Thus, we can use transmute_copy.
-        Shared {
-            scope_layout: unsafe { std::mem::transmute_copy::<&SecretScope<S, T>, *mut ()>(&ss) },
-            scope: PhantomData,
-        }
-    }
-}
-
-impl<S> Clone for Shared<S> {
-    fn clone(&self) -> Self {
-        Self {
-            scope_layout: self.scope_layout.clone(),
-            scope: self.scope.clone(),
-        }
-    }
-}
-
-impl<S> Copy for Shared<S> {}
-
-impl<S> Deref for Shared<S> {
-    type Target = S;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { std::mem::transmute::<&*mut (), &S>(&self.scope_layout) }
     }
 }
 
@@ -294,10 +214,9 @@ impl<T> HandleScope<T> for Scope<'_, T> {}
 macro_rules! scope {
     ( $name:ident ) => {
         let anchor = unsafe { $crate::scope::Anchor::new() };
-        let mut cell = std::cell::UnsafeCell::new($name);
         let bounds = unsafe { $crate::scope::ScopeBounds::new(&anchor) };
         #[allow(unused_mut)]
-        let mut $name = unsafe { $crate::scope::ToScope::to_scope(&mut cell, &bounds) };
+        let mut $name = unsafe { $crate::scope::ToScope::to_scope($name, &bounds) };
     };
 }
 #[doc(inline)]
@@ -363,19 +282,23 @@ the concrete type will ALWAYS be `SecretScope<Scope<'scope, T>, T>`, even though
 `Scope<'scope, T>` is abstracted away as a generic parameter `S`.
  */
 #[repr(transparent)]
-pub struct SecretScope<S, T: ?Sized> {
+pub struct SecretScope<S, T> {
     scope: PhantomData<S>,
     inner: T,
 }
 
-impl<S, T: ?Sized + Shareable> SecretScope<S, T> {
-    /// Get a Shared Scope
-    pub(crate) fn shared(&self) -> Shared<S> {
-        unsafe { Shared::new(self) }
+impl<S, T> SecretScope<S, T> {
+    /// Get back a reference to the `Scope`
+    pub(crate) fn scope_ref(&self) -> &S {
+        // We know that a valid SecretScope is ALWAYS constructed with S = Scope<'_, T>
+        // We know &Scope and &SecretScope can be transmuted between each other
+        // (see Deref for Scope)
+        // thus, we know we can transmute to &S which should be &Scope
+        unsafe { std::mem::transmute::<&Self, &S>(self) }
     }
 }
 
-impl<S, T: ?Sized> SecretScope<S, T> {
+impl<S, T> SecretScope<S, T> {
     /// manually get Deref target
     ///
     /// this is helpful because rust-analyzer seems to have trouble with autocompletion
@@ -385,7 +308,7 @@ impl<S, T: ?Sized> SecretScope<S, T> {
     }
 }
 
-impl<S, T: ?Sized> std::ops::Deref for SecretScope<S, T> {
+impl<S, T> std::ops::Deref for SecretScope<S, T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.inner

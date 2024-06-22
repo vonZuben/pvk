@@ -8,8 +8,7 @@ Vulkan docs:
 */
 
 use super::concrete_type::ScopedPhysicalDevice;
-
-use crate::dispatchable_handles::instance::Instance;
+use super::PhysicalDeviceConfig;
 
 use vk_safe_sys as vk;
 
@@ -20,9 +19,9 @@ use super::get_physical_device_image_format_properties::ImageFormatProperties;
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 
-impl<S, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: GetPhysicalDeviceSparseImageFormatProperties,
+    C::Context: GetPhysicalDeviceSparseImageFormatProperties,
 {
     /**
     Query the sparse image format properties of the PhysicalDevice
@@ -170,7 +169,7 @@ where
             // enumerator_code2!
         }
 
-        enumerator_code2!(self.instance.context.GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
+        enumerator_code2!(self.instance().context.GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
             (
                 self.handle,
                 image_format_properties.params.format,

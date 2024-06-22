@@ -10,8 +10,7 @@ Vulkan docs:
 use std::fmt;
 
 use super::concrete_type::ScopedPhysicalDevice;
-
-use crate::dispatchable_handles::instance::Instance;
+use super::PhysicalDeviceConfig;
 
 use vk_safe_sys as vk;
 
@@ -19,9 +18,9 @@ use vk::has_command::GetPhysicalDeviceImageFormatProperties;
 
 use std::mem::MaybeUninit;
 
-impl<S, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: GetPhysicalDeviceImageFormatProperties,
+    C::Context: GetPhysicalDeviceImageFormatProperties,
 {
     /**
     Query the image format properties of the PhysicalDevice
@@ -54,7 +53,7 @@ where
     ) -> Result<ImageFormatProperties<S>, vk::Result> {
         let mut properties = MaybeUninit::uninit();
         let command = self
-            .instance
+            .instance()
             .context
             .GetPhysicalDeviceImageFormatProperties()
             .get_fptr();

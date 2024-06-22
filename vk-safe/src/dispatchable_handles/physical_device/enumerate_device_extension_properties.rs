@@ -11,8 +11,7 @@ Vulkan docs:
 */
 
 use super::concrete_type::ScopedPhysicalDevice;
-
-use crate::dispatchable_handles::instance::Instance;
+use super::PhysicalDeviceConfig;
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
@@ -24,9 +23,9 @@ use vk::has_command::EnumerateDeviceExtensionProperties;
 
 pub use crate::dispatchable_handles::common::extension_properties::ExtensionProperties;
 
-impl<S, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: EnumerateDeviceExtensionProperties,
+    C::Context: EnumerateDeviceExtensionProperties,
 {
     /**
     Query the device level extensions supported by the PhysicalDevice
@@ -93,6 +92,6 @@ where
             // enumerator_code2!
         }
 
-        enumerator_code2!(self.instance.context.EnumerateDeviceExtensionProperties().get_fptr(); (self.handle, layer_name) -> storage)
+        enumerator_code2!(self.instance().context.EnumerateDeviceExtensionProperties().get_fptr(); (self.handle, layer_name) -> storage)
     }
 }

@@ -10,8 +10,7 @@ Vulkan docs:
 use std::fmt;
 
 use super::concrete_type::ScopedPhysicalDevice;
-
-use crate::dispatchable_handles::instance::Instance;
+use super::PhysicalDeviceConfig;
 
 use crate::type_conversions::TransmuteSlice;
 use vk_safe_sys as vk;
@@ -24,9 +23,9 @@ use std::mem::MaybeUninit;
 
 use std::marker::PhantomData;
 
-impl<S, I: Instance> ScopedPhysicalDevice<S, I>
+impl<S, C: PhysicalDeviceConfig> ScopedPhysicalDevice<S, C>
 where
-    I::Context: GetPhysicalDeviceMemoryProperties,
+    C::Context: GetPhysicalDeviceMemoryProperties,
 {
     /**
     Query the memory properties of the PhysicalDevice
@@ -43,7 +42,7 @@ where
     pub fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<S> {
         let mut properties = MaybeUninit::uninit();
         unsafe {
-            self.instance
+            self.instance()
                 .context
                 .GetPhysicalDeviceMemoryProperties()
                 .get_fptr()(self.handle, properties.as_mut_ptr());

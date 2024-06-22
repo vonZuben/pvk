@@ -1,3 +1,7 @@
+// **********TODO************
+// make concrete type module
+// **************************
+
 use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
@@ -5,24 +9,36 @@ use vk_safe_sys as vk;
 use crate::dispatchable_handles::device::Device;
 use crate::flags::Flags;
 
-use crate::scope::Shared;
-
 pub trait QueueCapability: Flags<Type = vk::QueueFlags> {}
 impl<T> QueueCapability for T where T: Flags<Type = vk::QueueFlags> {}
 
 pub trait QueueConfig {
     type Device: Device;
     type Capability: QueueCapability;
+    fn device(&self) -> &Self::Device;
 }
 
-pub struct Config<D, Q> {
-    device: PhantomData<D>,
+pub struct Config<'a, D, Q> {
+    device: &'a D,
     capability: PhantomData<Q>,
 }
 
-impl<D: Device, Q: QueueCapability> QueueConfig for Config<D, Q> {
+impl<'a, D, Q> Config<'a, D, Q> {
+    pub(crate) fn new(device: &'a D) -> Self {
+        Self {
+            device,
+            capability: PhantomData,
+        }
+    }
+}
+
+impl<'a, D: Device, Q: QueueCapability> QueueConfig for Config<'a, D, Q> {
     type Device = D;
     type Capability = Q;
+
+    fn device(&self) -> &Self::Device {
+        &self.device
+    }
 }
 
 /** Queue handle trait
@@ -51,12 +67,12 @@ impl<C: QueueConfig> Queue for QueueType<C> {
 
 pub struct QueueType<C: QueueConfig> {
     handle: vk::Queue,
-    device: Shared<C::Device>,
+    config: C,
 }
 
 impl<C: QueueConfig> QueueType<C> {
-    pub(crate) fn new(handle: vk::Queue, device: Shared<<C as QueueConfig>::Device>) -> Self {
-        Self { handle, device }
+    pub(crate) fn new(handle: vk::Queue, config: C) -> Self {
+        Self { handle, config }
     }
 }
 
@@ -78,7 +94,7 @@ impl<C: QueueConfig> std::fmt::Debug for QueueType<C> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("QueueType")
             .field("handle", &self.handle)
-            .field("device", &self.device.deref())
+            .field("device", &self.config.device().deref())
             .finish()
     }
 }

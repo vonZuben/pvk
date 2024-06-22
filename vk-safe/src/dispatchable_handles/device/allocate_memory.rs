@@ -158,7 +158,7 @@ where
             check_raw_err!(ret);
             Ok(ConcreteDeviceMemory::new(
                 memory.assume_init(),
-                self.shared(),
+                Config::new(self.scope_ref()),
             ))
         }
     }

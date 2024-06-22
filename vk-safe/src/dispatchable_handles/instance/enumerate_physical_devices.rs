@@ -12,6 +12,7 @@ Vulkan docs:
  */
 
 use crate::array_storage::ArrayStorage;
+use crate::dispatchable_handles::physical_device::concrete_type::Config;
 use crate::dispatchable_handles::physical_device::PhysicalDevices;
 use crate::error::Error;
 
@@ -41,7 +42,7 @@ where
     pub fn enumerate_physical_devices<A: ArrayStorage<vk::PhysicalDevice>>(
         &self,
         mut storage: A,
-    ) -> Result<PhysicalDevices<S, A>, Error> {
+    ) -> Result<PhysicalDevices<Config<S>, A>, Error> {
         check_vuids::check_vuids!(EnumeratePhysicalDevices);
 
         #[allow(unused_labels)]
@@ -77,6 +78,6 @@ where
         }
 
         let handles = enumerator_code2!(self.context.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
-        Ok(PhysicalDevices::new(handles, self.shared()))
+        Ok(PhysicalDevices::new(handles, Config::new(self.scope_ref())))
     }
 }
