@@ -28,16 +28,16 @@ fn main() {
         println!("{e:#?}");
     }
 
+    vk::tag!(instance_tag);
+
     let app_info = vk::ApplicationInfo::new(InstanceContext)
         .app_name(vk_str!("Example App"))
         .app_version(vk_safe::VkVersion::new(0, 0, 1));
     let instance_info = vk::InstanceCreateInfo::new(&app_info);
-    let instance = vk::create_instance(&instance_info).unwrap();
+    let instance = vk::create_instance(&instance_info, instance_tag).unwrap();
 
     println!("--Example Instance handle--");
     println!("{instance:?}");
-
-    vk::scope!(instance);
 
     let physical_devices = instance
         .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])

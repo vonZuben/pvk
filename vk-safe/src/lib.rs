@@ -23,13 +23,13 @@ use vk_safe::vk;
 vk::instance_context!(InstanceContext: VERSION_1_0);
 vk::device_context!(DeviceContext: VERSION_1_0);
 
+// create a tag for the instance
+vk::tag!(instance_tag);
+
 // configure and create instance
 let app_info = vk::ApplicationInfo::new(InstanceContext);
 let instance_info = vk::InstanceCreateInfo::new(&app_info);
-let instance = vk::create_instance(&instance_info).unwrap();
-
-// create a scope in which to use the instance (See Scope documentation below)
-vk::scope!(instance);
+let instance = vk::create_instance(&instance_info, instance_tag).unwrap();
 
 // get physical devices
 let physical_devices = instance
@@ -65,7 +65,7 @@ for physical_device in physical_devices.iter() {
 }
 ```
 
-# ⭐ Scope
+# ⭐ Scope (🚧 TODO, this is being replace with tag!(), see [`vk::create_instance`], more doc updates needed)
 A **key** concept in vk-safe is the use of [`scope!`](scope::scope!), which uses an
 invariant lifetime trick to ensure different instances of a type (e.g. different Instances)
 are distinct from each other.

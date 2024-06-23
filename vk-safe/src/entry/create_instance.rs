@@ -1,5 +1,7 @@
-use crate::dispatchable_handles::instance::concrete_type::{Config, Instance};
+use crate::dispatchable_handles::instance::concrete_type::{self, Config};
+use crate::dispatchable_handles::instance::Instance;
 use crate::error::Error;
+use crate::scope::{Captures, Scope, Tag};
 use crate::type_conversions::ToC;
 use crate::vk_str::VkStr;
 use crate::VkVersion;
@@ -22,9 +24,10 @@ In order to create an Instance, you first define the Version and Extensions you 
 See also
 <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html>
 */
-pub fn create_instance<C: Context>(
+pub fn create_instance<'t, C: Context>(
     create_info: &InstanceCreateInfo<C>,
-) -> Result<Instance<Config<C>>, Error>
+    tag: Tag<'t>,
+) -> Result<impl Instance<Context = C::Commands> + Captures<Tag<'t>>, Error>
 where
     C::Commands: DestroyInstance + Version + LoadCommands,
 {
@@ -81,7 +84,10 @@ where
     unsafe {
         let res = command(&create_info.inner, None.to_c(), instance.as_mut_ptr());
         check_raw_err!(res);
-        Ok(Instance::load_commands(instance.assume_init())?)
+        Ok(Scope::from_tag(
+            concrete_type::Instance::<Config<C>>::load_commands(instance.assume_init())?,
+            tag,
+        ))
     }
 }
 

@@ -15,7 +15,7 @@ use crate::scope::HandleScope;
 
 Represents a *specific* Instance which has been scoped.
 */
-pub trait Instance: HandleScope<concrete_type::Instance<Self::Config>> {
+pub trait Instance: HandleScope<concrete_type::Instance<Self::Config>> + std::fmt::Debug {
     #[doc(hidden)]
     type Config: concrete_type::InstanceConfig<Context = Self::Context>;
     /// Instance context such as the Version and Extensions being used

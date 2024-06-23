@@ -1,4 +1,5 @@
 /*!
+(🚧 TODO, this is being re worked to center around [`tag!()`], see [`crate::vk::create_instance`] for example use, more doc updates needed)
 Scopes for unique object handling
 
 All dispatchable handles (e.g. Instance, Device, etc.) implement all commands as methods on
@@ -16,19 +17,10 @@ Use the [`scope!`] macro to create scoped versions of handles.
 ```
 use vk_safe::vk;
 
-# vk::instance_context!(InstanceContext: VERSION_1_0);
-# let app_info = vk::ApplicationInfo::new(InstanceContext);
-# let instance_info = vk::InstanceCreateInfo::new(&app_info);
-# let instance1 = vk::create_instance(&instance_info).unwrap();
-# let instance2 = vk::create_instance(&instance_info).unwrap();
-#
-vk::scope!(instance1);
-vk::scope!(instance2);
+// vk::scope!(instance1);
+// vk::scope!(instance2);
 
-// below will fail to compile because an array
-// requires the same types, and these are not
-// due to different invariant lifetimes
-// let _ = [instance1, instance2];
+// TODO, scope!() is being replaced with tag!()
 ```
 */
 
@@ -114,6 +106,9 @@ impl<'id> Tag<'id> {
     }
 }
 
+pub trait Captures<T> {}
+impl<T, U> Captures<T> for U {}
+
 /** A scoped type
 
 *This is an implementation detail and you are not intended to directly use this*.
@@ -144,6 +139,13 @@ impl<'id, T> Scope<'id, T> {
     /// use [`scope!`]
     #[doc(hidden)]
     pub unsafe fn new(to_scope: T, _bounds: &ScopeBounds<'id>) -> Self {
+        Self {
+            scope_inner: to_scope,
+            _id: Default::default(),
+        }
+    }
+
+    pub(crate) fn from_tag(to_scope: T, _tag: Tag<'id>) -> Self {
         Self {
             scope_inner: to_scope,
             _id: Default::default(),
@@ -233,9 +235,9 @@ pub use scope;
 #[doc(hidden)]
 macro_rules! tag {
     ( $name:ident ) => {
-        let anchor = unsafe { $crate::scope::Anchor::new() };
-        let bounds = unsafe { $crate::scope::ScopeBounds::new(&anchor) };
-        let $name = unsafe { $crate::scope::Tag::new(&bounds) };
+        let $name = unsafe { $crate::scope::Anchor::new() };
+        let $name = unsafe { $crate::scope::ScopeBounds::new(&$name) };
+        let $name = unsafe { $crate::scope::Tag::new(&$name) };
     };
 }
 #[doc(inline)]
@@ -336,7 +338,3 @@ mod scope_private {
 
     impl<'l, T> SealedScope for super::Scope<'l, T> {}
 }
-
-#[doc(hidden)]
-pub trait Captures<T> {}
-impl<T, U> Captures<T> for U {}
