@@ -253,7 +253,7 @@ pub mod vk {
     pub use super::dispatchable_handles::instance::*;
     pub use super::dispatchable_handles::physical_device::export::*;
     pub use super::dispatchable_handles::physical_device::*;
-    pub use super::dispatchable_handles::queue_type::queue_exports::*;
+    pub use super::dispatchable_handles::queue::*;
     pub use super::entry::*;
 
     pub use super::non_dispatchable_handles::exports::*;

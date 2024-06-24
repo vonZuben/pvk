@@ -5,11 +5,9 @@
 pub mod device;
 pub mod instance;
 pub mod physical_device;
-pub(crate) mod queue_type;
+pub mod queue;
 
 pub mod common;
-
-pub use queue_type::Queue;
 
 #[cfg(doc)]
 /// Example of concrete Device
@@ -50,4 +48,4 @@ pub type _PhysicalDevice<S, C> =
 /// Extension is also enabled.
 ///
 /// 🛑 This is only generated for the documentation and is not usable in your code.
-pub type _Queue<S, C> = crate::scope::SecretScope<S, queue_type::QueueType<C>>;
+pub type _Queue<S, C> = crate::scope::SecretScope<S, queue::concrete_type::Queue<C>>;

@@ -8,7 +8,9 @@ use std::mem::MaybeUninit;
 use vk::has_command::GetDeviceQueue;
 use vk_safe_sys as vk;
 
-use crate::dispatchable_handles::queue_type::{Config, QueueCapability, QueueType};
+use crate::dispatchable_handles::queue::{
+    concrete_type::Config, concrete_type::Queue, QueueCapability,
+};
 use crate::vk::DeviceQueueCreateInfo;
 
 impl<'a, S, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C> {
@@ -53,7 +55,7 @@ where
     pub fn get_queue(
         &self,
         queue_index: u32,
-    ) -> Result<QueueType<Config<D, Q>>, QueueIndexNotConfigured> {
+    ) -> Result<Queue<Config<D, Q>>, QueueIndexNotConfigured> {
         let config = self.queue_config();
         if queue_index < config.inner.queue_count {
             let family_index = config.inner.queue_family_index;
@@ -66,10 +68,7 @@ where
                     queue_index,
                     queue.as_mut_ptr(),
                 );
-                Ok(QueueType::new(
-                    queue.assume_init(),
-                    Config::new(self.device),
-                ))
+                Ok(Queue::new(queue.assume_init(), Config::new(self.device)))
             }
         } else {
             Err(QueueIndexNotConfigured)
