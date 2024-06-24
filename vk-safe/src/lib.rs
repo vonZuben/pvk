@@ -58,10 +58,11 @@ for physical_device in physical_devices.iter() {
         }
     }
 
+    vk::tag!(device_tag);
     // configure and create device
     let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
     let device = physical_device
-        .create_device(&device_create_info, &queue_family_properties)
+        .create_device(&device_create_info, &queue_family_properties, device_tag)
         .unwrap();
 }
 ```

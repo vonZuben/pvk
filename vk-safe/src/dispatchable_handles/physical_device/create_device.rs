@@ -17,7 +17,8 @@ let queue_family_properties = physical_device
 // let queue_config = TODO
 let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_config);
 
-let device = physical_device.create_device(&device_create_info, &queue_family_properties)
+vk::tag!(tag);
+let device = physical_device.create_device(&device_create_info, &queue_family_properties, tag)
     .unwrap();
 # }
 ```
@@ -31,6 +32,8 @@ use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, Queue
 use super::PhysicalDevice;
 use super::PhysicalDeviceConfig;
 use crate::dispatchable_handles::device::concrete_type::{self, Config};
+use crate::dispatchable_handles::device::Device;
+use crate::scope::{Captures, Scope, Tag};
 
 use crate::error::Error;
 use crate::type_conversions::TransmuteSlice;
@@ -83,21 +86,29 @@ where
     # vk::device_context!(D: VERSION_1_0);
     # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
     #   (physical_device: P, create_info: &vk::DeviceCreateInfo<D, P>, queue_properties: &vk::QueueFamiliesRef<P>) {
-    let device = physical_device.create_device(create_info, queue_properties);
+    vk::tag!(tag);
+    let device = physical_device.create_device(create_info, queue_properties, tag).unwrap();
     # }
     ```
     */
-    pub fn create_device<'a, DeviceConfig, O>(
+    pub fn create_device<'a, 't, D, O>(
         &self,
-        create_info: &DeviceCreateInfo<'a, DeviceConfig, S>,
+        create_info: &DeviceCreateInfo<'a, D, S>,
         queue_properties: &'a QueueFamiliesRef<S>,
-    ) -> Result<concrete_type::Device<Config<'a, DeviceConfig, S>>, Error>
+        tag: Tag<'t>,
+    ) -> Result<
+        impl Device<Context = D::Commands, PhysicalDevice = S>
+            + Captures<Tag<'t>>
+            + Captures<&'a QueueFamiliesRef<S>>
+            + Captures<&'a [DeviceQueueCreateInfo<S>]>,
+        Error,
+    >
     where
-        DeviceConfig: Context + InstanceDependencies<C::Context, O>,
-        DeviceConfig::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<C::Context>,
+        D: Context + InstanceDependencies<C::Context, O>,
+        D::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<C::Context>,
     {
         // check version requirement
-        let _ = DeviceConfig::Commands::VALID;
+        let _ = D::Commands::VALID;
 
         check_vuids::check_vuids!(CreateDevice);
 
@@ -164,6 +175,7 @@ where
                 panic!("Physical device with VK_KHR_portability_subset is not supported")
             }
         }
+
         // *********************************************
         unsafe {
             let res = self.instance().context.CreateDevice().get_fptr()(
@@ -173,17 +185,20 @@ where
                 device.as_mut_ptr(),
             );
             check_raw_err!(res);
-            Ok(concrete_type::Device::load_commands(
-                device.assume_init(),
-                Config::new(
-                    std::slice::from_raw_parts(
-                        create_info.inner.p_queue_create_infos,
-                        create_info.inner.queue_create_info_count.try_into()?,
-                    )
-                    .safe_transmute_slice(),
-                    queue_properties,
-                ),
-            )?)
+            Ok(Scope::from_tag(
+                concrete_type::Device::load_commands(
+                    device.assume_init(),
+                    Config::<D, S>::new(
+                        std::slice::from_raw_parts(
+                            create_info.inner.p_queue_create_infos,
+                            create_info.inner.queue_create_info_count.try_into()?,
+                        )
+                        .safe_transmute_slice(),
+                        queue_properties,
+                    ),
+                )?,
+                tag,
+            ))
         }
     }
 }

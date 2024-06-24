@@ -20,7 +20,7 @@ use crate::scope::HandleScope;
 
 Represents a *specific* Device which has been scoped.
 */
-pub trait Device: HandleScope<concrete_type::Device<Self::Config>> {
+pub trait Device: HandleScope<concrete_type::Device<Self::Config>> + std::fmt::Debug {
     #[doc(hidden)]
     type Config: concrete_type::DeviceConfig<
         Context = Self::Context,

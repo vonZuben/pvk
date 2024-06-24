@@ -130,8 +130,9 @@ fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSIO
 
     let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
+    vk::tag!(dt);
     let device = pd
-        .create_device(&device_create_info, &queue_family_properties)
+        .create_device(&device_create_info, &queue_family_properties, dt)
         .unwrap();
 
     println!("--Example Device handle--");
@@ -139,8 +140,6 @@ fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSIO
 
     vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
     vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
-
-    vk::scope!(device);
 
     let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
     let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
