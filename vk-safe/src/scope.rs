@@ -88,6 +88,9 @@ impl Drop for ScopeBounds<'_> {
 #[doc(hidden)]
 pub struct ScopeId<'id>(PhantomData<*mut &'id ()>);
 
+unsafe impl Send for ScopeId<'_> {}
+unsafe impl Sync for ScopeId<'_> {}
+
 /// A tag that uniquely identifies a specific region of code
 ///
 /// Create using the [`tag!()`] macro.

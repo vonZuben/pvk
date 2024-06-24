@@ -50,8 +50,8 @@ fn main() {
     for pd in physical_devices.iter() {
         std::thread::scope(|scope| {
             scope.spawn(|| {
-                vk::scope!(pd);
-                run_physical_device(pd)
+                vk::tag!(tag);
+                run_physical_device(pd.tag(tag))
             });
         });
     }

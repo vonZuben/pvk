@@ -37,7 +37,8 @@ let physical_devices = instance
     .unwrap();
 
 for physical_device in physical_devices.iter() {
-    vk::scope!(physical_device);
+    vk::tag!(tag);
+    let physical_device = physical_device.tag(tag);
 
     // discover queues on the physical device
     let queue_family_properties = physical_device

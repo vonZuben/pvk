@@ -12,6 +12,8 @@ use vk_safe_sys as vk;
 use crate::array_storage::ArrayStorage;
 use crate::dispatchable_handles::instance::Instance;
 
+use crate::scope::{Captures, Scope, Tag};
+
 // pub mod enumerate_device_extension_properties;
 // pub mod enumerate_device_layer_properties;
 // pub mod get_physical_device_features;
@@ -42,7 +44,9 @@ use concrete_type::PhysicalDeviceConfig;
 
 Represents a *specific* PhysicalDevice which has been scoped.
 */
-pub trait PhysicalDevice: HandleScope<concrete_type::PhysicalDevice<Self::Config>> {
+pub trait PhysicalDevice:
+    HandleScope<concrete_type::PhysicalDevice<Self::Config>> + Send + Sync
+{
     #[doc(hidden)]
     type Config: PhysicalDeviceConfig<Context = Self::Context>;
     /// The *specific* Instance to which this PhysicalDevice belongs
@@ -83,19 +87,67 @@ pub struct PhysicalDeviceIter<'s, C: PhysicalDeviceConfig> {
 }
 
 impl<C: PhysicalDeviceConfig> Iterator for PhysicalDeviceIter<'_, C> {
-    type Item = concrete_type::PhysicalDevice<C>;
+    type Item = PhysicalDeviceTagger<C>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter
             .next()
-            .map(|pd| concrete_type::PhysicalDevice::new(self.config, pd))
+            .map(|pd| PhysicalDeviceTagger::new(self.config, pd))
     }
 }
 
-impl<'s, C: PhysicalDeviceConfig, S: ArrayStorage<vk::PhysicalDevice>> IntoIterator
-    for &'s PhysicalDevices<C, S>
+/// Provides the means to add unique tags to PhysicalDevices
+///
+/// Obtained by iterating over the PhysicalDevices returned by
+/// [`enumerate_physical_devices`](crate::scope::SecretScope::enumerate_physical_devices).
+///
+/// Provides the means to add unique tag to each individual PhysicalDevice with
+/// the [`tag`](PhysicalDeviceTagger::tag) method. See documentation regarding [`Tag`] for
+/// more details.
+pub struct PhysicalDeviceTagger<C: PhysicalDeviceConfig> {
+    config: C,
+    handle: vk::PhysicalDevice,
+}
+
+unsafe impl<C: PhysicalDeviceConfig> Send for PhysicalDeviceTagger<C> {}
+unsafe impl<C: PhysicalDeviceConfig> Sync for PhysicalDeviceTagger<C> {}
+
+impl<C: PhysicalDeviceConfig> PhysicalDeviceTagger<C> {
+    fn new(config: C, handle: vk::PhysicalDevice) -> Self {
+        Self { config, handle }
+    }
+
+    /// Tag a Physical device
+    ///
+    /// # Example
+    /// ```
+    /// # use vk_safe::vk;
+    /// # fn tst(instance: impl vk::Instance<Context: vk::instance::VERSION_1_0>) {
+    /// let physical_devices = instance
+    ///     .enumerate_physical_devices(Vec::new())
+    ///     .unwrap();
+    ///
+    /// for physical_device in physical_devices.iter() {
+    ///     vk::tag!(tag);
+    ///     let physical_device = physical_device.tag(tag);
+    /// }
+    /// # }
+    /// ```
+    pub fn tag<'t>(
+        self,
+        tag: Tag<'t>,
+    ) -> impl PhysicalDevice<Context = C::Context> + Captures<Tag<'t>> {
+        Scope::from_tag(
+            concrete_type::PhysicalDevice::new(self.config, self.handle),
+            tag,
+        )
+    }
+}
+
+impl<'s, C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> IntoIterator
+    for &'s PhysicalDevices<C, A>
 {
-    type Item = concrete_type::PhysicalDevice<C>;
+    type Item = PhysicalDeviceTagger<C>;
 
     type IntoIter = PhysicalDeviceIter<'s, C>;
 
