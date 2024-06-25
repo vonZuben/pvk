@@ -113,7 +113,7 @@ impl<S> fmt::Debug for PhysicalDeviceProperties<S> {
             .field("device_id", &self.device_id)
             .field("device_type", &self.device_type)
             .field("device_name", &self.device_name())
-            .field("pipeline_cache_id", &self.pipeline_cache_uuid())
+            .field("pipeline_cache_uuid", &self.pipeline_cache_uuid())
             .field("limits", &self.limits)
             .field("sparse_properties", &self.sparse_properties)
             .finish()
