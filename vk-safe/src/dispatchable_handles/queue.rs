@@ -1,7 +1,7 @@
 //! Vulkan Queue object
 //!
-//! Queue are created when creating the logical `Device`. The Queues of the Device that
-//! were created can be obtained from the device (🚧 TODO how to get Queues is under
+//! All [`Queue`] objects are created when creating the logical [`Device`]. The Queues
+//! of the Device that were created can be obtained from the device (🚧 TODO how to get Queues is under
 //! consideration for revision).
 //!
 //! Vulkan doc:
@@ -14,12 +14,17 @@ use super::DispatchableHandle;
 
 use vk_safe_sys as vk;
 
-/** Queue handle trait
-
-Represents a Queue
-
-*currently* Queue does not need to be scoped
-*/
+/// Queue handle trait
+///
+/// Represents a Queue
+///
+/// See the available methods on [`_Queue`]
+///
+/// *currently* Queue does not need to be scoped
+///
+/// You may note that there are no visible implementors of this trait.
+/// You are only ever intended to use opaque implementors of this trait
+/// as seen with the return type of (🚧 TODO how to get Queues is under consideration)
 pub trait Queue: DispatchableHandle<concrete_type::Queue<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::QueueConfig<Device = Self::Device>;
@@ -30,6 +35,16 @@ pub trait Queue: DispatchableHandle<concrete_type::Queue<Self::Config>> {
     /// shortcut for the Device context such as the Version and Extensions being used
     type Context;
 }
+
+#[cfg(doc)]
+/// Example of concrete Queue
+///
+/// Given some <code>Q: [Queue]</code>, you will implicitly have access to a concrete type like this. All
+/// the methods shown below will be accessible so long as the appropriate Version or
+/// Extension is also enabled.
+///
+/// 🛑 This is only generated for the documentation and is not usable in your code.
+pub type _Queue<S, C> = crate::scope::SecretScope<S, concrete_type::Queue<C>>;
 
 /// Represents what kind of work can be submitted to the Queue
 pub trait QueueCapability: Flags<Type = vk::QueueFlags> {}

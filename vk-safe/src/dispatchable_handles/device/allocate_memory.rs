@@ -17,9 +17,8 @@ use super::Device;
 use vk_safe_sys as vk;
 
 use crate::dispatchable_handles::physical_device::get_physical_device_memory_properties::MemoryTypeChoice;
-use crate::non_dispatchable_handles::device_memory::{
-    concrete_type::Config, ConcreteDeviceMemory, DeviceMemory,
-};
+use crate::non_dispatchable_handles::device_memory;
+use crate::non_dispatchable_handles::device_memory::{concrete_type::Config, DeviceMemory};
 use crate::scope::Captures;
 
 use vk::has_command::{AllocateMemory, FreeMemory};
@@ -161,7 +160,7 @@ where
                 memory.as_mut_ptr(),
             );
             check_raw_err!(ret);
-            Ok(ConcreteDeviceMemory::new(
+            Ok(device_memory::concrete_type::DeviceMemory::new(
                 memory.assume_init(),
                 Config::new(self.scope_ref()),
             ))

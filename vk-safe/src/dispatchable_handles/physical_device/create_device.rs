@@ -828,7 +828,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
 input_struct_wrapper!(
 /// Info struct for creating DeviceQueues
 ///
-/// When creating a [`Device`](concrete_type::Device), this struct provides
+/// When creating a [`Device`], this struct provides
 /// information about the Queues to be created therewith.
 DeviceQueueCreateInfo);
 
@@ -849,7 +849,7 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
 
     /// Create DeviceQueueCreateInfo
     ///
-    /// When creating a [`Device`](concrete_type::Device), create
+    /// When creating a [`Device`], create
     /// `priorities.len()` number of Queues, with respective
     /// priorities. **Must** create at least one Queue.
     ///

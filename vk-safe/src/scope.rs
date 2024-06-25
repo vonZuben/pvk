@@ -1,28 +1,28 @@
-/*!
-(🚧 TODO, this is being re worked to center around [`tag!()`], see [`crate::vk::create_instance`] for example use, more doc updates needed)
-Scopes for unique object handling
-
-All dispatchable handles (e.g. Instance, Device, etc.) implement all commands as methods on
-a special **scoped** version of the particular handle. This is used to ensure different
-handles are distinct.
-
-This is because the Vulkan API exposes a complex parent child hierarchy, and
-it must be ensured that "child" are resources only used with their respective "parent" resource
-or "sibling" resources. In this regard, it is necessary to ensure that different instances
-of a particular handle are unique from one another.
-
-Use the [`scope!`] macro to create scoped versions of handles.
-
-## Example
-```
-use vk_safe::vk;
-
-// vk::scope!(instance1);
-// vk::scope!(instance2);
-
-// TODO, scope!() is being replaced with tag!()
-```
-*/
+//! Distinguishable object handling
+//!
+//! All dispatchable handles (e.g. Instance, Device, etc.) implement all commands as methods on
+//! a special **scoped** version of the particular handle. This is used to ensure different
+//! handles are distinct. A particular scope is identified by its [`Tag`].
+//!
+//! This is because the Vulkan API exposes a complex parent child hierarchy, and
+//! it must be ensured that "child" are resources only used with their respective "parent" resource
+//! or "sibling" resources. In this regard, it is necessary to ensure that different instances
+//! of a particular handle are distinguishable from one another.
+//!
+//! Use the [`tag!`] macro to create tags for tagging handles (and some other objects)
+//! at construction time.
+//!
+//! ## Example
+//! ```
+//! use vk_safe::vk;
+//!
+//! vk::tag!(tag1);
+//! vk::tag!(tag2);
+//!
+//! // This does nto compile since the invariant
+//! // lifetimes cannot unify
+//! // let _ = [tag1, tag2];
+//! ```
 
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -125,7 +125,7 @@ wrapper around `*mut T`, and a `PhantomData` type to hold an invariant lifetime.
 specific region of code. The `Scope` is considered to own the data it points to.
 */
 #[repr(transparent)]
-pub struct Scope<'id, T> {
+pub(crate) struct Scope<'id, T> {
     scope_inner: T,
     _id: ScopeId<'id>,
 }
@@ -137,17 +137,6 @@ impl<T: std::fmt::Debug> std::fmt::Debug for Scope<'_, T> {
 }
 
 impl<'id, T> Scope<'id, T> {
-    /// DO NOT USE
-    ///
-    /// use [`scope!`]
-    #[doc(hidden)]
-    pub unsafe fn new(to_scope: T, _bounds: &ScopeBounds<'id>) -> Self {
-        Self {
-            scope_inner: to_scope,
-            _id: Default::default(),
-        }
-    }
-
     pub(crate) fn from_tag(to_scope: T, _tag: Tag<'id>) -> Self {
         Self {
             scope_inner: to_scope,
@@ -176,57 +165,6 @@ impl<T> DerefMut for Scope<'_, T> {
     }
 }
 
-/// How a type should be scoped
-///
-/// Allow a type determine the proper way to scope it. Handle types
-/// generally need to be Scoped by taking ownership of the handle.
-/// However, some types may have use for being scoped, but it may
-/// be sufficient to only use a borrow. This trait can be implemented
-/// by types to allow taking ownership or borrowing accordingly.
-#[doc(hidden)]
-#[diagnostic::on_unimplemented(
-    message = "A Scope cannot be created with {Self}",
-    label = "{Self} used here does not support being scoped",
-    note = "`ToScope` is an implementation detail and is not public",
-    note = "This is likely caused by using `scope!()` with a type defined outside of vk_safe",
-    note = "Refer to vk_safe documentation for types that can/should be scoped"
-)]
-pub trait ToScope: Sized {
-    unsafe fn to_scope<'id>(to_scope: Self, bounds: &ScopeBounds<'id>) -> Scope<'id, Self> {
-        Scope::new(to_scope, bounds)
-    }
-}
-
-/// Base trait for Handle traits
-///
-/// Handle traits like [`Instance`](crate::vk::Instance) are generally sub traits
-/// of this trait.
-pub trait HandleScope<T>: Deref<Target = SecretScope<Self, T>> + Sized {}
-
-impl<T> HandleScope<T> for Scope<'_, T> {}
-
-/// create a scoped type
-///
-/// Creates a [`Scope<'scope, T>`](Scope) with a provided `T`.
-///
-/// The created [`Scope`] will be bound the the unique region of code
-/// that it is defined in (i.e. a scope). Different invocations of [`scope!`] will
-/// create different unique scopes.
-///
-/// See module level docs for more details.
-#[macro_export]
-#[doc(hidden)]
-macro_rules! scope {
-    ( $name:ident ) => {
-        let anchor = unsafe { $crate::scope::Anchor::new() };
-        let bounds = unsafe { $crate::scope::ScopeBounds::new(&anchor) };
-        #[allow(unused_mut)]
-        let mut $name = unsafe { $crate::scope::ToScope::to_scope($name, &bounds) };
-    };
-}
-#[doc(inline)]
-pub use scope;
-
 /// create a scope tag
 ///
 /// Creates a [`Tag<'id>`](Tag) with the provided name.
@@ -246,26 +184,28 @@ macro_rules! tag {
 #[doc(inline)]
 pub use tag;
 
-/** Deref target for Scope<'_, T>
+/** Abstraction of a scoped object to hide details
 
 *This is an implementation detail and you are not intended to directly use this*.
 
 Types which are only safe to use within a scope implement their methods through this wrapper.
 
 #### implementation details
-This is just informative, and not to be relied upon, as it could change. `SecretScope` is a
-`#[repr(transparent)]` wrapper around a `T: ?Sized`, and a `PhantomData<S>`. [`Scope<'_, T>`](Scope)
-implements [`Deref`] with `Target = SecretScope<Self, T>`. In this way,
-`SecretScope` can only ever exist as a reference bound to the lifetime of a [`Scope`], and
-the invariant lifetime information is captured in the generic `S` type parameter.
+Underneath the hood, [`Tag`] is used to create `Scope<'_, T>` objects, which link a
+particular type to a particular scope (region of code) identified by the [`Tag`].
+The `Scope<'_, T>` type implements [`Deref`] with `Target = SecretScope<Self, T>`.
+In this way, `SecretScope` is constructed as a reference bound to the lifetime of
+a `Scope`, and the invariant lifetime information is captured in the generic `S`
+type parameter. `SecretScope` is a `#[repr(transparent)]` wrapper around a `T`,
+and a `PhantomData<S>`.
 
 vk-safe APIs can ensure different handles have the same scope (i.e. have the same Instance
 or Device parent handle) by using the same generic parameter `S`.
 
-The main reason to use this instead of [`Scope`] directly is to allow a "handle trait" pattern (See
-modules in [`dispatchable_handles`](crate::dispatchable_handles)), and [`HandleScope`]. The handle
+The main reason to use this instead of `Scope` directly is to allow a "handle trait" pattern (See
+modules in [`dispatchable_handles`](crate::dispatchable_handles)). The handle
 traits have Deref with the scoped handle type as the Target. This allows the handle traits to
-abstract the `scopedness` of the handles while being transparently usable as the concrete type.
+abstract the `scopedness` of the handles while being opaquely usable as the concrete type.
 `Scope` cannot be directly used because it has a lifetime, and we cannot write e.g.
 `trait Handle: Deref<Target = Scope<'scope, ConcreteHandle>>` because `'scope` is not defined.
 We cannot even use `for<'scope> Deref<Target = Scope<'scope, ConcreteHandle>>` because we get

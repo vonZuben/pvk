@@ -1,6 +1,6 @@
 //! Vulkan logical Device
 //!
-//! Create it with [`create_device`](crate::dispatchable_handles::physical_device::concrete_type::ScopedPhysicalDevice::create_device)
+//! A [`Device`] can be created with [`create_device`](crate::dispatchable_handles::physical_device::concrete_type::ScopedPhysicalDevice::create_device)
 //! on from a scoped [`PhysicalDevice`](crate::dispatchable_handles::physical_device::PhysicalDevice).
 //!
 //! Vulkan doc:
@@ -16,10 +16,15 @@ wait_idle;
 
 use super::ScopedDispatchableHandle;
 
-/** Device handle trait
-
-Represents a *specific* Device which has been scoped.
-*/
+/// Device handle trait
+///
+/// Represents a *specific* Device which has been scoped.
+///
+/// See the available methods on [`_Device`]
+///
+/// You may note that there are no visible implementors of this trait.
+/// You are only ever intended to use opaque implementors of this trait
+/// as seen with the return type of [`create_device`](crate::dispatchable_handles::physical_device::concrete_type::ScopedPhysicalDevice::create_device)
 pub trait Device: ScopedDispatchableHandle<concrete_type::Device<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::DeviceConfig<
@@ -32,7 +37,15 @@ pub trait Device: ScopedDispatchableHandle<concrete_type::Device<Self::Config>> 
     type Context;
 }
 
-pub use concrete_type::Device as ConcreteDevice;
+#[cfg(doc)]
+/// Example of concrete Device
+///
+/// Given some <code>D: [Device]</code>, you will implicitly have access to a concrete type like this. All
+/// the methods shown below will be accessible so long as the appropriate Version or
+/// Extension is also enabled.
+///
+/// 🛑 This type alias is only generated for the documentation and is not usable in your code.
+pub type _Device<S, C> = crate::scope::SecretScope<S, concrete_type::Device<C>>;
 
 pub(crate) mod concrete_type {
     use vk_safe_sys as vk;
@@ -42,7 +55,7 @@ pub(crate) mod concrete_type {
     use crate::dispatchable_handles::physical_device::{
         create_device::DeviceQueueCreateInfo, PhysicalDevice,
     };
-    use crate::scope::{Scope, SecretScope, ToScope};
+    use crate::scope::{Scope, SecretScope};
     use crate::type_conversions::ToC;
     use crate::VkVersion;
 
@@ -117,8 +130,6 @@ pub(crate) mod concrete_type {
 
     unsafe impl<C: DeviceConfig> Send for Device<C> {}
     unsafe impl<C: DeviceConfig> Sync for Device<C> {}
-
-    impl<C: DeviceConfig> ToScope for Device<C> {}
 
     impl<C: DeviceConfig> std::fmt::Debug for Device<C> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

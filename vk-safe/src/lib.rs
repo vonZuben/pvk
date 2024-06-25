@@ -67,10 +67,10 @@ for physical_device in physical_devices.iter() {
 }
 ```
 
-# ⭐ Scope (🚧 TODO, this is being replace with tag!(), see [`vk::create_instance`], more doc updates needed)
-A **key** concept in vk-safe is the use of [`scope!`](scope::scope!), which uses an
-invariant lifetime trick to ensure different instances of a type (e.g. different Instances)
-are distinct from each other.
+# ⭐ Scopes and tagging
+A **key** concept in vk-safe is the use of [`tag!`](scope::tag!), which creates a [`Tag`](scope::Tag)
+that uses an invariant lifetime trick to ensure different instances of a type (e.g. different Instances,
+PhysicalDevices, Devices, etc.) are distinguishable from each other.
 
 See the [`scope`](mod@scope) module for more details.
 
@@ -258,7 +258,7 @@ pub mod vk {
 
     pub use super::non_dispatchable_handles::exports::*;
 
-    pub use super::scope::{scope, tag, Scope, SecretScope};
+    pub use super::scope::{tag, SecretScope};
 
     pub use super::context::device;
     pub use super::context::instance;

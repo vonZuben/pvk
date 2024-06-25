@@ -34,11 +34,6 @@ where
 
     Must provide the storage space to return the properties to.
 
-    # Scope
-    The returned [`QueueFamilies`] **must** be scoped with
-    [`scope!`](crate::vk::scope) in order to be usable for
-    device Queue configuration. See ...
-
     ```rust
     # use vk_safe::vk;
     # vk::device_context!(D: VERSION_1_0);

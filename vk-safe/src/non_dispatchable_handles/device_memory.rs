@@ -1,3 +1,13 @@
+//! Memory usable by a device
+//!
+//! [`DeviceMemory`] is allocated with a [`Device`](crate::vk::Device). You can choose the kind of memory
+//! you want to allocate after determining the supported memory types of the
+//! [`PhysicalDevice`](crate::vk::PhysicalDevice) with
+//! [`get_physical_device_memory_properties`](crate::dispatchable_handles::physical_device::concrete_type::ScopedPhysicalDevice::get_physical_device_memory_properties).
+//!
+//! After choosing a memory type, you can allocate it with
+//! [`allocate_memory`](crate::dispatchable_handles::device::concrete_type::ScopedDevice::allocate_memory).
+
 use std::ops::DerefMut;
 
 use crate::flags::Flags;
@@ -6,7 +16,7 @@ use crate::flags::Flags;
 
 Represents a DeviceMemory
 
-*currently* DeviceMemory does not need to be scoped
+*currently* DeviceMemory does not need to be tagged (it is not clear if this will change in future for now)
 */
 pub trait DeviceMemory:
     DerefMut<Target = concrete_type::DeviceMemory<Self::Config>> + std::fmt::Debug
@@ -20,8 +30,6 @@ pub trait DeviceMemory:
     /// Properties of the memory heap from which this DeviceMemory was allocated
     type HeapFlags: Flags;
 }
-
-pub use concrete_type::DeviceMemory as ConcreteDeviceMemory;
 
 /// DeviceMemory which has been mapped for host access
 #[derive(Debug)]

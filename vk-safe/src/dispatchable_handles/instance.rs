@@ -1,6 +1,6 @@
 //! Main Vulkan object
 //!
-//! This is the main object you create ([`create_instance`](crate::vk::create_instance))
+//! [`Instance`] is the main object you create ([`create_instance`](crate::vk::create_instance))
 //! in Vulkan that stores all application state. The primary thing you will want to do with
 //! an Instance is enumerate the PhysicalDevices on the system ([`enumerate_physical_devices`])
 //!
@@ -11,10 +11,15 @@ pub mod enumerate_physical_devices;
 
 use super::ScopedDispatchableHandle;
 
-/** Instance handle trait
-
-Represents a *specific* Instance which has been scoped.
-*/
+/// Instance handle trait
+///
+/// Represents a *specific* Instance which has been scoped.
+///
+/// See the available methods on [`_Instance`]
+///
+/// You may note that there are no visible implementors of this trait.
+/// You are only ever intended to use opaque implementors of this trait
+/// as seen with the return type of [`create_instance`](crate::vk::create_instance)
 pub trait Instance: ScopedDispatchableHandle<concrete_type::Instance<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::InstanceConfig<Context = Self::Context>;
@@ -22,18 +27,21 @@ pub trait Instance: ScopedDispatchableHandle<concrete_type::Instance<Self::Confi
     type Context;
 }
 
-/// concrete type for a created Instance
+#[cfg(doc)]
+/// Example of concrete Instance
 ///
-/// Do not use this type directly. Instead, after creating an instance you should
-/// use [`scope!`](crate::vk::scope) as soon as possible, and then generically use
-/// [`Instance`]
-pub use concrete_type::Instance as ConcreteInstance;
+/// Given some <code>I: [Instance]</code>, you will implicitly have access to a concrete type like this. All
+/// the methods shown below will be accessible so long as the appropriate Version or
+/// Extension is also enabled.
+///
+/// 🛑 This is only generated for the documentation and is not usable in your code.
+pub type _Instance<S, C> = crate::scope::SecretScope<S, concrete_type::Instance<C>>;
 
 pub(crate) mod concrete_type {
     use crate::type_conversions::ToC;
     use vk_safe_sys as vk;
 
-    use crate::scope::{Scope, SecretScope, ToScope};
+    use crate::scope::{Scope, SecretScope};
 
     use crate::VkVersion;
 
@@ -72,8 +80,6 @@ pub(crate) mod concrete_type {
         pub(crate) handle: vk::Instance,
         pub(crate) context: C::Context,
     }
-
-    impl<C: InstanceConfig> ToScope for Instance<C> {}
 
     unsafe impl<C: InstanceConfig> Send for Instance<C> {}
     unsafe impl<C: InstanceConfig> Sync for Instance<C> {}

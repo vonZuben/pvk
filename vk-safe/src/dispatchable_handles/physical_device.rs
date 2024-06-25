@@ -1,7 +1,7 @@
 //! representation of a Vulkan implementation on the system
 //!
-//! A `PhysicalDevice` lets you query details about the Vulkan implementation (e.g.
-//! memory properties). A logical [`Device`](crate::dispatchable_handles::device::ConcreteDevice)
+//! A [`PhysicalDevice`] lets you query details about the Vulkan implementation (e.g.
+//! memory properties). A logical [`Device`](crate::dispatchable_handles::device::Device)
 //! can be created from a `PhysicalDevice` with [`create_device`].
 //!
 //! Vulkan doc:
@@ -40,10 +40,18 @@ get_physical_device_sparse_image_format_properties;
 
 use concrete_type::PhysicalDeviceConfig;
 
-/** PhysicalDevice handle trait
-
-Represents a *specific* PhysicalDevice which has been scoped.
-*/
+/// PhysicalDevice handle trait
+///
+/// Represents a *specific* PhysicalDevice which has been scoped.
+///
+/// See the available methods on [`_PhysicalDevice`]
+///
+/// Obtained by iterating over [`PhysicalDevices`], and then
+/// tagging each PhysicalDevice with [`tag`](PhysicalDeviceTagger::tag).
+///
+/// You may note that there are no visible implementors of this trait.
+/// You are only ever intended to use opaque implementors of this trait
+/// as seen with the return type of [`tag`](PhysicalDeviceTagger::tag)
 pub trait PhysicalDevice:
     ScopedDispatchableHandle<concrete_type::PhysicalDevice<Self::Config>> + Send + Sync
 {
@@ -55,7 +63,15 @@ pub trait PhysicalDevice:
     type Context;
 }
 
-pub use concrete_type::PhysicalDevice as ConcretePhysicalDevice;
+#[cfg(doc)]
+/// Example of concrete PhysicalDevice
+///
+/// Given some <code>Pd: [PhysicalDevice]</code>, you will implicitly have access to a concrete type like this. All
+/// the methods shown below will be accessible so long as the appropriate Version or
+/// Extension is also enabled.
+///
+/// 🛑 This is only generated for the documentation and is not usable in your code.
+pub type _PhysicalDevice<S, C> = crate::scope::SecretScope<S, concrete_type::PhysicalDevice<C>>;
 
 pub struct PhysicalDevices<C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> {
     config: C,
@@ -160,7 +176,7 @@ impl<'s, C: PhysicalDeviceConfig, A: ArrayStorage<vk::PhysicalDevice>> IntoItera
 }
 
 pub(crate) mod concrete_type {
-    use crate::scope::{Scope, SecretScope, ToScope};
+    use crate::scope::{Scope, SecretScope};
 
     use vk_safe_sys as vk;
 
@@ -215,8 +231,6 @@ pub(crate) mod concrete_type {
         config: C,
         pub(crate) handle: vk::PhysicalDevice,
     }
-
-    impl<C: PhysicalDeviceConfig> ToScope for PhysicalDevice<C> {}
 
     unsafe impl<C: PhysicalDeviceConfig> Send for PhysicalDevice<C> {}
     unsafe impl<C: PhysicalDeviceConfig> Sync for PhysicalDevice<C> {}
