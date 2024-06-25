@@ -82,7 +82,7 @@ impl std::fmt::Debug for PipelineCacheUUID {
     ///
     /// outputs the UUID with each byte printed in upper hex and 0 padded
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CacheUUID[")?;
+        write!(f, "PipelineCacheUUID[")?;
         for b in self.uuid {
             write!(f, "{:0<2X}", b)?;
         }
