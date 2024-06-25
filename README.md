@@ -18,7 +18,7 @@ API item. vk-safe depends on a small shim lib from this
 
 # 🛠️ Build
 
-Minimum Supported Rust Version: 1.75.0 (using `impl Trait` in traits)
+Minimum Supported Rust Version: 1.79.0 (using associated type bounds)
 
 The recommended way to build is to install the [VulkanSDK](https://vulkan.lunarg.com/sdk/home) for your system,
 and ensure that the `VULKAN_SDK` or `VK_SDK_PATH` environment variables are set. Then run `cargo run --example one`
