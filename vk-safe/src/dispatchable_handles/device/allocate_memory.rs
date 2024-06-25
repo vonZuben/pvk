@@ -1,7 +1,7 @@
 /*!
 Allocate memory on the Device
 
-Returns returns a [`ConcreteDeviceMemory`] handle that can be used as backing storage for buffers and images.
+Returns returns a <code>impl [DeviceMemory]</code> handle that can be used as backing storage for buffers and images.
 
 use the [`allocate_memory`](concrete_type::ScopedDevice::allocate_memory) method on a scoped Device
 
@@ -17,14 +17,16 @@ use super::Device;
 use vk_safe_sys as vk;
 
 use crate::dispatchable_handles::physical_device::get_physical_device_memory_properties::MemoryTypeChoice;
+use crate::non_dispatchable_handles::device_memory::{
+    concrete_type::Config, ConcreteDeviceMemory, DeviceMemory,
+};
+use crate::scope::Captures;
 
 use vk::has_command::{AllocateMemory, FreeMemory};
 
 use crate::flags::Flags;
 
 use std::mem::MaybeUninit;
-
-use crate::non_dispatchable_handles::device_memory::{concrete_type::Config, ConcreteDeviceMemory};
 
 impl<S: Device, C: concrete_type::DeviceConfig> concrete_type::ScopedDevice<S, C>
 where
@@ -49,7 +51,10 @@ where
     pub fn allocate_memory<P: Flags, H: Flags>(
         &self,
         info: &MemoryAllocateInfo<C::PhysicalDevice, P, H>,
-    ) -> Result<ConcreteDeviceMemory<Config<S, P, H>>, vk::Result> {
+    ) -> Result<
+        impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
+        vk::Result,
+    > {
         check_vuids::check_vuids!(AllocateMemory);
 
         #[allow(unused_labels)]

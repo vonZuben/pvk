@@ -8,7 +8,9 @@ Represents a DeviceMemory
 
 *currently* DeviceMemory does not need to be scoped
 */
-pub trait DeviceMemory: DerefMut<Target = concrete_type::DeviceMemory<Self::Config>> {
+pub trait DeviceMemory:
+    DerefMut<Target = concrete_type::DeviceMemory<Self::Config>> + std::fmt::Debug
+{
     #[doc(hidden)]
     type Config: concrete_type::DeviceMemoryConfig<Device = Self::Device>;
     /// The *specific* Device to which this DeviceMemory belongs
