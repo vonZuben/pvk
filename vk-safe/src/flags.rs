@@ -56,7 +56,7 @@ Please check the documentation for APIs that require a `Flags` implementor.
 
 This trait is unsafe to implement because it **must** also be implemented consistently with [`Includes`] and [`Excludes`] traits.
  */
-pub unsafe trait Flags {
+pub unsafe trait Flags: Send + Sync {
     /// The specific type of flags (e.g. [MemoryPropertyFlags])
     type Type;
     /// Flags that **must** be included

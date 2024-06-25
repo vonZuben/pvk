@@ -9,13 +9,13 @@
 
 pub mod enumerate_physical_devices;
 
-use crate::scope::HandleScope;
+use super::ScopedDispatchableHandle;
 
 /** Instance handle trait
 
 Represents a *specific* Instance which has been scoped.
 */
-pub trait Instance: HandleScope<concrete_type::Instance<Self::Config>> + std::fmt::Debug {
+pub trait Instance: ScopedDispatchableHandle<concrete_type::Instance<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::InstanceConfig<Context = Self::Context>;
     /// Instance context such as the Version and Extensions being used

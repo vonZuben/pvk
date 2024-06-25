@@ -104,8 +104,9 @@ where
         Error,
     >
     where
-        D: Context + InstanceDependencies<C::Context, O>,
-        D::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<C::Context>,
+        D: Context + InstanceDependencies<C::Context, O> + Send + Sync,
+        D::Commands:
+            DestroyDevice + LoadCommands + Version + VersionCheck<C::Context> + Send + Sync,
     {
         // check version requirement
         let _ = D::Commands::VALID;

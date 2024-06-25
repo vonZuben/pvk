@@ -10,7 +10,7 @@
 use crate::dispatchable_handles::device::Device;
 use crate::flags::Flags;
 
-use std::ops::Deref;
+use super::DispatchableHandle;
 
 use vk_safe_sys as vk;
 
@@ -20,7 +20,7 @@ Represents a Queue
 
 *currently* Queue does not need to be scoped
 */
-pub trait Queue: Deref<Target = concrete_type::Queue<Self::Config>> {
+pub trait Queue: DispatchableHandle<concrete_type::Queue<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::QueueConfig<Device = Self::Device>;
     /// The *specific* Device to which this Queue belongs
@@ -42,7 +42,7 @@ pub(crate) mod concrete_type {
 
     use crate::dispatchable_handles::device::Device;
 
-    pub trait QueueConfig {
+    pub trait QueueConfig: Send + Sync {
         type Device: Device;
         type Capability: super::QueueCapability;
         fn device(&self) -> &Self::Device;
@@ -83,6 +83,9 @@ pub(crate) mod concrete_type {
         config: C,
     }
 
+    unsafe impl<C: QueueConfig> Send for Queue<C> {}
+    unsafe impl<C: QueueConfig> Sync for Queue<C> {}
+
     impl<C: QueueConfig> Queue<C> {
         pub(crate) fn new(handle: vk::Queue, config: C) -> Self {
             Self { handle, config }
@@ -102,6 +105,8 @@ pub(crate) mod concrete_type {
             self
         }
     }
+
+    impl<C: QueueConfig> super::DispatchableHandle<Queue<C>> for Queue<C> {}
 
     impl<C: QueueConfig> std::fmt::Debug for Queue<C> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

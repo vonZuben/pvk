@@ -14,13 +14,13 @@ unmap_memory;
 wait_idle;
 );
 
-use crate::scope::HandleScope;
+use super::ScopedDispatchableHandle;
 
 /** Device handle trait
 
 Represents a *specific* Device which has been scoped.
 */
-pub trait Device: HandleScope<concrete_type::Device<Self::Config>> + std::fmt::Debug {
+pub trait Device: ScopedDispatchableHandle<concrete_type::Device<Self::Config>> {
     #[doc(hidden)]
     type Config: concrete_type::DeviceConfig<
         Context = Self::Context,
@@ -51,9 +51,9 @@ pub(crate) mod concrete_type {
     use vk::context::{CommandLoadError, Context, LoadCommands};
     use vk::Version;
 
-    pub trait DeviceConfig {
+    pub trait DeviceConfig: Send + Sync {
         const VERSION: VkVersion;
-        type Context: DestroyDevice;
+        type Context: DestroyDevice + Send + Sync;
         type PhysicalDevice: PhysicalDevice;
         fn queue_config(&self) -> &[DeviceQueueCreateInfo<Self::PhysicalDevice>];
         fn queue_family_properties(&self) -> &[vk::QueueFamilyProperties];
@@ -65,6 +65,9 @@ pub(crate) mod concrete_type {
         queue_config_ref: &'a [DeviceQueueCreateInfo<'a, P>],
         queue_family_properties: &'a [vk::QueueFamilyProperties],
     }
+
+    unsafe impl<'a, C: Send, P> Send for Config<'a, C, P> {}
+    unsafe impl<'a, C: Sync, P> Sync for Config<'a, C, P> {}
 
     impl<'a, C, P> Config<'a, C, P> {
         pub(crate) fn new(
@@ -82,8 +85,8 @@ pub(crate) mod concrete_type {
 
     impl<C, P: PhysicalDevice> DeviceConfig for Config<'_, C, P>
     where
-        C: Context,
-        C::Commands: LoadCommands + DestroyDevice + Version,
+        C: Context + Send + Sync,
+        C::Commands: LoadCommands + DestroyDevice + Version + Send + Sync,
     {
         const VERSION: VkVersion = C::Commands::VERSION;
         type Context = C::Commands;
@@ -111,6 +114,9 @@ pub(crate) mod concrete_type {
         pub(crate) context: C::Context,
         pub(crate) config: C,
     }
+
+    unsafe impl<C: DeviceConfig> Send for Device<C> {}
+    unsafe impl<C: DeviceConfig> Sync for Device<C> {}
 
     impl<C: DeviceConfig> ToScope for Device<C> {}
 

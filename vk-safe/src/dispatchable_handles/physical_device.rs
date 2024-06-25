@@ -14,6 +14,8 @@ use crate::dispatchable_handles::instance::Instance;
 
 use crate::scope::{Captures, Scope, Tag};
 
+use super::ScopedDispatchableHandle;
+
 // pub mod enumerate_device_extension_properties;
 // pub mod enumerate_device_layer_properties;
 // pub mod get_physical_device_features;
@@ -36,8 +38,6 @@ get_physical_device_queue_family_properties;
 get_physical_device_sparse_image_format_properties;
 );
 
-use crate::scope::HandleScope;
-
 use concrete_type::PhysicalDeviceConfig;
 
 /** PhysicalDevice handle trait
@@ -45,7 +45,7 @@ use concrete_type::PhysicalDeviceConfig;
 Represents a *specific* PhysicalDevice which has been scoped.
 */
 pub trait PhysicalDevice:
-    HandleScope<concrete_type::PhysicalDevice<Self::Config>> + Send + Sync
+    ScopedDispatchableHandle<concrete_type::PhysicalDevice<Self::Config>> + Send + Sync
 {
     #[doc(hidden)]
     type Config: PhysicalDeviceConfig<Context = Self::Context>;
