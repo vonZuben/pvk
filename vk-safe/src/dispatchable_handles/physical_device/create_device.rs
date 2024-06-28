@@ -81,6 +81,10 @@ where
     In order to create a Device, you first define the Version and Extensions you will use with [`vk::device_context!`]. You can then create an
     [`DeviceCreateInfo`] structure along with an array of [`DeviceQueueCreateInfo`].
 
+    ### Tag
+    It is not certain at this time, in the Design of the API as a whole, if tagging the `Device` is necessary. It may be sufficient
+    to simply inherit the tag of the `PhysicalDevice`. Thus the tagging portion of the API may change in future.
+
     ```rust
     # use vk_safe::vk;
     # vk::device_context!(D: VERSION_1_0);
