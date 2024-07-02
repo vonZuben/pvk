@@ -125,7 +125,7 @@ pub(crate) mod concrete_type {
 
     impl<C: QueueConfig> std::fmt::Debug for Queue<C> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            f.debug_struct("QueueType")
+            f.debug_struct("Queue")
                 .field("handle", &self.handle)
                 .field("device", &self.config.device().deref())
                 .finish()
