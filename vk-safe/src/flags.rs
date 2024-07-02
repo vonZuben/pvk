@@ -43,6 +43,9 @@
 //! # }
 //! ```
 
+use std::cmp::Eq;
+use std::ops::{BitAnd, BitOr, BitXor};
+
 pub use vk_safe_sys::generated_vulkan::bitmask_variants::*;
 pub use vk_safe_sys::generated_vulkan::bitmasks::*;
 
@@ -58,11 +61,22 @@ This trait is unsafe to implement because it **must** also be implemented consis
  */
 pub unsafe trait Flags: Send + Sync {
     /// The specific type of flags (e.g. [MemoryPropertyFlags])
-    type Type;
+    type Type: BitAnd<Output = Self::Type>
+        + BitOr<Output = Self::Type>
+        + BitXor<Output = Self::Type>
+        + Eq
+        + Copy;
     /// Flags that **must** be included
     const INCLUDES: Self::Type;
     /// Flags that **must** be excluded
     const EXCLUDES: Self::Type;
+
+    fn satisfies(flags: Self::Type) -> bool {
+        let empty = Self::INCLUDES ^ Self::INCLUDES;
+        (Self::INCLUDES != empty)
+            && (Self::INCLUDES | flags == flags)
+            && (Self::EXCLUDES & flags == empty)
+    }
 }
 
 /// Trait that represents if flag `F` is included
