@@ -15,6 +15,7 @@ use crate::array_storage::ArrayStorage;
 use crate::dispatchable_handles::physical_device::concrete_type::Config;
 use crate::dispatchable_handles::physical_device::PhysicalDevices;
 use crate::error::Error;
+use crate::type_conversions::SafeTransmute;
 
 use crate::dispatchable_handles::instance::Instance;
 
@@ -76,6 +77,10 @@ where
 
             //enumerator_code2!
         }
+
+        // although this SafeTransmute impl seems pointless
+        // it is needed for enumerator_code2! to work in general, since most cases involve non trivial transmutes
+        unsafe impl SafeTransmute<vk::PhysicalDevice> for vk::PhysicalDevice {}
 
         let handles = enumerator_code2!(self.context.EnumeratePhysicalDevices().get_fptr(); (self.handle) -> storage)?;
         Ok(PhysicalDevices::new(handles, Config::new(self.scope_ref())))

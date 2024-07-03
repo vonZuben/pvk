@@ -37,60 +37,67 @@ impl<'a, P> ToC<*const P> for Option<&'a P> {
 }
 
 /// Represent a type that can soundly transmute into another type T
-pub(crate) unsafe trait SafeTransmute<T: ?Sized> {}
-
-/// of course all T can transmute to themselves
-unsafe impl<T: ?Sized> SafeTransmute<T> for T {}
-
-pub(crate) unsafe trait TransmuteRef<T: ?Sized> {
-    fn transmute_ref(&self) -> &T;
+///
+/// It is intended that specific wrapper types in vk-safe will
+/// implement the trait for converting to/from the raw generated
+/// types in vk-safe-sys. The default method should not be overwritten.
+///
+/// Implementations for references and slices are provided
+/// where the base types implement SafeTransmute.
+pub(crate) unsafe trait SafeTransmute<T: ?Sized> {
+    fn safe_transmute(self) -> T
+    where
+        Self: Sized,
+        T: Sized,
+    {
+        let ret = unsafe { std::mem::transmute_copy(&self) };
+        std::mem::forget(self);
+        ret
+    }
 }
 
-unsafe impl<T: ?Sized, U: ?Sized> TransmuteRef<U> for T
+unsafe impl<'a, T: ?Sized, U: ?Sized> SafeTransmute<&'a T> for &'a U
 where
-    T: SafeTransmute<U>,
+    U: SafeTransmute<T>,
 {
-    fn transmute_ref(&self) -> &U {
+    fn safe_transmute(self) -> &'a T {
         unsafe { std::mem::transmute_copy(&self) }
     }
 }
 
-/// Extension trait intended for slices.
-/// Provides the operation of transmuting a slice of U to a slice of T when safe to do so
-///
-/// This api is pretty experimental and may not all be useful
-pub(crate) unsafe trait TransmuteSlice<T> {
-    /// transmute a slice of U to a slice of T
-    fn safe_transmute_slice<'a>(&'a self) -> &'a [T];
-    /// transmute a mut slice of U to a mut slice of T
-    fn safe_transmute_slice_mut<'a>(&mut self) -> &'a mut [T];
-}
-
-unsafe impl<T, U> TransmuteSlice<T> for [U]
+unsafe impl<'a, T: ?Sized, U: ?Sized> SafeTransmute<&'a mut T> for &'a mut U
 where
     U: SafeTransmute<T>,
 {
-    fn safe_transmute_slice<'a>(&'a self) -> &'a [T] {
-        unsafe { std::mem::transmute::<&[U], &[T]>(self) }
-    }
-
-    fn safe_transmute_slice_mut<'a>(&mut self) -> &'a mut [T] {
-        unsafe { std::mem::transmute::<&mut [U], &mut [T]>(self) }
+    fn safe_transmute(self) -> &'a mut T {
+        unsafe { std::mem::transmute_copy(&self) }
     }
 }
 
-/// Like the [TransmuteSlice] but intended for a slice of MaybeUninit<U> where U: SafeTransmute<T>
-/// only raw_mut is provided since it is the only useful method for uninitialized memory
-pub(crate) unsafe trait TransmuteUninitSlice<T> {
-    /// transmute a mut slice of uninitialized U to a mut pointer T and length tuple
-    fn safe_transmute_uninit_slice(&mut self) -> *mut T;
-}
-
-unsafe impl<T, U> TransmuteUninitSlice<T> for [MaybeUninit<U>]
+unsafe impl<'a, T, U> SafeTransmute<&'a [T]> for &'a [U]
 where
     U: SafeTransmute<T>,
 {
-    fn safe_transmute_uninit_slice(&mut self) -> *mut T {
+    fn safe_transmute(self) -> &'a [T] {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+unsafe impl<'a, T, U> SafeTransmute<&'a mut [T]> for &'a mut [U]
+where
+    U: SafeTransmute<T>,
+{
+    fn safe_transmute(self) -> &'a mut [T] {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+
+/// This implementation is used in helper_macros::enumerator_code2!()
+unsafe impl<T, U> SafeTransmute<*mut T> for &mut [MaybeUninit<U>]
+where
+    U: SafeTransmute<T>,
+{
+    fn safe_transmute(self) -> *mut T {
         self.as_mut_ptr().cast()
     }
 }

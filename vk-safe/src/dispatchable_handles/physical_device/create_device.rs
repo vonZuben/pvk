@@ -49,7 +49,7 @@ use crate::dispatchable_handles::device::Device;
 use crate::scope::{Captures, HasScope, Scope, Tag};
 
 use crate::error::Error;
-use crate::type_conversions::TransmuteSlice;
+use crate::type_conversions::SafeTransmute;
 use vk_safe_sys as vk;
 
 use crate::type_conversions::transmute_slice;
@@ -1002,7 +1002,7 @@ impl<'a, Z> DeviceQueueCreateInfo<'a, Z> {
                 flags: vk::DeviceQueueCreateFlags::empty(),
                 queue_family_index: family.family_index,
                 queue_count: priorities_len,
-                p_queue_priorities: priorities.safe_transmute_slice().as_ptr(),
+                p_queue_priorities: priorities.safe_transmute().as_ptr(),
             },
             _params: PhantomData,
             _scope: PhantomData,

@@ -19,7 +19,7 @@ use crate::array_storage::ArrayStorage;
 
 use crate::error::Error;
 use crate::scope::Tag;
-use crate::type_conversions::{SafeTransmute, TransmuteRef};
+use crate::type_conversions::SafeTransmute;
 
 use vk_safe_sys as vk;
 
@@ -49,6 +49,9 @@ where
         &self,
         mut storage: A,
     ) -> Result<QueueFamilies<S, A>, Error> {
+        // although this SafeTransmute impl seems pointless
+        // it is needed for enumerator_code2! to work in general, since most cases involve non trivial transmutes
+        unsafe impl SafeTransmute<vk::QueueFamilyProperties> for vk::QueueFamilyProperties {}
         let families = enumerator_code2!(self.instance().context.GetPhysicalDeviceQueueFamilyProperties().get_fptr(); (self.handle) -> storage)?;
         Ok(QueueFamilies {
             families,
@@ -114,7 +117,7 @@ impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> std::ops::Deref for QueueFam
     type Target = QueueFamiliesRef<S>;
 
     fn deref(&self) -> &Self::Target {
-        self.families.as_ref().transmute_ref()
+        self.families.as_ref().safe_transmute()
     }
 }
 

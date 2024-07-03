@@ -17,7 +17,7 @@ macro_rules! enumerator_code2 {
         use std::convert::TryInto;
         use crate::array_storage::VulkanLenType;
         #[allow(unused)]
-        use crate::type_conversions::{ToC, TransmuteUninitSlice};
+        use crate::type_conversions::{ToC, SafeTransmute};
         let len = || {
             let mut num = 0;
             let res;
@@ -32,7 +32,7 @@ macro_rules! enumerator_code2 {
         let mut len = crate::array_storage::VulkanLenType::from_usize(uninit_slice.len());
         let res;
         unsafe {
-            res = $command($($param.to_c(),)* &mut len, uninit_slice.safe_transmute_uninit_slice());
+            res = $command($($param.to_c(),)* &mut len, uninit_slice.safe_transmute());
             check_raw_err!(res);
         }
         let ret: Result<_, crate::error::Error> = Ok($storage.finalize(len.to_usize()));
