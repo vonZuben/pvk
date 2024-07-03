@@ -121,7 +121,10 @@ fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSIO
     let mut queue_configs = vec![];
     let priorities = [vk::QueuePriority::default(); 10];
     for p in queue_family_properties.properties_iter(families_tag) {
-        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+        use vk::queue_flag_bits::*;
+        if p.queue_flags
+            .contains(GRAPHICS_BIT | COMPUTE_BIT | TRANSFER_BIT)
+        {
             queue_configs.push(
                 vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),
             )
@@ -131,9 +134,7 @@ fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSIO
     let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
     vk::tag!(dt);
-    let device = pd
-        .create_device(&device_create_info, &queue_family_properties, dt)
-        .unwrap();
+    let device = pd.create_device(&device_create_info, dt).unwrap();
 
     println!("--Example Device handle--");
     println!("{device:#?}");
@@ -153,16 +154,15 @@ fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSIO
 
     let _memory = device.unmap_memory(mapped_memory);
 
-    for qf in device.get_configured_queue_families() {
-        println!("--Queue family that was configured during device creation--");
-        println!("queue family: {:#?}", qf);
+    vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
+    for queue_config in queue_configs {
+        let queue_family = device
+            .get_queue_family(&queue_config, &queue_family_properties, QCaps)
+            .unwrap();
+        println!("Configured Queue Family: {:#?}", queue_family);
 
-        vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
-        let qf = qf.with_capability(QCaps).unwrap();
-
-        let queue = qf.get_queue(0);
-        println!("--Example Queue handle--");
-        println!("{queue:#?}");
+        let queue = queue_family.get_device_queue(0).unwrap();
+        println!("Queue: {:#?}", queue);
     }
 
     unsafe {

@@ -30,11 +30,14 @@ pub trait Device: ScopedDispatchableHandle<concrete_type::Device<Self::Config>> 
     type Config: concrete_type::DeviceConfig<
         Context = Self::Context,
         PhysicalDevice = Self::PhysicalDevice,
+        QueueConfig = Self::QueueConfig,
     >;
     /// The *specific* PhysicalDevice from which this logical Device was created
     type PhysicalDevice;
     /// Device context such as the Version and Extensions being used
     type Context;
+    /// Tag of the parameters used to configure the Queues for this Device
+    type QueueConfig;
 }
 
 #[cfg(doc)]
@@ -52,9 +55,7 @@ pub(crate) mod concrete_type {
 
     use std::marker::PhantomData;
 
-    use crate::dispatchable_handles::physical_device::{
-        create_device::DeviceQueueCreateInfo, PhysicalDevice,
-    };
+    use crate::dispatchable_handles::physical_device::PhysicalDevice;
     use crate::scope::{Scope, SecretScope};
     use crate::type_conversions::ToC;
     use crate::VkVersion;
@@ -68,35 +69,29 @@ pub(crate) mod concrete_type {
         const VERSION: VkVersion;
         type Context: DestroyDevice + Send + Sync;
         type PhysicalDevice: PhysicalDevice;
-        fn queue_config(&self) -> &[DeviceQueueCreateInfo<Self::PhysicalDevice>];
-        fn queue_family_properties(&self) -> &[vk::QueueFamilyProperties];
+        type QueueConfig;
     }
 
-    pub struct Config<'a, C, P> {
+    pub struct Config<C, P, Z> {
         context: PhantomData<C>,
         physical_device: PhantomData<P>,
-        queue_config_ref: &'a [DeviceQueueCreateInfo<'a, P>],
-        queue_family_properties: &'a [vk::QueueFamilyProperties],
+        queue_config: PhantomData<Z>,
     }
 
-    unsafe impl<'a, C: Send, P> Send for Config<'a, C, P> {}
-    unsafe impl<'a, C: Sync, P> Sync for Config<'a, C, P> {}
+    unsafe impl<C: Send, P, Z> Send for Config<C, P, Z> {}
+    unsafe impl<C: Sync, P, Z> Sync for Config<C, P, Z> {}
 
-    impl<'a, C, P> Config<'a, C, P> {
-        pub(crate) fn new(
-            queue_config_ref: &'a [DeviceQueueCreateInfo<'a, P>],
-            queue_family_properties: &'a [vk::QueueFamilyProperties],
-        ) -> Self {
+    impl<C, P, Z> Config<C, P, Z> {
+        pub(crate) fn new() -> Self {
             Self {
                 context: PhantomData,
                 physical_device: PhantomData,
-                queue_config_ref,
-                queue_family_properties,
+                queue_config: PhantomData,
             }
         }
     }
 
-    impl<C, P: PhysicalDevice> DeviceConfig for Config<'_, C, P>
+    impl<C, P: PhysicalDevice, Z> DeviceConfig for Config<C, P, Z>
     where
         C: Context + Send + Sync,
         C::Commands: LoadCommands + DestroyDevice + Version + Send + Sync,
@@ -104,14 +99,7 @@ pub(crate) mod concrete_type {
         const VERSION: VkVersion = C::Commands::VERSION;
         type Context = C::Commands;
         type PhysicalDevice = P;
-
-        fn queue_config(&self) -> &[DeviceQueueCreateInfo<P>] {
-            self.queue_config_ref
-        }
-
-        fn queue_family_properties(&self) -> &[vk::QueueFamilyProperties] {
-            self.queue_family_properties
-        }
+        type QueueConfig = Z;
     }
 
     pub type ScopedDevice<S, C> = SecretScope<S, Device<C>>;
@@ -120,12 +108,12 @@ pub(crate) mod concrete_type {
         type Config = C;
         type PhysicalDevice = C::PhysicalDevice;
         type Context = C::Context;
+        type QueueConfig = C::QueueConfig;
     }
 
     pub struct Device<C: DeviceConfig> {
         pub(crate) handle: vk::Device,
         pub(crate) context: C::Context,
-        pub(crate) config: C,
     }
 
     unsafe impl<C: DeviceConfig> Send for Device<C> {}
@@ -146,13 +134,12 @@ pub(crate) mod concrete_type {
     {
         pub(crate) fn load_commands(
             handle: vk::Device,
-            config: C,
+            _config: C,
         ) -> Result<Self, CommandLoadError> {
             let loader = |command_name| unsafe { vk::GetDeviceProcAddr(handle, command_name) };
             Ok(Self {
                 handle,
                 context: C::Context::load(loader)?,
-                config,
             })
         }
     }

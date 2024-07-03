@@ -9,17 +9,30 @@ use the [`create_device`](ScopedPhysicalDevice::create_device) method on a scope
 ```rust
 # use vk_safe::vk;
 vk::device_context!(DeviceContext: VERSION_1_0);
-# fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>, S>
-#   (physical_device: P, queue_config: [vk::DeviceQueueCreateInfo<P>;1]) {
-let queue_family_properties = physical_device
-    .get_physical_device_queue_family_properties(Vec::new())
-    .unwrap();
-// let queue_config = TODO
+
+# fn tst<P: vk::PhysicalDevice<Context: vk::instance::VERSION_1_0>>
+#   (physical_device: P, queue_family_properties: &vk::QueueFamiliesRef<P>) -> Option<()> {
+vk::tag!(families_tag);
+let mut queue_config = None;
+
+// only going to create one Queue
+let priority = [vk::QueuePriority::default()];
+for p in queue_family_properties.properties_iter(families_tag) {
+    use vk::queue_flag_bits::*;
+    // find first QueueFamily with Graphics
+    if p.queue_flags.contains(GRAPHICS_BIT) {
+        queue_config = Some(vk::DeviceQueueCreateInfo::new(&priority, p).unwrap());
+        break;
+    }
+}
+
+let queue_config = [queue_config?];
 let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_config);
 
 vk::tag!(tag);
-let device = physical_device.create_device(&device_create_info, &queue_family_properties, tag)
+let device = physical_device.create_device(&device_create_info, tag)
     .unwrap();
+# Some(())
 # }
 ```
 
@@ -28,12 +41,12 @@ Vulkan docs:
 */
 
 use super::concrete_type::ScopedPhysicalDevice;
-use super::get_physical_device_queue_family_properties::{QueueFamiliesRef, QueueFamilyProperties};
+use super::get_physical_device_queue_family_properties::QueueFamilyProperties;
 use super::PhysicalDevice;
 use super::PhysicalDeviceConfig;
 use crate::dispatchable_handles::device::concrete_type::{self, Config};
 use crate::dispatchable_handles::device::Device;
-use crate::scope::{Captures, Scope, Tag};
+use crate::scope::{Captures, HasScope, Scope, Tag};
 
 use crate::error::Error;
 use crate::type_conversions::TransmuteSlice;
@@ -88,23 +101,19 @@ where
     ```rust
     # use vk_safe::vk;
     # vk::device_context!(D: VERSION_1_0);
-    # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
-    #   (physical_device: P, create_info: &vk::DeviceCreateInfo<D, P>, queue_properties: &vk::QueueFamiliesRef<P>) {
+    # fn tst<P: vk::PhysicalDevice<Context: vk::instance::VERSION_1_0>, T>
+    #   (physical_device: P, create_info: &vk::DeviceCreateInfo<D, (P, T)>, queue_properties: &vk::QueueFamiliesRef<P>) {
     vk::tag!(tag);
-    let device = physical_device.create_device(create_info, queue_properties, tag).unwrap();
+    let device = physical_device.create_device(create_info, tag).unwrap();
     # }
     ```
     */
-    pub fn create_device<'a, 't, D, O>(
+    pub fn create_device<'t, D, O, Z: HasScope<S>>(
         &self,
-        create_info: &DeviceCreateInfo<'a, D, S>,
-        queue_properties: &'a QueueFamiliesRef<S>,
+        create_info: &DeviceCreateInfo<D, Z>,
         tag: Tag<'t>,
     ) -> Result<
-        impl Device<Context = D::Commands, PhysicalDevice = S>
-            + Captures<Tag<'t>>
-            + Captures<&'a QueueFamiliesRef<S>>
-            + Captures<&'a [DeviceQueueCreateInfo<S>]>,
+        impl Device<Context = D::Commands, PhysicalDevice = S, QueueConfig = Z> + Captures<Tag<'t>>,
         Error,
     >
     where
@@ -193,14 +202,7 @@ where
             Ok(Scope::from_tag(
                 concrete_type::Device::load_commands(
                     device.assume_init(),
-                    Config::<D, S>::new(
-                        std::slice::from_raw_parts(
-                            create_info.inner.p_queue_create_infos,
-                            create_info.inner.queue_create_info_count.try_into()?,
-                        )
-                        .safe_transmute_slice(),
-                        queue_properties,
-                    ),
+                    Config::<D, S, Z>::new(),
                 )?,
                 tag,
             ))
@@ -213,11 +215,11 @@ where
 /// To be used with [`create_device`](ScopedPhysicalDevice::create_device)
 ///
 /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDeviceCreateInfo.html>
-pub struct DeviceCreateInfo<'a, C, S> {
+pub struct DeviceCreateInfo<'a, C, Z> {
     pub(crate) inner: vk::DeviceCreateInfo,
     _config: PhantomData<C>,
     _refs: PhantomData<&'a ()>,
-    _scope: PhantomData<S>,
+    _queue_scope: PhantomData<Z>,
 }
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
@@ -225,11 +227,11 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
     ///
     /// Requires context from [`vk::device_context!`] (which expresses the core version and
     /// extensions to use) and an array of [`DeviceQueueCreateInfo`], each element of which
-    /// signifies a Queue to be created with the Device.
-    pub fn new<C: Extensions + Context, S>(
+    /// signifies a [`Queue`](crate::vk::Queue) to be created with the Device.
+    pub fn new<C: Extensions + Context, Z>(
         context: C,
-        queue_create_info: &'a [DeviceQueueCreateInfo<S>],
-    ) -> DeviceCreateInfo<'a, C, S>
+        queue_create_info: &'a [DeviceQueueCreateInfo<Z>],
+    ) -> DeviceCreateInfo<'a, C, Z>
     where
         C::Commands: Version,
     {
@@ -824,7 +826,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
             },
             _config: PhantomData,
             _refs: PhantomData,
-            _scope: PhantomData,
+            _queue_scope: PhantomData,
         }
     }
 }
@@ -834,9 +836,11 @@ input_struct_wrapper!(
 ///
 /// When creating a [`Device`], this struct provides
 /// information about the Queues to be created therewith.
-DeviceQueueCreateInfo);
+DeviceQueueCreateInfo
+impl Deref
+);
 
-impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
+impl<Z> fmt::Debug for DeviceQueueCreateInfo<'_, Z> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DeviceQueueCreateInfo")
             .field("flags", &self.inner.flags)
@@ -848,7 +852,14 @@ impl<S> fmt::Debug for DeviceQueueCreateInfo<'_, S> {
     }
 }
 
-impl<'a, S> DeviceQueueCreateInfo<'a, S> {
+enum_error!(
+    pub enum DeviceQueueCreateInfoError {
+        TooManyQueues,
+        ZeroIsInvalid,
+    }
+);
+
+impl<'a, Z> DeviceQueueCreateInfo<'a, Z> {
     array!(queue_priorities, p_queue_priorities, queue_count, f32);
 
     /// Create DeviceQueueCreateInfo
@@ -856,17 +867,16 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
     /// When creating a [`Device`], create
     /// `priorities.len()` number of Queues, with respective
     /// priorities. **Must** create at least one Queue.
-    ///
-    /// # Panic
-    /// `priorities` must have a `len >= 1`. This function panic if
-    /// `priorities.len() < 1`
-    pub fn new<Q>(
+    pub fn new(
         priorities: &'a [QueuePriority],
-        family: QueueFamilyProperties<(S, Q)>,
-    ) -> Result<Self, Error> {
+        family: QueueFamilyProperties<Z>,
+    ) -> Result<Self, DeviceQueueCreateInfoError> {
         check_vuids::check_vuids!(DeviceQueueCreateInfo);
 
-        let priorities_len: u32 = priorities.len().try_into()?;
+        let priorities_len: u32 = priorities
+            .len()
+            .try_into()
+            .map_err(|_| DeviceQueueCreateInfoError::TooManyQueues)?;
 
         #[allow(unused_labels)]
         'VUID_VkDeviceQueueCreateInfo_queueFamilyIndex_00381: {
@@ -886,7 +896,9 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
             "structure, as returned by vkGetPhysicalDeviceQueueFamilyProperties in the pQueueFamilyProperties[queueFamilyIndex]"
             }
 
-            assert!(priorities_len <= family.queue_count)
+            if priorities_len > family.queue_count {
+                Err(DeviceQueueCreateInfoError::TooManyQueues)?
+            }
         }
 
         #[allow(unused_labels)]
@@ -978,7 +990,9 @@ impl<'a, S> DeviceQueueCreateInfo<'a, S> {
             "queueCount must be greater than 0"
             }
 
-            assert!(priorities.len() > 0);
+            if priorities.len() == 0 {
+                Err(DeviceQueueCreateInfoError::ZeroIsInvalid)?
+            }
         }
 
         Ok(Self {

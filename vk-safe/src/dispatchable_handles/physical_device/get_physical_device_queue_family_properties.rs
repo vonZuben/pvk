@@ -162,13 +162,13 @@ impl<S> std::ops::Deref for QueueFamiliesRef<S> {
 }
 
 /// An iterator over QueueFamilyProperties
-pub struct QueueFamilyIter<'a, S> {
+pub struct QueueFamilyIter<'a, Z> {
     iter: std::iter::Enumerate<std::slice::Iter<'a, vk::QueueFamilyProperties>>,
-    _scope: PhantomData<S>,
+    _scope: PhantomData<Z>,
 }
 
-impl<'a, S> Iterator for QueueFamilyIter<'a, S> {
-    type Item = QueueFamilyProperties<'a, S>;
+impl<'a, Z> Iterator for QueueFamilyIter<'a, Z> {
+    type Item = QueueFamilyProperties<'a, Z>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let (index, properties) = self.iter.next()?;
@@ -190,13 +190,13 @@ impl<'a, S> Iterator for QueueFamilyIter<'a, S> {
 /// A `tag` is needed to ensure that all `QueueFamilyProperties`
 /// are related to the same collection. They are also
 /// not Copy/Clone to ensure each one can only be used once.
-pub struct QueueFamilyProperties<'a, S> {
+pub struct QueueFamilyProperties<'a, Z> {
     properties: &'a vk::QueueFamilyProperties,
     pub family_index: u32,
-    _scope: PhantomData<S>,
+    _scope: PhantomData<Z>,
 }
 
-impl<S> std::ops::Deref for QueueFamilyProperties<'_, S> {
+impl<Z> std::ops::Deref for QueueFamilyProperties<'_, Z> {
     type Target = vk::QueueFamilyProperties;
 
     fn deref(&self) -> &Self::Target {
