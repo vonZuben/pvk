@@ -7,10 +7,19 @@
 //! <https://registry.khronos.org/vulkan/specs/1.3-extensions/html/chap5.html#devsandqueues-devices>
 
 pub_export_modules!(
+#[cfg(VK_VERSION_1_0)]
 allocate_memory;
+
+#[cfg(VK_VERSION_1_0)]
 get_device_queue;
+
+#[cfg(VK_VERSION_1_0)]
 map_memory;
+
+#[cfg(VK_VERSION_1_0)]
 unmap_memory;
+
+#[cfg(VK_VERSION_1_0)]
 wait_idle;
 );
 

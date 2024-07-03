@@ -26,15 +26,35 @@ use super::ScopedDispatchableHandle;
 // pub mod get_physical_device_queue_family_properties;
 // pub mod get_physical_device_sparse_image_format_properties;
 
-pub_export_modules!(create_device;
+pub_export_modules!(
+#[cfg(VK_VERSION_1_0)]
+create_device;
+
+#[cfg(VK_VERSION_1_0)]
 enumerate_device_extension_properties;
+
+#[cfg(VK_VERSION_1_0)]
 enumerate_device_layer_properties;
+
+#[cfg(VK_VERSION_1_0)]
 get_physical_device_features;
+
+#[cfg(VK_VERSION_1_0)]
 get_physical_device_format_properties;
+
+#[cfg(VK_VERSION_1_0)]
 get_physical_device_image_format_properties;
+
+#[cfg(VK_VERSION_1_0)]
 get_physical_device_memory_properties;
+
+#[cfg(VK_VERSION_1_0)]
 get_physical_device_properties;
+
+#[cfg(VK_VERSION_1_0)]
 get_physical_device_queue_family_properties;
+
+#[cfg(VK_VERSION_1_0)]
 get_physical_device_sparse_image_format_properties;
 );
 

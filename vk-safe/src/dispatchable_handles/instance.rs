@@ -7,7 +7,10 @@
 //! Vulkan doc:
 //! <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html>
 
-pub mod enumerate_physical_devices;
+pub_export_modules!(
+#[cfg(VK_VERSION_1_0)]
+enumerate_physical_devices;
+);
 
 use super::ScopedDispatchableHandle;
 

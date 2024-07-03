@@ -244,8 +244,16 @@ macro_rules! bitmask {
 }
 
 macro_rules! pub_export_modules {
-    ( $( $name:ident );* $(;)? ) => {
-        $( pub mod $name; )*
+    (
+        $(
+            $(#[$($attributes:tt)*])*
+            $name:ident
+        );* $(;)?
+    ) => {
+        $(
+            $(#[$($attributes)*])*
+            pub mod $name;
+        )*
 
         pub(crate) mod export {
             $( #[allow(unused_imports)] pub use super::$name::*; )*
