@@ -260,6 +260,15 @@ impl<S, T> std::ops::Deref for SecretScope<S, T> {
     }
 }
 
+/// Used for checking if a composite Scope type includes a specific scope
+#[doc(hidden)]
+pub trait HasScope<S> {}
+
+/// useful when multiple tags/scopes are relevant to a type, but
+/// we do not want to complicate the type with too many generic
+/// type parameters.
+impl<S, T> HasScope<S> for (S, T) {}
+
 //===============================
 // traits to abstract over scoped objects
 
