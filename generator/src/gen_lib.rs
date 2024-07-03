@@ -9,6 +9,8 @@ use std::{
     process::{Command, Stdio},
 };
 
+use crate::Generator;
+
 use krs_quote::krs_quote;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
@@ -87,9 +89,8 @@ macro_rules! make_rs_files {
     };
 }
 
-pub fn generate_library(out_dir: &Path, vk_xml: &Path) -> Result<()> {
+pub fn generate_library(out_dir: &Path, code: &Generator) -> Result<()> {
     make_output_directory(&out_dir)?;
-    let code = crate::parse_vk_xml(vk_xml);
     code_parts!(make_rs_files() code, out_dir,);
     make_lib_file(&out_dir)
 }

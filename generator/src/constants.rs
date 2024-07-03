@@ -6,19 +6,19 @@ use crate::ctype::{self, Visibility};
 use crate::vk_parse_visitor;
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Constant3<'a> {
+pub struct Constant3 {
     name: VkTyName,
     ty: ctype::Ctype,
-    val: ConstValue2<'a>,
+    val: ConstValue2,
     visibility: Visibility,
     target: Option<VkTyName>,
 }
 
-impl<'a> Constant3<'a> {
+impl Constant3 {
     pub fn new(
         name: impl Into<VkTyName>,
         ty: ctype::Ctype,
-        val: ConstValue2<'a>,
+        val: ConstValue2,
         target: Option<VkTyName>,
     ) -> Self {
         let name = name.into();
@@ -51,7 +51,7 @@ impl<'a> Constant3<'a> {
     }
 }
 
-impl krs_quote::ToTokens for Constant3<'_> {
+impl krs_quote::ToTokens for Constant3 {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let ty = &self.ty;
@@ -77,24 +77,24 @@ pub enum ConstantContext {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct ConstValue2<'a> {
-    value: ValueKind<'a>,
+pub struct ConstValue2 {
+    value: ValueKind,
     context: ConstantContext,
 }
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub enum ValueKind<'a> {
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum ValueKind {
     Offset(i64, Negate2),
-    Text(&'a str),
+    Text(String),
     Enumref(VkTyName, Option<VkTyName>),
     Number(i32),
-    Hex(&'a str),
+    Hex(String),
     Bitpos(u32),
-    Cexpr(&'a str),
+    Cexpr(String),
 }
 
-impl<'a> ConstValue2<'a> {
-    pub fn type_of(&self, constant_ref_map: &VecMap<VkTyName, Constant3<'a>>) -> ctype::Ctype {
+impl ConstValue2 {
+    pub fn type_of(&self, constant_ref_map: &VecMap<VkTyName, Constant3>) -> ctype::Ctype {
         use ctype::Ctype;
         use ValueKind::*;
         match self.value {
@@ -109,7 +109,7 @@ impl<'a> ConstValue2<'a> {
             Number(_) => Ctype::new("usize"),
             Hex(_) => Ctype::new("usize"),
             Bitpos(_) => Ctype::new("Flags"),
-            Cexpr(cexpr) => match cexpr {
+            Cexpr(ref cexpr) => match cexpr {
                 e if e.contains("ULL") => Ctype::new("u64"),
                 e if e.contains("U") => Ctype::new("u32"),
                 e if e.contains("f") || e.contains("F") => Ctype::new("f32"),
@@ -119,7 +119,7 @@ impl<'a> ConstValue2<'a> {
     }
 
     pub fn from_vk_parse(
-        ex: vk_parse_visitor::VkParseEnumConstant<'a>,
+        ex: vk_parse_visitor::VkParseEnumConstant,
         context: ConstantContext,
         target: Option<VkTyName>,
     ) -> Self {
@@ -165,19 +165,19 @@ impl<'a> ConstValue2<'a> {
                     // TODO: in future, if I remove vkxml entirely, then this can just keep the quotes as part of the value rather than removing them
                     // TODO: vkxml is now removed. Is there some optimization possible now?
                     ConstValue2 {
-                        value: ValueKind::Text(&value[1..value.len() - 1]),
+                        value: ValueKind::Text(value[1..value.len() - 1].to_string()),
                         context,
                     }
                 } else if value.starts_with("0x") {
                     // probably a hex value
                     ConstValue2 {
-                        value: ValueKind::Hex(&value[2..]),
+                        value: ValueKind::Hex(value[2..].to_string()),
                         context,
                     }
                 } else {
                     // assume Cexpr
                     ConstValue2 {
-                        value: ValueKind::Cexpr(value),
+                        value: ValueKind::Cexpr(value.to_string()),
                         context,
                     }
                 }
@@ -194,15 +194,15 @@ impl<'a> ConstValue2<'a> {
                 Negate2::False => calculated.to_string().as_code(),
                 Negate2::True => format!("-{}", calculated).as_code(),
             },
-            Text(text) => krs_quote::Token::str_as_token(text).into(),
+            Text(ref text) => krs_quote::Token::str_as_token(text).into(),
             Enumref(enumref, target) => match target {
                 Some(target) => crate::enumerations::make_variant_name(&target, &enumref).as_code(),
                 None => enumref.as_code(),
             },
             Number(num) => num.to_string().as_code(),
-            Hex(hex) => format!("0x{:0>8}", hex).as_code(),
+            Hex(ref hex) => format!("0x{:0>8}", hex).as_code(),
             Bitpos(bitpos) => format!("0x{:0>8X}", (1u64 << bitpos)).as_code(),
-            Cexpr(cexpr) => cexpr
+            Cexpr(ref cexpr) => cexpr
                 .replace("ULL", "")
                 .replace("U", "")
                 .replace("~", "!")
@@ -213,11 +213,11 @@ impl<'a> ConstValue2<'a> {
     }
 }
 
-impl krs_quote::ToTokens for ConstValue2<'_> {
+impl krs_quote::ToTokens for ConstValue2 {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let value = self.value();
 
-        match (self.context, self.value) {
+        match (self.context, &self.value) {
             (ConstantContext::Enum, ValueKind::Enumref(..)) => {
                 krs_quote_with!(tokens <- Self::{@value} )
             }

@@ -41,8 +41,9 @@ fn command_type(command: &vk_parse::CommandDefinition) -> CommandType {
     }
 }
 
+/// Generator parses a vkxml registry and generates Rust code for Vulkan
 #[derive(Default)]
-pub struct Generator<'a> {
+pub struct Generator {
     // metadata
     // when generating commands to load per feature, we use this to determine command_types
     command_types: HashMap<utils::VkTyName, CommandType>,
@@ -52,16 +53,16 @@ pub struct Generator<'a> {
 
     // code generation
     definitions: definitions::Definitions2,
-    constants: VecMap<utils::VkTyName, constants::Constant3<'a>>,
+    constants: VecMap<utils::VkTyName, constants::Constant3>,
     // this includes all things traditionally considered enumerations, and things that are additionally considered as bitflags/bitmasks
-    enum_collection: enumerations::EnumVariantsCollection<'a>,
+    enum_collection: enumerations::EnumVariantsCollection,
     commands: commands::Commands2,
     feature_collection: features::FeatureCollection,
     extensions: extensions::ExtensionCollection,
     aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
 }
 
-impl<'a> Generator<'a> {
+impl Generator {
     fn get_command_type(&self, cmd: &str) -> Option<CommandType> {
         let cmd = utils::VkTyName::new(cmd);
         match self.command_types.get(&cmd) {
@@ -88,6 +89,7 @@ impl<'a> Generator<'a> {
         krs_quote!({@static_code}).to_string()
     }
 
+    /// Vulkan related traits
     pub fn vulkan_traits(&self) -> String {
         let commands_trait = crate::traits::VulkanCommand;
         krs_quote!(
@@ -96,71 +98,89 @@ impl<'a> Generator<'a> {
         .to_string()
     }
 
+    /// C style type aliases
     pub fn c_type_defs(&self) -> String {
         let c_type_defs = &self.definitions.type_defs;
         krs_quote!({@* {@c_type_defs} }).to_string()
     }
 
+    /// Vulkan bitmasks (generated as Rust structs with associated constant values)
     pub fn bitmasks(&self) -> String {
         let bitmasks = &self.definitions.bitmasks;
         krs_quote!({@* {@bitmasks} }).to_string()
     }
 
+    /// The associated constant values for the bitmask structs
     pub fn bitmask_variants(&self) -> String {
         let flag_variants = enumerations::Flags::new(&self.enum_collection);
         krs_quote!({@flag_variants}).to_string()
     }
 
+    /// C style struct definitions
     pub fn structs(&self) -> String {
         let structs = &self.definitions.structs;
         krs_quote!({@structs}).to_string()
     }
 
+    /// C style union definitions
     pub fn unions(&self) -> String {
         let unions = &self.definitions.unions;
         krs_quote!({@* {@unions} }).to_string()
     }
 
+    /// Vulkan handle types
     pub fn handles(&self) -> String {
         let handles = &self.definitions.handles;
         krs_quote!({@* {@handles} }).to_string()
     }
 
+    /// Vulkan enum types (generated as Rust structs with associated constant values)
     pub fn enumerations(&self) -> String {
         let enumerations = &self.definitions.enumerations;
         krs_quote!({@* {@enumerations} }).to_string()
     }
 
+    /// The associated constant values for the enum structs
     pub fn enum_variants(&self) -> String {
         let enum_variants = enumerations::Enumerations::new(&self.enum_collection);
         krs_quote!({@enum_variants}).to_string()
     }
 
+    /// Vulkan function pointers for some specific niche stuff
     pub fn function_pointers(&self) -> String {
         let function_pointers = &self.definitions.function_pointers;
         krs_quote!({@* {@function_pointers} }).to_string()
     }
 
+    /// Vulkan defined constants
     pub fn constants(&self) -> String {
         let constants = self.constants.iter();
         krs_quote!({@* {@constants} }).to_string()
     }
 
+    /// Vulkan commands which are provided under difference features (Base versions) and extensions
     pub fn commands(&self) -> String {
         let commands = &self.commands;
         krs_quote!({@commands}).to_string()
     }
 
+    /// Vulkan features (Base Version)
     pub fn versions(&self) -> String {
         let versions = &self.feature_collection;
         krs_quote!({@versions}).to_string()
     }
 
+    /// Vulkan extensions
     pub fn extensions(&self) -> String {
         let extensions = &self.extensions;
         krs_quote!({@extensions}).to_string()
     }
 
+    /// type aliases
+    ///
+    /// (generally for stuff that gets promoted from an
+    /// extension to a core version, which causes the name
+    /// to change slightly)
     pub fn aliases(&self) -> String {
         let aliases = self.aliases.iter();
         krs_quote!({@* {@aliases} }).to_string()
@@ -171,7 +191,7 @@ impl<'a> Generator<'a> {
 // vk_parse
 // =================================================================
 
-impl<'a> VisitVkParse<'a> for Generator<'a> {
+impl<'a> VisitVkParse<'a> for Generator {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str) {
         if name.contains("FlagBits") {
             return;

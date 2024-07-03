@@ -16,6 +16,8 @@ mod code_parts;
 
 mod sdk;
 
+use generator::Generator;
+
 use sdk::vk_xml_path;
 
 /// This program will output the generated code to stdout, or to a single file if a file name is provided
@@ -57,7 +59,7 @@ fn prelude() -> String {
     .to_string()
 }
 
-fn write_stdout(code: &generator::Code) {
+fn write_stdout(code: &Generator) {
     print!("{}", prelude());
     macro_rules! print_code_parts {
         ( $($module:ident,)* ) => {
@@ -68,7 +70,7 @@ fn write_stdout(code: &generator::Code) {
 }
 
 /// output to file
-fn create_file(out_path: &Path, code: &generator::Code) -> Result<(), Box<dyn std::error::Error>> {
+fn create_file(out_path: &Path, code: &Generator) -> Result<(), Box<dyn std::error::Error>> {
     let formatter = Command::new("rustfmt")
         .args(&["--emit", "stdout"])
         .stdin(Stdio::piped())
@@ -79,7 +81,10 @@ fn create_file(out_path: &Path, code: &generator::Code) -> Result<(), Box<dyn st
     let byte_iter = prelude.as_bytes().iter();
     macro_rules! collect_code_parts {
         ( $to:ident $($module:ident,)* ) => {
-            $( let $to = $to.chain(code.$module().as_bytes()); )*
+            $(
+                let module = code.$module();
+                let $to = $to.chain(module.as_bytes());
+            )*
         };
     }
     code_parts!(collect_code_parts() byte_iter);

@@ -5,14 +5,14 @@ use crate::utils::{self, VkTyName};
 use crate::constants;
 
 #[derive(Default)]
-pub struct EnumVariantsCollection<'a> {
-    enum_variants: utils::VecMap<utils::VkTyName, EnumVariants<'a>>,
+pub struct EnumVariantsCollection {
+    enum_variants: utils::VecMap<utils::VkTyName, EnumVariants>,
 }
 
-pub struct Enumerations<'a>(&'a EnumVariantsCollection<'a>);
+pub struct Enumerations<'a>(&'a EnumVariantsCollection);
 
 impl<'a> Enumerations<'a> {
-    pub fn new(collection: &'a EnumVariantsCollection<'a>) -> Self {
+    pub fn new(collection: &'a EnumVariantsCollection) -> Self {
         Self(collection)
     }
 }
@@ -40,10 +40,10 @@ impl krs_quote::ToTokens for Enumerations<'_> {
     }
 }
 
-pub struct Flags<'a>(&'a EnumVariantsCollection<'a>);
+pub struct Flags<'a>(&'a EnumVariantsCollection);
 
 impl<'a> Flags<'a> {
-    pub fn new(collection: &'a EnumVariantsCollection<'a>) -> Self {
+    pub fn new(collection: &'a EnumVariantsCollection) -> Self {
         Self(collection)
     }
 }
@@ -71,27 +71,27 @@ impl krs_quote::ToTokens for Flags<'_> {
     }
 }
 
-impl<'a> std::ops::Deref for EnumVariantsCollection<'a> {
-    type Target = utils::VecMap<utils::VkTyName, EnumVariants<'a>>;
+impl<'a> std::ops::Deref for EnumVariantsCollection {
+    type Target = utils::VecMap<utils::VkTyName, EnumVariants>;
 
     fn deref(&self) -> &Self::Target {
         &self.enum_variants
     }
 }
 
-impl<'a> std::ops::DerefMut for EnumVariantsCollection<'a> {
+impl<'a> std::ops::DerefMut for EnumVariantsCollection {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.enum_variants
     }
 }
 
-struct FlagBitTypes<'a>(&'a EnumVariants<'a>);
+struct FlagBitTypes<'a>(&'a EnumVariants);
 
 impl krs_quote::ToTokens for FlagBitTypes<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let target = self.0.target;
         let variants = self.0.variants.iter().map(|c| {
-            struct Variant<'a>(&'a constants::Constant3<'a>);
+            struct Variant<'a>(&'a constants::Constant3);
             impl krs_quote::ToTokens for Variant<'_> {
                 fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
                     let name = self.0.name();
@@ -144,13 +144,13 @@ impl krs_quote::ToTokens for ModName {
     }
 }
 
-pub struct EnumVariants<'a> {
+pub struct EnumVariants {
     target: VkTyName,
     kind: EnumKind,
-    variants: utils::VecMap<VkTyName, crate::constants::Constant3<'a>>,
+    variants: utils::VecMap<VkTyName, crate::constants::Constant3>,
 }
 
-impl<'a> EnumVariants<'a> {
+impl EnumVariants {
     pub fn new(target: impl Into<VkTyName>, kind: EnumKind) -> Self {
         let target = target.into();
         Self {
@@ -160,7 +160,7 @@ impl<'a> EnumVariants<'a> {
         }
     }
 
-    pub fn push_variant_once(&mut self, variant: constants::Constant3<'a>) {
+    pub fn push_variant_once(&mut self, variant: constants::Constant3) {
         let name = *variant.name();
         match self.variants.get(name) {
             // the vulkan spec includes redundant enum definitions
@@ -171,7 +171,7 @@ impl<'a> EnumVariants<'a> {
     }
 }
 
-impl krs_quote::ToTokens for EnumVariants<'_> {
+impl krs_quote::ToTokens for EnumVariants {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let target = self.target;
         let target_string = utils::ctype_to_rtype(self.target.as_str());

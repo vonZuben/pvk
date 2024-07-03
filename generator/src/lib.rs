@@ -49,43 +49,14 @@ pub mod sdk;
 
 pub use utils::VecMap;
 
+pub use code_generator::Generator;
+
 use std::fs::File;
 use std::io::Read;
 use std::{ffi::OsStr, path::Path};
 
-macro_rules! make_code_type {
-    ( $($param:ident,)* ) => {
-        /**
-        The generated code
-
-        Provides methods for obtaining different parts of the code as &str
-
-        The generated code is mostly unformatted (there are newlines in some places to make
-        it easier to read even without rustfmt; based on how [krs_quote] works). However,
-        running rustfmt is still recommended if the output is for humans.
-
-        Generated code removes the "Vk" prefixes since the code can be imbedded in a crate
-        and used as vk to provide e.g. vk::Instance.
-        */
-        pub struct Code {
-            $($param: String),*
-        }
-
-        impl Code {
-            $(
-                /// get subject code part
-                pub fn $param(&self) -> &str {
-                    &self.$param
-                }
-            )*
-        }
-    };
-}
-
-code_parts!(make_code_type(;));
-
 /// Parse a xk.xml at the provided path, and provide the generated [Code]
-pub fn parse_vk_xml(vk_xml_path: impl AsRef<Path>) -> Code {
+pub fn parse_vk_xml(vk_xml_path: impl AsRef<Path>) -> Generator {
     unsafe {
         intern::Interner::init();
     }
@@ -98,15 +69,7 @@ pub fn parse_vk_xml(vk_xml_path: impl AsRef<Path>) -> Code {
 
     vk_parse_visitor::visit_vk_parse(&registry2, &mut generator);
 
-    macro_rules! get_code_parts {
-        ( $generator:ident $($param:ident,)* ) => {
-            Code {
-                $( $param: $generator.$param(), )*
-            }
-        };
-    }
-
-    code_parts!(get_code_parts() generator)
+    generator
 }
 
 /// Parse validusage.json at provided path and provide the generated code for vuid checks
@@ -136,7 +99,9 @@ pub fn generate_library(
     out_dir: impl AsRef<OsStr>,
     vk_xml: impl AsRef<OsStr>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    gen_lib::generate_library(Path::new(&out_dir), Path::new(&vk_xml))
+    let code = parse_vk_xml(vk_xml.as_ref());
+    let path = Path::new(&out_dir);
+    gen_lib::generate_library(path, &code)
 }
 
 /// generate vuids in provided directory, by parsing provided validusage.json file
