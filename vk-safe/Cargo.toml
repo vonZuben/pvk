@@ -10,5 +10,5 @@ edition = "2021"
 vk-safe-sys = { path = "../vk-safe-sys" }
 check_vuids = { path = "../check_vuids" }
 
-# [build-dependencies]
-# vk-safe-sys = { path="../vk-safe-sys", features=["generate"] }
+[build-dependencies]
+vk-safe-sys = { path="../vk-safe-sys" }

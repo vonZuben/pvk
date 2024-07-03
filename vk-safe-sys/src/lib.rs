@@ -31,3 +31,12 @@ pub mod context;
 
 pub use generated_vulkan::has_command;
 pub use generated_vulkan::*;
+
+// This includes a file which should define const CONF: &'static [&'static str]
+// This should be a list of core vulkan versions and extensions that were generated
+// in build.rs
+include! {concat!(env!("OUT_DIR"), "/features_and_extensions.rs")}
+
+pub fn features_and_extensions() -> impl Iterator<Item = &'static str> {
+    CONF.iter().copied()
+}

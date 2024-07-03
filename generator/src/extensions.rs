@@ -21,6 +21,12 @@ impl ExtensionCollection {
             })
             .unwrap_or(DependencyKind::Version)
     }
+
+    pub fn extension_names_iter(&self) -> impl Iterator<Item = &str> + Clone {
+        self.extensions
+            .iter()
+            .map(|e| e.extension_name.name_as_str())
+    }
 }
 
 impl Deref for ExtensionCollection {

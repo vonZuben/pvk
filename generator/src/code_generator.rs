@@ -82,6 +82,17 @@ impl Generator {
         }
     }
 
+    /// List of all features and extensions that were generated
+    ///
+    /// This can be used in a safe wrapper library so that safe wrappers
+    /// are only compiled if the underlying unsafe code was actually generated
+    /// depending on the vk.xml file used.
+    pub fn list_of_features_and_extensions(&self) -> impl Iterator<Item = &str> + Clone {
+        self.feature_collection
+            .feature_names_iter()
+            .chain(self.extensions.extension_names_iter())
+    }
+
     /// internally I call it static code (see [StaticCode](crate::static_code::StaticCode))
     /// externally, this is utility code that other generated code relies on
     pub fn util_code(&self) -> String {

@@ -101,7 +101,9 @@ pub fn generate_library(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let code = parse_vk_xml(vk_xml.as_ref());
     let path = Path::new(&out_dir);
-    gen_lib::generate_library(path, &code)
+    gen_lib::generate_library(path, &code)?;
+    gen_lib::generate_feature_and_extension_list(path, &code)?;
+    Ok(())
 }
 
 /// generate vuids in provided directory, by parsing provided validusage.json file

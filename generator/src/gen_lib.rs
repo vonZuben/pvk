@@ -95,6 +95,21 @@ pub fn generate_library(out_dir: &Path, code: &Generator) -> Result<()> {
     make_lib_file(&out_dir)
 }
 
+pub fn generate_feature_and_extension_list(out_dir: &Path, code: &Generator) -> Result<()> {
+    make_output_directory(&out_dir)?;
+
+    let list = code.list_of_features_and_extensions();
+    let code = krs_quote!(
+        const CONF: &'static [&'static str] =
+            &[
+                {@,* {@list}}
+            ];
+    )
+    .to_string();
+
+    create_file(out_dir, "features_and_extensions.rs", &code)
+}
+
 pub fn generate_vuids_file(out_dir: &Path, validusage_json_path: &Path) -> Result<()> {
     make_output_directory(out_dir)?;
     let vuids = crate::parse_vuids(validusage_json_path);
