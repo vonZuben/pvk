@@ -21,6 +21,9 @@ unmap_memory;
 
 #[cfg(VK_VERSION_1_0)]
 wait_idle;
+
+#[cfg(VK_VERSION_1_0)]
+flush_mapped_memory_ranges;
 );
 
 use super::ScopedDispatchableHandle;
