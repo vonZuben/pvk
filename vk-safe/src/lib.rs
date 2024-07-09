@@ -175,6 +175,8 @@ pub mod flags;
 pub mod dispatchable_handles;
 pub mod non_dispatchable_handles;
 
+pub mod handles;
+
 /// # Vulkan enumerations
 ///
 /// 🚧 docs in progress

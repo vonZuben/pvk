@@ -260,3 +260,23 @@ macro_rules! pub_export_modules {
         }
     };
 }
+
+/// for new "all" trait based design
+/// only difference from pub_export_modules, is the module itself is not public
+macro_rules! pub_export_modules2 {
+    (
+        $(
+            $(#[$($attributes:tt)*])*
+            $name:ident
+        );* $(;)?
+    ) => {
+        $(
+            $(#[$($attributes)*])*
+            mod $name;
+        )*
+
+        pub(crate) mod export {
+            $( #[allow(unused_imports)] pub use super::$name::*; )*
+        }
+    };
+}
