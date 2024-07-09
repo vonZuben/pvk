@@ -273,6 +273,8 @@ macro_rules! pub_export_modules2 {
         $(
             $(#[$($attributes)*])*
             mod $name;
+            #[allow(unused_imports)]
+            pub use $name::*;
         )*
 
         pub(crate) mod export {
