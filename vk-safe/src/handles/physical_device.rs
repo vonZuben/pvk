@@ -10,6 +10,9 @@ use vk_safe_sys as vk;
 pub_export_modules2!(
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_properties;
+
+#[cfg(VK_VERSION_1_0)]
+get_physical_device_features;
 );
 
 /// PhysicalDevice handle trait
@@ -38,13 +41,28 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
     ///
     /// Vulkan docs:
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html>
-    fn get_physical_device_properties(
-        &self,
-    ) -> get_physical_device_properties::PhysicalDeviceProperties<Self>
+    fn get_physical_device_properties(&self) -> PhysicalDeviceProperties<Self>
     where
         Self::Commands: vk::has_command::GetPhysicalDeviceProperties,
     {
-        get_physical_device_properties::get_physical_device_properties(self)
+        get_physical_device_properties(self)
+    }
+
+    /// Query the features supported by the PhysicalDevice
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// #   (physical_device: P) {
+    /// let features = physical_device.get_physical_device_features();
+    /// # }
+    /// ```
+    fn get_physical_device_features(&self) -> PhysicalDeviceFeatures<Self>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceFeatures,
+    {
+        get_physical_device_features(self)
     }
 }
 
