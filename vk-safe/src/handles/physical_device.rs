@@ -7,6 +7,11 @@ use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
 
+pub_export_modules2!(
+#[cfg(VK_VERSION_1_0)]
+get_physical_device_properties;
+);
+
 /// PhysicalDevice handle trait
 ///
 /// Represents a *specific* PhysicalDevice which has been scoped.
@@ -17,8 +22,30 @@ use vk_safe_sys as vk;
 /// You may note that there are no visible implementors of this trait.
 /// You are only ever intended to use opaque implementors of this trait
 /// as seen with the return type of [`tag`](PhysicalDeviceTagger::tag)
-pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> {
+pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + Sized {
     type Instance: Instance;
+
+    /// Query the properties of the PhysicalDevice
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// #   (physical_device: P) {
+    /// let physical_device_properties = physical_device.get_physical_device_properties();
+    /// # }
+    /// ```
+    ///
+    /// Vulkan docs:
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html>
+    fn get_physical_device_properties(
+        &self,
+    ) -> get_physical_device_properties::PhysicalDeviceProperties<Self>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceProperties,
+    {
+        get_physical_device_properties::get_physical_device_properties(self)
+    }
 }
 
 /// Hidden type which implements PhysicalDevice
