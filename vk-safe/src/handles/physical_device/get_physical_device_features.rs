@@ -1,5 +1,7 @@
 use super::PhysicalDevice;
 
+use crate::structs::PhysicalDeviceFeatures;
+
 use std::mem::MaybeUninit;
 
 use vk_safe_sys as vk;
@@ -11,19 +13,6 @@ pub(crate) fn get_physical_device_features<
 >(
     physical_device: &P,
 ) -> PhysicalDeviceFeatures<P> {
-    let mut features = MaybeUninit::uninit();
-    unsafe {
-        physical_device
-            .commands()
-            .GetPhysicalDeviceFeatures()
-            .get_fptr()(physical_device.raw_handle(), features.as_mut_ptr());
-        PhysicalDeviceFeatures::new(features.assume_init())
-    }
-}
-
-simple_struct_wrapper_scoped!(PhysicalDeviceFeatures impl Debug);
-
-const _VUID: () = {
     check_vuids::check_vuids!(GetPhysicalDeviceFeatures);
 
     #[allow(unused_labels)]
@@ -45,4 +34,13 @@ const _VUID: () = {
 
         // MaybeUninit
     }
-};
+
+    let mut features = MaybeUninit::uninit();
+    unsafe {
+        physical_device
+            .commands()
+            .GetPhysicalDeviceFeatures()
+            .get_fptr()(physical_device.raw_handle(), features.as_mut_ptr());
+        PhysicalDeviceFeatures::new(features.assume_init())
+    }
+}
