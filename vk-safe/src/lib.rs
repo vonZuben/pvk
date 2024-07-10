@@ -177,6 +177,8 @@ pub mod non_dispatchable_handles;
 
 pub mod handles;
 
+pub mod structs;
+
 /// # Vulkan enumerations
 ///
 /// 🚧 docs in progress

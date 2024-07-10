@@ -1,7 +1,11 @@
 use super::instance::Instance;
 use super::{DispatchableHandle, Handle};
 
+use crate::array_storage::ArrayStorage;
+use crate::error::Error;
 use crate::scope::{Captures, Tag};
+use crate::structs::*;
+use crate::vk_str::VkStr;
 
 use std::marker::PhantomData;
 
@@ -13,6 +17,9 @@ get_physical_device_properties;
 
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_features;
+
+#[cfg(VK_VERSION_1_0)]
+enumerate_device_extension_properties;
 );
 
 /// PhysicalDevice handle trait
@@ -63,6 +70,34 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
         Self::Commands: vk::has_command::GetPhysicalDeviceFeatures,
     {
         get_physical_device_features(self)
+    }
+
+    /// Query the device level extensions supported by the PhysicalDevice
+    ///
+    /// If `layer_name` is `None`, only extensions provided by the Vulkan implementation.
+    /// are returned. If `layer_name` is `Some(layer_name)`, device extensions provided
+    /// by that layer are returned.
+    ///
+    /// Must provide [`ArrayStorage`] space to return the extension properties into.
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// #   (physical_device: P) {
+    /// let extension_properties =
+    ///     physical_device.enumerate_device_extension_properties(None, Vec::new());
+    /// # }
+    /// ```
+    fn enumerate_device_extension_properties<A: ArrayStorage<ExtensionProperties<Self>>>(
+        &self,
+        layer_name: Option<VkStr>,
+        storage: A,
+    ) -> Result<A::InitStorage, Error>
+    where
+        Self::Commands: vk::has_command::EnumerateDeviceExtensionProperties,
+    {
+        enumerate_device_extension_properties(self, layer_name, storage)
     }
 }
 
