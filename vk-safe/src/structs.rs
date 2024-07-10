@@ -4,4 +4,7 @@ extension_properties;
 
 #[cfg(VK_VERSION_1_0)]
 physical_device_features;
+
+#[cfg(VK_VERSION_1_0)]
+physical_device_properties;
 );
