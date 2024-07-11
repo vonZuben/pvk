@@ -20,6 +20,9 @@ get_physical_device_features;
 
 #[cfg(VK_VERSION_1_0)]
 enumerate_device_extension_properties;
+
+#[cfg(VK_VERSION_1_0)]
+enumerate_device_layer_properties;
 );
 
 /// PhysicalDevice handle trait
@@ -53,6 +56,28 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
         Self::Commands: vk::has_command::GetPhysicalDeviceProperties,
     {
         get_physical_device_properties(self)
+    }
+
+    /// Query the device level layers supported by the PhysicalDevice
+    ///
+    /// Must provide [`ArrayStorage`] space to return the extension properties into.
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// #   (physical_device: P) {
+    /// let layer_properties = physical_device.enumerate_device_layer_properties(Vec::new());
+    /// # }
+    /// ```
+    fn enumerate_device_layer_properties<A: ArrayStorage<LayerProperties<Self>>>(
+        &self,
+        storage: A,
+    ) -> Result<A::InitStorage, Error>
+    where
+        Self::Commands: vk::has_command::EnumerateDeviceLayerProperties,
+    {
+        enumerate_device_layer_properties(self, storage)
     }
 
     /// Query the features supported by the PhysicalDevice
