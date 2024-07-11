@@ -14,6 +14,38 @@ pub(crate) fn get_physical_device_format_properties<
     physical_device: &P,
     format: vk::Format,
 ) -> FormatProperties<P> {
+    check_vuids::check_vuids!(GetPhysicalDeviceFormatProperties);
+
+    #[allow(unused_labels)]
+    'VUID_vkGetPhysicalDeviceFormatProperties_physicalDevice_parameter: {
+        check_vuids::version! {"1.3.268"}
+        check_vuids::description! {
+        "physicalDevice must be a valid VkPhysicalDevice handle"
+        }
+
+        // valid from creation
+    }
+
+    #[allow(unused_labels)]
+    'VUID_vkGetPhysicalDeviceFormatProperties_format_parameter: {
+        check_vuids::version! {"1.3.268"}
+        check_vuids::description! {
+        "format must be a valid VkFormat value"
+        }
+
+        // vk::Format
+    }
+
+    #[allow(unused_labels)]
+    'VUID_vkGetPhysicalDeviceFormatProperties_pFormatProperties_parameter: {
+        check_vuids::version! {"1.3.268"}
+        check_vuids::description! {
+        "pFormatProperties must be a valid pointer to a VkFormatProperties structure"
+        }
+
+        // MaybeUninit
+    }
+
     let mut properties = MaybeUninit::uninit();
     unsafe {
         physical_device
