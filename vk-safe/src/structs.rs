@@ -13,4 +13,10 @@ layer_properties;
 
 #[cfg(VK_VERSION_1_0)]
 format_properties;
+
+#[cfg(VK_VERSION_1_0)]
+image_parameters;
+
+#[cfg(VK_VERSION_1_0)]
+image_format_properties;
 );

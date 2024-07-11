@@ -26,6 +26,9 @@ enumerate_device_layer_properties;
 
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_format_properties;
+
+#[cfg(VK_VERSION_1_0)]
+get_physical_device_image_format_properties;
 );
 
 /// PhysicalDevice handle trait
@@ -146,6 +149,39 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
         Self::Commands: vk::has_command::GetPhysicalDeviceFormatProperties,
     {
         get_physical_device_format_properties(self, format)
+    }
+
+    /// Query the image format properties of the PhysicalDevice
+    ///
+    /// Provide [`ImageParameters`] with the parameters of an image,
+    /// to get the format properties of an image created with such parameters
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// #   (physical_device: P) {
+    /// const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
+    ///     vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
+    ///     vk::Format::R8G8B8A8_SRGB,
+    ///     vk::ImageType::TYPE_2D,
+    ///     vk::ImageTiling::OPTIMAL,
+    ///     vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
+    ///     vk::ImageCreateFlags::empty(),
+    /// );
+    ///
+    /// let image_format_properties =
+    ///     physical_device.get_physical_device_image_format_properties(PARAMS);
+    /// # }
+    /// ```
+    fn get_physical_device_image_format_properties(
+        &self,
+        params: ImageParameters,
+    ) -> Result<ImageFormatProperties<Self>, Error>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceImageFormatProperties,
+    {
+        get_physical_device_image_format_properties(self, params)
     }
 }
 
