@@ -23,6 +23,9 @@ enumerate_device_extension_properties;
 
 #[cfg(VK_VERSION_1_0)]
 enumerate_device_layer_properties;
+
+#[cfg(VK_VERSION_1_0)]
+get_physical_device_format_properties;
 );
 
 /// PhysicalDevice handle trait
@@ -123,6 +126,26 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
         Self::Commands: vk::has_command::EnumerateDeviceExtensionProperties,
     {
         enumerate_device_extension_properties(self, layer_name, storage)
+    }
+
+    /// Query the format properties of the PhysicalDevice
+    ///
+    /// Provide the [`Format`](crate::vk::Format) to get the properties of that format
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// #   (physical_device: P) {
+    /// let format_properties =
+    ///     physical_device.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);
+    /// # }
+    /// ```
+    fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties<Self>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceFormatProperties,
+    {
+        get_physical_device_format_properties(self, format)
     }
 }
 
