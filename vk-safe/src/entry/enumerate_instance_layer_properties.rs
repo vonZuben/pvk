@@ -2,7 +2,7 @@ use super::command_impl_prelude::*;
 
 use crate::error::Error;
 
-pub use crate::dispatchable_handles::common::layer_properties::LayerProperties;
+use crate::structs::LayerProperties;
 
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceLayerProperties.html>
 pub fn enumerate_instance_layer_properties<S: ArrayStorage<LayerProperties<()>>>(

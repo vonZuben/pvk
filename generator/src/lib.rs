@@ -55,7 +55,7 @@ use std::fs::File;
 use std::io::Read;
 use std::{ffi::OsStr, path::Path};
 
-/// Parse a xk.xml at the provided path, and provide the generated [Code]
+/// Parse a xk.xml at the provided path, and provide the Code Generator
 pub fn parse_vk_xml(vk_xml_path: impl AsRef<Path>) -> Generator {
     unsafe {
         intern::Interner::init();

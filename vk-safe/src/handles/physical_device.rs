@@ -1,5 +1,5 @@
 use super::instance::Instance;
-use super::{DispatchableHandle, Handle};
+use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
@@ -7,11 +7,12 @@ use crate::scope::{Captures, Tag};
 use crate::structs::*;
 use crate::vk_str::VkStr;
 
+use std::fmt;
 use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
 
-pub_export_modules2!(
+pub_use_modules!(
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_properties;
 
@@ -41,15 +42,17 @@ get_physical_device_image_format_properties;
 /// You may note that there are no visible implementors of this trait.
 /// You are only ever intended to use opaque implementors of this trait
 /// as seen with the return type of [`tag`](PhysicalDeviceTagger::tag)
-pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + Sized {
+pub trait PhysicalDevice:
+    DispatchableHandle<RawHandle = vk::PhysicalDevice> + ThreadSafeHandle
+{
     type Instance: Instance;
 
     /// Query the properties of the PhysicalDevice
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # vk::device_context!(D: VERSION_1_0);
-    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// # use vk::traits::*;
+    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
     /// let physical_device_properties = physical_device.get_physical_device_properties();
     /// # }
@@ -70,8 +73,8 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # vk::device_context!(D: VERSION_1_0);
-    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// # use vk::traits::*;
+    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
     /// let layer_properties = physical_device.enumerate_device_layer_properties(Vec::new());
     /// # }
@@ -90,8 +93,8 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # vk::device_context!(D: VERSION_1_0);
-    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// # use vk::traits::*;
+    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
     /// let features = physical_device.get_physical_device_features();
     /// # }
@@ -113,8 +116,8 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # vk::device_context!(D: VERSION_1_0);
-    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// # use vk::traits::*;
+    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
     /// let extension_properties =
     ///     physical_device.enumerate_device_extension_properties(None, Vec::new());
@@ -137,8 +140,8 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # vk::device_context!(D: VERSION_1_0);
-    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// # use vk::traits::*;
+    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
     /// let format_properties =
     ///     physical_device.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);
@@ -158,11 +161,11 @@ pub trait PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice> + S
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # vk::device_context!(D: VERSION_1_0);
-    /// # fn tst<C: vk::instance::VERSION_1_0, P: vk::PhysicalDevice<Context = C>>
+    /// # use vk::traits::*;
+    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
-    /// const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
-    ///     vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
+    /// const PARAMS: vk::ImageParameters =
+    ///     vk::ImageParameters::new(
     ///     vk::Format::R8G8B8A8_SRGB,
     ///     vk::ImageType::TYPE_2D,
     ///     vk::ImageTiling::OPTIMAL,
@@ -192,6 +195,10 @@ struct _PhysicalDevice<'a, I, T> {
     tag: PhantomData<T>,
 }
 
+unsafe impl<I, T> Send for _PhysicalDevice<'_, I, T> {}
+unsafe impl<I, T> Sync for _PhysicalDevice<'_, I, T> {}
+impl<I, T> ThreadSafeHandle for _PhysicalDevice<'_, I, T> {}
+
 impl<'a, I, T> _PhysicalDevice<'a, I, T> {
     fn new(handle: vk::PhysicalDevice, instance: &'a I, _tag: T) -> Self {
         Self {
@@ -199,6 +206,14 @@ impl<'a, I, T> _PhysicalDevice<'a, I, T> {
             instance,
             tag: PhantomData,
         }
+    }
+}
+
+impl<I, T> fmt::Debug for _PhysicalDevice<'_, I, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("_PhysicalDevice")
+            .field("handle", &self.handle)
+            .finish()
     }
 }
 
@@ -235,6 +250,15 @@ struct _PhysicalDeviceTagger<'a, I> {
     physical_device: vk::PhysicalDevice,
 }
 
+impl<I: fmt::Debug> fmt::Debug for _PhysicalDeviceTagger<'_, I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PhysicalDeviceTagger")
+            .field("instance", &self.instance)
+            .field("physical_device", &self.physical_device)
+            .finish()
+    }
+}
+
 unsafe impl<I: Send> Send for _PhysicalDeviceTagger<'_, I> {}
 unsafe impl<I: Sync> Sync for _PhysicalDeviceTagger<'_, I> {}
 
@@ -248,7 +272,7 @@ impl<'a, I> _PhysicalDeviceTagger<'a, I> {
 }
 
 impl<'a, I: Instance> PhysicalDeviceTagger<I> for _PhysicalDeviceTagger<'a, I> {
-    fn tag<'t>(self, tag: Tag<'t>) -> impl PhysicalDevice<Instance = I> {
+    fn tag<'t>(self, tag: Tag<'t>) -> impl PhysicalDevice<Instance = I, Commands = I::Commands> {
         _PhysicalDevice::new(self.physical_device, self.instance, tag)
     }
 }
@@ -260,20 +284,20 @@ impl<'a, I: Instance> PhysicalDeviceTagger<I> for _PhysicalDeviceTagger<'a, I> {
 /// more details.
 ///
 /// Obtained by iterating over the PhysicalDevices returned by
-/// [`enumerate_physical_devices`](crate::scope::SecretScope::enumerate_physical_devices).
-pub trait PhysicalDeviceTagger<I: Instance>: Sized {
+/// [`enumerate_physical_devices`](crate::vk::Instance::enumerate_physical_devices).
+pub trait PhysicalDeviceTagger<I: Instance>: Sized + fmt::Debug + Send + Sync {
     /// Tag an enumerated PhysicalDevice
     ///
     /// See [`Instance::enumerate_physical_devices`] for
     /// example use.
-    fn tag<'t>(self, tag: Tag<'t>) -> impl PhysicalDevice<Instance = I>;
+    fn tag<'t>(self, tag: Tag<'t>) -> impl PhysicalDevice<Instance = I, Commands = I::Commands>;
 }
 
 /// Provide access to PhysicalDevices enumerated on the system
 ///
 /// Can be consumed via [`IntoIterator`] implementation, or
 /// you can iterator without consuming with [`PhysicalDevices::iter`].
-pub trait PhysicalDevices<I: Instance>: IntoIterator<Item = Self::Tagger> {
+pub trait PhysicalDevices<I: Instance>: IntoIterator<Item = Self::Tagger> + fmt::Debug {
     type Tagger: PhysicalDeviceTagger<I>;
     /// Provide an iterator over PhysicalDevice taggers without consuming
     /// self.
@@ -284,6 +308,13 @@ pub trait PhysicalDevices<I: Instance>: IntoIterator<Item = Self::Tagger> {
 struct _PhysicalDevices<'a, I, A> {
     instance: &'a I,
     array: A,
+}
+
+impl<I: fmt::Debug, A: AsRef<[vk::PhysicalDevice]>> fmt::Debug for _PhysicalDevices<'_, I, A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "PhysicalDevices")?;
+        f.debug_list().entries(self.array.as_ref().iter()).finish()
+    }
 }
 
 struct _PhysicalDeviceIter<'a, I, A> {

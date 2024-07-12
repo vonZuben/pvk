@@ -6,8 +6,10 @@ Thus, I try to make use of all APIs here as I add them.
  */
 
 use vk_safe::vk;
-
 use vk_safe::vk_str;
+
+use vk::Instance;
+use vk::{PhysicalDevice, PhysicalDeviceTagger, PhysicalDevices};
 
 vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
 vk::device_context!(DeviceContext: VERSION_1_0);
@@ -57,7 +59,7 @@ fn main() {
     }
 }
 
-fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSION_1_0>) {
+fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1_0>) {
     println!("-------");
     println!("{:#?}", pd.get_physical_device_properties());
 
@@ -81,95 +83,95 @@ fn run_physical_device(pd: impl vk::PhysicalDevice<Context: vk::instance::VERSIO
     println!("--Example of device format propertied for R8G8B8A8_SRGB:");
     println!("{srgb_properties:#?}");
 
-    const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
-        vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
-            vk::Format::R8G8B8A8_SRGB,
-            vk::ImageType::TYPE_2D,
-            vk::ImageTiling::OPTIMAL,
-            vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
-            vk::ImageCreateFlags::empty(),
-        );
+    // const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
+    //     vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
+    //         vk::Format::R8G8B8A8_SRGB,
+    //         vk::ImageType::TYPE_2D,
+    //         vk::ImageTiling::OPTIMAL,
+    //         vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
+    //         vk::ImageCreateFlags::empty(),
+    //     );
 
-    let tst_image_format_properties = pd
-        .get_physical_device_image_format_properties(PARAMS)
-        .unwrap();
-    println!("--Example of device format propertied for R8G8B8A8_SRGB, 2D, Optimal tiling, to be used as Transfer destination and Color attachment:");
-    println!("{tst_image_format_properties:#?}");
+    // let tst_image_format_properties = pd
+    //     .get_physical_device_image_format_properties(PARAMS)
+    //     .unwrap();
+    // println!("--Example of device format propertied for R8G8B8A8_SRGB, 2D, Optimal tiling, to be used as Transfer destination and Color attachment:");
+    // println!("{tst_image_format_properties:#?}");
 
-    let sparse_image_format_properties = pd
-        .get_physical_device_sparse_image_format_properties(
-            vk::SampleCountFlags::TYPE_1_BIT,
-            tst_image_format_properties,
-            Vec::new(),
-        )
-        .unwrap();
-    println!("--Example sparse properties for above image format properties--");
-    println!("{sparse_image_format_properties:#?}");
+    // let sparse_image_format_properties = pd
+    //     .get_physical_device_sparse_image_format_properties(
+    //         vk::SampleCountFlags::TYPE_1_BIT,
+    //         tst_image_format_properties,
+    //         Vec::new(),
+    //     )
+    //     .unwrap();
+    // println!("--Example sparse properties for above image format properties--");
+    // println!("{sparse_image_format_properties:#?}");
 
-    let queue_family_properties = pd
-        .get_physical_device_queue_family_properties(Vec::new())
-        .unwrap();
-    println!("--Queue family properties for this physical device--");
-    println!("{:#?}", queue_family_properties);
+    // let queue_family_properties = pd
+    //     .get_physical_device_queue_family_properties(Vec::new())
+    //     .unwrap();
+    // println!("--Queue family properties for this physical device--");
+    // println!("{:#?}", queue_family_properties);
 
-    let mem_props = pd.get_physical_device_memory_properties();
-    println!("--Memory properties for this physical device--");
-    println!("{:#?}", mem_props);
+    // let mem_props = pd.get_physical_device_memory_properties();
+    // println!("--Memory properties for this physical device--");
+    // println!("{:#?}", mem_props);
 
-    vk::tag!(families_tag);
+    // vk::tag!(families_tag);
 
-    let mut queue_configs = vec![];
-    let priorities = [vk::QueuePriority::default(); 10];
-    for p in queue_family_properties.properties_iter(families_tag) {
-        use vk::queue_flag_bits::*;
-        if p.queue_flags
-            .contains(GRAPHICS_BIT | COMPUTE_BIT | TRANSFER_BIT)
-        {
-            queue_configs.push(
-                vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),
-            )
-        }
-    }
+    // let mut queue_configs = vec![];
+    // let priorities = [vk::QueuePriority::default(); 10];
+    // for p in queue_family_properties.properties_iter(families_tag) {
+    //     use vk::queue_flag_bits::*;
+    //     if p.queue_flags
+    //         .contains(GRAPHICS_BIT | COMPUTE_BIT | TRANSFER_BIT)
+    //     {
+    //         queue_configs.push(
+    //             vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),
+    //         )
+    //     }
+    // }
 
-    let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+    // let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
-    vk::tag!(dt);
-    let device = pd.create_device(&device_create_info, dt).unwrap();
+    // vk::tag!(dt);
+    // let device = pd.create_device(&device_create_info, dt).unwrap();
 
-    println!("--Example Device handle--");
-    println!("{device:#?}");
+    // println!("--Example Device handle--");
+    // println!("{device:#?}");
 
-    vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
-    vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
+    // vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
+    // vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
 
-    let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
-    let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
-    let mem = device.allocate_memory(&alloc_info).unwrap();
-    println!("--Example allocated memory handle--");
-    println!("{mem:?}");
+    // let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
+    // let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
+    // let mem = device.allocate_memory(&alloc_info).unwrap();
+    // println!("--Example allocated memory handle--");
+    // println!("{mem:?}");
 
-    let mapped_memory = device.map_memory(mem).unwrap();
-    println!("--Example mapped memory handle--");
-    println!("{mapped_memory:#?}");
+    // let mapped_memory = device.map_memory(mem).unwrap();
+    // println!("--Example mapped memory handle--");
+    // println!("{mapped_memory:#?}");
 
-    let ranges = [vk::MappedMemoryRange::whole_range(&mapped_memory)];
-    device.flush_mapped_memory_ranges(&ranges).unwrap();
+    // let ranges = [vk::MappedMemoryRange::whole_range(&mapped_memory)];
+    // device.flush_mapped_memory_ranges(&ranges).unwrap();
 
-    let _memory = device.unmap_memory(mapped_memory);
+    // let _memory = device.unmap_memory(mapped_memory);
 
-    vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
-    for queue_config in queue_configs {
-        let queue_family = device
-            .get_queue_family(&queue_config, &queue_family_properties, QCaps)
-            .unwrap();
-        println!("Configured Queue Family: {:#?}", queue_family);
+    // vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
+    // for queue_config in queue_configs {
+    //     let queue_family = device
+    //         .get_queue_family(&queue_config, &queue_family_properties, QCaps)
+    //         .unwrap();
+    //     println!("Configured Queue Family: {:#?}", queue_family);
 
-        let queue = queue_family.get_device_queue(0).unwrap();
-        println!("Queue: {:#?}", queue);
-    }
+    //     let queue = queue_family.get_device_queue(0).unwrap();
+    //     println!("Queue: {:#?}", queue);
+    // }
 
-    unsafe {
-        // safe since everything is one one thread
-        device.wait_idle().unwrap();
-    }
+    // unsafe {
+    //     // safe since everything is one one thread
+    //     device.wait_idle().unwrap();
+    // }
 }

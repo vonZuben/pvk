@@ -3,7 +3,7 @@ use super::command_impl_prelude::*;
 use crate::error::Error;
 use crate::vk_str::VkStr;
 
-pub use crate::dispatchable_handles::common::extension_properties::ExtensionProperties;
+use crate::structs::ExtensionProperties;
 
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceExtensionProperties.html>
 pub fn enumerate_instance_extension_properties<S: ArrayStorage<ExtensionProperties<()>>>(

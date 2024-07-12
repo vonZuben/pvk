@@ -1,12 +1,21 @@
 use super::physical_device::PhysicalDevices;
-use super::DispatchableHandle;
+use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
+use crate::scope::{Captures, Tag};
+use crate::type_conversions::ToC;
+use crate::VkVersion;
+
+use std::fmt;
+use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
 
-pub_export_modules2!(
+use vk::has_command::DestroyInstance;
+use vk::Version;
+
+pub_use_modules!(
 #[cfg(VK_VERSION_1_0)]
 enumerate_physical_devices;
 );
@@ -19,19 +28,22 @@ enumerate_physical_devices;
 ///
 /// Vulkan doc:
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html>
-pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + Sized {
+pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + ThreadSafeHandle {
+    const VERSION: VkVersion;
+
     #[cfg(VK_VERSION_1_0)]
     /// Enumerate PhysicalDevices on the system
     ///
     /// # Usage
     /// Provide an [`ArrayStorage`] implementor to store the PhysicalDevices.
     /// Then you can iterate over the PhysicalDevices and tag each one that
-    /// you want to use with a [`Tag`](crate::scope::Tag).
+    /// you want to use with a [`Tag`].
     ///
     /// # Example
     /// ```
     /// # use vk_safe::vk;
-    /// # fn tst(instance: impl vk::Instance<Context: vk::instance::VERSION_1_0>) {
+    /// # use vk::traits::*;
+    /// # fn tst(instance: impl Instance<Commands: vk::instance::VERSION_1_0>) {
     /// let physical_devices = instance
     ///     .enumerate_physical_devices(Vec::new())
     ///     .unwrap();
@@ -53,5 +65,129 @@ pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + Sized {
         Self::Commands: vk::has_command::EnumeratePhysicalDevices,
     {
         enumerate_physical_devices::enumerate_physical_devices(self, storage)
+    }
+}
+
+// Hidden type which implements [Instance]
+struct _Instance<C: DestroyInstance, T> {
+    handle: vk::Instance,
+    commands: C,
+    tag: PhantomData<T>,
+}
+
+unsafe impl<C: DestroyInstance, T> Send for _Instance<C, T> {}
+unsafe impl<C: DestroyInstance, T> Sync for _Instance<C, T> {}
+impl<C: DestroyInstance, T> ThreadSafeHandle for _Instance<C, T> {}
+
+impl<C: DestroyInstance, T> fmt::Debug for _Instance<C, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Instance")
+            .field("handle", &self.handle)
+            // .field("version", &C::VERSION)
+            .finish()
+    }
+}
+
+impl<C: DestroyInstance, T> _Instance<C, T> {
+    fn new(handle: vk::Instance, commands: C, _tag: T) -> Self {
+        Self {
+            handle,
+            commands,
+            tag: PhantomData,
+        }
+    }
+}
+
+impl<C: DestroyInstance, T> Handle for _Instance<C, T> {
+    type RawHandle = vk::Instance;
+
+    fn raw_handle(&self) -> Self::RawHandle {
+        self.handle
+    }
+}
+
+impl<C: DestroyInstance, T> DispatchableHandle for _Instance<C, T> {
+    type Commands = C;
+
+    fn commands(&self) -> &Self::Commands {
+        &self.commands
+    }
+}
+
+impl<C: DestroyInstance + Version, T> Instance for _Instance<C, T> {
+    const VERSION: VkVersion = C::VERSION;
+}
+
+pub(crate) fn make_instance<C: DestroyInstance + Version>(
+    handle: vk::Instance,
+    commands: C,
+    tag: Tag,
+) -> impl Instance<Commands = C> + Captures<Tag> {
+    _Instance::new(handle, commands, tag)
+}
+
+/// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInstance.html>
+impl<C: DestroyInstance, T> Drop for _Instance<C, T> {
+    fn drop(&mut self) {
+        check_vuids::check_vuids!(DestroyInstance);
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_00629: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "All child objects created using instance must have been destroyed prior to destroying"
+            "instance"
+            }
+
+            // all child objects borrow the instance, and *normally* they are dropped/destroyed before the instance is destroyed
+            // However, it is well known that rust does not guarantee that values will be dropped. Thus, we cannot enforce this rule
+            // In any event, if a child object is not dropped (e.g. forgotten), it should never be used again or dropped. Thus, even if the Instance is
+            // dropped, the child objects are merely leaked, and it is "assumed" that this is no real issue even in Vulkan.
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_00630: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If VkAllocationCallbacks were provided when instance was created, a compatible set"
+            "of callbacks must be provided here"
+            }
+
+            // TODO: VkAllocationCallbacks not currently supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_00631: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If no VkAllocationCallbacks were provided when instance was created, pAllocator must"
+            "be NULL"
+            }
+
+            // TODO: VkAllocationCallbacks not currently supported
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_instance_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If instance is not NULL, instance must be a valid VkInstance handle"
+            }
+
+            // always a valid handle from creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyInstance_pAllocator_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
+            "structure"
+            }
+
+            // TODO: VkAllocationCallbacks not currently supported
+        }
+
+        unsafe { self.commands.DestroyInstance().get_fptr()(self.handle, None.to_c()) }
     }
 }

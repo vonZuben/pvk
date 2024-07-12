@@ -16,6 +16,7 @@ many resources online, but a good start would be [Vulkan tutorial](https://vulka
 ## Example (bare minimum to get a Device context)
 ```
 use vk_safe::vk;
+use vk::traits::*;
 
 // declare the Vulkan version we are targeting
 // must satisfy Device version <= Instance version
@@ -40,34 +41,34 @@ for physical_device in physical_devices.iter() {
     vk::tag!(tag);
     let physical_device = physical_device.tag(tag);
 
-    // discover queues on the physical device
-    let queue_family_properties = physical_device
-        .get_physical_device_queue_family_properties(Vec::new())
-        .unwrap();
+    // // discover queues on the physical device
+    // let queue_family_properties = physical_device
+    //     .get_physical_device_queue_family_properties(Vec::new())
+    //     .unwrap();
 
     vk::tag!(families_tag);
 
-    let mut queue_configs = vec![];
-    let priorities = [vk::QueuePriority::default(); 10];
-    for p in queue_family_properties.properties_iter(families_tag) {
-        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
-            queue_configs.push(
-                vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
-                    .unwrap(),
-            )
-        }
-    }
+    // let mut queue_configs = vec![];
+    // let priorities = [vk::QueuePriority::default(); 10];
+    // for p in queue_family_properties.properties_iter(families_tag) {
+    //     if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+    //         queue_configs.push(
+    //             vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
+    //                 .unwrap(),
+    //         )
+    //     }
+    // }
 
-    vk::tag!(device_tag);
-    // configure and create device
-    let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
-    let device = physical_device
-        .create_device(&device_create_info, device_tag)
-        .unwrap();
+    // vk::tag!(device_tag);
+    // // configure and create device
+    // let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+    // let device = physical_device
+    //     .create_device(&device_create_info, device_tag)
+    //     .unwrap();
 }
 ```
 
-# ⭐ Scopes and tagging
+# 🚧 Scopes and tagging
 A **key** concept in vk-safe is the use of [`tag!`](scope::tag!), which creates a [`Tag`](scope::Tag)
 that uses an invariant lifetime trick to ensure different instances of a type (e.g. different Instances,
 PhysicalDevices, Devices, etc.) are distinguishable from each other.
@@ -80,11 +81,8 @@ Names from Vulkan are converted by cutting off the leading "Vk" or "vk", and the
 remaining name in-line with
 [RFC 430](https://github.com/rust-lang/rfcs/blob/master/text/0430-finalizing-naming-conventions.md)
 
-### Trait representations of handles
-Due to the scope trick mentioned above, the concrete types of Vulkan handles are unwieldy.
-Moreover, the invariant lifetimes are annoying to explicitly specify. Thus, you are
-encouraged to use the [`dispatchable handles traits`](dispatchable_handles) which allow
-generically handling any specific instance of a handle.
+### 🚧 Trait representations of handles
+...
 
 ### Returning Result
 All Vulkan commands that can fail will return a Result. There Err variant is currently
@@ -172,8 +170,8 @@ pub mod scope;
 
 pub mod flags;
 
-pub mod dispatchable_handles;
-pub mod non_dispatchable_handles;
+// pub mod dispatchable_handles;
+// pub mod non_dispatchable_handles;
 
 pub mod handles;
 
@@ -238,7 +236,7 @@ pub mod context {
     }
 }
 
-/// prelude module
+/// The main module for using this crate
 ///
 /// Everything in the Vulkan specification is defined in the same namespace. When actually
 /// writing code it is most natural to refer to everything simple as `vk::_`. This
@@ -252,17 +250,24 @@ pub mod vk {
     pub use super::enumerations::*;
     pub use super::flags::*;
 
-    pub use super::dispatchable_handles::device::export::*;
-    pub use super::dispatchable_handles::device::*;
-    pub use super::dispatchable_handles::instance::*;
-    pub use super::dispatchable_handles::physical_device::export::*;
-    pub use super::dispatchable_handles::physical_device::*;
-    pub use super::dispatchable_handles::queue::*;
+    pub use super::structs::*;
+
+    /// Module that exports all of the handles traits
+    ///
+    /// It is recommended to use `vk::traits::*`
+    ///
+    /// The same traits are also available in the vk
+    /// module, but it is not recommended to use
+    /// `vk::*`
+    pub mod traits {
+        pub use crate::handles::export::*;
+    }
+
+    pub use crate::handles::export::*;
+
     pub use super::entry::*;
 
-    pub use super::non_dispatchable_handles::exports::*;
-
-    pub use super::scope::{tag, SecretScope};
+    pub use super::scope::tag;
 
     pub use super::context::device;
     pub use super::context::instance;

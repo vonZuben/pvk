@@ -1,5 +1,9 @@
-pub mod instance;
-pub mod physical_device;
+use std::fmt::Debug;
+
+pub_export_modules!(
+instance;
+physical_device;
+);
 
 /// A handle which can dispatch Vulkan Commands
 ///
@@ -14,7 +18,14 @@ pub trait DispatchableHandle: Handle {
 ///
 /// This is mostly an implementation detail and you are not
 /// intended to implement this yourself.
-pub trait Handle {
+pub trait Handle: Debug + Sized {
     type RawHandle;
     fn raw_handle(&self) -> Self::RawHandle;
 }
+
+/// Handles that are safe to use on different threads
+///
+/// Most handles in Vulkan are thread safe. The primary
+/// exemption are CommandPool and CommandBuffer, which
+/// are only Send.
+pub trait ThreadSafeHandle: Send + Sync {}

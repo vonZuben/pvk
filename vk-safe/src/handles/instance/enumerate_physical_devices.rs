@@ -4,6 +4,7 @@ use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 use crate::handles::physical_device::{make_physical_devices, PhysicalDevices};
 use crate::scope::Captures;
+use crate::type_conversions::SafeTransmute;
 
 use vk_safe_sys as vk;
 
@@ -50,6 +51,8 @@ pub(crate) fn enumerate_physical_devices<
 
         //enumerator_code2!
     }
+
+    unsafe impl SafeTransmute<vk::PhysicalDevice> for vk::PhysicalDevice {}
 
     let handles = enumerator_code2!(instance.commands().EnumeratePhysicalDevices().get_fptr(); (instance.raw_handle()) -> storage)?;
     Ok(make_physical_devices(instance, handles))

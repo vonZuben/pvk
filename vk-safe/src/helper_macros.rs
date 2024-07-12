@@ -243,6 +243,8 @@ macro_rules! bitmask {
     };
 }
 
+/// Publicly include a module and make an `export` module
+/// pub uses all the contents for easy exporting
 macro_rules! pub_export_modules {
     (
         $(
@@ -261,9 +263,8 @@ macro_rules! pub_export_modules {
     };
 }
 
-/// for new "all" trait based design
-/// only difference from pub_export_modules, is the module itself is not public
-macro_rules! pub_export_modules2 {
+/// Include a module, and publicly use the modules contents
+macro_rules! pub_use_modules {
     (
         $(
             $(#[$($attributes:tt)*])*
@@ -276,9 +277,5 @@ macro_rules! pub_export_modules2 {
             #[allow(unused_imports)]
             pub use $name::*;
         )*
-
-        pub(crate) mod export {
-            $( #[allow(unused_imports)] pub use super::$name::*; )*
-        }
     };
 }

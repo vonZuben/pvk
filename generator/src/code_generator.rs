@@ -93,7 +93,7 @@ impl Generator {
             .chain(self.extensions.extension_names_iter())
     }
 
-    /// internally I call it static code (see [StaticCode](crate::static_code::StaticCode))
+    /// internally I call it static code
     /// externally, this is utility code that other generated code relies on
     pub fn util_code(&self) -> String {
         let static_code = crate::static_code::StaticCode;
