@@ -173,7 +173,6 @@ impl<T> DerefMut for Scope<'_, T> {
 /// that it is defined in (i.e. a scope). Different invocations of [`tag!`] will
 /// create different unique tags.
 #[macro_export]
-#[doc(hidden)]
 macro_rules! tag {
     ( $name:ident ) => {
         let $name = unsafe { $crate::scope::Anchor::new() };
