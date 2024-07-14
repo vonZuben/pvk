@@ -33,6 +33,9 @@ get_physical_device_image_format_properties;
 
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_sparse_image_format_properties;
+
+#[cfg(VK_VERSION_1_0)]
+get_physical_device_queue_family_properties;
 );
 
 /// PhysicalDevice handle trait
@@ -237,6 +240,30 @@ pub trait PhysicalDevice:
             image_format_properties,
             storage,
         )
+    }
+
+    #[cfg(VK_VERSION_1_0)]
+    /// Query the queue family properties of the PhysicalDevice
+    ///
+    /// Must provide the storage space to return the properties to.
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # use vk::traits::*;
+    /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
+    /// #   (physical_device: P) {
+    /// let queue_family_properties =
+    ///     physical_device.get_physical_device_queue_family_properties(Vec::new());
+    /// # }
+    /// ```
+    fn get_physical_device_queue_family_properties<A: ArrayStorage<vk::QueueFamilyProperties>>(
+        &self,
+        storage: A,
+    ) -> Result<QueueFamilies<Self, A>, Error>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceQueueFamilyProperties,
+    {
+        get_physical_device_queue_family_properties(self, storage)
     }
 }
 

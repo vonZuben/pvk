@@ -106,11 +106,11 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Example sparse properties for above image format properties--");
     println!("{sparse_image_format_properties:#?}");
 
-    // let queue_family_properties = pd
-    //     .get_physical_device_queue_family_properties(Vec::new())
-    //     .unwrap();
-    // println!("--Queue family properties for this physical device--");
-    // println!("{:#?}", queue_family_properties);
+    let queue_family_properties = pd
+        .get_physical_device_queue_family_properties(Vec::new())
+        .unwrap();
+    println!("--Queue family properties for this physical device--");
+    println!("{:#?}", queue_family_properties);
 
     // let mem_props = pd.get_physical_device_memory_properties();
     // println!("--Memory properties for this physical device--");

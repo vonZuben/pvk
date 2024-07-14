@@ -28,4 +28,7 @@ application_info;
 
 #[cfg(VK_VERSION_1_0)]
 sparse_image_format_properties;
+
+#[cfg(VK_VERSION_1_0)]
+queue_families;
 );
