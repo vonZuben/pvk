@@ -269,6 +269,7 @@ pub trait PhysicalDevice:
         get_physical_device_queue_family_properties(self, storage)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Query the memory properties of the PhysicalDevice
     ///
     /// ```rust
