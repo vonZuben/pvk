@@ -1,3 +1,6 @@
+use std::fmt;
+use std::ops::Deref;
+
 use vk_safe_sys as vk;
 
 /// Non-standard struct for parameters of an Image
@@ -12,14 +15,46 @@ use vk_safe_sys as vk;
 /// Thus, the valid usage rules for `VkImageCreateInfo` are also verified, since image format
 /// properties for an image that cannot be created is meaningless, and probably undefined.
 ///
-/// Other rules to be checked in future?
-#[derive(Clone, Copy, Debug)]
+/// 🚧 Other rules need to be checked?
+#[derive(Clone, Copy)]
 pub struct ImageParameters {
-    pub(crate) format: vk::Format,
-    pub(crate) image_type: vk::ImageType,
-    pub(crate) image_tiling: vk::ImageTiling,
-    pub(crate) usage_flags: vk::ImageUsageFlags,
-    pub(crate) create_flags: vk::ImageCreateFlags,
+    inner: ImageParametersInner,
+}
+
+// probably not the best way of using Deref, but I want
+// to make the inner parameters read only and these
+// seems like the least annoying way
+impl Deref for ImageParameters {
+    type Target = ImageParametersInner;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl fmt::Debug for ImageParameters {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let this = &self.inner;
+        f.debug_struct("ImageParameters")
+            .field("format", &this.format)
+            .field("image_type", &this.image_type)
+            .field("image_tiling", &this.image_tiling)
+            .field("usage_flags", &this.usage_flags)
+            .field("create_flags", &this.create_flags)
+            .finish()
+    }
+}
+
+/// Inner struct which holds all the parameters
+///
+/// This is just a Deref target for lazy read onl access
+#[derive(Clone, Copy)]
+pub struct ImageParametersInner {
+    pub format: vk::Format,
+    pub image_type: vk::ImageType,
+    pub image_tiling: vk::ImageTiling,
+    pub usage_flags: vk::ImageUsageFlags,
+    pub create_flags: vk::ImageCreateFlags,
 }
 
 impl ImageParameters {
@@ -257,12 +292,14 @@ impl ImageParameters {
             // MaybeUninit
         }
 
-        Self {
-            format,
-            image_type,
-            image_tiling,
-            usage_flags,
-            create_flags,
+        ImageParameters {
+            inner: ImageParametersInner {
+                format,
+                image_type,
+                image_tiling,
+                usage_flags,
+                create_flags,
+            },
         }
     }
 }
