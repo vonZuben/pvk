@@ -25,4 +25,7 @@ instance_create_info;
 
 #[cfg(VK_VERSION_1_0)]
 application_info;
+
+#[cfg(VK_VERSION_1_0)]
+sparse_image_format_properties;
 );

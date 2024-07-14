@@ -8,8 +8,7 @@ Thus, I try to make use of all APIs here as I add them.
 use vk_safe::vk;
 use vk_safe::vk_str;
 
-use vk::Instance;
-use vk::{PhysicalDevice, PhysicalDeviceTagger, PhysicalDevices};
+use vk::traits::*;
 
 vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
 vk::device_context!(DeviceContext: VERSION_1_0);
@@ -83,30 +82,29 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Example of device format propertied for R8G8B8A8_SRGB:");
     println!("{srgb_properties:#?}");
 
-    // const PARAMS: vk::GetPhysicalDeviceImageFormatPropertiesParameters =
-    //     vk::GetPhysicalDeviceImageFormatPropertiesParameters::new(
-    //         vk::Format::R8G8B8A8_SRGB,
-    //         vk::ImageType::TYPE_2D,
-    //         vk::ImageTiling::OPTIMAL,
-    //         vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
-    //         vk::ImageCreateFlags::empty(),
-    //     );
+    const PARAMS: vk::ImageParameters = vk::ImageParameters::new(
+        vk::Format::R8G8B8A8_SRGB,
+        vk::ImageType::TYPE_2D,
+        vk::ImageTiling::OPTIMAL,
+        vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
+        vk::ImageCreateFlags::empty(),
+    );
 
-    // let tst_image_format_properties = pd
-    //     .get_physical_device_image_format_properties(PARAMS)
-    //     .unwrap();
-    // println!("--Example of device format propertied for R8G8B8A8_SRGB, 2D, Optimal tiling, to be used as Transfer destination and Color attachment:");
-    // println!("{tst_image_format_properties:#?}");
+    let tst_image_format_properties = pd
+        .get_physical_device_image_format_properties(PARAMS)
+        .unwrap();
+    println!("--Example of device format propertied for R8G8B8A8_SRGB, 2D, Optimal tiling, to be used as Transfer destination and Color attachment:");
+    println!("{tst_image_format_properties:#?}");
 
-    // let sparse_image_format_properties = pd
-    //     .get_physical_device_sparse_image_format_properties(
-    //         vk::SampleCountFlags::TYPE_1_BIT,
-    //         tst_image_format_properties,
-    //         Vec::new(),
-    //     )
-    //     .unwrap();
-    // println!("--Example sparse properties for above image format properties--");
-    // println!("{sparse_image_format_properties:#?}");
+    let sparse_image_format_properties = pd
+        .get_physical_device_sparse_image_format_properties(
+            vk::SampleCountFlags::TYPE_1_BIT,
+            tst_image_format_properties,
+            Vec::new(),
+        )
+        .unwrap();
+    println!("--Example sparse properties for above image format properties--");
+    println!("{sparse_image_format_properties:#?}");
 
     // let queue_family_properties = pd
     //     .get_physical_device_queue_family_properties(Vec::new())

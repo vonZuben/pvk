@@ -30,6 +30,9 @@ get_physical_device_format_properties;
 
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_image_format_properties;
+
+#[cfg(VK_VERSION_1_0)]
+get_physical_device_sparse_image_format_properties;
 );
 
 /// PhysicalDevice handle trait
@@ -47,6 +50,7 @@ pub trait PhysicalDevice:
 {
     type Instance: Instance;
 
+    #[cfg(VK_VERSION_1_0)]
     /// Query the properties of the PhysicalDevice
     ///
     /// ```rust
@@ -67,6 +71,7 @@ pub trait PhysicalDevice:
         get_physical_device_properties(self)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Query the device level layers supported by the PhysicalDevice
     ///
     /// Must provide [`ArrayStorage`] space to return the extension properties into.
@@ -89,6 +94,7 @@ pub trait PhysicalDevice:
         enumerate_device_layer_properties(self, storage)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Query the features supported by the PhysicalDevice
     ///
     /// ```rust
@@ -106,6 +112,7 @@ pub trait PhysicalDevice:
         get_physical_device_features(self)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Query the device level extensions supported by the PhysicalDevice
     ///
     /// If `layer_name` is `None`, only extensions provided by the Vulkan implementation.
@@ -134,6 +141,7 @@ pub trait PhysicalDevice:
         enumerate_device_extension_properties(self, layer_name, storage)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Query the format properties of the PhysicalDevice
     ///
     /// Provide the [`Format`](crate::vk::Format) to get the properties of that format
@@ -154,6 +162,7 @@ pub trait PhysicalDevice:
         get_physical_device_format_properties(self, format)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Query the image format properties of the PhysicalDevice
     ///
     /// Provide [`ImageParameters`] with the parameters of an image,
@@ -185,6 +194,49 @@ pub trait PhysicalDevice:
         Self::Commands: vk::has_command::GetPhysicalDeviceImageFormatProperties,
     {
         get_physical_device_image_format_properties(self, params)
+    }
+
+    #[cfg(VK_VERSION_1_0)]
+    /// Query the sparse image format properties of the PhysicalDevice
+    ///
+    /// ### Note
+    /// This requires [`ImageFormatProperties`] from
+    /// [`get_physical_device_image_format_properties`](PhysicalDevice::get_physical_device_image_format_properties()),
+    /// which provides [`ImageParameters`] and ensures that the sample count you choose is supported
+    /// by an image with such parameters.
+    ///
+    /// Must provide the storage space to return the properties to.
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # use vk::traits::*;
+    /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
+    /// #   (physical_device: P, image_format_properties: vk::ImageFormatProperties<P>) {
+    /// let sparse_image_format_properties =
+    ///     physical_device.get_physical_device_sparse_image_format_properties(
+    ///         vk::SampleCountFlags::TYPE_1_BIT,
+    ///         image_format_properties,
+    ///         Vec::new(),
+    ///     ).unwrap();
+    /// # }
+    /// ```
+    fn get_physical_device_sparse_image_format_properties<
+        A: ArrayStorage<SparseImageFormatProperties<Self>>,
+    >(
+        &self,
+        samples: vk::SampleCountFlags,
+        image_format_properties: ImageFormatProperties<Self>,
+        storage: A,
+    ) -> Result<A::InitStorage, Error>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceSparseImageFormatProperties,
+    {
+        get_physical_device_sparse_image_format_properties(
+            self,
+            samples,
+            image_format_properties,
+            storage,
+        )
     }
 }
 
