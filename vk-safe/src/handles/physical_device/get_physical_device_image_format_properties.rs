@@ -34,6 +34,6 @@ pub(crate) fn get_physical_device_image_format_properties<
             properties.as_mut_ptr(),
         );
         check_raw_err!(res);
-        Ok(ImageFormatProperties::new(properties.assume_init()))
+        Ok(ImageFormatProperties::new(properties.assume_init(), params))
     }
 }
