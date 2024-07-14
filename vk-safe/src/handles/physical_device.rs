@@ -36,6 +36,9 @@ get_physical_device_sparse_image_format_properties;
 
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_queue_family_properties;
+
+#[cfg(VK_VERSION_1_0)]
+get_physical_device_memory_properties;
 );
 
 /// PhysicalDevice handle trait
@@ -264,6 +267,23 @@ pub trait PhysicalDevice:
         Self::Commands: vk::has_command::GetPhysicalDeviceQueueFamilyProperties,
     {
         get_physical_device_queue_family_properties(self, storage)
+    }
+
+    /// Query the memory properties of the PhysicalDevice
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # use vk::traits::*;
+    /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
+    /// #   (physical_device: P) {
+    /// let memory_properties = physical_device.get_physical_device_memory_properties();
+    /// # }
+    /// ```
+    fn get_physical_device_memory_properties(&self) -> PhysicalDeviceMemoryProperties<Self>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceMemoryProperties,
+    {
+        get_physical_device_memory_properties(self)
     }
 }
 

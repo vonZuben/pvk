@@ -112,9 +112,9 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Queue family properties for this physical device--");
     println!("{:#?}", queue_family_properties);
 
-    // let mem_props = pd.get_physical_device_memory_properties();
-    // println!("--Memory properties for this physical device--");
-    // println!("{:#?}", mem_props);
+    let mem_props = pd.get_physical_device_memory_properties();
+    println!("--Memory properties for this physical device--");
+    println!("{:#?}", mem_props);
 
     // vk::tag!(families_tag);
 

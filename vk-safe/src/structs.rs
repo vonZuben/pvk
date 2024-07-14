@@ -31,4 +31,7 @@ sparse_image_format_properties;
 
 #[cfg(VK_VERSION_1_0)]
 queue_families;
+
+#[cfg(VK_VERSION_1_0)]
+physical_device_memory_properties;
 );
