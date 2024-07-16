@@ -5,7 +5,7 @@ use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 use crate::error::Error;
 use crate::flags::{Excludes, Flags, Includes};
 use crate::scope::Tag;
-use crate::structs::MemoryAllocateInfo;
+use crate::structs::*;
 use crate::type_conversions::ToC;
 use crate::VkVersion;
 
@@ -26,6 +26,9 @@ allocate_memory;
 
 #[cfg(VK_VERSION_1_0)]
 map_memory;
+
+#[cfg(VK_VERSION_1_0)]
+flush_mapped_memory_ranges;
 );
 
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
@@ -93,6 +96,26 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         Self::Commands: vk::has_command::MapMemory,
     {
         map_memory(self, memory)
+    }
+
+    /// Flush memory to make host writes visible to the device
+    ///
+    /// ```
+    /// # use vk_safe::vk;
+    /// # fn tst<
+    /// #    D: vk::Device<Commands: vk::device::VERSION_1_0>,
+    /// #    M: vk::DeviceMemory<Device = D>
+    /// # >
+    /// #   (device: D, mapped_memory: vk::MappedMemory<M>) {
+    /// let ranges = [vk::MappedMemoryRange::whole_range(&mapped_memory)];
+    /// device.flush_mapped_memory_ranges(&ranges).unwrap();
+    /// # }
+    /// ```
+    fn flush_mapped_memory_ranges(&self, ranges: &[MappedMemoryRange<Self>]) -> Result<(), Error>
+    where
+        Self::Commands: vk::has_command::FlushMappedMemoryRanges,
+    {
+        flush_mapped_memory_ranges(self, ranges)
     }
 }
 

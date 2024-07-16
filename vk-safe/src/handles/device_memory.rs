@@ -148,6 +148,12 @@ pub struct MappedMemory<M> {
     ptr: *const std::ffi::c_void,
 }
 
+impl<M: DeviceMemory> MappedMemory<M> {
+    pub(crate) fn handle(&self) -> vk::DeviceMemory {
+        self.memory.raw_handle()
+    }
+}
+
 impl<M> MappedMemory<M> {
     pub(crate) fn new(memory: M, ptr: *const std::ffi::c_void) -> Self {
         Self { memory, ptr }

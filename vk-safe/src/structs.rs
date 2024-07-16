@@ -43,4 +43,7 @@ device_create_info;
 
 #[cfg(VK_VERSION_1_0)]
 memory_allocate_info;
+
+#[cfg(VK_VERSION_1_0)]
+mapped_memory_range;
 );
