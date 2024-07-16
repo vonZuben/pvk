@@ -5,6 +5,7 @@ use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 use crate::flags::Flags;
 use crate::scope::Tag;
 use crate::structs::MemoryAllocateInfo;
+use crate::type_conversions::ToC;
 use crate::VkVersion;
 
 use std::fmt;
@@ -125,4 +126,65 @@ impl<C: DestroyDevice + Version, P: PhysicalDevice, T> Device for _Device<C, P, 
     const VERSION: VkVersion = C::VERSION;
 
     type PhysicalDevice = P;
+}
+
+impl<C: DestroyDevice, P, T> Drop for _Device<C, P, T> {
+    fn drop(&mut self) {
+        check_vuids::check_vuids!(DestroyDevice);
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_05137: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "All child objects created on device must have been destroyed prior to destroying device"
+            }
+
+            // everything borrowing device should be doe before this can happen
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_00379: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If VkAllocationCallbacks were provided when device was created, a compatible set of"
+            "callbacks must be provided here"
+            }
+
+            // TODO always null for now
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_00380: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If no VkAllocationCallbacks were provided when device was created, pAllocator must"
+            "be NULL"
+            }
+
+            // TODO always null for now
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_device_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If device is not NULL, device must be a valid VkDevice handle"
+            }
+
+            // ensured by device creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyDevice_pAllocator_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
+            "structure"
+            }
+
+            // TODO always null for now
+        }
+
+        unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
+    }
 }
