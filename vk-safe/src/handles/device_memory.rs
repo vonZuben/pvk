@@ -25,7 +25,7 @@ pub trait DeviceMemory: Handle<RawHandle = vk::DeviceMemory> + ThreadSafeHandle 
 /// ⚠️ This is **NOT** intended to be public. This is only
 /// exposed as a stopgap solution to over capturing in
 /// RPITIT. After some kind of precise capturing is possible,
-/// this type will be made private and <code>impl [Device]</code>
+/// this type will be made private and <code>impl [DeviceMemory]</code>
 /// will be returned.
 pub struct _DeviceMemory<'a, D: Device<Commands: FreeMemory>, P, H> {
     handle: vk::DeviceMemory,
