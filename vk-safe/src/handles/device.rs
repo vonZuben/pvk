@@ -33,8 +33,8 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # vk::device_context!(D: VERSION_1_0);
-    /// # fn tst<C: vk::device::VERSION_1_0, D: vk::Device<Context = C>, P: vk::Flags, H: vk::Flags>
+    /// # use vk::traits::*;
+    /// # fn tst<D: vk::Device<Commands: vk::device::VERSION_1_0>, P: vk::Flags, H: vk::Flags>
     /// #   (device: D, alloc_info: vk::MemoryAllocateInfo<D::PhysicalDevice, P, H>) {
     /// let memory = device.allocate_memory(&alloc_info);
     /// # }
