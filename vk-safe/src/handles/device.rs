@@ -49,6 +49,8 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// let memory = device.allocate_memory(&alloc_info);
     /// # }
     /// ```
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html>
     fn allocate_memory<P: Flags, H: Flags>(
         &self,
         info: &MemoryAllocateInfo<Self::PhysicalDevice, P, H>,
@@ -82,6 +84,8 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// ### Note
     /// *currently this can only be used to map the whole memory range. There may be breaking change in
     /// future to make the API more inline with the real `vkMapMemory`, which allows mapping sub ranges*
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkMapMemory.html>
     fn map_memory<
         M: DeviceMemory<
             Device = Self,
@@ -111,6 +115,8 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// device.flush_mapped_memory_ranges(&ranges).unwrap();
     /// # }
     /// ```
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html>
     fn flush_mapped_memory_ranges(&self, ranges: &[MappedMemoryRange<Self>]) -> Result<(), Error>
     where
         Self::Commands: vk::has_command::FlushMappedMemoryRanges,
