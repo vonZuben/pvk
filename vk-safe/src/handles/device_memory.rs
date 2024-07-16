@@ -1,7 +1,9 @@
 use super::{Handle, ThreadSafeHandle};
 
 use std::fmt;
+use std::marker::PhantomData;
 
+use crate::flags::Flags;
 use crate::handles::device::Device;
 use crate::type_conversions::ToC;
 
@@ -9,8 +11,13 @@ use vk_safe_sys as vk;
 
 use vk::has_command::FreeMemory;
 
-pub trait DeviceMemory: Handle + ThreadSafeHandle {
+pub trait DeviceMemory: Handle<RawHandle = vk::DeviceMemory> + ThreadSafeHandle {
+    /// The *specific* Device to which this DeviceMemory belongs
     type Device;
+    /// Properties of the memory type this DeviceMemory was allocated with
+    type PropertyFlags: Flags;
+    /// Properties of the memory heap from which this DeviceMemory was allocated
+    type HeapFlags: Flags;
 }
 
 /// [`DeviceMemory`] implementor
@@ -20,22 +27,29 @@ pub trait DeviceMemory: Handle + ThreadSafeHandle {
 /// RPITIT. After some kind of precise capturing is possible,
 /// this type will be made private and <code>impl [Device]</code>
 /// will be returned.
-pub struct _DeviceMemory<'a, D: Device<Commands: FreeMemory>> {
+pub struct _DeviceMemory<'a, D: Device<Commands: FreeMemory>, P, H> {
     handle: vk::DeviceMemory,
     device: &'a D,
+    property_flags: PhantomData<P>,
+    heap_flags: PhantomData<H>,
 }
 
-impl<'a, D: Device<Commands: FreeMemory>> _DeviceMemory<'a, D> {
+impl<'a, D: Device<Commands: FreeMemory>, P, H> _DeviceMemory<'a, D, P, H> {
     pub(crate) fn new(handle: vk::DeviceMemory, device: &'a D) -> Self {
-        Self { handle, device }
+        Self {
+            handle,
+            device,
+            property_flags: PhantomData,
+            heap_flags: PhantomData,
+        }
     }
 }
 
-unsafe impl<D: Device<Commands: FreeMemory>> Send for _DeviceMemory<'_, D> {}
-unsafe impl<D: Device<Commands: FreeMemory>> Sync for _DeviceMemory<'_, D> {}
-impl<D: Device<Commands: FreeMemory>> ThreadSafeHandle for _DeviceMemory<'_, D> {}
+unsafe impl<D: Device<Commands: FreeMemory>, P, H> Send for _DeviceMemory<'_, D, P, H> {}
+unsafe impl<D: Device<Commands: FreeMemory>, P, H> Sync for _DeviceMemory<'_, D, P, H> {}
+impl<D: Device<Commands: FreeMemory>, P, H> ThreadSafeHandle for _DeviceMemory<'_, D, P, H> {}
 
-impl<D: Device<Commands: FreeMemory>> fmt::Debug for _DeviceMemory<'_, D> {
+impl<D: Device<Commands: FreeMemory>, P, H> fmt::Debug for _DeviceMemory<'_, D, P, H> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DeviceMemory")
             .field("handle", &self.handle)
@@ -44,7 +58,7 @@ impl<D: Device<Commands: FreeMemory>> fmt::Debug for _DeviceMemory<'_, D> {
     }
 }
 
-impl<D: Device<Commands: FreeMemory>> Handle for _DeviceMemory<'_, D> {
+impl<D: Device<Commands: FreeMemory>, P, H> Handle for _DeviceMemory<'_, D, P, H> {
     type RawHandle = vk::DeviceMemory;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -52,11 +66,15 @@ impl<D: Device<Commands: FreeMemory>> Handle for _DeviceMemory<'_, D> {
     }
 }
 
-impl<D: Device<Commands: FreeMemory>> DeviceMemory for _DeviceMemory<'_, D> {
+impl<D: Device<Commands: FreeMemory>, P: Flags, H: Flags> DeviceMemory
+    for _DeviceMemory<'_, D, P, H>
+{
     type Device = D;
+    type PropertyFlags = P;
+    type HeapFlags = H;
 }
 
-impl<D: Device<Commands: FreeMemory>> Drop for _DeviceMemory<'_, D> {
+impl<D: Device<Commands: FreeMemory>, P, H> Drop for _DeviceMemory<'_, D, P, H> {
     fn drop(&mut self) {
         check_vuids::check_vuids!(FreeMemory);
 
@@ -120,5 +138,18 @@ impl<D: Device<Commands: FreeMemory>> Drop for _DeviceMemory<'_, D> {
                 None.to_c(),
             )
         }
+    }
+}
+
+/// DeviceMemory which has been mapped for host access
+#[derive(Debug)]
+pub struct MappedMemory<M> {
+    memory: M,
+    ptr: *const std::ffi::c_void,
+}
+
+impl<M> MappedMemory<M> {
+    pub(crate) fn new(memory: M, ptr: *const std::ffi::c_void) -> Self {
+        Self { memory, ptr }
     }
 }

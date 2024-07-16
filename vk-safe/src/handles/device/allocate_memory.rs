@@ -20,7 +20,7 @@ pub(crate) fn allocate_memory<
     info: &MemoryAllocateInfo<D::PhysicalDevice, P, H>,
 ) -> Result<
     // impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
-    _DeviceMemory<'a, D>,
+    _DeviceMemory<'a, D, P, H>,
     vk::Result,
 > {
     check_vuids::check_vuids!(AllocateMemory);

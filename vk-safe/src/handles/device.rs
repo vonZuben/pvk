@@ -1,8 +1,9 @@
-use super::device_memory::_DeviceMemory;
+use super::device_memory::{DeviceMemory, MappedMemory, _DeviceMemory};
 use super::physical_device::PhysicalDevice;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
-use crate::flags::Flags;
+use crate::error::Error;
+use crate::flags::{Excludes, Flags, Includes};
 use crate::scope::Tag;
 use crate::structs::MemoryAllocateInfo;
 use crate::type_conversions::ToC;
@@ -16,9 +17,15 @@ use vk_safe_sys as vk;
 use vk::has_command::DestroyDevice;
 use vk::Version;
 
+use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
+use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
+
 pub_use_modules!(
 #[cfg(VK_VERSION_1_0)]
 allocate_memory;
+
+#[cfg(VK_VERSION_1_0)]
+map_memory;
 );
 
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
@@ -44,13 +51,48 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         info: &MemoryAllocateInfo<Self::PhysicalDevice, P, H>,
     ) -> Result<
         // impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
-        _DeviceMemory<Self>,
+        _DeviceMemory<Self, P, H>,
         vk::Result,
     >
     where
         Self::Commands: vk::has_command::AllocateMemory + vk::has_command::FreeMemory,
     {
         allocate_memory(self, info)
+    }
+
+    /// Map memory for host access
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
+    /// # use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
+    /// # fn tst<
+    /// #    D: vk::Device<Commands: vk::device::VERSION_1_0>,
+    /// #    P: vk::Includes<HOST_VISIBLE_BIT>,
+    /// #    H: vk::Excludes<MULTI_INSTANCE_BIT>
+    /// # >
+    /// #   (device: D, memory: impl vk::DeviceMemory<Device = D, PropertyFlags = P, HeapFlags = H>) {
+    /// let mapped_memory = device.map_memory(memory);
+    /// # }
+    /// ```
+    ///
+    /// ### Note
+    /// *currently this can only be used to map the whole memory range. There may be breaking change in
+    /// future to make the API more inline with the real `vkMapMemory`, which allows mapping sub ranges*
+    fn map_memory<
+        M: DeviceMemory<
+            Device = Self,
+            PropertyFlags: Includes<HOST_VISIBLE_BIT>,
+            HeapFlags: Excludes<MULTI_INSTANCE_BIT>,
+        >,
+    >(
+        &self,
+        memory: M,
+    ) -> Result<MappedMemory<M>, Error>
+    where
+        Self::Commands: vk::has_command::MapMemory,
+    {
+        map_memory(self, memory)
     }
 }
 

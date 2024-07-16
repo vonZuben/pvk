@@ -148,9 +148,9 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Example allocated memory handle--");
     println!("{mem:?}");
 
-    // let mapped_memory = device.map_memory(mem).unwrap();
-    // println!("--Example mapped memory handle--");
-    // println!("{mapped_memory:#?}");
+    let mapped_memory = device.map_memory(mem).unwrap();
+    println!("--Example mapped memory handle--");
+    println!("{mapped_memory:#?}");
 
     // let ranges = [vk::MappedMemoryRange::whole_range(&mapped_memory)];
     // device.flush_mapped_memory_ranges(&ranges).unwrap();
