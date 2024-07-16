@@ -116,28 +116,28 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Memory properties for this physical device--");
     println!("{:#?}", mem_props);
 
-    // vk::tag!(families_tag);
+    vk::tag!(families_tag);
 
-    // let mut queue_configs = vec![];
-    // let priorities = [vk::QueuePriority::default(); 10];
-    // for p in queue_family_properties.properties_iter(families_tag) {
-    //     use vk::queue_flag_bits::*;
-    //     if p.queue_flags
-    //         .contains(GRAPHICS_BIT | COMPUTE_BIT | TRANSFER_BIT)
-    //     {
-    //         queue_configs.push(
-    //             vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),
-    //         )
-    //     }
-    // }
+    let mut queue_configs = vec![];
+    let priorities = [vk::QueuePriority::default(); 10];
+    for p in queue_family_properties.properties_iter(families_tag) {
+        use vk::queue_flag_bits::*;
+        if p.queue_flags
+            .contains(GRAPHICS_BIT | COMPUTE_BIT | TRANSFER_BIT)
+        {
+            queue_configs.push(
+                vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),
+            )
+        }
+    }
 
-    // let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+    let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
-    // vk::tag!(dt);
-    // let device = pd.create_device(&device_create_info, dt).unwrap();
+    vk::tag!(dt);
+    let device = pd.create_device(&device_create_info, dt).unwrap();
 
-    // println!("--Example Device handle--");
-    // println!("{device:#?}");
+    println!("--Example Device handle--");
+    println!("{device:#?}");
 
     // vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
     // vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);

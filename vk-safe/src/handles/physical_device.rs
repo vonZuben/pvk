@@ -1,9 +1,10 @@
+use super::device::_Device; // ⚠️ hidden type exposed until precise capturing in RPITIT is possible
 use super::instance::Instance;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
-use crate::scope::{Captures, Tag};
+use crate::scope::{Captures, HasScope, Tag};
 use crate::structs::*;
 use crate::vk_str::VkStr;
 
@@ -11,6 +12,10 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
+
+use vk::context::{Context, InstanceDependencies, LoadCommands};
+use vk::has_command::DestroyDevice;
+use vk::Version;
 
 pub_use_modules!(
 #[cfg(VK_VERSION_1_0)]
@@ -39,6 +44,9 @@ get_physical_device_queue_family_properties;
 
 #[cfg(VK_VERSION_1_0)]
 get_physical_device_memory_properties;
+
+#[cfg(VK_VERSION_1_0)]
+create_device;
 );
 
 /// PhysicalDevice handle trait
@@ -285,6 +293,43 @@ pub trait PhysicalDevice:
         Self::Commands: vk::has_command::GetPhysicalDeviceMemoryProperties,
     {
         get_physical_device_memory_properties(self)
+    }
+
+    /// Create a device from the PhysicalDevice
+    ///
+    /// In order to create a Device, you first define the Version and Extensions you will
+    /// use with [`vk::device_context!`]. You can then create an [`DeviceCreateInfo`]
+    /// structure along with an array of [`DeviceQueueCreateInfo`].
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # use vk::traits::*;
+    /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>, T>
+    /// #   (physical_device: P, create_info: &vk::DeviceCreateInfo<D, (P, T)>, queue_properties: &vk::QueueFamiliesRef<P>) {
+    /// vk::tag!(tag);
+    /// let device = physical_device.create_device(create_info, tag).unwrap();
+    /// # }
+    /// ```
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html>
+    fn create_device<'t, C, O, Z: HasScope<Self>>(
+        &self,
+        create_info: &DeviceCreateInfo<C, Z>,
+        tag: Tag<'t>,
+    ) -> Result<
+        // impl Device<Context = D::Commands, PhysicalDevice = S, QueueConfig = Z> + Captures<Tag<'t>>,
+        _Device<C::Commands, Tag<'t>>,
+        Error,
+    >
+    where
+        Self::Commands:
+            vk::has_command::CreateDevice + vk::has_command::EnumerateDeviceExtensionProperties,
+        C: Context + InstanceDependencies<Self::Commands, O> + Send + Sync,
+        C::Commands:
+            DestroyDevice + LoadCommands + Version + VersionCheck<Self::Commands> + Send + Sync,
+    {
+        create_device(self, create_info, tag)
     }
 }
 

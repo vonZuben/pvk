@@ -3,6 +3,7 @@ use std::fmt::Debug;
 pub_export_modules!(
 instance;
 physical_device;
+device;
 );
 
 /// A handle which can dispatch Vulkan Commands

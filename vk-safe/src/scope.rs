@@ -129,3 +129,13 @@ macro_rules! tag {
 }
 #[doc(inline)]
 pub use tag;
+
+/// Check if a combined tag type has a particular tag
+///
+/// Sometimes, a type has multiple relevant tags. In order
+/// to reduce the number of type parameters, the tags
+/// are combined into a single type. This trait allows
+/// checking individual tags from the combined tag type.
+pub trait HasScope<S> {}
+
+impl<S, U> HasScope<S> for (S, U) {}

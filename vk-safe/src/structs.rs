@@ -34,4 +34,10 @@ queue_families;
 
 #[cfg(VK_VERSION_1_0)]
 physical_device_memory_properties;
+
+#[cfg(VK_VERSION_1_0)]
+device_queue_create_info;
+
+#[cfg(VK_VERSION_1_0)]
+device_create_info;
 );
