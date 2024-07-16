@@ -155,7 +155,7 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     let ranges = [vk::MappedMemoryRange::whole_range(&mapped_memory)];
     device.flush_mapped_memory_ranges(&ranges).unwrap();
 
-    // let _memory = device.unmap_memory(mapped_memory);
+    let _memory = device.unmap_memory(mapped_memory);
 
     // vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
     // for queue_config in queue_configs {

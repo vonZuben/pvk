@@ -152,6 +152,11 @@ impl<M: DeviceMemory> MappedMemory<M> {
     pub(crate) fn handle(&self) -> vk::DeviceMemory {
         self.memory.raw_handle()
     }
+
+    /// Must have actually unmapped the memory
+    pub(crate) unsafe fn take(self) -> M {
+        self.memory
+    }
 }
 
 impl<M> MappedMemory<M> {

@@ -29,6 +29,9 @@ map_memory;
 
 #[cfg(VK_VERSION_1_0)]
 flush_mapped_memory_ranges;
+
+#[cfg(VK_VERSION_1_0)]
+unmap_memory;
 );
 
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
@@ -122,6 +125,25 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         Self::Commands: vk::has_command::FlushMappedMemoryRanges,
     {
         flush_mapped_memory_ranges(self, ranges)
+    }
+
+    /// Unmap memory for host access
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # fn tst<
+    /// #    D: vk::Device<Commands: vk::device::VERSION_1_0>,
+    /// #    M: vk::DeviceMemory<Device = D>,
+    /// # >
+    /// #   (device: D, mapped_memory: vk::MappedMemory<M>) {
+    /// let memory = device.unmap_memory(mapped_memory);
+    /// # }
+    /// ```
+    fn unmap_memory<M: DeviceMemory<Device = Self>>(&self, mapped_memory: MappedMemory<M>) -> M
+    where
+        Self::Commands: vk::has_command::UnmapMemory,
+    {
+        unmap_memory(self, mapped_memory)
     }
 }
 
