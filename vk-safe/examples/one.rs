@@ -139,14 +139,14 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Example Device handle--");
     println!("{device:#?}");
 
-    // vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
-    // vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
+    vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
+    vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
 
-    // let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
-    // let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
-    // let mem = device.allocate_memory(&alloc_info).unwrap();
-    // println!("--Example allocated memory handle--");
-    // println!("{mem:?}");
+    let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
+    let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
+    let mem = device.allocate_memory(&alloc_info).unwrap();
+    println!("--Example allocated memory handle--");
+    println!("{mem:?}");
 
     // let mapped_memory = device.map_memory(mem).unwrap();
     // println!("--Example mapped memory handle--");

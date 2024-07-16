@@ -319,7 +319,7 @@ pub trait PhysicalDevice:
         tag: Tag<'t>,
     ) -> Result<
         // impl Device<Context = D::Commands, PhysicalDevice = S, QueueConfig = Z> + Captures<Tag<'t>>,
-        _Device<C::Commands, Tag<'t>>,
+        _Device<C::Commands, Self, Tag<'t>>,
         Error,
     >
     where

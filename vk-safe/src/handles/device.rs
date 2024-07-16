@@ -1,6 +1,10 @@
+use super::device_memory::_DeviceMemory;
+use super::physical_device::PhysicalDevice;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
+use crate::flags::Flags;
 use crate::scope::Tag;
+use crate::structs::MemoryAllocateInfo;
 use crate::VkVersion;
 
 use std::fmt;
@@ -11,24 +15,58 @@ use vk_safe_sys as vk;
 use vk::has_command::DestroyDevice;
 use vk::Version;
 
+pub_use_modules!(
+#[cfg(VK_VERSION_1_0)]
+allocate_memory;
+);
+
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
     const VERSION: VkVersion;
-}
 
-#[allow(unused)]
-// ⚠️ return impl Device after precise capturing in RPITIT is possible
-pub(crate) fn make_device<C: DestroyDevice + Version, Tag>(
-    handle: vk::Device,
-    commands: C,
-    _tag: Tag,
-    // ) -> impl Device<Commands = C> + Captures<Tag> {
-) -> _Device<C, Tag> {
-    _Device::<C, Tag> {
-        handle,
-        commands,
-        tag: PhantomData,
+    type PhysicalDevice: PhysicalDevice;
+
+    /// Allocate memory on the Device
+    ///
+    /// Provide a [`MemoryAllocateInfo`] structure with the information
+    /// about amount and type of memory you want to allocate.
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # vk::device_context!(D: VERSION_1_0);
+    /// # fn tst<C: vk::device::VERSION_1_0, D: vk::Device<Context = C>, P: vk::Flags, H: vk::Flags>
+    /// #   (device: D, alloc_info: vk::MemoryAllocateInfo<D::PhysicalDevice, P, H>) {
+    /// let memory = device.allocate_memory(&alloc_info);
+    /// # }
+    /// ```
+    fn allocate_memory<P: Flags, H: Flags>(
+        &self,
+        info: &MemoryAllocateInfo<Self::PhysicalDevice, P, H>,
+    ) -> Result<
+        // impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
+        _DeviceMemory<Self>,
+        vk::Result,
+    >
+    where
+        Self::Commands: vk::has_command::AllocateMemory + vk::has_command::FreeMemory,
+    {
+        allocate_memory(self, info)
     }
 }
+
+// #[allow(unused)]
+// // ⚠️ return impl Device after precise capturing in RPITIT is possible
+// pub(crate) fn make_device<C: DestroyDevice + Version, Tag>(
+//     handle: vk::Device,
+//     commands: C,
+//     _tag: Tag,
+//     // ) -> impl Device<Commands = C> + Captures<Tag> {
+// ) -> _Device<C, Tag> {
+//     _Device::<C, Tag> {
+//         handle,
+//         commands,
+//         tag: PhantomData,
+//     }
+// }
 
 /// [`Device`] implementor
 ///
@@ -37,27 +75,29 @@ pub(crate) fn make_device<C: DestroyDevice + Version, Tag>(
 /// RPITIT. After some kind of precise capturing is possible,
 /// this type will be made private and <code>impl [Device]</code>
 /// will be returned.
-pub struct _Device<C: DestroyDevice, T> {
+pub struct _Device<C: DestroyDevice, P, T> {
     handle: vk::Device,
     commands: C,
     tag: PhantomData<T>,
+    physical_device: PhantomData<P>,
 }
 
-impl<'t, C: DestroyDevice> _Device<C, Tag<'t>> {
+impl<'t, C: DestroyDevice, P> _Device<C, P, Tag<'t>> {
     pub(crate) fn new(handle: vk::Device, commands: C, _tag: Tag<'t>) -> Self {
         Self {
             handle,
             commands,
             tag: PhantomData,
+            physical_device: PhantomData,
         }
     }
 }
 
-unsafe impl<C: DestroyDevice, T> Send for _Device<C, T> {}
-unsafe impl<C: DestroyDevice, T> Sync for _Device<C, T> {}
-impl<C: DestroyDevice, T> ThreadSafeHandle for _Device<C, T> {}
+unsafe impl<C: DestroyDevice, P, T> Send for _Device<C, P, T> {}
+unsafe impl<C: DestroyDevice, P, T> Sync for _Device<C, P, T> {}
+impl<C: DestroyDevice, P, T> ThreadSafeHandle for _Device<C, P, T> {}
 
-impl<C: DestroyDevice, T> fmt::Debug for _Device<C, T> {
+impl<C: DestroyDevice, P, T> fmt::Debug for _Device<C, P, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("_Device")
             .field("handle", &self.handle)
@@ -65,7 +105,7 @@ impl<C: DestroyDevice, T> fmt::Debug for _Device<C, T> {
     }
 }
 
-impl<C: DestroyDevice, T> Handle for _Device<C, T> {
+impl<C: DestroyDevice, P, T> Handle for _Device<C, P, T> {
     type RawHandle = vk::Device;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -73,7 +113,7 @@ impl<C: DestroyDevice, T> Handle for _Device<C, T> {
     }
 }
 
-impl<C: DestroyDevice, T> DispatchableHandle for _Device<C, T> {
+impl<C: DestroyDevice, P, T> DispatchableHandle for _Device<C, P, T> {
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -81,6 +121,8 @@ impl<C: DestroyDevice, T> DispatchableHandle for _Device<C, T> {
     }
 }
 
-impl<C: DestroyDevice + Version, T> Device for _Device<C, T> {
+impl<C: DestroyDevice + Version, P: PhysicalDevice, T> Device for _Device<C, P, T> {
     const VERSION: VkVersion = C::VERSION;
+
+    type PhysicalDevice = P;
 }

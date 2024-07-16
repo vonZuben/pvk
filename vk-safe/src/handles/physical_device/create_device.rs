@@ -44,7 +44,7 @@ pub(crate) fn create_device<
     tag: Tag<'t>,
 ) -> Result<
     // impl Device<Context = C::Commands, PhysicalDevice = S, QueueConfig = Z> + Captures<Tag<'t>>,
-    _Device<C::Commands, Tag<'t>>,
+    _Device<C::Commands, P, Tag<'t>>,
     Error,
 >
 where

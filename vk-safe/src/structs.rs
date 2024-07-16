@@ -40,4 +40,7 @@ device_queue_create_info;
 
 #[cfg(VK_VERSION_1_0)]
 device_create_info;
+
+#[cfg(VK_VERSION_1_0)]
+memory_allocate_info;
 );

@@ -4,6 +4,8 @@ pub_export_modules!(
 instance;
 physical_device;
 device;
+
+device_memory;
 );
 
 /// A handle which can dispatch Vulkan Commands
