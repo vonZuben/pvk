@@ -42,6 +42,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
 
     type PhysicalDevice: PhysicalDevice;
 
+    #[cfg(VK_VERSION_1_0)]
     /// Allocate memory on the Device
     ///
     /// Provide a [`MemoryAllocateInfo`] structure with the information
@@ -71,6 +72,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         allocate_memory(self, info)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Map memory for host access
     ///
     /// ```rust
@@ -108,6 +110,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         map_memory(self, memory)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Flush memory to make host writes visible to the device
     ///
     /// ```
@@ -130,6 +133,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         flush_mapped_memory_ranges(self, ranges)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Unmap memory for host access
     ///
     /// ```rust
@@ -149,6 +153,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         unmap_memory(self, mapped_memory)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Wait for all queue operations on the device to complete.
     ///
     /// Blocks until **all** operations on **all** `Queue`s belonging to this `Device` are
