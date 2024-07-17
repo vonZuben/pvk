@@ -168,8 +168,8 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     //     println!("Queue: {:#?}", queue);
     // }
 
-    // unsafe {
-    //     // safe since everything is one one thread
-    //     device.wait_idle().unwrap();
-    // }
+    unsafe {
+        // safe since everything is one one thread
+        device.wait_idle().unwrap();
+    }
 }

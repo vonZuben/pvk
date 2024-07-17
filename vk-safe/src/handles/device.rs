@@ -32,6 +32,9 @@ flush_mapped_memory_ranges;
 
 #[cfg(VK_VERSION_1_0)]
 unmap_memory;
+
+#[cfg(VK_VERSION_1_0)]
+wait_idle;
 );
 
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
@@ -144,6 +147,34 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         Self::Commands: vk::has_command::UnmapMemory,
     {
         unmap_memory(self, mapped_memory)
+    }
+
+    /// Wait for all queue operations on the device to complete.
+    ///
+    /// Blocks until **all** operations on **all** `Queue`s belonging to this `Device` are
+    /// complete.
+    ///
+    /// *Can fail in exceptional situations. Will return Ok(()) on success.*
+    ///
+    /// # SAFETY
+    /// You **must not** call any methods on any [`Queue`](TODO) object
+    /// created from this Device, on any other threads at the same time as calling
+    /// this method.
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # fn tst<
+    /// #    D: vk::Device<Commands: vk::device::VERSION_1_0>,
+    /// # >
+    /// #   (mut device: D) {
+    /// let result = unsafe { device.wait_idle() };
+    /// # }
+    /// ```
+    unsafe fn wait_idle(&self) -> Result<(), Error>
+    where
+        Self::Commands: vk::has_command::DeviceWaitIdle,
+    {
+        wait_idle(self)
     }
 }
 
