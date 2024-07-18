@@ -80,12 +80,64 @@ impl<'a, D, C> QueueFamily<'a, D, C> {
         D: Device<Commands: GetDeviceQueue>,
         C: QueueCapability,
     {
-        let mut queue = std::mem::MaybeUninit::uninit();
-        let fptr = self.device.commands().GetDeviceQueue().get_fptr();
-        if index >= self.num_queues {
-            return Err(InvalidIndex);
+        check_vuids::check_vuids!(GetDeviceQueue);
+
+        #[allow(unused_labels)]
+        'VUID_vkGetDeviceQueue_queueFamilyIndex_00384: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "queueFamilyIndex must be one of the queue family indices specified when device was"
+            "created, via the VkDeviceQueueCreateInfo structure"
+            }
+
+            // ensured by get_queue_family which uses the same DeviceQueueCreateInfo the device was created with
         }
 
+        #[allow(unused_labels)]
+        'VUID_vkGetDeviceQueue_queueIndex_00385: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "queueIndex must be less than the value of VkDeviceQueueCreateInfo::queueCount for"
+            "the queue family indicated by queueFamilyIndex when device was created"
+            }
+
+            if index >= self.num_queues {
+                return Err(InvalidIndex);
+            }
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkGetDeviceQueue_flags_01841: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "VkDeviceQueueCreateInfo::flags must have been set to zero when device was created"
+            }
+
+            // ensured by DeviceQueueCreateInfo creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkGetDeviceQueue_device_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "device must be a valid VkDevice handle"
+            }
+
+            // ensured by device creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkGetDeviceQueue_pQueue_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "pQueue must be a valid pointer to a VkQueue handle"
+            }
+
+            // MaybeUninit
+        }
+
+        let mut queue = std::mem::MaybeUninit::uninit();
+        let fptr = self.device.commands().GetDeviceQueue().get_fptr();
         unsafe {
             fptr(
                 self.device.raw_handle(),
