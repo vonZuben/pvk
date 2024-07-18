@@ -71,7 +71,10 @@ impl<'a, D, C> QueueFamily<'a, D, C> {
     pub fn get_device_queue(
         &self,
         index: u32,
-    ) -> Result<impl Queue<Commands = D::Commands, Capability = C> + Captures<&'a D>, InvalidIndex>
+    ) -> Result<
+        impl Queue<Commands = D::Commands, Device = D, Capability = C> + Captures<&'a D>,
+        InvalidIndex,
+    >
     where
         // NOTE: the type bounds are represented as a where clause on the method rather than
         // bounds on the impl block because I have found it works better with rust-analyzer autocomplete.
