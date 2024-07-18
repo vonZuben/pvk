@@ -157,16 +157,16 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
 
     let _memory = device.unmap_memory(mapped_memory);
 
-    // vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
-    // for queue_config in queue_configs {
-    //     let queue_family = device
-    //         .get_queue_family(&queue_config, &queue_family_properties, QCaps)
-    //         .unwrap();
-    //     println!("Configured Queue Family: {:#?}", queue_family);
+    vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
+    for queue_config in queue_configs {
+        let queue_family = device
+            .get_queue_family(&queue_config, &queue_family_properties, QCaps)
+            .unwrap();
+        println!("Configured Queue Family: {:#?}", queue_family);
 
-    //     let queue = queue_family.get_device_queue(0).unwrap();
-    //     println!("Queue: {:#?}", queue);
-    // }
+        let queue = queue_family.get_device_queue(0).unwrap();
+        println!("Queue: {:#?}", queue);
+    }
 
     unsafe {
         // safe since everything is one one thread

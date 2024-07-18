@@ -7,6 +7,7 @@ use crate::flags::{Excludes, Flags, Includes};
 use crate::scope::Tag;
 use crate::structs::*;
 use crate::type_conversions::ToC;
+use crate::vk::QueueCapability;
 use crate::VkVersion;
 
 use std::fmt;
@@ -35,12 +36,16 @@ unmap_memory;
 
 #[cfg(VK_VERSION_1_0)]
 wait_idle;
+
+#[cfg(VK_VERSION_1_0)]
+get_queue_family;
 );
 
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
     const VERSION: VkVersion;
 
     type PhysicalDevice: PhysicalDevice;
+    type QueueConfig;
 
     #[cfg(VK_VERSION_1_0)]
     /// Allocate memory on the Device
@@ -181,6 +186,27 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     {
         wait_idle(self)
     }
+
+    /// Get a QueueFamily which should have specific capabilities
+    ///
+    /// In vk-safe, you do not directly get queues from the Device. Rather,
+    /// you first get a type that represents a [`QueueFamily`] that you already
+    /// configured by by passing in the same queue configuration and properties
+    /// parameters used when creating the Device.
+    ///
+    /// From the returned [`QueueFamily`], you can obtain individual
+    /// [`Queue`](crate::vk::Queue) objects.
+    ///
+    /// Returns the [`QueueFamily`] if the [`QueueCapability`] is supported.
+    /// Otherwise returns [`UnsupportedCapability`].
+    fn get_queue_family<'a, Q: QueueCapability>(
+        &'a self,
+        queue_config: &DeviceQueueCreateInfo<Self::QueueConfig>,
+        queue_family_properties: &QueueFamiliesRef<Self::PhysicalDevice>,
+        capability: Q,
+    ) -> Result<QueueFamily<'a, Self, Q>, UnsupportedCapability> {
+        get_queue_family(self, queue_config, queue_family_properties, capability)
+    }
 }
 
 // #[allow(unused)]
@@ -205,29 +231,31 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
 /// RPITIT. After some kind of precise capturing is possible,
 /// this type will be made private and <code>impl [Device]</code>
 /// will be returned.
-pub struct _Device<C: DestroyDevice, P, T> {
+pub struct _Device<C: DestroyDevice, P, Q, T> {
     handle: vk::Device,
     commands: C,
     tag: PhantomData<T>,
     physical_device: PhantomData<P>,
+    queue_config: PhantomData<Q>,
 }
 
-impl<'t, C: DestroyDevice, P> _Device<C, P, Tag<'t>> {
+impl<'t, C: DestroyDevice, P, Q> _Device<C, P, Q, Tag<'t>> {
     pub(crate) fn new(handle: vk::Device, commands: C, _tag: Tag<'t>) -> Self {
         Self {
             handle,
             commands,
             tag: PhantomData,
             physical_device: PhantomData,
+            queue_config: PhantomData,
         }
     }
 }
 
-unsafe impl<C: DestroyDevice, P, T> Send for _Device<C, P, T> {}
-unsafe impl<C: DestroyDevice, P, T> Sync for _Device<C, P, T> {}
-impl<C: DestroyDevice, P, T> ThreadSafeHandle for _Device<C, P, T> {}
+unsafe impl<C: DestroyDevice, P, Q, T> Send for _Device<C, P, Q, T> {}
+unsafe impl<C: DestroyDevice, P, Q, T> Sync for _Device<C, P, Q, T> {}
+impl<C: DestroyDevice, P, Q, T> ThreadSafeHandle for _Device<C, P, Q, T> {}
 
-impl<C: DestroyDevice, P, T> fmt::Debug for _Device<C, P, T> {
+impl<C: DestroyDevice, P, Q, T> fmt::Debug for _Device<C, P, Q, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("_Device")
             .field("handle", &self.handle)
@@ -235,7 +263,7 @@ impl<C: DestroyDevice, P, T> fmt::Debug for _Device<C, P, T> {
     }
 }
 
-impl<C: DestroyDevice, P, T> Handle for _Device<C, P, T> {
+impl<C: DestroyDevice, P, Q, T> Handle for _Device<C, P, Q, T> {
     type RawHandle = vk::Device;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -243,7 +271,7 @@ impl<C: DestroyDevice, P, T> Handle for _Device<C, P, T> {
     }
 }
 
-impl<C: DestroyDevice, P, T> DispatchableHandle for _Device<C, P, T> {
+impl<C: DestroyDevice, P, Q, T> DispatchableHandle for _Device<C, P, Q, T> {
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -251,13 +279,14 @@ impl<C: DestroyDevice, P, T> DispatchableHandle for _Device<C, P, T> {
     }
 }
 
-impl<C: DestroyDevice + Version, P: PhysicalDevice, T> Device for _Device<C, P, T> {
+impl<C: DestroyDevice + Version, P: PhysicalDevice, Q, T> Device for _Device<C, P, Q, T> {
     const VERSION: VkVersion = C::VERSION;
 
     type PhysicalDevice = P;
+    type QueueConfig = Q;
 }
 
-impl<C: DestroyDevice, P, T> Drop for _Device<C, P, T> {
+impl<C: DestroyDevice, P, Q, T> Drop for _Device<C, P, Q, T> {
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyDevice);
 

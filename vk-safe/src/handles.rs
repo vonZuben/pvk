@@ -4,6 +4,7 @@ pub_export_modules!(
 instance;
 physical_device;
 device;
+queue;
 
 device_memory;
 );
