@@ -199,13 +199,14 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     ///
     /// Returns the [`QueueFamily`] if the [`QueueCapability`] is supported.
     /// Otherwise returns [`UnsupportedCapability`].
-    fn get_queue_family<'a, Q: QueueCapability>(
+    fn get_queue_family<'a, 't, Q: QueueCapability>(
         &'a self,
         queue_config: &DeviceQueueCreateInfo<Self::QueueConfig>,
         queue_family_properties: &QueueFamiliesRef<Self::PhysicalDevice>,
         capability: Q,
-    ) -> Result<QueueFamily<'a, Self, Q>, UnsupportedCapability> {
-        get_queue_family(self, queue_config, queue_family_properties, capability)
+        tag: Tag<'t>,
+    ) -> Result<QueueFamily<'a, Self, Q, Tag<'t>>, UnsupportedCapability> {
+        get_queue_family(self, queue_config, queue_family_properties, capability, tag)
     }
 }
 

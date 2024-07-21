@@ -3,7 +3,7 @@ use super::Device;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
-use crate::scope::Captures;
+use crate::scope::{Captures, Tag};
 use crate::structs::QueueFamiliesRef;
 use crate::vk::DeviceQueueCreateInfo;
 use crate::vk::{make_queue, Queue, QueueCapability};
@@ -17,12 +17,13 @@ unit_error!(
 pub UnsupportedCapability
 );
 
-pub(crate) fn get_queue_family<'a, D: Device, Q: QueueCapability>(
+pub(crate) fn get_queue_family<'a, 't, D: Device, Q: QueueCapability>(
     device: &'a D,
     queue_config: &DeviceQueueCreateInfo<D::QueueConfig>,
     queue_family_properties: &QueueFamiliesRef<D::PhysicalDevice>,
     _capability: Q,
-) -> Result<QueueFamily<'a, D, Q>, UnsupportedCapability> {
+    _tag: Tag<'t>,
+) -> Result<QueueFamily<'a, D, Q, Tag<'t>>, UnsupportedCapability> {
     let family: u32 = queue_config.queue_family_index;
     let family_flags = unsafe {
         // The family index is valid because the Device
@@ -41,6 +42,7 @@ pub(crate) fn get_queue_family<'a, D: Device, Q: QueueCapability>(
             family_index: queue_config.queue_family_index,
             device,
             capability: PhantomData,
+            tag: PhantomData,
         })
     } else {
         Err(UnsupportedCapability)
@@ -51,11 +53,12 @@ pub(crate) fn get_queue_family<'a, D: Device, Q: QueueCapability>(
 ///
 /// provides access to individual queues in the family
 #[derive(Clone, Copy)]
-pub struct QueueFamily<'a, D, C> {
+pub struct QueueFamily<'a, D, C, T> {
     num_queues: u32,
     family_index: u32,
     device: &'a D,
     capability: PhantomData<C>,
+    tag: PhantomData<T>,
 }
 
 unit_error!(
@@ -63,7 +66,7 @@ unit_error!(
 pub InvalidIndex
 );
 
-impl<'a, D, C> QueueFamily<'a, D, C> {
+impl<'a, D, C, T> QueueFamily<'a, D, C, T> {
     /// Get an individual queue with the provided index
     ///
     /// Will return a [`Queue`] if the index <= number of
@@ -148,12 +151,12 @@ impl<'a, D, C> QueueFamily<'a, D, C> {
                 index,
                 queue.as_mut_ptr(),
             );
-            Ok(make_queue(queue.assume_init(), self.device))
+            Ok(make_queue(queue.assume_init(), self.device, self.tag))
         }
     }
 }
 
-impl<D: Device, Q: QueueCapability> std::fmt::Debug for QueueFamily<'_, D, Q> {
+impl<D: Device, Q: QueueCapability, T> std::fmt::Debug for QueueFamily<'_, D, Q, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("QueueFamily")
             .field("number of queues", &self.num_queues)

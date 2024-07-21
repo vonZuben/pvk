@@ -18,28 +18,31 @@ pub trait Queue: DispatchableHandle<RawHandle = vk::Queue> + ThreadSafeHandle {
 pub trait QueueCapability: Flags<Type = vk::QueueFlags> {}
 impl<T> QueueCapability for T where T: Flags<Type = vk::QueueFlags> {}
 
-pub(crate) fn make_queue<'a, D: Device, C: QueueCapability>(
+pub(crate) fn make_queue<'a, D: Device, C: QueueCapability, T>(
     handle: vk::Queue,
     device: &'a D,
+    tag: PhantomData<T>,
 ) -> impl Queue<Device = D, Capability = C, Commands = D::Commands> + Captures<&'a D> {
-    _Queue {
+    _Queue::<'a, D, C, T> {
         handle,
         device,
         capability: PhantomData,
+        family_tag: tag,
     }
 }
 
-struct _Queue<'a, D, C> {
+struct _Queue<'a, D, C, T> {
     handle: vk::Queue,
     device: &'a D,
     capability: PhantomData<C>,
+    family_tag: PhantomData<T>,
 }
 
-unsafe impl<'a, D, C> Send for _Queue<'a, D, C> {}
-unsafe impl<'a, D, C> Sync for _Queue<'a, D, C> {}
-impl<'a, D, C> ThreadSafeHandle for _Queue<'a, D, C> {}
+unsafe impl<'a, D, C, T> Send for _Queue<'a, D, C, T> {}
+unsafe impl<'a, D, C, T> Sync for _Queue<'a, D, C, T> {}
+impl<'a, D, C, T> ThreadSafeHandle for _Queue<'a, D, C, T> {}
 
-impl<'a, D, C> fmt::Debug for _Queue<'a, D, C> {
+impl<'a, D, C, T> fmt::Debug for _Queue<'a, D, C, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Queue")
             .field("handle", &self.handle)
@@ -49,7 +52,7 @@ impl<'a, D, C> fmt::Debug for _Queue<'a, D, C> {
     }
 }
 
-impl<'a, D, C> Handle for _Queue<'a, D, C> {
+impl<'a, D, C, T> Handle for _Queue<'a, D, C, T> {
     type RawHandle = vk::Queue;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -57,7 +60,7 @@ impl<'a, D, C> Handle for _Queue<'a, D, C> {
     }
 }
 
-impl<'a, D: Device, C> DispatchableHandle for _Queue<'a, D, C> {
+impl<'a, D: Device, C, T> DispatchableHandle for _Queue<'a, D, C, T> {
     type Commands = D::Commands;
 
     fn commands(&self) -> &Self::Commands {
@@ -65,7 +68,7 @@ impl<'a, D: Device, C> DispatchableHandle for _Queue<'a, D, C> {
     }
 }
 
-impl<'a, D: Device, C: QueueCapability> Queue for _Queue<'a, D, C> {
+impl<'a, D: Device, C: QueueCapability, T> Queue for _Queue<'a, D, C, T> {
     type Device = D;
     type Capability = C;
 }

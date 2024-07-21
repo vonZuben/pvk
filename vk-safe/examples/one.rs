@@ -116,11 +116,11 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Memory properties for this physical device--");
     println!("{:#?}", mem_props);
 
-    vk::tag!(families_tag);
+    vk::tag!(families_config_tag);
 
     let mut queue_configs = vec![];
     let priorities = [vk::QueuePriority::default(); 10];
-    for p in queue_family_properties.properties_iter(families_tag) {
+    for p in queue_family_properties.properties_iter(families_config_tag) {
         use vk::queue_flag_bits::*;
         if p.queue_flags
             .contains(GRAPHICS_BIT | COMPUTE_BIT | TRANSFER_BIT)
@@ -159,8 +159,9 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
 
     vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
     for queue_config in queue_configs {
+        vk::tag!(family_tag);
         let queue_family = device
-            .get_queue_family(&queue_config, &queue_family_properties, QCaps)
+            .get_queue_family(&queue_config, &queue_family_properties, QCaps, family_tag)
             .unwrap();
         println!("Configured Queue Family: {:#?}", queue_family);
 
