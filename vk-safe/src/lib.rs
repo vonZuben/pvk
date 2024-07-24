@@ -41,30 +41,30 @@ for physical_device in physical_devices.iter() {
     vk::tag!(tag);
     let physical_device = physical_device.tag(tag);
 
-    // // discover queues on the physical device
-    // let queue_family_properties = physical_device
-    //     .get_physical_device_queue_family_properties(Vec::new())
-    //     .unwrap();
+    // discover queues on the physical device
+    let queue_family_properties = physical_device
+        .get_physical_device_queue_family_properties(Vec::new())
+        .unwrap();
 
     vk::tag!(families_tag);
 
-    // let mut queue_configs = vec![];
-    // let priorities = [vk::QueuePriority::default(); 10];
-    // for p in queue_family_properties.properties_iter(families_tag) {
-    //     if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
-    //         queue_configs.push(
-    //             vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
-    //                 .unwrap(),
-    //         )
-    //     }
-    // }
+    let mut queue_configs = vec![];
+    let priorities = [vk::QueuePriority::default(); 10];
+    for p in queue_family_properties.properties_iter(families_tag) {
+        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+            queue_configs.push(
+                vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
+                    .unwrap(),
+            )
+        }
+    }
 
-    // vk::tag!(device_tag);
-    // // configure and create device
-    // let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
-    // let device = physical_device
-    //     .create_device(&device_create_info, device_tag)
-    //     .unwrap();
+    vk::tag!(device_tag);
+    // configure and create device
+    let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
+    let device = physical_device
+        .create_device(&device_create_info, device_tag)
+        .unwrap();
 }
 ```
 
