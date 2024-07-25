@@ -3,10 +3,10 @@ use super::Device;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
-use crate::scope::{Captures, Tag};
+use crate::scope::Tag;
 use crate::structs::QueueFamiliesRef;
 use crate::vk::DeviceQueueCreateInfo;
-use crate::vk::{make_queue, Queue, QueueCapability};
+use crate::vk::{_Queue, make_queue, QueueCapability};
 
 use vk_safe_sys as vk;
 
@@ -23,7 +23,7 @@ pub(crate) fn get_queue_family<'a, 't, D: Device, Q: QueueCapability>(
     queue_family_properties: &QueueFamiliesRef<D::PhysicalDevice>,
     _capability: Q,
     _tag: Tag<'t>,
-) -> Result<QueueFamily<'a, D, Q, Tag<'t>>, UnsupportedCapability> {
+) -> Result<_QueueFamily<'a, D, Q, Tag<'t>>, UnsupportedCapability> {
     let family: u32 = queue_config.queue_family_index;
     let family_flags = unsafe {
         // The family index is valid because the Device
@@ -37,7 +37,7 @@ pub(crate) fn get_queue_family<'a, 't, D: Device, Q: QueueCapability>(
     if Q::satisfies(family_flags) {
         // this should already be valid from creating DeviceQueueCreateInfo
         let num_queues: u32 = queue_config.queue_priorities().len().try_into().unwrap();
-        Ok(QueueFamily {
+        Ok(_QueueFamily {
             num_queues,
             family_index: queue_config.queue_family_index,
             device,
@@ -52,8 +52,43 @@ pub(crate) fn get_queue_family<'a, 't, D: Device, Q: QueueCapability>(
 /// A configured queue family
 ///
 /// provides access to individual queues in the family
+///
+/// You are not intended to implement this trait. The trait
+/// is only implemented by an internal only type.
+pub trait QueueFamily<'device>: std::fmt::Debug + Send + Sync {
+    type Capability;
+    type Tag;
+    type Device;
+
+    /// Get the number of queues in this queue family
+    fn num_queues(&self) -> u32;
+
+    /// get the family index of this queue
+    fn family_index(&self) -> u32;
+
+    /// Get an individual queue with the provided index
+    ///
+    /// Will return a [`Queue`](crate::vk::Queue) if the index <= number of
+    /// created queues. Will return [`InvalidIndex`] otherwise.
+    fn get_device_queue(
+        &self,
+        index: u32,
+    ) -> Result<
+        // impl Queue<Commands = D::Commands, Device = D, Capability = C> + Captures<&'a D>,
+        _Queue<'device, Self::Device, Self::Capability, Self::Tag>,
+        InvalidIndex,
+    >;
+}
+
+/// [`QueueFamily`] implementor
+///
+/// ⚠️ This is **NOT** intended to be public. This is only
+/// exposed as a stopgap solution to over capturing in
+/// RPITIT. After some kind of precise capturing is possible,
+/// this type will be made private and <code>impl [QueueFamily]</code>
+/// will be returned.
 #[derive(Clone, Copy)]
-pub struct QueueFamily<'a, D, C, T> {
+pub struct _QueueFamily<'a, D, C, T> {
     num_queues: u32,
     family_index: u32,
     device: &'a D,
@@ -66,26 +101,27 @@ unit_error!(
 pub InvalidIndex
 );
 
-impl<'a, D, C, T> QueueFamily<'a, D, C, T> {
-    /// Get an individual queue with the provided index
-    ///
-    /// Will return a [`Queue`] if the index <= number of
-    /// created queues. Will return [`InvalidIndex`] otherwise.
-    pub fn get_device_queue(
+impl<'a, D: Sync, C: Sync + Send, T: Sync + Send> QueueFamily<'a> for _QueueFamily<'a, D, C, T>
+where
+    D: Device<Commands: GetDeviceQueue>,
+    C: QueueCapability,
+{
+    type Capability = C;
+    type Tag = T;
+    type Device = D;
+
+    fn family_index(&self) -> u32 {
+        self.family_index
+    }
+
+    fn num_queues(&self) -> u32 {
+        todo!()
+    }
+
+    fn get_device_queue(
         &self,
         index: u32,
-    ) -> Result<
-        impl Queue<Commands = D::Commands, Device = D, Capability = C> + Captures<&'a D>,
-        InvalidIndex,
-    >
-    where
-        // NOTE: the type bounds are represented as a where clause on the method rather than
-        // bounds on the impl block because I have found it works better with rust-analyzer autocomplete.
-        // I do not believe there are any other practical effects (positive or negative) from this choice
-        // in consideration of how this should normally be used.
-        D: Device<Commands: GetDeviceQueue>,
-        C: QueueCapability,
-    {
+    ) -> Result<_Queue<'a, Self::Device, Self::Capability, Self::Tag>, InvalidIndex> {
         check_vuids::check_vuids!(GetDeviceQueue);
 
         #[allow(unused_labels)]
@@ -156,7 +192,7 @@ impl<'a, D, C, T> QueueFamily<'a, D, C, T> {
     }
 }
 
-impl<D: Device, Q: QueueCapability, T> std::fmt::Debug for QueueFamily<'_, D, Q, T> {
+impl<D: Device, Q: QueueCapability, T> std::fmt::Debug for _QueueFamily<'_, D, Q, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("QueueFamily")
             .field("number of queues", &self.num_queues)

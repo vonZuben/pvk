@@ -205,7 +205,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         queue_family_properties: &QueueFamiliesRef<Self::PhysicalDevice>,
         capability: Q,
         tag: Tag<'t>,
-    ) -> Result<QueueFamily<'a, Self, Q, Tag<'t>>, UnsupportedCapability> {
+    ) -> Result<_QueueFamily<'a, Self, Q, Tag<'t>>, UnsupportedCapability> {
         get_queue_family(self, queue_config, queue_family_properties, capability, tag)
     }
 }

@@ -5,7 +5,6 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::flags::Flags;
-use crate::scope::Captures;
 
 use vk_safe_sys as vk;
 
@@ -22,7 +21,8 @@ pub(crate) fn make_queue<'a, D: Device, C: QueueCapability, T>(
     handle: vk::Queue,
     device: &'a D,
     tag: PhantomData<T>,
-) -> impl Queue<Device = D, Capability = C, Commands = D::Commands> + Captures<&'a D> {
+    // ) -> impl Queue<Device = D, Capability = C, Commands = D::Commands> + Captures<&'a D> {
+) -> _Queue<'a, D, C, T> {
     _Queue::<'a, D, C, T> {
         handle,
         device,
@@ -31,7 +31,14 @@ pub(crate) fn make_queue<'a, D: Device, C: QueueCapability, T>(
     }
 }
 
-struct _Queue<'a, D, C, T> {
+/// [`Queue`] implementor
+///
+/// ⚠️ This is **NOT** intended to be public. This is only
+/// exposed as a stopgap solution to over capturing in
+/// RPITIT. After some kind of precise capturing is possible,
+/// this type will be made private and <code>impl [Queue]</code>
+/// will be returned.
+pub struct _Queue<'a, D, C, T> {
     handle: vk::Queue,
     device: &'a D,
     capability: PhantomData<C>,
