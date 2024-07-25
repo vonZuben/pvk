@@ -165,6 +165,13 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
             .unwrap();
         println!("Configured Queue Family: {:#?}", queue_family);
 
+        vk::flags!(CPflags: CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT - PROTECTED_BIT);
+        let command_pool = device
+            .create_command_pool(&vk::CommandPoolCreateInfo::new(CPflags, &queue_family))
+            .unwrap();
+
+        println!("{command_pool:#?}");
+
         let queue = queue_family.get_device_queue(0).unwrap();
         println!("Queue: {:#?}", queue);
     }

@@ -46,4 +46,7 @@ memory_allocate_info;
 
 #[cfg(VK_VERSION_1_0)]
 mapped_memory_range;
+
+#[cfg(VK_VERSION_1_0)]
+command_pool_create_info;
 );
