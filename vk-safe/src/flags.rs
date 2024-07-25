@@ -118,9 +118,7 @@ macro_rules! flags {
         $vis struct $name;
 
         {
-            use vk_safe_sys::flag_types::$f_type;
-            $( use $f_type::$has; )*
-            $( use $f_type::$not; )*
+            use vk_safe_sys::flag_types::$f_type::{$($has,)* $($not,)*};
 
             unsafe impl $crate::flags::Flags for $name {
                 type Type = vk_safe_sys::$f_type;
