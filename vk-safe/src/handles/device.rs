@@ -191,6 +191,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         wait_idle(self)
     }
 
+    #[cfg(VK_VERSION_1_0)]
     /// Get a QueueFamily which should have specific capabilities
     ///
     /// In vk-safe, you do not directly get queues from the Device. Rather,
@@ -203,6 +204,8 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     ///
     /// Returns the [`QueueFamily`] if the [`QueueCapability`] is supported.
     /// Otherwise returns [`UnsupportedCapability`].
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>
     fn get_queue_family<'a, 't, Q: QueueCapability>(
         &'a self,
         queue_config: &DeviceQueueCreateInfo<Self::QueueConfig>,

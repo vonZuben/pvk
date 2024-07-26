@@ -11,6 +11,16 @@ use vk_safe_sys as vk;
 
 use vk::has_command::DestroyCommandPool;
 
+/// A memory object for allocating CommandBuffers
+///
+/// These objects are [`Send`] byt not [`Sync`]. This the usage of this object
+/// and CommandBuffers allocated from this object but be synchronized. Since CommandBuffers
+/// will borrow the CommandPool, this effectively forces the CommandPool and all CommandBuffers
+/// allocated therefrom to be locked to the same unit of execution, and they cannot be
+/// **individually** sent across different threads. Since they will all be on the same thread,
+/// synchronization is guaranteed without locking.
+///
+/// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCommandPool.html>
 pub trait CommandPool: Handle<RawHandle = vk::CommandPool> + Send {
     type Device;
 

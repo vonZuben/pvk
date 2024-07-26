@@ -70,6 +70,8 @@ pub trait QueueFamily<'device>: std::fmt::Debug + Send + Sync {
     ///
     /// Will return a [`Queue`](crate::vk::Queue) if the index <= number of
     /// created queues. Will return [`InvalidIndex`] otherwise.
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>
     fn get_device_queue(
         &self,
         index: u32,
