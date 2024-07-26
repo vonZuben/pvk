@@ -86,6 +86,92 @@ impl<
 
 impl<'a, D: Device<Commands: DestroyCommandPool>, F, Q> Drop for _CommandPool<'a, D, F, Q> {
     fn drop(&mut self) {
+        check_vuids::check_vuids!(DestroyCommandPool);
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyCommandPool_commandPool_00041: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "All VkCommandBuffer objects allocated from commandPool must not be in the pending"
+            "state"
+            }
+
+            // **************TODO*****************************
+            // after CommandBuffer submission to Queues is possible
+            // it will be necessary to consider how we ensure that
+            // Queues have finished with the CommandBuffers
+            // before we start destroying everything
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyCommandPool_commandPool_00042: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If VkAllocationCallbacks were provided when commandPool was created, a compatible"
+            "set of callbacks must be provided here"
+            }
+
+            // TODO
+            // no AllocationCallbacks for now
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyCommandPool_commandPool_00043: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If no VkAllocationCallbacks were provided when commandPool was created, pAllocator"
+            "must be NULL"
+            }
+
+            // TODO
+            // no AllocationCallbacks for now
+            // always null set below
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyCommandPool_device_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "device must be a valid VkDevice handle"
+            }
+
+            // ensured by device creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyCommandPool_commandPool_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If commandPool is not VK_NULL_HANDLE, commandPool must be a valid VkCommandPool handle"
+            }
+
+            // ensured by CommandPool creation
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyCommandPool_pAllocator_parameter: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If pAllocator is not NULL, pAllocator must be a valid pointer to a valid VkAllocationCallbacks"
+            "structure"
+            }
+
+            // TODO
+            // no AllocationCallbacks for now
+            // always null set below
+        }
+
+        #[allow(unused_labels)]
+        'VUID_vkDestroyCommandPool_commandPool_parent: {
+            check_vuids::version! {"1.3.268"}
+            check_vuids::description! {
+            "If commandPool is a valid handle, it must have been created, allocated, or retrieved"
+            "from device"
+            }
+
+            // the Device and CommandPool handles are held together
+        }
+
         unsafe {
             self.device.commands().DestroyCommandPool().get_fptr()(
                 self.device.raw_handle(),
