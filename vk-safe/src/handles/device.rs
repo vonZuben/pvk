@@ -171,7 +171,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// *Can fail in exceptional situations. Will return Ok(()) on success.*
     ///
     /// # SAFETY
-    /// You **must not** call any methods on any [`Queue`](TODO) object
+    /// You **must not** call any methods on any [`Queue`](crate::vk::Queue) object
     /// created from this Device, on any other threads at the same time as calling
     /// this method.
     ///

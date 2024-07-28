@@ -15,7 +15,7 @@ use vk_safe_sys as vk;
 ///
 /// # Device configuration
 /// A key step in configuring a logical Device is configuring the Queues
-/// with [`DeviceQueueCreateInfo`](TODO).
+/// with [`DeviceQueueCreateInfo`](super::DeviceQueueCreateInfo).
 /// The `QueueFamilyProperties` are needed to determine what the Queues
 /// of each family can do, and how many Queues can be made for the family.
 ///
