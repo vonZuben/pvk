@@ -68,35 +68,88 @@ pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
 
 // Use this to create wrappers around simple structs that are scoped
 macro_rules! simple_struct_wrapper_scoped {
+    // take macro input and pack it
+    // need to pack the generics into a single tt so it can
+    // be expanded multiple times in each "traits" match
     (
-        $(#[$($attributes:tt)*])*
-        $name:ident $(impl $($t:ident),+ $(,)?)?
+        $( #[$($attributes:tt)*] )*
+        $name:ident
+        $(<$($generics:ident),*>)?
+        $(impl $($traits:ident),+ $(,)?)?
     ) => {
-        $(#[$($attributes)*])*
+        simple_struct_wrapper_scoped!(
+            @PACKED
+            { $(#[$($attributes)*])* }
+            $name
+            { $( $($generics),* )? }
+            { $( $($traits),+ )? }
+        );
+    };
+    // handle the packed input, and expand
+    // the Def and all optional Trait impls
+    (
+        @PACKED
+        $attributes:tt
+        $name:ident
+        $generics:tt
+        { $($traits:ident),* }
+    ) => {
+        simple_struct_wrapper_scoped!(
+            @DEF
+            $attributes
+            $name
+            $generics
+        );
+
+        $(
+            simple_struct_wrapper_scoped!(
+                @IMPL
+                $traits
+                $name
+                $generics
+            );
+        )*
+    };
+
+    // generate main definition
+    (
+        @DEF
+        { $($attributes:tt)* }
+        $name:ident
+        { $($generics:ident),* }
+    ) => {
+        $($attributes)*
         #[repr(transparent)]
-        pub struct $name<S> {
+        #[allow(non_snake_case)]
+        pub struct $name<S, $($generics),*> {
             inner: vk_safe_sys::$name,
             _scope: std::marker::PhantomData<S>,
+            $($generics: std::marker::PhantomData<$generics>,)*
         }
 
-        unsafe impl<S> crate::type_conversions::SafeTransmute<$name<S>> for vk_safe_sys::$name {}
-        unsafe impl<S> crate::type_conversions::SafeTransmute<vk_safe_sys::$name> for $name<S> {}
+        unsafe impl<S, $($generics),*>
+            crate::type_conversions::SafeTransmute<$name<S, $($generics),*>>
+            for vk_safe_sys::$name {}
+        unsafe impl<S, $($generics),*>
+            crate::type_conversions::SafeTransmute<vk_safe_sys::$name>
+            for $name<S, $($generics),*> {}
 
-        impl<S> $name<S> {
+        impl<S, $($generics),*> $name<S, $($generics),*> {
             #[allow(unused)]
             pub(crate) fn new(inner: vk_safe_sys::$name) -> Self {
                 Self {
                     inner,
                     _scope: Default::default(),
+                    $($generics: Default::default(),)*
                 }
             }
         }
-
-        $( $( simple_struct_wrapper_scoped!( @IMPL $t $name ); )+ )?
     };
 
-    ( @IMPL Deref $name:ident ) => {
-        impl<S> std::ops::Deref for $name<S> {
+    // generate any optional trait implementations
+
+    ( @IMPL Deref $name:ident { $($generics:ident),* }) => {
+        impl<S, $($generics),*> std::ops::Deref for $name<S, $($generics),*> {
             type Target = vk_safe_sys::$name;
             fn deref(&self) -> &Self::Target {
                 &self.inner
@@ -104,24 +157,24 @@ macro_rules! simple_struct_wrapper_scoped {
         }
     };
 
-    ( @IMPL Debug $name:ident ) => {
-        impl<S> std::fmt::Debug for $name<S> {
+    ( @IMPL Debug $name:ident { $($generics:ident),* }) => {
+        impl<S, $($generics),*> std::fmt::Debug for $name<S, $($generics),*> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.inner.fmt(f)
             }
         }
     };
 
-    ( @IMPL Clone $name:ident ) => {
-        impl<S> Clone for $name<S> {
+    ( @IMPL Clone $name:ident { $($generics:ident),* }) => {
+        impl<S, $($generics),*> Clone for $name<S, $($generics),*> {
             fn clone(&self) -> Self {
                 Self::new(self.inner)
             }
         }
     };
 
-    ( @IMPL Copy $name:ident ) => {
-        impl<S> Copy for $name<S> { }
+    ( @IMPL Copy $name:ident { $($generics:ident),* }) => {
+        impl<S, $($generics),*> Copy for $name<S, $($generics),*> { }
     };
 }
 
