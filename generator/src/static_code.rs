@@ -218,6 +218,12 @@ impl krs_quote::ToTokens for StaticCode {
                         pub const fn count_bits(self) -> u32 {
                             self.0.count_ones()
                         }
+
+                        #[inline]
+                        pub const fn satisfies<F: $crate::flag_traits::$name>(self, other: F) -> bool {
+                            let _ = other;
+                            self.contains(F::INCLUDES) && self.excludes(F::EXCLUDES)
+                        }
                     }
 
                     impl ::std::ops::BitOr for $name {

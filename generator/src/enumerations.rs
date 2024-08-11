@@ -25,7 +25,8 @@ impl krs_quote::ToTokens for Enumerations<'_> {
             .iter()
             .filter(|ev| matches!(ev.kind, EnumKind::Normal));
 
-        let enum_types = variants.clone().map(|ev| FlagBitTypes(ev));
+        let enum_types = variants.clone().map(|ev| EnumTypes(ev));
+        let enum_traits = variants.clone().map(|ev| EnumTraits(ev));
 
         krs_quote_with!(tokens <-
             {@* {@variants}}
@@ -35,6 +36,10 @@ impl krs_quote::ToTokens for Enumerations<'_> {
                 #![allow(non_camel_case_types)]
 
                 {@* {@enum_types}}
+            }
+
+            pub mod enum_traits {
+                {@* {@enum_traits}}
             }
         );
     }
@@ -56,7 +61,8 @@ impl krs_quote::ToTokens for Flags<'_> {
             .iter()
             .filter(|ev| matches!(ev.kind, EnumKind::BitFlags));
 
-        let flag_types = variants.clone().map(|ev| FlagBitTypes(ev));
+        let flag_types = variants.clone().map(|ev| EnumTypes(ev));
+        let flag_traits = variants.clone().map(|ev| FlagTraits(ev));
 
         krs_quote_with!(tokens <-
             {@* {@variants}}
@@ -66,6 +72,34 @@ impl krs_quote::ToTokens for Flags<'_> {
                 #![allow(non_camel_case_types)]
 
                 {@* {@flag_types}}
+            }
+
+            pub mod flag_traits {
+                use std::cmp::Eq;
+                use std::ops::{BitAnd, BitOr, BitXor};
+
+                pub unsafe trait Flags<Type>: Send + Sync + Copy
+                where
+                    Type: BitAnd<Output = Type>
+                        + BitOr<Output = Type>
+                        + BitXor<Output = Type>
+                        + Eq
+                        + Copy
+                {
+                    /// Flags that **must** be included
+                    const INCLUDES: Type;
+                    /// Flags that **must** be excluded
+                    const EXCLUDES: Type;
+
+                    fn satisfies(flags: Type) -> bool {
+                        let empty = Self::INCLUDES ^ Self::INCLUDES;
+                        (Self::INCLUDES != empty)
+                            && (Self::INCLUDES | flags == flags)
+                            && (Self::EXCLUDES & flags == empty)
+                    }
+                }
+
+                {@* {@flag_traits}}
             }
         );
     }
@@ -85,9 +119,9 @@ impl<'a> std::ops::DerefMut for EnumVariantsCollection {
     }
 }
 
-struct FlagBitTypes<'a>(&'a EnumVariants);
+struct EnumTypes<'a>(&'a EnumVariants);
 
-impl krs_quote::ToTokens for FlagBitTypes<'_> {
+impl krs_quote::ToTokens for EnumTypes<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let target = self.0.target;
         let variants = self.0.variants.iter().map(|c| {
@@ -102,7 +136,8 @@ impl krs_quote::ToTokens for FlagBitTypes<'_> {
                         )
                     } else {
                         krs_quote_with!(tokens <-
-                            pub struct {@name} { priv_phantom: std::marker::PhantomData<()> }
+                            #[derive(Copy, Clone)]
+                            pub struct {@name};
                         )
                     }
                 }
@@ -115,6 +150,59 @@ impl krs_quote::ToTokens for FlagBitTypes<'_> {
                 {@* {@variants} }
             }
         )
+    }
+}
+
+struct EnumTraits<'a>(&'a EnumVariants);
+
+impl krs_quote::ToTokens for EnumTraits<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let target = self.0.target;
+        let variants =
+            self.0
+                .variants
+                .iter()
+                .filter_map(|c| if c.is_alias() { None } else { Some(c.name()) });
+
+        krs_quote_with!(tokens <-
+            pub unsafe trait {@target} {
+                const VALUE: crate::{@target};
+            }
+            {@*
+                unsafe impl {@target} for crate::enum_types::{@target}::{@variants} {
+                    const VALUE: crate::{@target} = crate::{@target}::{@variants};
+                }
+            }
+        );
+    }
+}
+
+struct FlagTraits<'a>(&'a EnumVariants);
+
+impl krs_quote::ToTokens for FlagTraits<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let target = self.0.target;
+        let variants =
+            self.0
+                .variants
+                .iter()
+                .filter_map(|c| if c.is_alias() { None } else { Some(c.name()) });
+
+        krs_quote_with!(tokens <-
+            pub unsafe trait {@target} : Flags<crate::{@target}> {}
+            {@*
+                unsafe impl Flags<crate::{@target}> for crate::flag_types::{@target}::{@variants} {
+                    const INCLUDES: crate::{@target} = crate::{@target}::{@variants};
+                    const EXCLUDES: crate::{@target} = crate::{@target}::empty();
+                }
+                unsafe impl {@target} for crate::flag_types::{@target}::{@variants} {}
+            }
+            unsafe impl Flags<crate::{@target}> for () {
+                const INCLUDES: crate::{@target} = crate::{@target}::empty();
+                const EXCLUDES: crate::{@target} = crate::{@target}::empty();
+            }
+            unsafe impl {@target} for () {}
+        );
     }
 }
 
