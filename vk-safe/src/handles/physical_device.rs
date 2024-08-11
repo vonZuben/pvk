@@ -169,7 +169,10 @@ pub trait PhysicalDevice:
     ///     physical_device.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);
     /// # }
     /// ```
-    fn get_physical_device_format_properties(&self, format: vk::Format) -> FormatProperties<Self>
+    fn get_physical_device_format_properties<F: vk::enum_traits::Format>(
+        &self,
+        format: F,
+    ) -> FormatProperties<Self, F>
     where
         Self::Commands: vk::has_command::GetPhysicalDeviceFormatProperties,
     {
@@ -187,23 +190,22 @@ pub trait PhysicalDevice:
     /// # use vk::traits::*;
     /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
-    /// const PARAMS: vk::ImageParameters =
-    ///     vk::ImageParameters::new(
+    /// let image_params = vk::ImageParameters::new(
     ///     vk::Format::R8G8B8A8_SRGB,
     ///     vk::ImageType::TYPE_2D,
     ///     vk::ImageTiling::OPTIMAL,
-    ///     vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
-    ///     vk::ImageCreateFlags::empty(),
+    ///     vk::flags!(ImageUsageFlags + COLOR_ATTACHMENT_BIT + TRANSFER_DST_BIT),
+    ///     (),
     /// );
     ///
     /// let image_format_properties =
-    ///     physical_device.get_physical_device_image_format_properties(PARAMS);
+    /// physical_device.get_physical_device_image_format_properties(image_params);
     /// # }
     /// ```
-    fn get_physical_device_image_format_properties(
+    fn get_physical_device_image_format_properties<Params: ImageParameters::ImageParameters>(
         &self,
-        params: ImageParameters,
-    ) -> Result<ImageFormatProperties<Self>, Error>
+        params: Params,
+    ) -> Result<ImageFormatProperties<Self, Params>, Error>
     where
         Self::Commands: vk::has_command::GetPhysicalDeviceImageFormatProperties,
     {
@@ -224,8 +226,11 @@ pub trait PhysicalDevice:
     /// ```rust
     /// # use vk_safe::vk;
     /// # use vk::traits::*;
-    /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P, image_format_properties: vk::ImageFormatProperties<P>) {
+    /// # fn tst<
+    /// #   P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>,
+    /// #   Params: vk::ImageParameters::ImageParameters,
+    /// # >
+    /// #   (physical_device: P, image_format_properties: vk::ImageFormatProperties<P, Params>) {
     /// let sparse_image_format_properties =
     ///     physical_device.get_physical_device_sparse_image_format_properties(
     ///         vk::SampleCountFlags::TYPE_1_BIT,
@@ -236,10 +241,12 @@ pub trait PhysicalDevice:
     /// ```
     fn get_physical_device_sparse_image_format_properties<
         A: ArrayStorage<SparseImageFormatProperties<Self>>,
+        Params: ImageParameters::ImageParameters,
+        SampleCount: vk::flag_traits::SampleCountFlags,
     >(
         &self,
-        samples: vk::SampleCountFlags,
-        image_format_properties: ImageFormatProperties<Self>,
+        samples: SampleCount,
+        image_format_properties: ImageFormatProperties<Self, Params>,
         storage: A,
     ) -> Result<A::InitStorage, Error>
     where

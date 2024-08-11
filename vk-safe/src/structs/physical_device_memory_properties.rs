@@ -1,7 +1,6 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::flags::Flags;
 use crate::type_conversions::SafeTransmute;
 
 use vk_safe_sys as vk;
@@ -38,8 +37,8 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
     /// **⚠️ VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD is not supported**
     pub fn choose_type<
         'a,
-        P: Flags<Type = vk::MemoryPropertyFlags>,
-        H: Flags<Type = vk::MemoryHeapFlags>,
+        P: vk::flag_traits::MemoryPropertyFlags,
+        H: vk::flag_traits::MemoryHeapFlags,
     >(
         &'a self,
         index: u32,
@@ -71,8 +70,8 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
     /// **⚠️ VK_MEMORY_PROPERTY_DEVICE_COHERENT_BIT_AMD is not supported**
     pub fn find_ty<
         'a,
-        P: Flags<Type = vk::MemoryPropertyFlags>,
-        H: Flags<Type = vk::MemoryHeapFlags>,
+        P: vk::flag_traits::MemoryPropertyFlags,
+        H: vk::flag_traits::MemoryHeapFlags,
     >(
         &'a self,
         _property_flags: P,
@@ -116,7 +115,7 @@ enum InternalInvalidMemoryType {
     NotSupportedDeviceCoherentBitAMD,
 }
 
-impl<S, P: Flags<Type = vk::MemoryPropertyFlags>, H: Flags<Type = vk::MemoryHeapFlags>>
+impl<S, P: vk::flag_traits::MemoryPropertyFlags, H: vk::flag_traits::MemoryHeapFlags>
     MemoryTypeChoice<S, P, H>
 {
     fn new(

@@ -2,7 +2,9 @@ use super::PhysicalDevice;
 
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
-use crate::structs::{ImageFormatProperties, SparseImageFormatProperties};
+use crate::structs::{
+    ImageFormatProperties, ImageParameters::ImageParameters, SparseImageFormatProperties,
+};
 
 use vk_safe_sys as vk;
 
@@ -14,10 +16,12 @@ unit_error!(UnsupportedSampleCount);
 pub(crate) fn get_physical_device_sparse_image_format_properties<
     P: PhysicalDevice<Commands: GetPhysicalDeviceSparseImageFormatProperties>,
     A: ArrayStorage<SparseImageFormatProperties<P>>,
+    Params: ImageParameters,
+    SampleCount: vk::flag_traits::SampleCountFlags,
 >(
     physical_device: &P,
-    samples: vk::SampleCountFlags,
-    image_format_properties: ImageFormatProperties<P>,
+    _samples: SampleCount,
+    image_format_properties: ImageFormatProperties<P, Params>,
     mut storage: A,
 ) -> Result<A::InitStorage, Error> {
     check_vuids::check_vuids!(GetPhysicalDeviceSparseImageFormatProperties);
@@ -33,9 +37,12 @@ pub(crate) fn get_physical_device_sparse_image_format_properties<
         }
 
         // I interpret this VUID to mean there should be exactly one bit set which is supported for the given image format, type, tiling, and usage
-        if samples.count_bits() != 1 {
+        if SampleCount::INCLUDES.count_bits() != 1 {
             Err(OnlyOneSampleCountAllowed)?
-        } else if !image_format_properties.sample_counts.contains(samples) {
+        } else if !image_format_properties
+            .sample_counts
+            .contains(SampleCount::INCLUDES)
+        {
             Err(UnsupportedSampleCount)?
         }
         // since we keep the parameters used for the given ImageFormatProperties, we ensure to use the the same format, type, tiling, and usage
@@ -133,16 +140,14 @@ pub(crate) fn get_physical_device_sparse_image_format_properties<
         // enumerator_code2!
     }
 
-    let params = image_format_properties.image_parameters();
-
     enumerator_code2!(physical_device.commands().GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
             (
                 physical_device.raw_handle(),
-                params.format,
-                params.image_type,
-                samples,
-                params.usage_flags,
-                params.image_tiling
+                Params::format(),
+                Params::image_type(),
+                SampleCount::INCLUDES,
+                Params::image_usage_flags(),
+                Params::image_tiling()
             )
             -> storage)
 }

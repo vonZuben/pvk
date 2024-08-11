@@ -1,10 +1,11 @@
 use std::marker::PhantomData;
 
-use crate::flags::Flags;
 use crate::type_conversions::SafeTransmute;
 use crate::vk::QueueFamily;
 
 use vk_safe_sys as vk;
+
+use vk::flag_traits::CommandPoolCreateFlags;
 
 /// Info for creating a CommandPool
 ///
@@ -35,7 +36,7 @@ impl<D, F, T> std::ops::Deref for CommandPoolCreateInfo<D, F, T> {
     }
 }
 
-impl<D, F: Flags<Type = vk::CommandPoolCreateFlags>, T> CommandPoolCreateInfo<D, F, T> {
+impl<D, F: CommandPoolCreateFlags, T> CommandPoolCreateInfo<D, F, T> {
     pub fn new<'a>(flags: F, queue_family: &impl QueueFamily<'a, Device = D, Tag = T>) -> Self {
         check_vuids::check_vuids!(CommandPoolCreateInfo);
 

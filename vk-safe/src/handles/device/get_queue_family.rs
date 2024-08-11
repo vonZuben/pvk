@@ -6,10 +6,11 @@ use std::marker::PhantomData;
 use crate::scope::Tag;
 use crate::structs::QueueFamiliesRef;
 use crate::vk::DeviceQueueCreateInfo;
-use crate::vk::{_Queue, make_queue, QueueCapability};
+use crate::vk::{_Queue, make_queue};
 
 use vk_safe_sys as vk;
 
+use vk::flag_traits::QueueFlags;
 use vk::has_command::GetDeviceQueue;
 
 unit_error!(
@@ -17,7 +18,7 @@ unit_error!(
 pub UnsupportedCapability
 );
 
-pub(crate) fn get_queue_family<'a, 't, D: Device, Q: QueueCapability>(
+pub(crate) fn get_queue_family<'a, 't, D: Device, Q: QueueFlags>(
     device: &'a D,
     queue_config: &DeviceQueueCreateInfo<D::QueueConfig>,
     queue_family_properties: &QueueFamiliesRef<D::PhysicalDevice>,
@@ -106,7 +107,7 @@ pub InvalidIndex
 impl<'a, D: Sync, C: Sync + Send, T: Sync + Send> QueueFamily<'a> for _QueueFamily<'a, D, C, T>
 where
     D: Device<Commands: GetDeviceQueue>,
-    C: QueueCapability,
+    C: QueueFlags,
 {
     type Capability = C;
     type Tag = T;
@@ -194,7 +195,7 @@ where
     }
 }
 
-impl<D: Device, Q: QueueCapability, T> std::fmt::Debug for _QueueFamily<'_, D, Q, T> {
+impl<D: Device, Q: QueueFlags, T> std::fmt::Debug for _QueueFamily<'_, D, Q, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("QueueFamily")
             .field("number of queues", &self.num_queues)

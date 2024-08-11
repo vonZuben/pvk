@@ -1,7 +1,7 @@
 use super::PhysicalDevice;
 
 use crate::error::Error;
-use crate::structs::{ImageFormatProperties, ImageParameters};
+use crate::structs::{ImageFormatProperties, ImageParameters::ImageParameters};
 
 use std::mem::MaybeUninit;
 
@@ -11,10 +11,11 @@ use vk::has_command::GetPhysicalDeviceImageFormatProperties;
 
 pub(crate) fn get_physical_device_image_format_properties<
     P: PhysicalDevice<Commands: GetPhysicalDeviceImageFormatProperties>,
+    Params: ImageParameters,
 >(
     physical_device: &P,
-    params: ImageParameters,
-) -> Result<ImageFormatProperties<P>, Error> {
+    params: Params,
+) -> Result<ImageFormatProperties<P, Params>, Error> {
     // *************Regarding VUID checks**************
     // please see the checks for [ImageParameters]
 
@@ -26,11 +27,11 @@ pub(crate) fn get_physical_device_image_format_properties<
     unsafe {
         let res = command(
             physical_device.raw_handle(),
-            params.format,
-            params.image_type,
-            params.image_tiling,
-            params.usage_flags,
-            params.create_flags,
+            Params::format(),
+            Params::image_type(),
+            Params::image_tiling(),
+            Params::image_usage_flags(),
+            Params::image_create_flags(),
             properties.as_mut_ptr(),
         );
         check_raw_err!(res);

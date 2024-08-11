@@ -3,21 +3,21 @@ use super::{Handle, ThreadSafeHandle};
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::flags::Flags;
 use crate::handles::device::Device;
 use crate::type_conversions::ToC;
 
 use vk_safe_sys as vk;
 
+use vk::flag_traits::{MemoryHeapFlags, MemoryPropertyFlags};
 use vk::has_command::FreeMemory;
 
 pub trait DeviceMemory: Handle<RawHandle = vk::DeviceMemory> + ThreadSafeHandle {
     /// The *specific* Device to which this DeviceMemory belongs
     type Device;
     /// Properties of the memory type this DeviceMemory was allocated with
-    type PropertyFlags: Flags;
+    type PropertyFlags: MemoryPropertyFlags;
     /// Properties of the memory heap from which this DeviceMemory was allocated
-    type HeapFlags: Flags;
+    type HeapFlags: MemoryHeapFlags;
 }
 
 /// [`DeviceMemory`] implementor
@@ -66,7 +66,7 @@ impl<D: Device<Commands: FreeMemory>, P, H> Handle for _DeviceMemory<'_, D, P, H
     }
 }
 
-impl<D: Device<Commands: FreeMemory>, P: Flags, H: Flags> DeviceMemory
+impl<D: Device<Commands: FreeMemory>, P: MemoryPropertyFlags, H: MemoryHeapFlags> DeviceMemory
     for _DeviceMemory<'_, D, P, H>
 {
     type Device = D;

@@ -2,19 +2,19 @@ use super::Device;
 
 use std::mem::MaybeUninit;
 
-use crate::flags::Flags;
 use crate::structs::MemoryAllocateInfo;
 use crate::type_conversions::SafeTransmute;
 use crate::vk::_DeviceMemory;
 
-use vk::has_command::{AllocateMemory, FreeMemory};
 use vk_safe_sys as vk;
+
+use vk::has_command::{AllocateMemory, FreeMemory};
 
 pub(crate) fn allocate_memory<
     'a,
     D: Device<Commands: AllocateMemory + FreeMemory>,
-    P: Flags,
-    H: Flags,
+    P: vk::flag_traits::MemoryPropertyFlags,
+    H: vk::flag_traits::MemoryHeapFlags,
 >(
     device: &'a D,
     info: &MemoryAllocateInfo<D::PhysicalDevice, P, H>,

@@ -4,11 +4,10 @@ use super::physical_device::PhysicalDevice;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::error::Error;
-use crate::flags::{Excludes, Flags, Includes};
+use crate::flags::{Excludes, Includes};
 use crate::scope::Tag;
 use crate::structs::*;
 use crate::type_conversions::ToC;
-use crate::vk::QueueCapability;
 use crate::VkVersion;
 
 use std::fmt;
@@ -60,14 +59,21 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// ```rust
     /// # use vk_safe::vk;
     /// # use vk::traits::*;
-    /// # fn tst<D: vk::Device<Commands: vk::device::VERSION_1_0>, P: vk::Flags, H: vk::Flags>
+    /// # fn tst<
+    /// #   D: vk::Device<Commands: vk::device::VERSION_1_0>,
+    /// #   P: vk::flag_traits::MemoryPropertyFlags,
+    /// #   H: vk::flag_traits::MemoryHeapFlags,
+    /// # >
     /// #   (device: D, alloc_info: vk::MemoryAllocateInfo<D::PhysicalDevice, P, H>) {
     /// let memory = device.allocate_memory(&alloc_info);
     /// # }
     /// ```
     ///
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html>
-    fn allocate_memory<P: Flags, H: Flags>(
+    fn allocate_memory<
+        P: vk::flag_traits::MemoryPropertyFlags,
+        H: vk::flag_traits::MemoryHeapFlags,
+    >(
         &self,
         info: &MemoryAllocateInfo<Self::PhysicalDevice, P, H>,
     ) -> Result<
@@ -86,8 +92,8 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     ///
     /// ```rust
     /// # use vk_safe::vk;
-    /// # use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
-    /// # use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
+    /// # use vk::MemoryHeapFlags::MULTI_INSTANCE_BIT;
+    /// # use vk::MemoryPropertyFlags::HOST_VISIBLE_BIT;
     /// # fn tst<
     /// #    D: vk::Device<Commands: vk::device::VERSION_1_0>,
     /// #    P: vk::Includes<HOST_VISIBLE_BIT>,
@@ -202,11 +208,11 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// From the returned [`QueueFamily`], you can obtain individual
     /// [`Queue`](crate::vk::Queue) objects.
     ///
-    /// Returns the [`QueueFamily`] if the [`QueueCapability`] is supported.
-    /// Otherwise returns [`UnsupportedCapability`].
+    /// Returns the [`QueueFamily`] if the [`QueueFlags`](vk::flag_traits::QueueFlags)
+    /// are supported. Otherwise returns [`UnsupportedCapability`].
     ///
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>
-    fn get_queue_family<'a, 't, Q: QueueCapability>(
+    fn get_queue_family<'a, 't, Q: vk::flag_traits::QueueFlags>(
         &'a self,
         queue_config: &DeviceQueueCreateInfo<Self::QueueConfig>,
         queue_family_properties: &QueueFamiliesRef<Self::PhysicalDevice>,

@@ -4,11 +4,11 @@ use super::Handle;
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::flags::Flags;
 use crate::type_conversions::ToC;
 
 use vk_safe_sys as vk;
 
+use vk::flag_traits::CommandPoolCreateFlags;
 use vk::has_command::DestroyCommandPool;
 
 /// A memory object for allocating CommandBuffers
@@ -24,7 +24,7 @@ use vk::has_command::DestroyCommandPool;
 pub trait CommandPool: Handle<RawHandle = vk::CommandPool> + Send {
     type Device;
 
-    type Flags: Flags<Type = vk::CommandPoolCreateFlags>;
+    type Flags: CommandPoolCreateFlags;
 
     type QueueFamily;
 }
@@ -71,11 +71,8 @@ impl<D: Device<Commands: DestroyCommandPool>, F, Q> Handle for _CommandPool<'_, 
     }
 }
 
-impl<
-        D: Sync + Device<Commands: DestroyCommandPool>,
-        F: Send + Flags<Type = vk::CommandPoolCreateFlags>,
-        Q: Send,
-    > CommandPool for _CommandPool<'_, D, F, Q>
+impl<D: Sync + Device<Commands: DestroyCommandPool>, F: Send + CommandPoolCreateFlags, Q: Send>
+    CommandPool for _CommandPool<'_, D, F, Q>
 {
     type Device = D;
 

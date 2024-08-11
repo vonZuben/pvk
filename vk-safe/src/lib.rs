@@ -51,7 +51,7 @@ for physical_device in physical_devices.iter() {
     let mut queue_configs = vec![];
     let priorities = [vk::QueuePriority::default(); 10];
     for p in queue_family_properties.properties_iter(families_tag) {
-        if p.queue_flags.contains(vk::QueueFlags::GRAPHICS_BIT) {
+        if p.queue_flags.satisfies(vk::QueueFlags::GRAPHICS_BIT) {
             queue_configs.push(
                 vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p)
                     .unwrap(),
@@ -208,8 +208,8 @@ pub mod structs;
 /// # }
 /// ```
 pub mod enumerations {
-    pub use vk_safe_sys::generated_vulkan::enum_variants::*;
-    pub use vk_safe_sys::generated_vulkan::enumerations::*;
+    pub use vk_safe_sys::generated_vulkan::enum_traits;
+    pub use vk_safe_sys::generated_vulkan::enum_variants::enum_types::*;
 }
 
 /// Vulkan versions and extensions

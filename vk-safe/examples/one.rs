@@ -78,20 +78,20 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
         pd.enumerate_device_layer_properties(Vec::new()).unwrap()
     );
 
-    let srgb_properties = pd.get_physical_device_format_properties(vk::format::R8G8B8A8_SRGB);
+    let srgb_properties = pd.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);
     println!("--Example of device format propertied for R8G8B8A8_SRGB:");
     println!("{srgb_properties:#?}");
 
-    const PARAMS: vk::ImageParameters = vk::ImageParameters::new(
+    let image_params = vk::ImageParameters::new(
         vk::Format::R8G8B8A8_SRGB,
         vk::ImageType::TYPE_2D,
         vk::ImageTiling::OPTIMAL,
-        vk::ImageUsageFlags::COLOR_ATTACHMENT_BIT.or(vk::ImageUsageFlags::TRANSFER_DST_BIT),
-        vk::ImageCreateFlags::empty(),
+        vk::flags!(ImageUsageFlags + COLOR_ATTACHMENT_BIT + TRANSFER_DST_BIT),
+        (),
     );
 
     let tst_image_format_properties = pd
-        .get_physical_device_image_format_properties(PARAMS)
+        .get_physical_device_image_format_properties(image_params)
         .unwrap();
     println!("--Example of device format propertied for R8G8B8A8_SRGB, 2D, Optimal tiling, to be used as Transfer destination and Color attachment:");
     println!("{tst_image_format_properties:#?}");
@@ -121,10 +121,9 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     let mut queue_configs = vec![];
     let priorities = [vk::QueuePriority::default(); 10];
     for p in queue_family_properties.properties_iter(families_config_tag) {
-        use vk::queue_flag_bits::*;
-        if p.queue_flags
-            .contains(GRAPHICS_BIT | COMPUTE_BIT | TRANSFER_BIT)
-        {
+        if p.queue_flags.satisfies(vk::flags!(
+            QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT
+        )) {
             queue_configs.push(
                 vk::DeviceQueueCreateInfo::new(&priorities[..p.queue_count as usize], p).unwrap(),
             )
@@ -139,10 +138,12 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Example Device handle--");
     println!("{device:#?}");
 
-    vk::flags!(MemProps: MemoryPropertyFlags + HOST_VISIBLE_BIT);
-    vk::flags!(HeapBits: MemoryHeapFlags - MULTI_INSTANCE_BIT);
-
-    let mem_type = mem_props.find_ty(MemProps, HeapBits).unwrap();
+    let mem_type = mem_props
+        .find_ty(
+            vk::flags!(MemoryPropertyFlags + HOST_VISIBLE_BIT),
+            vk::flags!(MemoryHeapFlags - MULTI_INSTANCE_BIT),
+        )
+        .unwrap();
     let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
     let mem = device.allocate_memory(&alloc_info).unwrap();
     println!("--Example allocated memory handle--");
@@ -157,17 +158,23 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
 
     let _memory = device.unmap_memory(mapped_memory);
 
-    vk::flags!(QCaps: QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT);
     for queue_config in queue_configs {
         vk::tag!(family_tag);
         let queue_family = device
-            .get_queue_family(&queue_config, &queue_family_properties, QCaps, family_tag)
+            .get_queue_family(
+                &queue_config,
+                &queue_family_properties,
+                vk::flags!(QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT),
+                family_tag,
+            )
             .unwrap();
         println!("Configured Queue Family: {:#?}", queue_family);
 
-        vk::flags!(CPflags: CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT - PROTECTED_BIT);
         let command_pool = device
-            .create_command_pool(&vk::CommandPoolCreateInfo::new(CPflags, &queue_family))
+            .create_command_pool(&vk::CommandPoolCreateInfo::new(
+                vk::flags!(CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT - PROTECTED_BIT),
+                &queue_family,
+            ))
             .unwrap();
 
         println!("{command_pool:#?}");

@@ -10,10 +10,11 @@ use vk::has_command::GetPhysicalDeviceFormatProperties;
 
 pub(crate) fn get_physical_device_format_properties<
     P: PhysicalDevice<Commands: GetPhysicalDeviceFormatProperties>,
+    F: vk::enum_traits::Format,
 >(
     physical_device: &P,
-    format: vk::Format,
-) -> FormatProperties<P> {
+    _format: F,
+) -> FormatProperties<P, F> {
     check_vuids::check_vuids!(GetPhysicalDeviceFormatProperties);
 
     #[allow(unused_labels)]
@@ -53,7 +54,7 @@ pub(crate) fn get_physical_device_format_properties<
             .GetPhysicalDeviceFormatProperties()
             .get_fptr()(
             physical_device.raw_handle(),
-            format,
+            F::VALUE,
             properties.as_mut_ptr(),
         );
         FormatProperties::new(properties.assume_init())

@@ -13,9 +13,9 @@
 //! [`map_memory`](crate::vk::Device::map_memory) method requires the
 //! memory to have been allocated from host visible memory that is not on a multi instance heap. This
 //! is expressed with [`Includes`] and [`Excludes`] traits, which can be collectively represented
-//! by a type which implements the [`Flags`] trait.
+//! by a type which implements the [`Flags`](vk_safe_sys::Flags) trait.
 //!
-//! Use the [`flags!`] macro to create a type that correctly implements [`Flags`], [`Includes`], and [`Excludes`].
+//! Use the [`flags!`] macro to create a type that correctly implements [`Flags`](vk_safe_sys::Flags), [`Includes`], and [`Excludes`].
 //!
 //! ## illustrative implementation example
 //! ```
@@ -43,57 +43,24 @@
 //! # }
 //! ```
 
-use std::cmp::Eq;
-use std::ops::{BitAnd, BitOr, BitXor};
-
-pub use vk_safe_sys::generated_vulkan::bitmask_variants::*;
-pub use vk_safe_sys::generated_vulkan::bitmasks::*;
-
-/** Trait for representing bit flags
-
-Use the [`flags!`](crate::flags!()) macro to create a type which implements this trait.
-It is not recommended to manually implement this trait.
-
-A type which implements this trait represents flags that **must** be **included** and **excluded**.
-Please check the documentation for APIs that require a `Flags` implementor.
-
-This trait is unsafe to implement because it **must** also be implemented consistently with [`Includes`] and [`Excludes`] traits.
- */
-pub unsafe trait Flags: Send + Sync {
-    /// The specific type of flags (e.g. [MemoryPropertyFlags])
-    type Type: BitAnd<Output = Self::Type>
-        + BitOr<Output = Self::Type>
-        + BitXor<Output = Self::Type>
-        + Eq
-        + Copy;
-    /// Flags that **must** be included
-    const INCLUDES: Self::Type;
-    /// Flags that **must** be excluded
-    const EXCLUDES: Self::Type;
-
-    fn satisfies(flags: Self::Type) -> bool {
-        let empty = Self::INCLUDES ^ Self::INCLUDES;
-        (Self::INCLUDES != empty)
-            && (Self::INCLUDES | flags == flags)
-            && (Self::EXCLUDES & flags == empty)
-    }
-}
+pub use vk_safe_sys::generated_vulkan::flag_traits;
+pub use vk_safe_sys::generated_vulkan::flag_types::*;
 
 /// Trait that represents if flag `F` is included
 ///
 /// Use the [`flags!`](crate::flags!()) macro to create a type which implements this trait.
 /// It is not recommended to manually implement this trait.
-pub unsafe trait Includes<F>: Flags {}
+pub unsafe trait Includes<F> {}
 
 /// Trait that represents if flag `F` is excluded
 ///
 /// Use the [`flags!`](crate::flags!()) macro to create a type which implements this trait.
 /// It is not recommended to manually implement this trait.
-pub unsafe trait Excludes<F>: Flags {}
+pub unsafe trait Excludes<F> {}
 
 /// Create a type that represents flags that **must** be included and excluded
 ///
-/// This will create a type with your provided name, and properly implement [`Flags`], [`Includes`], and [`Excludes`]. Any flags
+/// This will create a type with your provided name, and properly implement [`Flags`](vk_safe_sys::Flags), [`Includes`], and [`Excludes`]. Any flags
 /// not specified as included or excluded may or may not actually be included, and are considered unknown or don't care.
 ///
 /// *zero or more `+` includes must come before zero or more `-` excludes*
@@ -115,15 +82,19 @@ pub unsafe trait Excludes<F>: Flags {}
 #[macro_export]
 macro_rules! flags {
     ( $vis:vis $name:ident : $f_type:ident $( + $has:ident )* $( - $not:ident )* ) => {
+        #[derive(Copy, Clone)]
         $vis struct $name;
 
         {
             use vk_safe_sys::flag_types::$f_type::{$($has,)* $($not,)*};
 
-            unsafe impl $crate::flags::Flags for $name {
-                type Type = vk_safe_sys::$f_type;
-                const INCLUDES: Self::Type = ( Self::Type::empty() $( .or(Self::Type::$has) )* );
-                const EXCLUDES: Self::Type = ( Self::Type::empty() $( .or(Self::Type::$not) )* );
+            unsafe impl vk_safe_sys::flag_traits::$f_type for $name {}
+
+            type Type = vk_safe_sys::$f_type;
+
+            unsafe impl vk_safe_sys::flag_traits::Flags<Type> for $name {
+                const INCLUDES: Type = ( Type::empty() $( .or(Type::$has) )* );
+                const EXCLUDES: Type = ( Type::empty() $( .or(Type::$not) )* );
             }
 
             $(
@@ -133,6 +104,34 @@ macro_rules! flags {
             $(
                 unsafe impl $crate::flags::Excludes<$not> for $name {}
             )*
+        }
+    };
+
+    ( $f_type:ident $( + $has:ident )* $( - $not:ident )* ) => {
+        {
+            #[derive(Copy, Clone)]
+            struct PrivateFlagsImpl;
+
+            use vk_safe_sys::flag_types::$f_type::{$($has,)* $($not,)*};
+
+            unsafe impl vk_safe_sys::flag_traits::$f_type for PrivateFlagsImpl {}
+
+            type Type = vk_safe_sys::$f_type;
+
+            unsafe impl vk_safe_sys::flag_traits::Flags<Type> for PrivateFlagsImpl {
+                const INCLUDES: Type = ( Type::empty() $( .or(Type::$has) )* );
+                const EXCLUDES: Type = ( Type::empty() $( .or(Type::$not) )* );
+            }
+
+            $(
+                unsafe impl $crate::flags::Includes<$has> for PrivateFlagsImpl {}
+            )*
+
+            $(
+                unsafe impl $crate::flags::Excludes<$not> for PrivateFlagsImpl {}
+            )*
+
+            PrivateFlagsImpl
         }
     };
 }
