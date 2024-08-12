@@ -8,6 +8,7 @@ queue;
 
 device_memory;
 command_pool;
+command_buffer;
 );
 
 /// A handle which can dispatch Vulkan Commands

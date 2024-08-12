@@ -179,6 +179,15 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
 
         println!("{command_pool:#?}");
 
+        let command_buffer_info =
+            vk::CommandBufferAllocateInfo::new(&command_pool, vk::CommandBufferLevel::PRIMARY, 3);
+        let command_buffers = device
+            .allocate_command_buffers(&command_buffer_info, Vec::new())
+            .unwrap();
+        for command_buffer in command_buffers {
+            println!("{command_buffer:#?}");
+        }
+
         let queue = queue_family.get_device_queue(0).unwrap();
         println!("Queue: {:#?}", queue);
     }

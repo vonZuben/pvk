@@ -1,8 +1,10 @@
-use super::command_pool::_CommandPool;
+use super::command_buffer::_CommandBuffers;
+use super::command_pool::{CommandPool, _CommandPool};
 use super::device_memory::{DeviceMemory, MappedMemory, _DeviceMemory};
 use super::physical_device::PhysicalDevice;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
+use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 use crate::flags::{Excludes, Includes};
 use crate::scope::Tag;
@@ -42,6 +44,9 @@ get_queue_family;
 
 #[cfg(VK_VERSION_1_0)]
 create_command_pool;
+
+#[cfg(VK_VERSION_1_0)]
+allocate_command_buffers;
 );
 
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
@@ -233,8 +238,8 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     #   (device: D, queue_family: impl vk::QueueFamily<'a, Device = D>) {
     vk::flags!(CPflags: CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT);
     let command_pool = device
-        .create_command_pool(&vk::CommandPoolCreateInfo::new(CPflags, &queue_family))
-        .unwrap();
+    .create_command_pool(&vk::CommandPoolCreateInfo::new(CPflags, &queue_family))
+    .unwrap();
     # }
     ```
     */
@@ -246,6 +251,45 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         Self::Commands: vk::has_command::CreateCommandPool + vk::has_command::DestroyCommandPool,
     {
         create_command_pool(self, create_info)
+    }
+
+    #[cfg(VK_VERSION_1_0)]
+    /**
+    Allocate CommandBuffers
+
+    Provide [`CommandBufferAllocateInfo`] to indicate the pool from which the
+    CommandBuffers will be allocated, the level of the CommendBuffers, and
+    the number of CommandBuffers to allocate.
+
+    Provide `storage` for holding **exactly** as many CommandBuffer handles as
+    indicated in the `CommandBufferAllocateInfo`. `storage` is an [`ArrayStorage`]
+    implementor, and can automatically allocate (if supported by the implementation)
+    for the number indicated in `CommandBufferAllocateInfo`.
+
+    ```
+    # use vk_safe::vk;
+    # use vk::traits::*;
+    # fn tst<'a, D: Device<Commands: vk::device::VERSION_1_0>>
+    #   (device: D, command_pool: impl vk::CommandPool<Device = D>) {
+    let command_buffer_info =
+        vk::CommandBufferAllocateInfo::new(&command_pool, vk::CommandBufferLevel::PRIMARY, 3);
+    let command_buffers = device
+        .allocate_command_buffers(&command_buffer_info, Vec::new())
+        .unwrap();
+    # }
+    ```
+    <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateCommandBuffers.html>
+     */
+    #[cfg(VK_VERSION_1_0)]
+    fn allocate_command_buffers<'a, P: CommandPool, L, A: ArrayStorage<vk::CommandBuffer>>(
+        &'a self,
+        info: &CommandBufferAllocateInfo<'_, P, L>,
+        storage: A,
+    ) -> Result<_CommandBuffers<'a, Self, L, A::InitStorage>, Error>
+    where
+        Self::Commands: vk::has_command::AllocateCommandBuffers,
+    {
+        allocate_command_buffers(self, info, storage)
     }
 }
 
