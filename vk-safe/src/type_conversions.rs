@@ -36,6 +36,24 @@ impl<'a, P> ToC<*const P> for Option<&'a P> {
     }
 }
 
+// ******* disambiguation labels ************
+// for avoiding conflicting trait implementations
+// the labels can be when the safe_transmute method is called
+
+/// SafeTransmute label for converting to same type
+pub struct Same();
+
+/// SafeTransmute label for converting to other type
+pub struct Other();
+
+/// SafeTransmute label for converting to array type
+pub struct Array();
+
+/// SafeTransmute label for converting to MaybeUninit type
+pub struct MaybeUninitLabel();
+
+// *******************************************
+
 /// Represent a type that can soundly transmute into another type T
 ///
 /// It is intended that specific wrapper types in vk-safe will
@@ -44,7 +62,7 @@ impl<'a, P> ToC<*const P> for Option<&'a P> {
 ///
 /// Implementations for references and slices are provided
 /// where the base types implement SafeTransmute.
-pub(crate) unsafe trait SafeTransmute<T: ?Sized> {
+pub(crate) unsafe trait SafeTransmute<T: ?Sized, L = Other> {
     fn safe_transmute(self) -> T
     where
         Self: Sized,
@@ -56,56 +74,98 @@ pub(crate) unsafe trait SafeTransmute<T: ?Sized> {
     }
 }
 
-unsafe impl<'a, T: ?Sized, U: ?Sized> SafeTransmute<&'a T> for &'a U
+unsafe impl<T> SafeTransmute<T, Same> for T {
+    fn safe_transmute(self) -> T {
+        self
+    }
+}
+
+unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<&'a T, (Other, L)> for &'a U
 where
-    U: SafeTransmute<T>,
+    U: SafeTransmute<T, L>,
 {
     fn safe_transmute(self) -> &'a T {
         unsafe { std::mem::transmute_copy(&self) }
     }
 }
 
-unsafe impl<'a, T: ?Sized, U: ?Sized> SafeTransmute<&'a mut T> for &'a mut U
+unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<*const T, (Other, L)> for &'a U
 where
-    U: SafeTransmute<T>,
+    U: SafeTransmute<T, L>,
+{
+    fn safe_transmute(self) -> *const T {
+        unsafe { std::mem::transmute_copy(&self) }
+    }
+}
+
+unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<&'a mut T, (Other, L)> for &'a mut U
+where
+    U: SafeTransmute<T, L>,
 {
     fn safe_transmute(self) -> &'a mut T {
         unsafe { std::mem::transmute_copy(&self) }
     }
 }
 
-unsafe impl<'a, T, U> SafeTransmute<&'a [T]> for &'a [U]
+unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<*mut T, (Other, L)> for &'a mut U
 where
-    U: SafeTransmute<T>,
+    U: SafeTransmute<T, L>,
+{
+    fn safe_transmute(self) -> *mut T {
+        unsafe { std::mem::transmute_copy(&self) }
+    }
+}
+
+unsafe impl<'a, T, U, L> SafeTransmute<&'a [T], (Array, L)> for &'a [U]
+where
+    U: SafeTransmute<T, L>,
 {
     fn safe_transmute(self) -> &'a [T] {
         unsafe { std::mem::transmute(self) }
     }
 }
 
-unsafe impl<'a, T, U> SafeTransmute<&'a mut [T]> for &'a mut [U]
+unsafe impl<'a, T, U, L> SafeTransmute<*const T, (Array, L)> for &'a [U]
 where
-    U: SafeTransmute<T>,
+    U: SafeTransmute<T, L>,
+{
+    fn safe_transmute(self) -> *const T {
+        self.as_ptr().cast()
+    }
+}
+
+unsafe impl<'a, T, U, L> SafeTransmute<&'a mut [T], (Array, L)> for &'a mut [U]
+where
+    U: SafeTransmute<T, L>,
 {
     fn safe_transmute(self) -> &'a mut [T] {
         unsafe { std::mem::transmute(self) }
     }
 }
 
-/// This implementation is used in helper_macros::enumerator_code2!()
-unsafe impl<T, U> SafeTransmute<*mut T> for &mut [MaybeUninit<U>]
+unsafe impl<'a, T, U, L> SafeTransmute<*mut T, (Array, L)> for &'a mut [U]
 where
-    U: SafeTransmute<T>,
+    U: SafeTransmute<T, L>,
 {
     fn safe_transmute(self) -> *mut T {
         self.as_mut_ptr().cast()
     }
 }
 
-/// standalone const fn to allow safely transmuting slices in const context, since the trait way cannot be const currently
-pub(crate) const fn transmute_slice<A, B>(a: &[A]) -> &[B]
+/// This implementation is used in helper_macros::enumerator_code2!()
+unsafe impl<T, U, L> SafeTransmute<*mut T, (MaybeUninitLabel, L)> for &mut [MaybeUninit<U>]
 where
-    A: SafeTransmute<B>,
+    U: SafeTransmute<T, L>,
 {
-    unsafe { std::mem::transmute(a) }
+    fn safe_transmute(self) -> *mut T {
+        self.as_mut_ptr().cast()
+    }
 }
+
+// / standalone const fn to allow safely transmuting slices in const context, since the trait way cannot be const currently
+// pub(crate) const fn transmute_slice<A, B>(a: &[A]) -> &[B]
+// where
+//     A: SafeTransmute<B>,
+// {
+//     unsafe { std::mem::transmute(a) }
+// }

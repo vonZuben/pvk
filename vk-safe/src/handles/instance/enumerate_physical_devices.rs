@@ -52,8 +52,6 @@ pub(crate) fn enumerate_physical_devices<
         //enumerator_code2!
     }
 
-    unsafe impl SafeTransmute<vk::PhysicalDevice> for vk::PhysicalDevice {}
-
     let handles = enumerator_code2!(instance.commands().EnumeratePhysicalDevices().get_fptr(); (instance.raw_handle()) -> storage)?;
     Ok(make_physical_devices(instance, handles))
 }

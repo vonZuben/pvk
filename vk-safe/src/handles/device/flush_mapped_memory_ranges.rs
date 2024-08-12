@@ -50,7 +50,7 @@ pub(crate) fn flush_mapped_memory_ranges<D: Device<Commands: FlushMappedMemoryRa
         let res = fptr(
             device.raw_handle(),
             ranges.len().try_into()?,
-            ranges.safe_transmute().as_ptr(),
+            ranges.safe_transmute(),
         );
         check_raw_err!(res);
         Ok(())

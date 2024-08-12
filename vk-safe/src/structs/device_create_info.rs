@@ -625,7 +625,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
                 p_next: std::ptr::null(),
                 flags: vk::DeviceCreateFlags::empty(),
                 queue_create_info_count: queue_create_info.len() as u32,
-                p_queue_create_infos: queue_create_info.safe_transmute().as_ptr(),
+                p_queue_create_infos: queue_create_info.safe_transmute(),
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),
                 enabled_extension_count: extensions

@@ -180,7 +180,7 @@ impl<'a, Z> DeviceQueueCreateInfo<'a, Z> {
                 flags: vk::DeviceQueueCreateFlags::empty(),
                 queue_family_index: family.family_index,
                 queue_count: priorities_len,
-                p_queue_priorities: priorities.safe_transmute().as_ptr(),
+                p_queue_priorities: priorities.safe_transmute(),
             },
             _params: PhantomData,
             _scope: PhantomData,

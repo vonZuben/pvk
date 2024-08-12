@@ -50,9 +50,6 @@ pub(crate) fn get_physical_device_queue_family_properties<
         // enumerator_code2!
     }
 
-    // although this SafeTransmute impl seems pointless
-    // it is needed for enumerator_code2! to work in general, since most cases involve non trivial transmutes
-    unsafe impl SafeTransmute<vk::QueueFamilyProperties> for vk::QueueFamilyProperties {}
     let families = enumerator_code2!(
         physical_device.commands().GetPhysicalDeviceQueueFamilyProperties().get_fptr();
         (physical_device.raw_handle()) -> storage)?;
