@@ -25,6 +25,10 @@ pub(crate) fn allocate_command_buffers<
     info: &CommandBufferAllocateInfo<'_, P, L>,
     mut storage: A,
 ) -> Result<_CommandBuffers<'a, D, L, A::InitStorage>, Error> {
+    storage.allocate(|| Ok(info.command_buffer_count as usize))?;
+    let array = storage.uninit_slice();
+    let len = array.len();
+
     check_vuids::check_vuids!(AllocateCommandBuffers);
 
     #[allow(unused_labels)]
@@ -55,8 +59,7 @@ pub(crate) fn allocate_command_buffers<
         "VkCommandBuffer handles"
         }
 
-        storage.allocate(|| Ok(info.command_buffer_count as usize))?;
-        if storage.uninit_slice().len() != info.command_buffer_count as usize {
+        if len != info.command_buffer_count as usize {
             Err(StorageLenError)?
         }
     }
@@ -73,7 +76,6 @@ pub(crate) fn allocate_command_buffers<
         }
     }
 
-    let array = storage.uninit_slice();
     let fptr = device.commands().AllocateCommandBuffers().get_fptr();
 
     unsafe {
@@ -85,8 +87,8 @@ pub(crate) fn allocate_command_buffers<
         check_raw_err!(res);
     }
 
-    // this was checked above to ensure that the len was correct
-    let len = storage.uninit_slice().len();
+    // `len` was checked above
+    // see VUID_vkAllocateCommandBuffers_pCommandBuffers_parameter
     let fin = storage.finalize(len);
 
     Ok(make_command_buffers(device, fin))
