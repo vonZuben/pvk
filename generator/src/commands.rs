@@ -32,7 +32,7 @@ impl krs_quote::ToTokens for Commands2 {
                 impl VulkanCommand for {@commands} {
                     const VK_NAME: *const c_char = concat!({@command_names}, '\0').as_ptr().cast();
                     unsafe fn new(ptr: PFN_vkVoidFunction) -> Self {
-                        {@commands}(std::mem::transmute(ptr))
+                        {@commands}(ptr)
                     }
                 }
             }
