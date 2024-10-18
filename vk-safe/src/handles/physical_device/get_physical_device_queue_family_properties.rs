@@ -3,7 +3,6 @@ use super::PhysicalDevice;
 use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 use crate::structs::QueueFamilies;
-use crate::type_conversions::SafeTransmute;
 
 use vk_safe_sys as vk;
 

@@ -4,7 +4,6 @@ use crate::array_storage::ArrayStorage;
 use crate::error::Error;
 use crate::handles::physical_device::{make_physical_devices, PhysicalDevices};
 use crate::scope::Captures;
-use crate::type_conversions::SafeTransmute;
 
 use vk_safe_sys as vk;
 
