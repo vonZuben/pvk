@@ -3,6 +3,7 @@ use super::{DispatchableHandle, Handle};
 use std::fmt;
 use std::marker::PhantomData;
 
+use crate::array_storage::Buffer;
 use crate::type_conversions::SafeTransmute;
 use crate::vk::Device;
 
@@ -77,48 +78,50 @@ pub trait CommandBuffers: IntoIterator<Item = Self::CommandBuffer> + fmt::Debug 
 /// RPITIT. After some kind of precise capturing is possible,
 /// this type will be made private and <code>impl [CommandBuffers]</code>
 /// will be returned.
-pub struct _CommandBuffers<'a, D, L, A> {
+pub struct _CommandBuffers<'a, D, L, B> {
     device: &'a D,
-    array: A,
+    buffer: B,
     level: PhantomData<L>,
 }
 
-pub(crate) fn make_command_buffers<'a, D, L, A>(
+pub(crate) fn make_command_buffers<'a, D, L, B>(
     device: &'a D,
-    array: A,
-) -> _CommandBuffers<'a, D, L, A> {
+    buffer: B,
+) -> _CommandBuffers<'a, D, L, B> {
     _CommandBuffers {
         device,
-        array,
+        buffer,
         level: PhantomData,
     }
 }
 
-impl<'a, D: Sync + Device, L: Send + CommandBufferLevel, A: Send + AsRef<[vk::CommandBuffer]>>
-    CommandBuffers for _CommandBuffers<'a, D, L, A>
+impl<'a, D: Sync + Device, L: Send + CommandBufferLevel, B: Send + Buffer<vk::CommandBuffer>>
+    CommandBuffers for _CommandBuffers<'a, D, L, B>
 {
     type CommandBuffer = _CommandBuffer<'a, D, L>;
 
     fn iter(&self) -> impl Iterator<Item = Self::CommandBuffer> {
         _CommandBufferIterRef {
             device: self.device,
-            iter: self.array.as_ref().iter().copied(),
+            iter: self.buffer.get_slice().iter().copied(),
             level: PhantomData,
         }
     }
 }
 
-impl<D, L, A: AsRef<[vk::CommandBuffer]>> fmt::Debug for _CommandBuffers<'_, D, L, A> {
+impl<D, L, B: Buffer<vk::CommandBuffer>> fmt::Debug for _CommandBuffers<'_, D, L, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "CommandBuffers")?;
-        f.debug_list().entries(self.array.as_ref().iter()).finish()
+        f.debug_list()
+            .entries(self.buffer.get_slice().iter())
+            .finish()
     }
 }
 
-impl<'a, D, L, A: AsRef<[vk::CommandBuffer]>> IntoIterator for _CommandBuffers<'a, D, L, A> {
+impl<'a, D, L, B: Buffer<vk::CommandBuffer>> IntoIterator for _CommandBuffers<'a, D, L, B> {
     type Item = _CommandBuffer<'a, D, L>;
 
-    type IntoIter = _CommandBufferIter<'a, D, L, A>;
+    type IntoIter = _CommandBufferIter<'a, D, L, B>;
 
     fn into_iter(self) -> Self::IntoIter {
         _CommandBufferIter {
@@ -133,15 +136,15 @@ impl<'a, D, L, A: AsRef<[vk::CommandBuffer]>> IntoIterator for _CommandBuffers<'
 /// ⚠️ This is **NOT** intended to be public. This is only
 /// exposed as a stopgap solution to over capturing in
 /// RPITIT.
-pub struct _CommandBufferIter<'a, D, L, A> {
-    command_buffers: _CommandBuffers<'a, D, L, A>,
+pub struct _CommandBufferIter<'a, D, L, B> {
+    command_buffers: _CommandBuffers<'a, D, L, B>,
     next: usize,
 }
 
-impl<'a, D, L, A: AsRef<[vk::CommandBuffer]>> Iterator for _CommandBufferIter<'a, D, L, A> {
+impl<'a, D, L, B: Buffer<vk::CommandBuffer>> Iterator for _CommandBufferIter<'a, D, L, B> {
     type Item = _CommandBuffer<'a, D, L>;
     fn next(&mut self) -> Option<Self::Item> {
-        let array = self.command_buffers.array.as_ref();
+        let array = self.command_buffers.buffer.get_slice();
         if self.next >= array.len() {
             None
         } else {

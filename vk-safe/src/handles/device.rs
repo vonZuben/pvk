@@ -1,10 +1,10 @@
 use super::command_buffer::_CommandBuffers;
-use super::command_pool::{CommandPool, _CommandPool};
+use super::command_pool::_CommandPool;
 use super::device_memory::{DeviceMemory, MappedMemory, _DeviceMemory};
 use super::physical_device::PhysicalDevice;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
-use crate::array_storage::ArrayStorage;
+use crate::array_storage::Buffer;
 use crate::error::Error;
 use crate::flags::{Excludes, Includes};
 use crate::scope::Tag;
@@ -280,16 +280,14 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     ```
     <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateCommandBuffers.html>
      */
-    #[cfg(VK_VERSION_1_0)]
-    fn allocate_command_buffers<'a, P: CommandPool, L, A: ArrayStorage<vk::CommandBuffer>>(
+    fn allocate_command_buffers<'a, Pool, Level, B: Buffer<vk::CommandBuffer>>(
         &'a self,
-        info: &CommandBufferAllocateInfo<'_, P, L>,
-        storage: A,
-    ) -> Result<_CommandBuffers<'a, Self, L, A::InitStorage>, Error>
+        info: CommandBufferAllocateInfo<'_, B, Pool, Level>,
+    ) -> Result<_CommandBuffers<'a, Self, Level, B>, Error>
     where
         Self::Commands: vk::has_command::AllocateCommandBuffers,
     {
-        allocate_command_buffers(self, info, storage)
+        allocate_command_buffers(self, info)
     }
 }
 

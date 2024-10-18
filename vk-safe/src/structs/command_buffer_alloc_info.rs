@@ -1,7 +1,8 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use crate::type_conversions::SafeTransmute;
+use crate::array_storage::Buffer;
+use crate::error::Error;
 use crate::vk::CommandPool;
 
 use vk_safe_sys as vk;
@@ -12,30 +13,32 @@ use vk_safe_sys as vk;
 /// CommandBuffers, and how many to allocate.
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCommandBufferAllocateInfo.html>
-#[repr(transparent)]
-pub struct CommandBufferAllocateInfo<'a, P, L> {
-    inner: vk::CommandBufferAllocateInfo,
+pub struct CommandBufferAllocateInfo<'a, B, P, L> {
+    pub(crate) info: vk::CommandBufferAllocateInfo,
+    pub(crate) buffer: B,
     pool: PhantomData<&'a P>,
     level: PhantomData<L>,
 }
 
-unsafe impl<P, L> SafeTransmute<vk::CommandBufferAllocateInfo>
-    for CommandBufferAllocateInfo<'_, P, L>
-{
-}
-
-impl<'a, P, L> Deref for CommandBufferAllocateInfo<'a, P, L> {
+impl<'a, B, P, L> Deref for CommandBufferAllocateInfo<'a, B, P, L> {
     type Target = vk::CommandBufferAllocateInfo;
 
     fn deref(&self) -> &Self::Target {
-        &self.inner
+        &self.info
     }
 }
 
-impl<'a, P: CommandPool, L: vk::enum_traits::CommandBufferLevel>
-    CommandBufferAllocateInfo<'a, P, L>
+unit_error!(ZeroSizedBuffer);
+
+impl<'a, B: Buffer<vk::CommandBuffer>, P: CommandPool, L: vk::enum_traits::CommandBufferLevel>
+    CommandBufferAllocateInfo<'a, B, P, L>
 {
-    pub fn new(command_pool: &'a P, level: L, command_buffer_count: u32) -> Self {
+    /// Create CommandBufferAllocateInfo
+    ///
+    /// The CommandBufferAllocateInfo will contain information
+    /// for allocating `buffer.capacity()` number of [`CommandBuffer`],
+    /// for the indicated `level`.
+    pub fn new(command_pool: &'a P, buffer: B, level: L) -> Result<Self, Error> {
         check_vuids::check_vuids!(CommandBufferAllocateInfo);
 
         #[allow(unused_labels)]
@@ -78,18 +81,26 @@ impl<'a, P: CommandPool, L: vk::enum_traits::CommandBufferLevel>
             // Flags<Type = vk::CommandBufferLevel>>
         }
 
+        // in relation to VUID_vkAllocateCommandBuffers_pCommandBuffers_parameter and VUID_vkAllocateCommandBuffers_pAllocateInfo_commandBufferCount_arraylength
+        // commandBufferCount is set based on the buffer
+        // we check that the buffer capacity is > 0
+        if buffer.capacity() == 0 {
+            Err(ZeroSizedBuffer)?
+        }
+
         let _ = level;
 
-        Self {
-            inner: vk::CommandBufferAllocateInfo {
+        Ok(Self {
+            info: vk::CommandBufferAllocateInfo {
                 s_type: vk::StructureType::COMMAND_BUFFER_ALLOCATE_INFO,
                 p_next: std::ptr::null(),
                 command_pool: command_pool.raw_handle(),
                 level: L::VALUE,
-                command_buffer_count,
+                command_buffer_count: buffer.capacity().try_into()?,
             },
+            buffer,
             pool: PhantomData,
             level: PhantomData,
-        }
+        })
     }
 }
