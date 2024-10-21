@@ -9,10 +9,10 @@ pub(crate) trait ToC<C, L = Other> {
 
 impl<T, C, L> ToC<C, L> for T
 where
-    T: SafeTransmute<C, L>,
+    T: ConvertWrapper<C, L>,
 {
     fn to_c(self) -> C {
-        self.safe_transmute()
+        self.to_c()
     }
 }
 
@@ -40,39 +40,53 @@ impl<'a, P> ToC<*const P> for Option<&'a P> {
 
 // ******* disambiguation labels ************
 // for avoiding conflicting trait implementations
-// the labels can be when the safe_transmute method is called
+// the labels can be inferred when the trait methods are called
 
-/// SafeTransmute label for converting to same type
+/// ConvertWrapper label for converting to same type
 pub struct Same();
 
-/// SafeTransmute label for converting to other type
+/// ConvertWrapper label for converting to other type
 pub struct Other();
 
-/// SafeTransmute label for converting to array type
+/// ConvertWrapper label for converting to array type
 pub struct Array();
 
-/// SafeTransmute label for converting to MaybeUninit type
+/// ConvertWrapper label for converting to MaybeUninit type
 pub struct MaybeUninitLabel();
 
 // *******************************************
 
-/// Represent a type that can soundly transmute into another type T
+/// Convert between safe and raw vk-safe types
 ///
-/// It is intended that specific wrapper types in vk-safe will
-/// implement the trait for converting to/from the raw generated
-/// types in vk-safe-sys. The default method should not be overwritten.
+/// vk-safe has many safe wrapper types that simply wrap
+/// the raw c-types and add an invariant that it is
+/// initialized and safe to use in the vk-safe api.
 ///
-/// Implementations for references and slices are provided
-/// where the base types implement SafeTransmute.
-pub(crate) unsafe trait SafeTransmute<T: ?Sized, L = Other> {
-    fn safe_transmute(self) -> T
+/// This trait is for converting between the vk-safe
+/// and raw c-type versions of such a type.
+///
+/// By default, this trait performs the conversion
+/// by manually reinterpreting the bytes of Self to T,
+/// while ensuring that the size and alignment match.
+pub(crate) unsafe trait ConvertWrapper<T: ?Sized, L = Other> {
+    /// Convert to raw c-type
+    ///
+    /// Convert from the safe api wrapper type to the raw c-type.
+    /// This is mainly used internally for calling to raw Vulkan
+    /// commands.
+    fn to_c(self) -> T
     where
-        Self: Sized,
         T: Sized,
+        Self: Sized,
     {
         union U<A, B> {
             a: ManuallyDrop<A>,
             b: ManuallyDrop<B>,
+        }
+
+        const {
+            assert!(std::mem::size_of::<T>() == std::mem::size_of::<Self>());
+            assert!(std::mem::align_of::<T>() == std::mem::align_of::<Self>())
         }
 
         let u = U {
@@ -80,69 +94,146 @@ pub(crate) unsafe trait SafeTransmute<T: ?Sized, L = Other> {
         };
         ManuallyDrop::into_inner(unsafe { u.b })
     }
+
+    /// Convert from the raw c-type
+    ///
+    /// Create a safe api type from the raw c-type. Must ensure
+    /// that the raw c-type has been properly initialized.
+    ///
+    /// In general, a raw-ctype has been properly initialized
+    /// if all of the members have been set while adhering to the
+    /// VUIDs for the given type. The v-safe wrapper may have
+    /// additional invariants that must also be adhered to.
+    unsafe fn from_c(c: T) -> Self
+    where
+        T: Sized,
+        Self: Sized,
+    {
+        union U<A, B> {
+            a: ManuallyDrop<A>,
+            b: ManuallyDrop<B>,
+        }
+
+        const {
+            assert!(std::mem::size_of::<T>() == std::mem::size_of::<Self>());
+            assert!(std::mem::align_of::<T>() == std::mem::align_of::<Self>())
+        }
+
+        let u = U {
+            a: ManuallyDrop::new(c),
+        };
+        ManuallyDrop::into_inner(unsafe { u.b })
+    }
 }
 
-unsafe impl<T> SafeTransmute<T, Same> for T {
-    fn safe_transmute(self) -> T {
+unsafe impl<T> ConvertWrapper<T, Same> for T {
+    fn to_c(self) -> T {
         self
     }
-}
 
-unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<&'a T, (Other, L)> for &'a U where
-    U: SafeTransmute<T, L>
-{
-}
-
-unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<*const T, (Other, L)> for &'a U where
-    U: SafeTransmute<T, L>
-{
-}
-
-unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<&'a mut T, (Other, L)> for &'a mut U where
-    U: SafeTransmute<T, L>
-{
-}
-
-unsafe impl<'a, T: ?Sized, U: ?Sized, L> SafeTransmute<*mut T, (Other, L)> for &'a mut U where
-    U: SafeTransmute<T, L>
-{
-}
-
-unsafe impl<'a, T, U, L> SafeTransmute<&'a [T], (Array, L)> for &'a [U] where U: SafeTransmute<T, L> {}
-
-unsafe impl<'a, T, U, L> SafeTransmute<*const T, (Array, L)> for &'a [U]
-where
-    U: SafeTransmute<T, L>,
-{
-    fn safe_transmute(self) -> *const T {
-        self.as_ptr().cast()
+    unsafe fn from_c(c: T) -> Self {
+        c
     }
 }
 
-unsafe impl<'a, T, U, L> SafeTransmute<&'a mut [T], (Array, L)> for &'a mut [U]
-where
-    U: SafeTransmute<T, L>,
+unsafe impl<'a, T: ?Sized, U: ?Sized, L> ConvertWrapper<&'a T, (Other, L)> for &'a U where
+    U: ConvertWrapper<T, L>
 {
-    fn safe_transmute(self) -> &'a mut [T] {
+}
+
+unsafe impl<'a, T, U, L> ConvertWrapper<*const T, (Other, L)> for &'a U
+where
+    U: ConvertWrapper<T, L>,
+{
+    fn to_c(self) -> *const T {
         unsafe { std::mem::transmute(self) }
     }
+
+    unsafe fn from_c(c: *const T) -> Self {
+        unsafe { std::mem::transmute(c) }
+    }
 }
 
-unsafe impl<'a, T, U, L> SafeTransmute<*mut T, (Array, L)> for &'a mut [U]
-where
-    U: SafeTransmute<T, L>,
+unsafe impl<'a, T: ?Sized, U: ?Sized, L> ConvertWrapper<&'a mut T, (Other, L)> for &'a mut U where
+    U: ConvertWrapper<T, L>
 {
-    fn safe_transmute(self) -> *mut T {
+}
+
+unsafe impl<'a, T, U, L> ConvertWrapper<*mut T, (Other, L)> for &'a mut U
+where
+    U: ConvertWrapper<T, L>,
+{
+    fn to_c(self) -> *mut T {
+        unsafe { std::mem::transmute(self) }
+    }
+
+    unsafe fn from_c(c: *mut T) -> Self {
+        unsafe { std::mem::transmute(c) }
+    }
+}
+
+unsafe impl<'a, T, U, L> ConvertWrapper<&'a [T], (Array, L)> for &'a [U]
+where
+    U: ConvertWrapper<T, L>,
+{
+    fn to_c(self) -> &'a [T] {
+        unsafe { std::mem::transmute(self) }
+    }
+
+    unsafe fn from_c(c: &'a [T]) -> Self {
+        unsafe { std::mem::transmute(c) }
+    }
+}
+
+unsafe impl<'a, T, U, L> ConvertWrapper<*const T, (Array, L)> for &'a [U]
+where
+    U: ConvertWrapper<T, L>,
+{
+    fn to_c(self) -> *const T {
+        self.as_ptr().cast()
+    }
+
+    unsafe fn from_c(_c: *const T) -> Self {
+        const { panic!("Cannot turn a raw pointer into a slice") }
+    }
+}
+
+unsafe impl<'a, T, U, L> ConvertWrapper<&'a mut [T], (Array, L)> for &'a mut [U]
+where
+    U: ConvertWrapper<T, L>,
+{
+    fn to_c(self) -> &'a mut [T] {
+        unsafe { std::mem::transmute(self) }
+    }
+
+    unsafe fn from_c(c: &'a mut [T]) -> Self {
+        unsafe { std::mem::transmute(c) }
+    }
+}
+
+unsafe impl<'a, T, U, L> ConvertWrapper<*mut T, (Array, L)> for &'a mut [U]
+where
+    U: ConvertWrapper<T, L>,
+{
+    fn to_c(self) -> *mut T {
         self.as_mut_ptr().cast()
+    }
+
+    unsafe fn from_c(_c: *mut T) -> Self {
+        const { panic!("Cannot turn a raw pointer into a slice") }
     }
 }
 
 /// This implementation is used in helper_macros::enumerator_code2!()
-unsafe impl<T, U, L> SafeTransmute<*mut T, (MaybeUninitLabel, L)> for &mut [MaybeUninit<U>]
+unsafe impl<T, U, L> ConvertWrapper<*mut T, (MaybeUninitLabel, L)> for &mut [MaybeUninit<U>]
 where
-    U: SafeTransmute<T, L>,
+    U: ConvertWrapper<T, L>,
 {
-    fn safe_transmute(self) -> *mut T {
+    fn to_c(self) -> *mut T {
         self.as_mut_ptr().cast()
+    }
+
+    unsafe fn from_c(_c: *mut T) -> Self {
+        const { panic!("Cannot turn a raw pointer into a slice") }
     }
 }

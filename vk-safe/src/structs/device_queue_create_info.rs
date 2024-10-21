@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use super::QueueFamilyProperties;
 
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -180,7 +180,7 @@ impl<'a, Z> DeviceQueueCreateInfo<'a, Z> {
                 flags: vk::DeviceQueueCreateFlags::empty(),
                 queue_family_index: family.family_index,
                 queue_count: priorities_len,
-                p_queue_priorities: priorities.safe_transmute(),
+                p_queue_priorities: priorities.to_c(),
             },
             _params: PhantomData,
             _scope: PhantomData,
@@ -199,7 +199,7 @@ pub struct QueuePriority {
     priority: f32,
 }
 
-unsafe impl crate::type_conversions::SafeTransmute<f32> for QueuePriority {}
+unsafe impl crate::type_conversions::ConvertWrapper<f32> for QueuePriority {}
 
 impl QueuePriority {
     /// Create a new Priority

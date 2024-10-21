@@ -17,7 +17,7 @@ macro_rules! enumerator_code2 {
         use std::convert::TryInto;
         use crate::array_storage::VulkanLenType;
         #[allow(unused)]
-        use crate::type_conversions::{ToC, SafeTransmute};
+        use crate::type_conversions::ToC;
         let len = || {
             let mut num = 0;
             let res;
@@ -32,35 +32,13 @@ macro_rules! enumerator_code2 {
         let mut len = crate::array_storage::VulkanLenType::from_usize(uninit_slice.len());
         let res;
         unsafe {
-            res = $command($($param.to_c(),)* &mut len, uninit_slice.safe_transmute());
+            res = $command($($param.to_c(),)* &mut len, uninit_slice.to_c());
             check_raw_err!(res);
         }
         let ret: Result<_, crate::error::Error> = Ok($storage.finalize(len.to_usize()));
         ret
     }};
 }
-
-// Use this to create wrappers around simple structs
-// macro_rules! simple_struct_wrapper {
-//     (
-//         $name:ident
-//     ) => {
-//         #[repr(transparent)]
-//         pub struct $name {
-//             inner: vk_safe_sys::$name,
-//         }
-
-//         unsafe impl crate::type_conversions::SafeTransmute<$name> for vk_safe_sys::$name {}
-//         unsafe impl crate::type_conversions::SafeTransmute<vk_safe_sys::$name> for $name {}
-
-//         impl std::ops::Deref for $name {
-//             type Target = vk_safe_sys::$name;
-//             fn deref(&self) -> &Self::Target {
-//                 &self.inner
-//             }
-//         }
-//     };
-// }
 
 pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
     s.iter().take_while(|&&c| c != 0).count()
@@ -128,10 +106,7 @@ macro_rules! simple_struct_wrapper_scoped {
         }
 
         unsafe impl<S, $($generics),*>
-            crate::type_conversions::SafeTransmute<$name<S, $($generics),*>>
-            for vk_safe_sys::$name {}
-        unsafe impl<S, $($generics),*>
-            crate::type_conversions::SafeTransmute<vk_safe_sys::$name>
+            crate::type_conversions::ConvertWrapper<vk_safe_sys::$name>
             for $name<S, $($generics),*> {}
 
         impl<S, $($generics),*> $name<S, $($generics),*> {
@@ -191,24 +166,8 @@ macro_rules! input_struct_wrapper {
             _scope: std::marker::PhantomData<S>,
         }
 
-        // impl<'a, S> $name<'a, S> {
-        //     pub(crate) fn inner(inner: vk_safe_sys::$name) -> Self {
-        //         Self {
-        //             inner,
-        //             _params: std::marker::PhantomData,
-        //             _scope: std::marker::PhantomData,
-        //         }
-        //     }
-        // }
-
-        unsafe impl<'a, S> crate::type_conversions::SafeTransmute<$name<'a, S>>
-            for vk_safe_sys::$name
-        {
-        }
-        unsafe impl<'a, S> crate::type_conversions::SafeTransmute<vk_safe_sys::$name>
-            for $name<'a, S>
-        {
-        }
+        unsafe impl<'a, S> crate::type_conversions::ConvertWrapper<vk_safe_sys::$name>
+            for $name<'a, S> {}
 
         $( $( input_struct_wrapper!( @IMPL $t $name ); )+ )?
     };

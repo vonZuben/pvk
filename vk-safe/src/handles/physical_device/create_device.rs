@@ -6,7 +6,7 @@ use crate::error::Error;
 use crate::handles::device::_Device;
 use crate::scope::{HasScope, Tag};
 use crate::structs::DeviceCreateInfo;
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 
 pub(crate) use private::VersionCheck;
 
@@ -125,7 +125,7 @@ where
     unsafe {
         let res = physical_device.commands().CreateDevice().get_fptr()(
             physical_device.raw_handle(),
-            create_info.safe_transmute(),
+            create_info.to_c(),
             std::ptr::null(),
             handle.as_mut_ptr(),
         );

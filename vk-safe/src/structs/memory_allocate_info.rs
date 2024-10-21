@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 
 use super::physical_device_memory_properties::MemoryTypeChoice;
 
@@ -13,7 +13,7 @@ pub struct MemoryAllocateInfo<S, P, H> {
     heap_flags: PhantomData<H>,
 }
 
-unsafe impl<S, P, H> SafeTransmute<vk::MemoryAllocateInfo> for MemoryAllocateInfo<S, P, H> {}
+unsafe impl<S, P, H> ConvertWrapper<vk::MemoryAllocateInfo> for MemoryAllocateInfo<S, P, H> {}
 
 impl<S, P, H> Deref for MemoryAllocateInfo<S, P, H> {
     type Target = vk::MemoryAllocateInfo;

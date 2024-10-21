@@ -3,7 +3,7 @@ use super::Device;
 use std::mem::MaybeUninit;
 
 use crate::structs::MemoryAllocateInfo;
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 use crate::vk::_DeviceMemory;
 
 use vk_safe_sys as vk;
@@ -124,7 +124,7 @@ pub(crate) fn allocate_memory<
     unsafe {
         let ret = fptr(
             device.raw_handle(),
-            info.safe_transmute(),
+            info.to_c(),
             std::ptr::null(),
             memory.as_mut_ptr(),
         );

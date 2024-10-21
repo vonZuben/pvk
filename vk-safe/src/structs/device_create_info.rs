@@ -3,7 +3,7 @@ use std::ops::Deref;
 
 use super::DeviceQueueCreateInfo;
 
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -31,7 +31,7 @@ impl<'a, C, Z> Deref for DeviceCreateInfo<'a, C, Z> {
     }
 }
 
-unsafe impl<'a, C, Z> SafeTransmute<vk::DeviceCreateInfo> for DeviceCreateInfo<'a, C, Z> {}
+unsafe impl<'a, C, Z> ConvertWrapper<vk::DeviceCreateInfo> for DeviceCreateInfo<'a, C, Z> {}
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
     /// create DeviceCreateInfo
@@ -625,7 +625,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
                 p_next: std::ptr::null(),
                 flags: vk::DeviceCreateFlags::empty(),
                 queue_create_info_count: queue_create_info.len() as u32,
-                p_queue_create_infos: queue_create_info.safe_transmute(),
+                p_queue_create_infos: queue_create_info.to_c(),
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),
                 enabled_extension_count: extensions

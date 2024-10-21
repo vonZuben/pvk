@@ -4,7 +4,7 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::array_storage::Buffer;
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 use crate::vk::Device;
 
 use vk_safe_sys as vk;
@@ -29,7 +29,7 @@ pub struct _CommandBuffer<'a, D, L> {
     level: PhantomData<L>,
 }
 
-unsafe impl<'a, D, L> SafeTransmute<vk::CommandBuffer> for _CommandBuffer<'a, D, L> {}
+unsafe impl<'a, D, L> ConvertWrapper<vk::CommandBuffer> for _CommandBuffer<'a, D, L> {}
 
 unsafe impl<D: Sync, L> Send for _CommandBuffer<'_, D, L> {}
 

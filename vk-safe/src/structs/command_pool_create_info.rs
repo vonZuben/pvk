@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 use crate::vk::QueueFamily;
 
 use vk_safe_sys as vk;
@@ -26,7 +26,10 @@ pub struct CommandPoolCreateInfo<D, F, T> {
     queue_family_tag: PhantomData<T>,
 }
 
-unsafe impl<D, F, T> SafeTransmute<vk::CommandPoolCreateInfo> for CommandPoolCreateInfo<D, F, T> {}
+unsafe impl<D, F, T> ConvertWrapper<vk::CommandPoolCreateInfo>
+    for CommandPoolCreateInfo<D, F, T>
+{
+}
 
 impl<D, F, T> std::ops::Deref for CommandPoolCreateInfo<D, F, T> {
     type Target = vk::CommandPoolCreateInfo;

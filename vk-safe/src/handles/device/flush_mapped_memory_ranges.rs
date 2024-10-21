@@ -2,7 +2,7 @@ use super::Device;
 
 use crate::error::Error;
 use crate::structs::MappedMemoryRange;
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -47,11 +47,7 @@ pub(crate) fn flush_mapped_memory_ranges<D: Device<Commands: FlushMappedMemoryRa
 
     let fptr = device.commands().FlushMappedMemoryRanges().get_fptr();
     unsafe {
-        let res = fptr(
-            device.raw_handle(),
-            ranges.len().try_into()?,
-            ranges.safe_transmute(),
-        );
+        let res = fptr(device.raw_handle(), ranges.len().try_into()?, ranges.to_c());
         check_raw_err!(res);
         Ok(())
     }

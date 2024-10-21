@@ -1,7 +1,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -19,7 +19,13 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
             self.inner.memory_type_count < vk::MAX_MEMORY_TYPES as _,
             "error: vulkan implementation reporting invalid memory_type_count"
         );
-        (&self.inner.memory_types[..self.inner.memory_type_count as _]).safe_transmute()
+
+        // SAFETY: PhysicalDeviceMemoryProperties<S> should only exist with properly initialized members
+        unsafe {
+            <&[MemoryType<S>]>::from_c(
+                &self.inner.memory_types[..self.inner.memory_type_count as _],
+            )
+        }
     }
 
     pub fn memory_heaps(&self) -> &[MemoryHeap<S>] {
@@ -27,7 +33,13 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
             self.inner.memory_heap_count < vk::MAX_MEMORY_HEAPS as _,
             "error: vulkan implementation reporting invalid memory_heap_count"
         );
-        (&self.inner.memory_heaps[..self.inner.memory_heap_count as _]).safe_transmute()
+
+        // SAFETY: PhysicalDeviceMemoryProperties<S> should only exist with properly initialized members
+        unsafe {
+            <&[MemoryHeap<S>]>::from_c(
+                &self.inner.memory_heaps[..self.inner.memory_heap_count as _],
+            )
+        }
     }
 
     /// choose the given index as a memory type for other operations (e.g. to allocate)

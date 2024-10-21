@@ -3,7 +3,7 @@ use super::Device;
 use crate::error::Error;
 use crate::handles::command_pool::{_CommandPool, make_command_pool};
 use crate::structs::CommandPoolCreateInfo;
-use crate::type_conversions::{SafeTransmute, ToC};
+use crate::type_conversions::ToC;
 
 use vk_safe_sys as vk;
 
@@ -78,7 +78,7 @@ pub(crate) fn create_command_pool<
     let handle = unsafe {
         let res = fptr(
             device.raw_handle(),
-            create_info.safe_transmute(),
+            create_info.to_c(),
             None.to_c(),
             handle.as_mut_ptr(),
         );

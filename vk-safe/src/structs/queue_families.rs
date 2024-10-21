@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use crate::array_storage::ArrayStorage;
 use crate::scope::Tag;
-use crate::type_conversions::SafeTransmute;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -39,7 +39,7 @@ impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> std::ops::Deref for QueueFam
     type Target = QueueFamiliesRef<S>;
 
     fn deref(&self) -> &Self::Target {
-        self.families.as_ref().safe_transmute()
+        unsafe { <&Self::Target>::from_c(self.families.as_ref()) }
     }
 }
 
@@ -60,7 +60,7 @@ pub struct QueueFamiliesRef<S> {
     _scope: PhantomData<S>,
     families: [vk::QueueFamilyProperties],
 }
-unsafe impl<S> SafeTransmute<QueueFamiliesRef<S>> for [vk::QueueFamilyProperties] {}
+unsafe impl<S> ConvertWrapper<[vk::QueueFamilyProperties]> for QueueFamiliesRef<S> {}
 
 impl<S> QueueFamiliesRef<S> {
     /// Iterate over [`QueueFamilyProperties`] with a provided [`Tag`]
