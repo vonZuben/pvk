@@ -1,19 +1,19 @@
 use super::command_impl_prelude::*;
 
-use crate::error::Error;
+use crate::enumerator::Enumerator;
+use crate::scope::Captures;
 use crate::vk_str::VkStr;
 
 use crate::structs::ExtensionProperties;
 
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceExtensionProperties.html>
-pub fn enumerate_instance_extension_properties<S: ArrayStorage<ExtensionProperties<()>>>(
+pub fn enumerate_instance_extension_properties(
     layer_name: Option<VkStr>,
-    mut storage: S,
-) -> Result<S::InitStorage, Error> {
+) -> impl Enumerator<ExtensionProperties<()>> + Captures<VkStr> {
     let command = super::entry_fn_loader::<vk::EnumerateInstanceExtensionProperties>()
         .unwrap()
         .get_fptr();
-    enumerator_code2!(command; (layer_name) -> storage)
+    make_enumerator!(command; (layer_name))
 }
 
 const _VUIDS: () = {

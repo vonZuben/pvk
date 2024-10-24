@@ -20,7 +20,10 @@ fn main() {
     );
 
     println!("--Supported instance extensions--");
-    for e in vk::enumerate_instance_extension_properties(None, Vec::new()).unwrap() {
+    for e in vk::enumerate_instance_extension_properties(None)
+        .auto_get_enumerate()
+        .unwrap()
+    {
         println!("{e:#?}");
     }
 

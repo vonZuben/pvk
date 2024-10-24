@@ -78,7 +78,7 @@ macro_rules! make_enumerator {
             }
         }
 
-        Enumerator( |len: &mut _, buffer: *mut _| unsafe { $command($($param.to_c(),)* len, buffer) }, std::marker::PhantomData )
+        Enumerator( move |len: &mut _, buffer: *mut _| unsafe { $command($($param.to_c(),)* len, buffer) }, std::marker::PhantomData )
     }};
 }
 
