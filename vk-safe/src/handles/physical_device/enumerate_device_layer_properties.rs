@@ -1,7 +1,7 @@
 use super::PhysicalDevice;
 
-use crate::array_storage::ArrayStorage;
-use crate::error::Error;
+use crate::enumerator::Enumerator;
+use crate::scope::Captures;
 use crate::structs::LayerProperties;
 
 use vk_safe_sys as vk;
@@ -10,11 +10,9 @@ use vk::has_command::EnumerateDeviceLayerProperties;
 
 pub(crate) fn enumerate_device_layer_properties<
     P: PhysicalDevice<Commands: EnumerateDeviceLayerProperties>,
-    A: ArrayStorage<LayerProperties<P>>,
 >(
     physical_device: &P,
-    mut storage: A,
-) -> Result<A::InitStorage, Error> {
+) -> impl Enumerator<LayerProperties<P>> + Captures<&P> {
     check_vuids::check_vuids!(EnumerateDeviceLayerProperties);
 
     #[allow(unused_labels)]
@@ -48,6 +46,8 @@ pub(crate) fn enumerate_device_layer_properties<
         // enumerator_code2!
     }
 
-    enumerator_code2!(physical_device.commands().EnumerateDeviceLayerProperties().get_fptr();
-        (physical_device.raw_handle()) -> storage)
+    make_enumerator!(
+        physical_device.commands().EnumerateDeviceLayerProperties().get_fptr();
+        (physical_device.raw_handle())
+    )
 }

@@ -75,7 +75,9 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Available device layers (NOTE: device layers are depreciated by Vulkan)--");
     println!(
         "{:#?}",
-        pd.enumerate_device_layer_properties(Vec::new()).unwrap()
+        pd.enumerate_device_layer_properties()
+            .auto_get_enumerate()
+            .unwrap()
     );
 
     let srgb_properties = pd.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);

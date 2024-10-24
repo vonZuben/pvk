@@ -3,6 +3,7 @@ use super::instance::Instance;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::array_storage::ArrayStorage;
+use crate::enumerator::Enumerator;
 use crate::error::Error;
 use crate::scope::{Captures, HasScope, Tag};
 use crate::structs::*;
@@ -98,14 +99,11 @@ pub trait PhysicalDevice:
     /// let layer_properties = physical_device.enumerate_device_layer_properties(Vec::new());
     /// # }
     /// ```
-    fn enumerate_device_layer_properties<A: ArrayStorage<LayerProperties<Self>>>(
-        &self,
-        storage: A,
-    ) -> Result<A::InitStorage, Error>
+    fn enumerate_device_layer_properties(&self) -> impl Enumerator<LayerProperties<Self>>
     where
         Self::Commands: vk::has_command::EnumerateDeviceLayerProperties,
     {
-        enumerate_device_layer_properties(self, storage)
+        enumerate_device_layer_properties(self)
     }
 
     #[cfg(VK_VERSION_1_0)]

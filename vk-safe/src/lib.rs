@@ -177,6 +177,8 @@ pub mod handles;
 
 pub mod structs;
 
+pub mod enumerator;
+
 /// # Vulkan enumerations
 ///
 /// 🚧 docs in progress
@@ -260,6 +262,7 @@ pub mod vk {
     /// module, but it is not recommended to use
     /// `vk::*`
     pub mod traits {
+        pub use crate::enumerator::Enumerator;
         pub use crate::handles::export::*;
     }
 

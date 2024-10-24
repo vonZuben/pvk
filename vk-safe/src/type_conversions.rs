@@ -172,6 +172,19 @@ where
     }
 }
 
+unsafe impl<'a, T, U, L> ConvertWrapper<*mut T, (Other, L)> for *mut U
+where
+    U: ConvertWrapper<T, L>,
+{
+    fn to_c(self) -> *mut T {
+        self.cast()
+    }
+
+    unsafe fn from_c(c: *mut T) -> Self {
+        c.cast()
+    }
+}
+
 unsafe impl<'a, T, U, L> ConvertWrapper<&'a [T], (Array, L)> for &'a [U]
 where
     U: ConvertWrapper<T, L>,
