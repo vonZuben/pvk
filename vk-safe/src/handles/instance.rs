@@ -1,8 +1,7 @@
-use super::physical_device::PhysicalDevices;
+use super::physical_device::PhysicalDeviceHandle;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
-use crate::array_storage::ArrayStorage;
-use crate::error::Error;
+use crate::enumerator::Enumerator;
 use crate::scope::{Captures, Tag};
 use crate::type_conversions::ToC;
 use crate::VkVersion;
@@ -57,14 +56,11 @@ pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + ThreadSafeHan
     ///
     /// Vulkan docs:
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html>
-    fn enumerate_physical_devices<A: ArrayStorage<vk::PhysicalDevice>>(
-        &self,
-        storage: A,
-    ) -> Result<impl PhysicalDevices<Self>, Error>
+    fn enumerate_physical_devices(&self) -> impl Enumerator<PhysicalDeviceHandle<Self>>
     where
         Self::Commands: vk::has_command::EnumeratePhysicalDevices,
     {
-        enumerate_physical_devices::enumerate_physical_devices(self, storage)
+        enumerate_physical_devices::enumerate_physical_devices(self)
     }
 }
 

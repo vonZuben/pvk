@@ -338,6 +338,65 @@ pub trait PhysicalDevice:
     }
 }
 
+/// Handle for a PhysicalDevice
+///
+/// This is just the handle. It must be tagged using the
+/// [`tag()`](PhysicalDeviceHandle::tag) method in order
+/// to obtain a [`PhysicalDevice`] implementation.
+#[repr(transparent)]
+pub struct PhysicalDeviceHandle<I> {
+    handle: vk::PhysicalDevice,
+    instance: PhantomData<I>,
+}
+
+impl<I: Instance> PhysicalDeviceHandle<I> {
+    /// Tag the handle to make a [`PhysicalDevice`] implementation
+    ///
+    /// Create an `impl PhysicalDevice` using the handle, and the
+    /// same [`Instance`] that it was created from, and a new [`Tag`].
+    ///
+    /// Note: it is possible to tag the same handle multiple times
+    /// with different tags. This is NOT something you should do.
+    /// Even if different [`PhysicalDevice`] implementations use the same
+    /// PhysicalDevice, they will been seen as different and cannot
+    /// be used together.
+    pub fn tag<'a, 't>(
+        self,
+        instance: &'a I,
+        tag: Tag<'t>,
+    ) -> impl PhysicalDevice<Instance = I, Commands = I::Commands> + Captures<(&'a I, Tag<'t>)>
+    {
+        _PhysicalDevice::new(self.handle, instance, tag)
+    }
+}
+
+unsafe impl<I> crate::type_conversions::ConvertWrapper<vk::PhysicalDevice>
+    for PhysicalDeviceHandle<I>
+{
+}
+
+unsafe impl<I> Send for PhysicalDeviceHandle<I> {}
+unsafe impl<I> Sync for PhysicalDeviceHandle<I> {}
+
+impl<I> Clone for PhysicalDeviceHandle<I> {
+    fn clone(&self) -> Self {
+        Self {
+            handle: self.handle.clone(),
+            instance: self.instance.clone(),
+        }
+    }
+}
+
+impl<I> Copy for PhysicalDeviceHandle<I> {}
+
+impl<I> fmt::Debug for PhysicalDeviceHandle<I> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PhysicalDeviceHandle")
+            .field("handle", &self.handle)
+            .finish()
+    }
+}
+
 /// Hidden type which implements PhysicalDevice
 struct _PhysicalDevice<'a, I, T> {
     handle: vk::PhysicalDevice,
@@ -385,139 +444,4 @@ impl<I: Instance, T> DispatchableHandle for _PhysicalDevice<'_, I, T> {
 
 impl<I: Instance, T> PhysicalDevice for _PhysicalDevice<'_, I, T> {
     type Instance = I;
-}
-
-pub(crate) fn make_physical_devices<'a, I: Instance, A: AsRef<[vk::PhysicalDevice]>>(
-    instance: &'a I,
-    array: A,
-) -> impl PhysicalDevices<I> + Captures<&'a I> {
-    _PhysicalDevices { instance, array }
-}
-
-/// Hidden type which implements PhysicalDeviceTagger
-struct _PhysicalDeviceTagger<'a, I> {
-    instance: &'a I,
-    physical_device: vk::PhysicalDevice,
-}
-
-impl<I: fmt::Debug> fmt::Debug for _PhysicalDeviceTagger<'_, I> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PhysicalDeviceTagger")
-            .field("instance", &self.instance)
-            .field("physical_device", &self.physical_device)
-            .finish()
-    }
-}
-
-unsafe impl<I: Send> Send for _PhysicalDeviceTagger<'_, I> {}
-unsafe impl<I: Sync> Sync for _PhysicalDeviceTagger<'_, I> {}
-
-impl<'a, I> _PhysicalDeviceTagger<'a, I> {
-    fn new(instance: &'a I, physical_device: vk::PhysicalDevice) -> Self {
-        Self {
-            instance,
-            physical_device,
-        }
-    }
-}
-
-impl<'a, I: Instance> PhysicalDeviceTagger<I> for _PhysicalDeviceTagger<'a, I> {
-    fn tag<'t>(self, tag: Tag<'t>) -> impl PhysicalDevice<Instance = I, Commands = I::Commands> {
-        _PhysicalDevice::new(self.physical_device, self.instance, tag)
-    }
-}
-
-/// Provides the means to add unique tags to PhysicalDevices
-///
-/// Provides the means to add unique tag to each individual PhysicalDevice with
-/// the [`tag`](PhysicalDeviceTagger::tag) method. See documentation regarding [`Tag`] for
-/// more details.
-///
-/// Obtained by iterating over the PhysicalDevices returned by
-/// [`enumerate_physical_devices`](crate::vk::Instance::enumerate_physical_devices).
-pub trait PhysicalDeviceTagger<I: Instance>: Sized + fmt::Debug + Send + Sync {
-    /// Tag an enumerated PhysicalDevice
-    ///
-    /// See [`Instance::enumerate_physical_devices`] for
-    /// example use.
-    fn tag<'t>(self, tag: Tag<'t>) -> impl PhysicalDevice<Instance = I, Commands = I::Commands>;
-}
-
-/// Provide access to PhysicalDevices enumerated on the system
-///
-/// Can be consumed via [`IntoIterator`] implementation, or
-/// you can iterator without consuming with [`PhysicalDevices::iter`].
-pub trait PhysicalDevices<I: Instance>: IntoIterator<Item = Self::Tagger> + fmt::Debug {
-    type Tagger: PhysicalDeviceTagger<I>;
-    /// Provide an iterator over PhysicalDevice taggers without consuming
-    /// self.
-    fn iter(&self) -> impl Iterator<Item = Self::Tagger>;
-}
-
-/// Hidden type which implements PhysicalDevices
-struct _PhysicalDevices<'a, I, A> {
-    instance: &'a I,
-    array: A,
-}
-
-impl<I: fmt::Debug, A: AsRef<[vk::PhysicalDevice]>> fmt::Debug for _PhysicalDevices<'_, I, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PhysicalDevices")?;
-        f.debug_list().entries(self.array.as_ref().iter()).finish()
-    }
-}
-
-struct _PhysicalDeviceIter<'a, I, A> {
-    pds: _PhysicalDevices<'a, I, A>,
-    next: usize,
-}
-
-impl<'a, I, A: AsRef<[vk::PhysicalDevice]>> Iterator for _PhysicalDeviceIter<'a, I, A> {
-    type Item = _PhysicalDeviceTagger<'a, I>;
-    fn next(&mut self) -> Option<Self::Item> {
-        let array = self.pds.array.as_ref();
-        if self.next >= array.len() {
-            None
-        } else {
-            let ret = unsafe { array.get_unchecked(self.next) };
-            self.next += 1;
-            Some(_PhysicalDeviceTagger::new(self.pds.instance, *ret))
-        }
-    }
-}
-
-impl<'a, I, A: AsRef<[vk::PhysicalDevice]>> IntoIterator for _PhysicalDevices<'a, I, A> {
-    type Item = _PhysicalDeviceTagger<'a, I>;
-    type IntoIter = _PhysicalDeviceIter<'a, I, A>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        todo!()
-    }
-}
-
-impl<'a, I: Instance, A: AsRef<[vk::PhysicalDevice]>> PhysicalDevices<I>
-    for _PhysicalDevices<'a, I, A>
-{
-    type Tagger = _PhysicalDeviceTagger<'a, I>;
-    fn iter(&self) -> impl Iterator<Item = Self::Tagger> {
-        _PhysicalDeviceIterRef {
-            instance: self.instance,
-            iter: self.array.as_ref().iter().copied(),
-        }
-    }
-}
-
-struct _PhysicalDeviceIterRef<'a, 's, I> {
-    instance: &'a I,
-    iter: std::iter::Copied<std::slice::Iter<'s, vk::PhysicalDevice>>,
-}
-
-impl<'a, I> Iterator for _PhysicalDeviceIterRef<'a, '_, I> {
-    type Item = _PhysicalDeviceTagger<'a, I>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter
-            .next()
-            .map(|pd| _PhysicalDeviceTagger::new(self.instance, pd))
-    }
 }

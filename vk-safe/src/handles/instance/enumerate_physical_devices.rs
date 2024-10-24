@@ -1,22 +1,16 @@
 use super::Instance;
 
-use crate::array_storage::ArrayStorage;
-use crate::error::Error;
-use crate::handles::physical_device::{make_physical_devices, PhysicalDevices};
+use crate::enumerator::Enumerator;
+use crate::handles::physical_device::PhysicalDeviceHandle;
 use crate::scope::Captures;
 
 use vk_safe_sys as vk;
 
 use vk::has_command::EnumeratePhysicalDevices;
 
-pub(crate) fn enumerate_physical_devices<
-    'a,
-    I: Instance<Commands: EnumeratePhysicalDevices>,
-    A: ArrayStorage<vk::PhysicalDevice>,
->(
+pub(crate) fn enumerate_physical_devices<'a, I: Instance<Commands: EnumeratePhysicalDevices>>(
     instance: &'a I,
-    mut storage: A,
-) -> Result<impl PhysicalDevices<I> + Captures<&'a I>, Error> {
+) -> impl Enumerator<PhysicalDeviceHandle<I>> + Captures<&'a I> {
     check_vuids::check_vuids!(EnumeratePhysicalDevices);
 
     #[allow(unused_labels)]
@@ -51,6 +45,5 @@ pub(crate) fn enumerate_physical_devices<
         //enumerator_code2!
     }
 
-    let handles = enumerator_code2!(instance.commands().EnumeratePhysicalDevices().get_fptr(); (instance.raw_handle()) -> storage)?;
-    Ok(make_physical_devices(instance, handles))
+    make_enumerator!(instance.commands().EnumeratePhysicalDevices().get_fptr(); (instance.raw_handle()))
 }

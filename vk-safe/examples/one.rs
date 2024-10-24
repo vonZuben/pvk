@@ -47,7 +47,8 @@ fn main() {
     println!("{instance:?}");
 
     let physical_devices = instance
-        .enumerate_physical_devices([std::mem::MaybeUninit::uninit(); 1])
+        .enumerate_physical_devices()
+        .auto_get_enumerate()
         .unwrap();
 
     println!("--Physical Devices on the system--");
@@ -58,7 +59,7 @@ fn main() {
         std::thread::scope(|scope| {
             scope.spawn(|| {
                 vk::tag!(tag);
-                run_physical_device(pd.tag(tag))
+                run_physical_device(pd.tag(&instance, tag))
             });
         });
     }
