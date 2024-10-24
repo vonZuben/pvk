@@ -28,7 +28,10 @@ fn main() {
     }
 
     println!("--Available instance layers--");
-    for e in vk::enumerate_instance_layer_properties(Vec::new()).unwrap() {
+    for e in vk::enumerate_instance_layer_properties()
+        .auto_get_enumerate()
+        .unwrap()
+    {
         println!("{e:#?}");
     }
 

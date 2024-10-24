@@ -1,17 +1,15 @@
 use super::command_impl_prelude::*;
 
-use crate::error::Error;
+use crate::enumerator::Enumerator;
 
 use crate::structs::LayerProperties;
 
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumerateInstanceLayerProperties.html>
-pub fn enumerate_instance_layer_properties<S: ArrayStorage<LayerProperties<()>>>(
-    mut storage: S,
-) -> Result<S::InitStorage, Error> {
+pub fn enumerate_instance_layer_properties() -> impl Enumerator<LayerProperties<()>> {
     let command = super::entry_fn_loader::<vk::EnumerateInstanceLayerProperties>()
         .unwrap()
         .get_fptr();
-    enumerator_code2!(command; () -> storage)
+    make_enumerator!(command; ())
 }
 
 // all verified by enumerator_code!()
