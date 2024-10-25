@@ -142,15 +142,14 @@ pub trait PhysicalDevice:
     ///     physical_device.enumerate_device_extension_properties(None, Vec::new());
     /// # }
     /// ```
-    fn enumerate_device_extension_properties<A: ArrayStorage<ExtensionProperties<Self>>>(
+    fn enumerate_device_extension_properties(
         &self,
         layer_name: Option<VkStr>,
-        storage: A,
-    ) -> Result<A::InitStorage, Error>
+    ) -> impl Enumerator<ExtensionProperties<Self>>
     where
         Self::Commands: vk::has_command::EnumerateDeviceExtensionProperties,
     {
-        enumerate_device_extension_properties(self, layer_name, storage)
+        enumerate_device_extension_properties(self, layer_name)
     }
 
     #[cfg(VK_VERSION_1_0)]

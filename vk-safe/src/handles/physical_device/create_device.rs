@@ -2,6 +2,7 @@ use super::PhysicalDevice;
 
 use std::mem::MaybeUninit;
 
+use crate::enumerator::Enumerator;
 use crate::error::Error;
 use crate::handles::device::_Device;
 use crate::scope::{HasScope, Tag};
@@ -114,7 +115,10 @@ where
     // *********Fix with extension support**********
     // **VUID_VkDeviceCreateInfo_pProperties_04451**
     // *********************************************
-    for e in physical_device.enumerate_device_extension_properties(None, Vec::new())? {
+    for e in physical_device
+        .enumerate_device_extension_properties(None)
+        .auto_get_enumerate()?
+    {
         if e.extension_name() == "VK_KHR_portability_subset" {
             panic!("Physical device with VK_KHR_portability_subset is not supported")
         }

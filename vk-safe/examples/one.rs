@@ -75,7 +75,8 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     println!("--Supported device extensions--");
     println!(
         "{:#?}",
-        pd.enumerate_device_extension_properties(None, Vec::new())
+        pd.enumerate_device_extension_properties(None)
+            .auto_get_enumerate()
             .unwrap()
     );
 
