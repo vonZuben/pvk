@@ -164,8 +164,6 @@ mod entry; // not finalized on if this should be pub
 pub use vk_safe_sys::VkVersion;
 pub use vk_str::VkStr;
 
-pub use array_storage::ArrayStorage;
-
 pub mod scope;
 
 pub mod flags;

@@ -2,7 +2,6 @@ use super::device::_Device; // ⚠️ hidden type exposed until precise capturin
 use super::instance::Instance;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
-use crate::array_storage::ArrayStorage;
 use crate::enumerator::Enumerator;
 use crate::error::Error;
 use crate::scope::{Captures, HasScope, Tag};

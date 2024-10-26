@@ -64,6 +64,7 @@ impl VkResultExt for () {
 /// Need to do C style error checking when calling the raw vulkan function pointers
 macro_rules! check_raw_err {
     ( $result:ident ) => {
+        #[allow(unused_imports)]
         use $crate::error::VkResultExt;
         if $result.is_err() {
             Err($result.get_error())?
