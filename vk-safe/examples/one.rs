@@ -110,8 +110,9 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
         .get_physical_device_sparse_image_format_properties(
             vk::SampleCountFlags::TYPE_1_BIT,
             tst_image_format_properties,
-            Vec::new(),
         )
+        .unwrap()
+        .auto_get_enumerate()
         .unwrap();
     println!("--Example sparse properties for above image format properties--");
     println!("{sparse_image_format_properties:#?}");

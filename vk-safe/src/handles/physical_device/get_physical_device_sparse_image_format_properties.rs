@@ -1,7 +1,8 @@
 use super::PhysicalDevice;
 
-use crate::array_storage::ArrayStorage;
+use crate::enumerator::Enumerator;
 use crate::error::Error;
+use crate::scope::Captures;
 use crate::structs::{
     ImageFormatProperties, ImageParameters::ImageParameters, SparseImageFormatProperties,
 };
@@ -15,15 +16,13 @@ unit_error!(UnsupportedSampleCount);
 
 pub(crate) fn get_physical_device_sparse_image_format_properties<
     P: PhysicalDevice<Commands: GetPhysicalDeviceSparseImageFormatProperties>,
-    A: ArrayStorage<SparseImageFormatProperties<P>>,
     Params: ImageParameters,
     SampleCount: vk::flag_traits::SampleCountFlags,
 >(
     physical_device: &P,
     _samples: SampleCount,
     image_format_properties: ImageFormatProperties<P, Params>,
-    mut storage: A,
-) -> Result<A::InitStorage, Error> {
+) -> Result<impl Enumerator<SparseImageFormatProperties<P>> + Captures<&P>, Error> {
     check_vuids::check_vuids!(GetPhysicalDeviceSparseImageFormatProperties);
 
     #[allow(unused_labels)]
@@ -140,14 +139,15 @@ pub(crate) fn get_physical_device_sparse_image_format_properties<
         // enumerator_code2!
     }
 
-    enumerator_code2!(physical_device.commands().GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
-            (
-                physical_device.raw_handle(),
-                Params::format(),
-                Params::image_type(),
-                SampleCount::INCLUDES,
-                Params::image_usage_flags(),
-                Params::image_tiling()
-            )
-            -> storage)
+    Ok(make_enumerator!(
+        physical_device.commands().GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
+                (
+                    physical_device.raw_handle(),
+                    Params::format(),
+                    Params::image_type(),
+                    SampleCount::INCLUDES,
+                    Params::image_usage_flags(),
+                    Params::image_tiling()
+                )
+    ))
 }

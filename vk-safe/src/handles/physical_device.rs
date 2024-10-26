@@ -237,24 +237,17 @@ pub trait PhysicalDevice:
     /// # }
     /// ```
     fn get_physical_device_sparse_image_format_properties<
-        A: ArrayStorage<SparseImageFormatProperties<Self>>,
         Params: ImageParameters::ImageParameters,
         SampleCount: vk::flag_traits::SampleCountFlags,
     >(
         &self,
         samples: SampleCount,
         image_format_properties: ImageFormatProperties<Self, Params>,
-        storage: A,
-    ) -> Result<A::InitStorage, Error>
+    ) -> Result<impl Enumerator<SparseImageFormatProperties<Self>>, Error>
     where
         Self::Commands: vk::has_command::GetPhysicalDeviceSparseImageFormatProperties,
     {
-        get_physical_device_sparse_image_format_properties(
-            self,
-            samples,
-            image_format_properties,
-            storage,
-        )
+        get_physical_device_sparse_image_format_properties(self, samples, image_format_properties)
     }
 
     #[cfg(VK_VERSION_1_0)]
