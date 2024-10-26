@@ -61,10 +61,10 @@ macro_rules! make_enumerator {
                 Ok(len.try_into()?)
             }
 
-            fn get_enumerate(
+            fn get_enumerate<B: $crate::array_storage::Buffer<R>>(
                 &self,
-                buffer: &mut impl $crate::array_storage::Buffer<R>,
-            ) -> Result<(), $crate::error::Error> {
+                mut buffer: B,
+            ) -> Result<B, $crate::error::Error> {
                 let mut len = buffer.capacity().try_into()?;
                 // UNSAFE warning
                 // the call to this is actually unsafe, but can't be reflected with the Fn trait
@@ -74,7 +74,7 @@ macro_rules! make_enumerator {
                 unsafe {
                     buffer.set_len(len.try_into()?);
                 }
-                Ok(())
+                Ok(buffer)
             }
         }
 

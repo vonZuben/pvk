@@ -236,3 +236,25 @@ unsafe impl<T> Buffer<T> for Vec<T> {
         }
     }
 }
+
+unsafe impl<T, B: Buffer<T>> Buffer<T> for &mut B {
+    fn capacity(&self) -> usize {
+        (**self).capacity()
+    }
+
+    fn ptr(&self) -> *const T {
+        (**self).ptr()
+    }
+
+    fn ptr_mut(&mut self) -> *mut T {
+        (**self).ptr_mut()
+    }
+
+    fn len(&self) -> usize {
+        (**self).len()
+    }
+
+    unsafe fn set_len(&mut self, len: usize) {
+        (**self).set_len(len);
+    }
+}
