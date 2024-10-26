@@ -19,7 +19,7 @@ macro_rules! make_enumerator {
                 Ok(len.try_into()?)
             }
 
-            fn get_enumerate<B: $crate::array_storage::Buffer<R>>(
+            fn get_enumerate<B: $crate::buffer::Buffer<R>>(
                 &self,
                 mut buffer: B,
             ) -> Result<B, $crate::error::Error> {

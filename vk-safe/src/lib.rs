@@ -155,7 +155,7 @@ mod helper_macros;
 #[macro_use]
 mod error_macros;
 
-mod array_storage;
+mod buffer;
 mod type_conversions;
 mod vk_str;
 

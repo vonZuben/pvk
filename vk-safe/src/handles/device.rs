@@ -4,7 +4,7 @@ use super::device_memory::{DeviceMemory, MappedMemory, _DeviceMemory};
 use super::physical_device::PhysicalDevice;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
-use crate::array_storage::Buffer;
+use crate::buffer::Buffer;
 use crate::error::Error;
 use crate::flags::{Excludes, Includes};
 use crate::scope::Tag;

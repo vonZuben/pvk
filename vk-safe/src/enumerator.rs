@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::array_storage::Buffer;
+use crate::buffer::Buffer;
 use crate::error::Error;
 
 /// Types which enumerate or get items Vulkan

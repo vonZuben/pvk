@@ -1,7 +1,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::array_storage::Buffer;
+use crate::buffer::Buffer;
 use crate::scope::Tag;
 use crate::type_conversions::ConvertWrapper;
 

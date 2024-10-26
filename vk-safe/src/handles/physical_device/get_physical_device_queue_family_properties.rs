@@ -1,6 +1,6 @@
 use super::PhysicalDevice;
 
-use crate::array_storage::Buffer;
+use crate::buffer::Buffer;
 use crate::enumerator::{Enumerator, EnumeratorTarget};
 use crate::error::Error;
 use crate::scope::Captures;

@@ -3,7 +3,7 @@ use super::{DispatchableHandle, Handle};
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::array_storage::Buffer;
+use crate::buffer::Buffer;
 use crate::type_conversions::ConvertWrapper;
 use crate::vk::Device;
 

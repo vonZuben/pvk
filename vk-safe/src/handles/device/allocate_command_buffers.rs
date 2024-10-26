@@ -1,6 +1,6 @@
 use super::Device;
 
-use crate::array_storage::Buffer;
+use crate::buffer::Buffer;
 use crate::error::Error;
 use crate::handles::command_buffer::{_CommandBuffers, make_command_buffers};
 use crate::structs::CommandBufferAllocateInfo;

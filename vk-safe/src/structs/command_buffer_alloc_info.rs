@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use crate::array_storage::Buffer;
+use crate::buffer::Buffer;
 use crate::error::Error;
 use crate::vk::CommandPool;
 
