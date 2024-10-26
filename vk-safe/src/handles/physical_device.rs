@@ -271,14 +271,13 @@ pub trait PhysicalDevice:
     ///     physical_device.get_physical_device_queue_family_properties(Vec::new());
     /// # }
     /// ```
-    fn get_physical_device_queue_family_properties<A: ArrayStorage<vk::QueueFamilyProperties>>(
+    fn get_physical_device_queue_family_properties(
         &self,
-        storage: A,
-    ) -> Result<QueueFamilies<Self, A>, Error>
+    ) -> impl Enumerator<vk::QueueFamilyProperties, QueueFamiliesTarget<Self>>
     where
         Self::Commands: vk::has_command::GetPhysicalDeviceQueueFamilyProperties,
     {
-        get_physical_device_queue_family_properties(self, storage)
+        get_physical_device_queue_family_properties(self)
     }
 
     #[cfg(VK_VERSION_1_0)]

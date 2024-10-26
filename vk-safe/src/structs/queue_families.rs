@@ -1,7 +1,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::array_storage::ArrayStorage;
+use crate::array_storage::Buffer;
 use crate::scope::Tag;
 use crate::type_conversions::ConvertWrapper;
 
@@ -21,43 +21,43 @@ use vk_safe_sys as vk;
 ///
 /// Call [`properties_iter`](QueueFamiliesRef::properties_iter) to
 /// determine all the `QueueFamilyProperties`.
-pub struct QueueFamilies<S, A: ArrayStorage<vk::QueueFamilyProperties>> {
-    families: A::InitStorage,
-    _scope: PhantomData<S>,
+pub struct QueueFamilies<S, B> {
+    buffer: B,
+    scope: PhantomData<S>,
 }
 
-impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> QueueFamilies<S, A> {
-    pub(crate) fn new(families: A::InitStorage) -> Self {
+impl<S, B> QueueFamilies<S, B> {
+    pub(crate) fn new(buffer: B) -> Self {
         Self {
-            families,
-            _scope: PhantomData,
+            buffer,
+            scope: PhantomData,
         }
     }
 }
 
-impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> std::ops::Deref for QueueFamilies<S, A> {
+impl<S, B: Buffer<vk::QueueFamilyProperties>> std::ops::Deref for QueueFamilies<S, B> {
     type Target = QueueFamiliesRef<S>;
 
     fn deref(&self) -> &Self::Target {
-        unsafe { <&Self::Target>::from_c(self.families.as_ref()) }
+        unsafe { <&Self::Target>::from_c(self.buffer.get_slice()) }
     }
 }
 
-impl<S, A: ArrayStorage<vk::QueueFamilyProperties>> fmt::Debug for QueueFamilies<S, A> {
+impl<S, B: Buffer<vk::QueueFamilyProperties>> fmt::Debug for QueueFamilies<S, B> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
-            .entries(self.families.as_ref().iter())
+            .entries(self.buffer.get_slice().iter())
             .finish()
     }
 }
 
 /// Reference to QueueFamilies
 ///
-/// This is mainly for abstracting away the [`ArrayStorage`] generics
+/// This is mainly for abstracting away the [`Buffer`] generics
 /// of [`QueueFamilies`].
 #[repr(transparent)]
 pub struct QueueFamiliesRef<S> {
-    _scope: PhantomData<S>,
+    scope: PhantomData<S>,
     families: [vk::QueueFamilyProperties],
 }
 unsafe impl<S> ConvertWrapper<[vk::QueueFamilyProperties]> for QueueFamiliesRef<S> {}

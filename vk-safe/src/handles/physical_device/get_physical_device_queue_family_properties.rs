@@ -1,8 +1,12 @@
 use super::PhysicalDevice;
 
-use crate::array_storage::ArrayStorage;
+use crate::array_storage::Buffer;
+use crate::enumerator::{Enumerator, EnumeratorTarget};
 use crate::error::Error;
+use crate::scope::Captures;
 use crate::structs::QueueFamilies;
+
+use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
 
@@ -10,11 +14,9 @@ use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
 
 pub(crate) fn get_physical_device_queue_family_properties<
     P: PhysicalDevice<Commands: GetPhysicalDeviceQueueFamilyProperties>,
-    A: ArrayStorage<vk::QueueFamilyProperties>,
 >(
     physical_device: &P,
-    mut storage: A,
-) -> Result<QueueFamilies<P, A>, Error> {
+) -> impl Enumerator<vk::QueueFamilyProperties, QueueFamiliesTarget<P>> + Captures<&P> {
     check_vuids::check_vuids!(GetPhysicalDeviceQueueFamilyProperties);
 
     #[allow(unused_labels)]
@@ -49,9 +51,51 @@ pub(crate) fn get_physical_device_queue_family_properties<
         // enumerator_code2!
     }
 
-    let families = enumerator_code2!(
-        physical_device.commands().GetPhysicalDeviceQueueFamilyProperties().get_fptr();
-        (physical_device.raw_handle()) -> storage)?;
+    struct QueueFamilyPropertiesEnumerator<F>(F);
 
-    Ok(QueueFamilies::new(families))
+    impl<F, P> Enumerator<vk::QueueFamilyProperties, QueueFamiliesTarget<P>>
+        for QueueFamilyPropertiesEnumerator<F>
+    where
+        F: Fn(&mut u32, *mut vk::QueueFamilyProperties),
+    {
+        fn get_len(&self) -> Result<usize, Error> {
+            let mut len = 0;
+            // UNSAFE warning
+            // the call to this is actually unsafe, but can't be reflected with the Fn trait
+            // However, this can only be used internal to this macro, so it is fine
+            let res = self.0(&mut len, std::ptr::null_mut());
+            check_raw_err!(res);
+            Ok(len.try_into()?)
+        }
+
+        fn get_enumerate<B: Buffer<vk::QueueFamilyProperties>>(
+            &self,
+            mut buffer: B,
+        ) -> Result<QueueFamilies<P, B>, Error> {
+            let mut len = buffer.capacity().try_into()?;
+            // UNSAFE warning
+            // the call to this is actually unsafe, but can't be reflected with the Fn trait
+            // However, this can only be used internal to this macro, so it is fine
+            let res = self.0(&mut len, buffer.ptr_mut());
+            check_raw_err!(res);
+            unsafe {
+                buffer.set_len(len.try_into()?);
+            }
+            Ok(QueueFamilies::new(buffer))
+        }
+    }
+
+    QueueFamilyPropertiesEnumerator(move |len: &mut _, buffer: *mut _| unsafe {
+        physical_device
+            .commands()
+            .GetPhysicalDeviceQueueFamilyProperties()
+            .get_fptr()(physical_device.raw_handle(), len, buffer)
+    })
+}
+
+/// impl Enumerator target for GetPhysicalDeviceQueueFamilyProperties
+pub struct QueueFamiliesTarget<S>(PhantomData<S>);
+
+impl<S> EnumeratorTarget for QueueFamiliesTarget<S> {
+    type Target<B> = QueueFamilies<S, B>;
 }
