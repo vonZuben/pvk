@@ -46,9 +46,9 @@ macro_rules! make_enumerator {
 
         struct Enumerator<F, C>(F, std::marker::PhantomData<*mut C>);
 
-        impl<F, C, R> $crate::enumerator::Enumerator<R> for Enumerator<F, C>
+        impl<F, C, R, Res: $crate::error::VkResultExt> $crate::enumerator::Enumerator<R> for Enumerator<F, C>
         where
-            F: Fn(&mut u32, *mut C) -> vk_safe_sys::Result,
+            F: Fn(&mut u32, *mut C) -> Res,
             R: crate::type_conversions::ConvertWrapper<C>,
         {
             fn get_len(&self) -> Result<usize, $crate::error::Error> {
