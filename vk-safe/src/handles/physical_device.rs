@@ -18,35 +18,19 @@ use vk::has_command::DestroyDevice;
 use vk::Version;
 
 pub_use_modules!(
-#[cfg(VK_VERSION_1_0)]
-get_physical_device_properties;
+#[cfg(VK_VERSION_1_0)] {
+    get_physical_device_properties;
+    get_physical_device_features;
+    enumerate_device_extension_properties;
+    enumerate_device_layer_properties;
+    get_physical_device_format_properties;
+    get_physical_device_image_format_properties;
+    get_physical_device_sparse_image_format_properties;
+    get_physical_device_queue_family_properties;
+    get_physical_device_memory_properties;
+    create_device;
+};
 
-#[cfg(VK_VERSION_1_0)]
-get_physical_device_features;
-
-#[cfg(VK_VERSION_1_0)]
-enumerate_device_extension_properties;
-
-#[cfg(VK_VERSION_1_0)]
-enumerate_device_layer_properties;
-
-#[cfg(VK_VERSION_1_0)]
-get_physical_device_format_properties;
-
-#[cfg(VK_VERSION_1_0)]
-get_physical_device_image_format_properties;
-
-#[cfg(VK_VERSION_1_0)]
-get_physical_device_sparse_image_format_properties;
-
-#[cfg(VK_VERSION_1_0)]
-get_physical_device_queue_family_properties;
-
-#[cfg(VK_VERSION_1_0)]
-get_physical_device_memory_properties;
-
-#[cfg(VK_VERSION_1_0)]
-create_device;
 );
 
 /// PhysicalDevice handle trait

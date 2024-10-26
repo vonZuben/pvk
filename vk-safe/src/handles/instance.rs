@@ -15,8 +15,9 @@ use vk::has_command::DestroyInstance;
 use vk::Version;
 
 pub_use_modules!(
-#[cfg(VK_VERSION_1_0)]
-enumerate_physical_devices;
+#[cfg(VK_VERSION_1_0)] {
+    enumerate_physical_devices;
+};
 );
 
 /// Main Vulkan object

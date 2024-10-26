@@ -24,29 +24,16 @@ use vk::flag_types::MemoryHeapFlags::MULTI_INSTANCE_BIT;
 use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
 
 pub_use_modules!(
-#[cfg(VK_VERSION_1_0)]
-allocate_memory;
-
-#[cfg(VK_VERSION_1_0)]
-map_memory;
-
-#[cfg(VK_VERSION_1_0)]
-flush_mapped_memory_ranges;
-
-#[cfg(VK_VERSION_1_0)]
-unmap_memory;
-
-#[cfg(VK_VERSION_1_0)]
-wait_idle;
-
-#[cfg(VK_VERSION_1_0)]
-get_queue_family;
-
-#[cfg(VK_VERSION_1_0)]
-create_command_pool;
-
-#[cfg(VK_VERSION_1_0)]
-allocate_command_buffers;
+#[cfg(VK_VERSION_1_0)] {
+    allocate_memory;
+    map_memory;
+    flush_mapped_memory_ranges;
+    unmap_memory;
+    wait_idle;
+    get_queue_family;
+    create_command_pool;
+    allocate_command_buffers;
+};
 );
 
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
