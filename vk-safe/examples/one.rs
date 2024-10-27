@@ -193,8 +193,8 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
 
         let command_buffer_info = vk::CommandBufferAllocateInfo::new(
             &command_pool,
-            Vec::with_capacity(3),
             vk::CommandBufferLevel::PRIMARY,
+            Vec::with_capacity(3),
         )
         .unwrap();
         let command_buffers = device

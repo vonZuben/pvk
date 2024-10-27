@@ -37,12 +37,7 @@ pub_use_modules!(
 ///
 /// Represents a *specific* PhysicalDevice which has been scoped.
 ///
-/// Obtained by iterating over [`PhysicalDevices`], and then
-/// tagging each PhysicalDevice with [`tag`](PhysicalDeviceTagger::tag).
-///
-/// You may note that there are no visible implementors of this trait.
-/// You are only ever intended to use opaque implementors of this trait
-/// as seen with the return type of [`tag`](PhysicalDeviceTagger::tag)
+/// Obtained using [`PhysicalDeviceHandle::tag`].
 pub trait PhysicalDevice:
     DispatchableHandle<RawHandle = vk::PhysicalDevice> + ThreadSafeHandle
 {
@@ -72,14 +67,14 @@ pub trait PhysicalDevice:
     #[cfg(VK_VERSION_1_0)]
     /// Query the device level layers supported by the PhysicalDevice
     ///
-    /// Must provide [`ArrayStorage`] space to return the extension properties into.
-    ///
     /// ```rust
     /// # use vk_safe::vk;
     /// # use vk::traits::*;
     /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
-    /// let layer_properties = physical_device.enumerate_device_layer_properties(Vec::new());
+    /// let layer_properties = physical_device.enumerate_device_layer_properties()
+    ///     .auto_get_enumerate()
+    ///     .unwrap();
     /// # }
     /// ```
     fn enumerate_device_layer_properties(&self) -> impl Enumerator<LayerProperties<Self>>
@@ -114,15 +109,13 @@ pub trait PhysicalDevice:
     /// are returned. If `layer_name` is `Some(layer_name)`, device extensions provided
     /// by that layer are returned.
     ///
-    /// Must provide [`ArrayStorage`] space to return the extension properties into.
-    ///
     /// ```rust
     /// # use vk_safe::vk;
     /// # use vk::traits::*;
     /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
     /// let extension_properties =
-    ///     physical_device.enumerate_device_extension_properties(None, Vec::new());
+    ///     physical_device.enumerate_device_extension_properties(None).auto_get_enumerate();
     /// # }
     /// ```
     fn enumerate_device_extension_properties(
@@ -215,8 +208,10 @@ pub trait PhysicalDevice:
     ///     physical_device.get_physical_device_sparse_image_format_properties(
     ///         vk::SampleCountFlags::TYPE_1_BIT,
     ///         image_format_properties,
-    ///         Vec::new(),
-    ///     ).unwrap();
+    ///     )
+    ///     .unwrap()
+    ///     .auto_get_enumerate()
+    ///     .unwrap();
     /// # }
     /// ```
     fn get_physical_device_sparse_image_format_properties<
@@ -244,7 +239,9 @@ pub trait PhysicalDevice:
     /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
     /// #   (physical_device: P) {
     /// let queue_family_properties =
-    ///     physical_device.get_physical_device_queue_family_properties(Vec::new());
+    ///     physical_device.get_physical_device_queue_family_properties()
+    ///     .auto_get_enumerate()
+    ///     .unwrap();
     /// # }
     /// ```
     fn get_physical_device_queue_family_properties(

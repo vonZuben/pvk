@@ -35,8 +35,8 @@ pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + ThreadSafeHan
     /// Enumerate PhysicalDevices on the system
     ///
     /// # Usage
-    /// Provide an [`ArrayStorage`] implementor to store the PhysicalDevices.
-    /// Then you can iterate over the PhysicalDevices and tag each one that
+    /// Use the resulting [`Enumerator`] to retrieve an array of [`PhysicalDeviceHandle`].
+    /// Then you can iterate over the handles and tag each one that
     /// you want to use with a [`Tag`].
     ///
     /// # Example
@@ -45,12 +45,13 @@ pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + ThreadSafeHan
     /// # use vk::traits::*;
     /// # fn tst(instance: impl Instance<Commands: vk::instance::VERSION_1_0>) {
     /// let physical_devices = instance
-    ///     .enumerate_physical_devices(Vec::new())
+    ///     .enumerate_physical_devices()
+    ///     .auto_get_enumerate()
     ///     .unwrap();
     ///
     /// for physical_device in physical_devices.iter() {
     ///     vk::tag!(tag);
-    ///     let physical_device = physical_device.tag(tag);
+    ///     let physical_device = physical_device.tag(&instance, tag);
     /// }
     /// # }
     /// ```

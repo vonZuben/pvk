@@ -34,16 +34,18 @@ let instance = vk::create_instance(&instance_info, instance_tag).unwrap();
 
 // get physical devices
 let physical_devices = instance
-    .enumerate_physical_devices(Vec::new())
+    .enumerate_physical_devices()
+    .auto_get_enumerate()
     .unwrap();
 
 for physical_device in physical_devices.iter() {
     vk::tag!(tag);
-    let physical_device = physical_device.tag(tag);
+    let physical_device = physical_device.tag(&instance, tag);
 
     // discover queues on the physical device
     let queue_family_properties = physical_device
-        .get_physical_device_queue_family_properties(Vec::new())
+        .get_physical_device_queue_family_properties()
+        .auto_get_enumerate()
         .unwrap();
 
     vk::tag!(families_tag);
@@ -96,11 +98,11 @@ structs that the user creates and passes to commands, which have appropriate con
 methods to ensure valid usage. Some structs may have other methods for safely enabling
 specific use cases.
 
-### Enumerator commands use ArrayStorage
+### Enumerator commands return <code>impl [`Enumerator`](crate::enumerator::Enumerator)</code>
 Vulkan has many "Enumerate" or "Get" commands which take a pointer / length for an array,
 to which return data will be written. Said commands can also be used to query length of
 data to be returned by passing a null pointer. In vk-safe, "Enumerate" or "Get" commands
-take a storage type which implements the [`ArrayStorage`] trait.
+return an [`Enumerator`](crate::enumerator::Enumerator) which can be used to control allocation.
 
 ### 🚧 AllocationCallbacks
 Vulkan supports AllocationCallbacks mostly for debugging purposes. These are not currently
@@ -155,7 +157,7 @@ mod helper_macros;
 #[macro_use]
 mod error_macros;
 
-mod buffer;
+pub mod buffer;
 mod type_conversions;
 mod vk_str;
 

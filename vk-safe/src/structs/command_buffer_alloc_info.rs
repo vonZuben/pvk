@@ -10,7 +10,7 @@ use vk_safe_sys as vk;
 /// Info for allocating CommandBuffers
 ///
 /// Indicates which pool to allocate from, the level of the
-/// CommandBuffers, and how many to allocate.
+/// CommandBuffers, and include the buffer for returning the handles.
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCommandBufferAllocateInfo.html>
 pub struct CommandBufferAllocateInfo<'a, B, P, L> {
@@ -36,9 +36,9 @@ impl<'a, B: Buffer<vk::CommandBuffer>, P: CommandPool, L: vk::enum_traits::Comma
     /// Create CommandBufferAllocateInfo
     ///
     /// The CommandBufferAllocateInfo will contain information
-    /// for allocating `buffer.capacity()` number of [`CommandBuffer`],
+    /// for allocating `buffer.capacity()` number of [`CommandBuffer`](crate::vk::CommandBuffer),
     /// for the indicated `level`.
-    pub fn new(command_pool: &'a P, buffer: B, level: L) -> Result<Self, Error> {
+    pub fn new(command_pool: &'a P, level: L, buffer: B) -> Result<Self, Error> {
         check_vuids::check_vuids!(CommandBufferAllocateInfo);
 
         #[allow(unused_labels)]

@@ -246,12 +246,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
 
     Provide [`CommandBufferAllocateInfo`] to indicate the pool from which the
     CommandBuffers will be allocated, the level of the CommendBuffers, and
-    the number of CommandBuffers to allocate.
-
-    Provide `storage` for holding **exactly** as many CommandBuffer handles as
-    indicated in the `CommandBufferAllocateInfo`. `storage` is an [`ArrayStorage`]
-    implementor, and can automatically allocate (if supported by the implementation)
-    for the number indicated in `CommandBufferAllocateInfo`.
+    provide the buffer for returning the CommandBuffers.
 
     ```
     # use vk_safe::vk;
@@ -259,9 +254,10 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     # fn tst<'a, D: Device<Commands: vk::device::VERSION_1_0>>
     #   (device: D, command_pool: impl vk::CommandPool<Device = D>) {
     let command_buffer_info =
-        vk::CommandBufferAllocateInfo::new(&command_pool, vk::CommandBufferLevel::PRIMARY, 3);
+        vk::CommandBufferAllocateInfo::new(&command_pool, vk::CommandBufferLevel::PRIMARY, Vec::with_capacity(3))
+        .unwrap();
     let command_buffers = device
-        .allocate_command_buffers(&command_buffer_info, Vec::new())
+        .allocate_command_buffers(command_buffer_info)
         .unwrap();
     # }
     ```
