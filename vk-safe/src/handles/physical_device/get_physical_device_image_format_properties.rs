@@ -2,6 +2,7 @@ use super::PhysicalDevice;
 
 use crate::error::Error;
 use crate::structs::{ImageFormatProperties, ImageParameters::ImageParameters};
+use crate::type_conversions::ConvertWrapper;
 
 use std::mem::MaybeUninit;
 
@@ -14,7 +15,7 @@ pub(crate) fn get_physical_device_image_format_properties<
     Params: ImageParameters,
 >(
     physical_device: &P,
-    params: Params,
+    _params: Params,
 ) -> Result<ImageFormatProperties<P, Params>, Error> {
     // *************Regarding VUID checks**************
     // please see the checks for [ImageParameters]
@@ -35,6 +36,6 @@ pub(crate) fn get_physical_device_image_format_properties<
             properties.as_mut_ptr(),
         );
         check_raw_err!(res);
-        Ok(ImageFormatProperties::new(properties.assume_init(), params))
+        Ok(ImageFormatProperties::from_c(properties.assume_init()))
     }
 }

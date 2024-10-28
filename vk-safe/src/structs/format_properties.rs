@@ -1,5 +1,5 @@
-simple_struct_wrapper_scoped!(
+struct_wrapper!(
 /// Structure specifying image format properties
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkFormatProperties.html>
-FormatProperties<F> impl Debug, Deref);
+FormatProperties<S, Format,> impl Debug, Deref);

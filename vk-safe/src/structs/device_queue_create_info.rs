@@ -1,5 +1,4 @@
 use std::fmt;
-use std::marker::PhantomData;
 
 use super::QueueFamilyProperties;
 
@@ -7,14 +6,14 @@ use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
-input_struct_wrapper!(
+struct_wrapper!(
 /// Info struct for creating DeviceQueues
 ///
 /// When creating a [`Device`](crate::vk::Device), this struct provides
 /// information about the Queues to be created therewith.
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDeviceQueueCreateInfo.html>
-DeviceQueueCreateInfo
+DeviceQueueCreateInfo<'a, Z,>
 impl Deref
 );
 
@@ -173,17 +172,15 @@ impl<'a, Z> DeviceQueueCreateInfo<'a, Z> {
             }
         }
 
-        Ok(Self {
-            inner: vk::DeviceQueueCreateInfo {
+        Ok(unsafe {
+            Self::from_c(vk::DeviceQueueCreateInfo {
                 s_type: vk::StructureType::DEVICE_QUEUE_CREATE_INFO,
                 p_next: std::ptr::null(),
                 flags: vk::DeviceQueueCreateFlags::empty(),
                 queue_family_index: family.family_index,
                 queue_count: priorities_len,
                 p_queue_priorities: priorities.to_c(),
-            },
-            _params: PhantomData,
-            _scope: PhantomData,
+            })
         })
     }
 }

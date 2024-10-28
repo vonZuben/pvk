@@ -3,6 +3,7 @@ use super::PhysicalDevice;
 use std::mem::MaybeUninit;
 
 use crate::structs::FormatProperties;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -57,6 +58,6 @@ pub(crate) fn get_physical_device_format_properties<
             F::VALUE,
             properties.as_mut_ptr(),
         );
-        FormatProperties::new(properties.assume_init())
+        FormatProperties::from_c(properties.assume_init())
     }
 }

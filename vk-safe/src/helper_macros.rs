@@ -45,21 +45,21 @@ pub(crate) fn str_len(s: &[std::ffi::c_char]) -> usize {
 }
 
 // Use this to create wrappers around simple structs that are scoped
-macro_rules! simple_struct_wrapper_scoped {
+macro_rules! struct_wrapper {
     // take macro input and pack it
     // need to pack the generics into a single tt so it can
     // be expanded multiple times in each "traits" match
     (
         $( #[$($attributes:tt)*] )*
         $name:ident
-        $(<$($generics:ident),*>)?
+        $(< $( $lt:lifetime , )* $( $(& $tlt:lifetime)? $ty:ident , )* >)?
         $(impl $($traits:ident),+ $(,)?)?
     ) => {
-        simple_struct_wrapper_scoped!(
+        struct_wrapper!(
             @PACKED
             { $(#[$($attributes)*])* }
             $name
-            { $( $($generics),* )? }
+            { $( $( $lt , )* $( $(& $tlt)? $ty , )* )? }
             { $( $($traits),+ )? }
         );
     };
@@ -72,7 +72,7 @@ macro_rules! simple_struct_wrapper_scoped {
         $generics:tt
         { $($traits:ident),* }
     ) => {
-        simple_struct_wrapper_scoped!(
+        struct_wrapper!(
             @DEF
             $attributes
             $name
@@ -80,7 +80,7 @@ macro_rules! simple_struct_wrapper_scoped {
         );
 
         $(
-            simple_struct_wrapper_scoped!(
+            struct_wrapper!(
                 @IMPL
                 $traits
                 $name
@@ -94,37 +94,27 @@ macro_rules! simple_struct_wrapper_scoped {
         @DEF
         { $($attributes:tt)* }
         $name:ident
-        { $($generics:ident),* }
+        { $( $lt:lifetime , )* $( $(& $tlt:lifetime)? $ty:ident , )* }
     ) => {
         $($attributes)*
         #[repr(transparent)]
         #[allow(non_snake_case)]
-        pub struct $name<S, $($generics),*> {
+        pub struct $name<$( $lt , )* $( $ty, )*> {
             inner: vk_safe_sys::$name,
-            _scope: std::marker::PhantomData<S>,
-            $($generics: std::marker::PhantomData<$generics>,)*
+            lifetimes: std::marker::PhantomData< ( $( & $lt (), )* ) >,
+            types: std::marker::PhantomData< ( $( $(& $tlt)? $ty , )* ) >,
+            // $( $($generics)?: std::marker::PhantomData<$(& $lt)? $($generics)?>, )*
         }
 
-        unsafe impl<S, $($generics),*>
+        unsafe impl<$( $lt , )* $( $ty , )*>
             crate::type_conversions::ConvertWrapper<vk_safe_sys::$name>
-            for $name<S, $($generics),*> {}
-
-        impl<S, $($generics),*> $name<S, $($generics),*> {
-            #[allow(unused)]
-            pub(crate) fn new(inner: vk_safe_sys::$name) -> Self {
-                Self {
-                    inner,
-                    _scope: Default::default(),
-                    $($generics: Default::default(),)*
-                }
-            }
-        }
+            for $name<$( $lt , )* $( $ty , )*> {}
     };
 
     // generate any optional trait implementations
 
-    ( @IMPL Deref $name:ident { $($generics:ident),* }) => {
-        impl<S, $($generics),*> std::ops::Deref for $name<S, $($generics),*> {
+    ( @IMPL Deref $name:ident { $( $lt:lifetime , )* $( $(& $tlt:lifetime)? $ty:ident , )* }) => {
+        impl<$( $lt , )* $( $ty, )*> std::ops::Deref for $name<$( $lt , )* $( $ty, )*> {
             type Target = vk_safe_sys::$name;
             fn deref(&self) -> &Self::Target {
                 &self.inner
@@ -132,73 +122,24 @@ macro_rules! simple_struct_wrapper_scoped {
         }
     };
 
-    ( @IMPL Debug $name:ident { $($generics:ident),* }) => {
-        impl<S, $($generics),*> std::fmt::Debug for $name<S, $($generics),*> {
+    ( @IMPL Debug $name:ident { $( $lt:lifetime , )* $( $(& $tlt:lifetime)? $ty:ident , )* }) => {
+        impl<$( $lt , )* $( $ty, )*> std::fmt::Debug for $name<$( $lt , )* $( $ty, )*> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 self.inner.fmt(f)
             }
         }
     };
 
-    ( @IMPL Clone $name:ident { $($generics:ident),* }) => {
-        impl<S, $($generics),*> Clone for $name<S, $($generics),*> {
+    ( @IMPL Clone $name:ident { $( $lt:lifetime , )* $( $(& $tlt:lifetime)? $ty:ident , )* }) => {
+        impl<$( $lt , )* $( $ty, )*> Clone for $name<$( $lt , )* $( $ty, )*> {
             fn clone(&self) -> Self {
-                Self::new(self.inner)
+                *self
             }
         }
     };
 
-    ( @IMPL Copy $name:ident { $($generics:ident),* }) => {
-        impl<S, $($generics),*> Copy for $name<S, $($generics),*> { }
-    };
-}
-
-macro_rules! input_struct_wrapper {
-    (
-        $(#[$($attributes:tt)*])*
-        $name:ident $(impl $($t:ident),+ $(,)?)?
-    ) => {
-        $(#[$($attributes)*])*
-        #[repr(transparent)]
-        pub struct $name<'a, S> {
-            pub(crate) inner: vk_safe_sys::$name,
-            _params: std::marker::PhantomData<&'a ()>,
-            _scope: std::marker::PhantomData<S>,
-        }
-
-        unsafe impl<'a, S> crate::type_conversions::ConvertWrapper<vk_safe_sys::$name>
-            for $name<'a, S> {}
-
-        $( $( input_struct_wrapper!( @IMPL $t $name ); )+ )?
-    };
-
-    ( @IMPL Deref $name:ident ) => {
-        impl<S> std::ops::Deref for $name<'_, S> {
-            type Target = vk_safe_sys::$name;
-            fn deref(&self) -> &Self::Target {
-                &self.inner
-            }
-        }
-    };
-
-    ( @IMPL Debug $name:ident ) => {
-        impl<S> std::fmt::Debug for $name<'_, S> {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                self.inner.fmt(f)
-            }
-        }
-    };
-
-    ( @IMPL Clone $name:ident ) => {
-        impl<S> Clone for $name<'_, S> {
-            fn clone(&self) -> Self {
-                Self::new(self.inner)
-            }
-        }
-    };
-
-    ( @IMPL Copy $name:ident ) => {
-        impl<S> Copy for $name<'_, S> { }
+    ( @IMPL Copy $name:ident { $( $lt:lifetime , )* $( $(& $tlt:lifetime)? $ty:ident , )* }) => {
+        impl<$( $lt , )* $( $ty, )*> Copy for $name<$( $lt , )* $( $ty, )*> { }
     };
 }
 

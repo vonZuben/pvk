@@ -2,6 +2,8 @@ use std::marker::PhantomData;
 
 use super::ApplicationInfo;
 
+use crate::type_conversions::ConvertWrapper;
+
 use vk_safe_sys as vk;
 
 use vk::context::Extensions;
@@ -170,7 +172,7 @@ impl<'a, C: Extensions> InstanceCreateInfo<'a, C> {
                 s_type: vk::StructureType::INSTANCE_CREATE_INFO,
                 p_next: std::ptr::null(),
                 flags: vk::InstanceCreateFlags::empty(),
-                p_application_info: &app_info.inner,
+                p_application_info: app_info.to_c(),
                 enabled_layer_count: 0,
                 pp_enabled_layer_names: std::ptr::null(),
                 enabled_extension_count: extensions

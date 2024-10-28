@@ -1,14 +1,13 @@
-use std::marker::PhantomData;
-
+use crate::type_conversions::ConvertWrapper;
 use crate::vk::{DeviceMemory, MappedMemory};
 
 use vk_safe_sys as vk;
 
-input_struct_wrapper!(
+struct_wrapper!(
 /// A range of memory for flushing or invalidating
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkMappedMemoryRange.html>
-MappedMemoryRange
+MappedMemoryRange<'a, S,>
 );
 
 impl<'a, S> MappedMemoryRange<'a, S> {
@@ -112,16 +111,14 @@ impl<'a, S> MappedMemoryRange<'a, S> {
             // ensured by DeviceMemory creation
         }
 
-        Self {
-            inner: vk_safe_sys::MappedMemoryRange {
+        unsafe {
+            Self::from_c(vk::MappedMemoryRange {
                 s_type: vk::StructureType::MAPPED_MEMORY_RANGE,
                 p_next: std::ptr::null(),
                 memory: mapped_memory.handle(),
                 offset: 0,
                 size: vk::WHOLE_SIZE,
-            },
-            _params: PhantomData,
-            _scope: PhantomData,
+            })
         }
     }
 }

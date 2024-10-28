@@ -1,27 +1,13 @@
-use std::marker::PhantomData;
-use std::ops::Deref;
-
-use crate::type_conversions::ConvertWrapper;
+use crate::type_conversions::convert_wrapper_from_c;
 
 use super::physical_device_memory_properties::MemoryTypeChoice;
 
 use vk_safe_sys as vk;
-pub struct MemoryAllocateInfo<S, P, H> {
-    inner: vk::MemoryAllocateInfo,
-    pd: PhantomData<S>,
-    property_flags: PhantomData<P>,
-    heap_flags: PhantomData<H>,
-}
 
-unsafe impl<S, P, H> ConvertWrapper<vk::MemoryAllocateInfo> for MemoryAllocateInfo<S, P, H> {}
-
-impl<S, P, H> Deref for MemoryAllocateInfo<S, P, H> {
-    type Target = vk::MemoryAllocateInfo;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
+struct_wrapper!(
+MemoryAllocateInfo<Scope, PropertyFlags, HeapFlags,>
+impl Deref
+);
 
 impl<S, P, H> MemoryAllocateInfo<S, P, H> {
     pub const fn new(
@@ -715,11 +701,6 @@ impl<S, P, H> MemoryAllocateInfo<S, P, H> {
             memory_type_index: memory_type_choice.index,
         };
 
-        Self {
-            inner,
-            pd: PhantomData,
-            property_flags: PhantomData,
-            heap_flags: PhantomData,
-        }
+        unsafe { convert_wrapper_from_c(inner) }
     }
 }

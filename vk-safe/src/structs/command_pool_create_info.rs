@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use crate::type_conversions::ConvertWrapper;
 use crate::vk::QueueFamily;
 
@@ -7,6 +5,7 @@ use vk_safe_sys as vk;
 
 use vk::flag_traits::CommandPoolCreateFlags;
 
+struct_wrapper!(
 /// Info for creating a CommandPool
 ///
 /// used with [`create_command_pool`](crate::vk::Device::create_command_pool)
@@ -18,26 +17,9 @@ use vk::flag_traits::CommandPoolCreateFlags;
 /// Queues from the provided [`QueueFamily`].
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkCommandPoolCreateInfo.html>
-#[repr(transparent)]
-pub struct CommandPoolCreateInfo<D, F, T> {
-    inner: vk::CommandPoolCreateInfo,
-    device: PhantomData<D>,
-    flags: PhantomData<F>,
-    queue_family_tag: PhantomData<T>,
-}
-
-unsafe impl<D, F, T> ConvertWrapper<vk::CommandPoolCreateInfo>
-    for CommandPoolCreateInfo<D, F, T>
-{
-}
-
-impl<D, F, T> std::ops::Deref for CommandPoolCreateInfo<D, F, T> {
-    type Target = vk::CommandPoolCreateInfo;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
+CommandPoolCreateInfo<Device, Flags, Tag,>
+impl Deref, Debug
+);
 
 impl<D, F: CommandPoolCreateFlags, T> CommandPoolCreateInfo<D, F, T> {
     pub fn new<'a>(flags: F, queue_family: &impl QueueFamily<'a, Device = D, Tag = T>) -> Self {
@@ -92,16 +74,13 @@ impl<D, F: CommandPoolCreateFlags, T> CommandPoolCreateInfo<D, F, T> {
         }
 
         let _ = flags; // just used for the type
-        Self {
-            inner: vk::CommandPoolCreateInfo {
+        unsafe {
+            Self::from_c(vk::CommandPoolCreateInfo {
                 s_type: vk::StructureType::COMMAND_POOL_CREATE_INFO,
                 p_next: std::ptr::null(),
                 flags: F::INCLUDES,
                 queue_family_index: queue_family.family_index(),
-            },
-            device: PhantomData,
-            flags: PhantomData,
-            queue_family_tag: PhantomData,
+            })
         }
     }
 }

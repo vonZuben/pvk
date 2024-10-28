@@ -1,12 +1,12 @@
 use std::fmt;
 
-simple_struct_wrapper_scoped!(
+struct_wrapper!(
 /// properties of an instance or device layer
 ///
 /// provides the name, description, spec version, and implementation version.
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtensionProperties.html>
-LayerProperties);
+LayerProperties<S,>);
 
 impl<S> LayerProperties<S> {
     get_str!(

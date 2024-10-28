@@ -1,12 +1,12 @@
 use std::fmt;
 
-simple_struct_wrapper_scoped!(
+struct_wrapper!(
 /// properties of an instance or device extension
 ///
 /// provides the name and version of the extension.
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtensionProperties.html>
-ExtensionProperties);
+ExtensionProperties<S,>);
 
 impl<S> ExtensionProperties<S> {
     get_str!(

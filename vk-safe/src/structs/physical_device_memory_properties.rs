@@ -5,11 +5,11 @@ use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
-simple_struct_wrapper_scoped!(PhysicalDeviceMemoryProperties);
+struct_wrapper!(PhysicalDeviceMemoryProperties<S,>);
 
-simple_struct_wrapper_scoped!(MemoryType impl Debug, Deref, Clone, Copy);
+struct_wrapper!(MemoryType<S,> impl Debug, Deref, Clone, Copy);
 
-simple_struct_wrapper_scoped!(MemoryHeap impl Debug, Deref, Clone, Copy);
+struct_wrapper!(MemoryHeap<S,> impl Debug, Deref, Clone, Copy);
 
 unit_error!(pub InvalidMemoryType);
 

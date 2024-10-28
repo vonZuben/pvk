@@ -1,6 +1,7 @@
 use super::PhysicalDevice;
 
 use crate::structs::PhysicalDeviceFeatures;
+use crate::type_conversions::ConvertWrapper;
 
 use std::mem::MaybeUninit;
 
@@ -41,6 +42,6 @@ pub(crate) fn get_physical_device_features<
             .commands()
             .GetPhysicalDeviceFeatures()
             .get_fptr()(physical_device.raw_handle(), features.as_mut_ptr());
-        PhysicalDeviceFeatures::new(features.assume_init())
+        PhysicalDeviceFeatures::from_c(features.assume_init())
     }
 }

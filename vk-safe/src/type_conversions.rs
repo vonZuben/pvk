@@ -250,3 +250,24 @@ where
         const { panic!("Cannot turn a raw pointer into a slice") }
     }
 }
+
+/// Allow converting from raw c type to wrapper in const context
+pub(crate) const unsafe fn convert_wrapper_from_c<T, U>(u: U) -> T
+where
+    T: ConvertWrapper<U>,
+{
+    union C<A, B> {
+        a: ManuallyDrop<A>,
+        b: ManuallyDrop<B>,
+    }
+
+    const {
+        assert!(std::mem::size_of::<T>() == std::mem::size_of::<U>());
+        assert!(std::mem::align_of::<T>() == std::mem::align_of::<U>())
+    }
+
+    let u = C {
+        a: ManuallyDrop::new(u),
+    };
+    ManuallyDrop::into_inner(unsafe { u.b })
+}

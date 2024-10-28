@@ -3,6 +3,7 @@ use super::PhysicalDevice;
 use std::mem::MaybeUninit;
 
 use crate::structs::PhysicalDeviceMemoryProperties;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -41,6 +42,6 @@ pub(crate) fn get_physical_device_memory_properties<
             .commands()
             .GetPhysicalDeviceMemoryProperties()
             .get_fptr()(physical_device.raw_handle(), properties.as_mut_ptr());
-        PhysicalDeviceMemoryProperties::new(properties.assume_init())
+        PhysicalDeviceMemoryProperties::from_c(properties.assume_init())
     }
 }

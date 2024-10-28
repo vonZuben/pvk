@@ -1,5 +1,4 @@
-use std::marker::PhantomData;
-
+use crate::type_conversions::convert_wrapper_from_c;
 use crate::VkStr;
 use crate::VkVersion;
 
@@ -8,6 +7,7 @@ use vk_safe_sys as vk;
 use vk::context::Context;
 use vk::Version;
 
+struct_wrapper!(
 /// Info about your application
 ///
 /// The most important thing for ApplicationInfo is indicating what Vulkan Version you are targeting. Those familiar with Vulkan will
@@ -17,11 +17,9 @@ use vk::Version;
 /// You can optionally set you own App name / version, and Engine name / version which may be informative to the Vulkan driver.
 /// From what I understand, the Vulkan driver can use your App name and version to enable App and Engine specific fixes or optimizations.
 /// This is really only useful for well-known Apps and Engines (such as popular games and game engines).
-pub struct ApplicationInfo<'a, C> {
-    pub(crate) inner: vk::ApplicationInfo,
-    _config: PhantomData<C>,
-    _refs: PhantomData<&'a ()>,
-}
+ApplicationInfo<'a, C,>
+impl Clone, Copy, Deref, Debug
+);
 
 impl<'a> ApplicationInfo<'a, ()> {
     /// create ApplicationInfo with a context created using [vk::instance_context]
@@ -86,8 +84,8 @@ impl<'a> ApplicationInfo<'a, ()> {
         }
 
         let version = C::Commands::VERSION;
-        ApplicationInfo {
-            inner: vk::ApplicationInfo {
+        unsafe {
+            convert_wrapper_from_c(vk::ApplicationInfo {
                 s_type: vk::StructureType::APPLICATION_INFO,
                 p_next: std::ptr::null(),
                 p_application_name: std::ptr::null(),
@@ -95,9 +93,7 @@ impl<'a> ApplicationInfo<'a, ()> {
                 p_engine_name: std::ptr::null(),
                 engine_version: 0,
                 api_version: version.raw(),
-            },
-            _config: PhantomData,
-            _refs: PhantomData,
+            })
         }
     }
 }

@@ -1,18 +1,22 @@
 use std::fmt;
 
+use crate::type_conversions::ConvertWrapper;
+
 use vk_safe_sys as vk;
 
-simple_struct_wrapper_scoped!(
+struct_wrapper!(
 /// Structure specifying physical device properties
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceProperties.html>
-PhysicalDeviceProperties impl Deref);
+PhysicalDeviceProperties<S,> impl Deref);
 
 #[repr(transparent)]
 /// Universally unique identifier for a PhysicalDevice
 pub struct PipelineCacheUUID {
     uuid: [u8; vk::UUID_SIZE],
 }
+
+unsafe impl ConvertWrapper<[u8; vk::UUID_SIZE]> for PipelineCacheUUID {}
 
 impl std::fmt::Debug for PipelineCacheUUID {
     /// print the UUID
@@ -33,11 +37,7 @@ impl<S> PhysicalDeviceProperties<S> {
 
     /// Get the `PipelineCacheUUID` for this PhysicalDevice
     pub fn pipeline_cache_uuid(&self) -> &PipelineCacheUUID {
-        unsafe {
-            std::mem::transmute::<&[u8; vk::UUID_SIZE], &PipelineCacheUUID>(
-                &self.pipeline_cache_uuid,
-            )
-        }
+        unsafe { <&PipelineCacheUUID>::from_c(&self.pipeline_cache_uuid) }
     }
 }
 

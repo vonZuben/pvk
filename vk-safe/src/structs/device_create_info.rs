@@ -1,6 +1,3 @@
-use std::marker::PhantomData;
-use std::ops::Deref;
-
 use super::DeviceQueueCreateInfo;
 
 use crate::type_conversions::ConvertWrapper;
@@ -10,28 +7,15 @@ use vk_safe_sys as vk;
 use vk::context::{Context, Extensions};
 use vk::Version;
 
+struct_wrapper!(
 /// info for creating a Device
 ///
 /// To be used with [`create_device`](crate::vk::PhysicalDevice::create_device)
 ///
 /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDeviceCreateInfo.html>
-#[repr(transparent)]
-pub struct DeviceCreateInfo<'a, C, Z> {
-    inner: vk::DeviceCreateInfo,
-    _config: PhantomData<C>,
-    _refs: PhantomData<&'a ()>,
-    _queue_scope: PhantomData<Z>,
-}
-
-impl<'a, C, Z> Deref for DeviceCreateInfo<'a, C, Z> {
-    type Target = vk::DeviceCreateInfo;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-unsafe impl<'a, C, Z> ConvertWrapper<vk::DeviceCreateInfo> for DeviceCreateInfo<'a, C, Z> {}
+DeviceCreateInfo<'a, Config, QueueScope,>
+impl Clone, Copy, Deref, Debug
+);
 
 impl<'a> DeviceCreateInfo<'a, (), ()> {
     /// create DeviceCreateInfo
@@ -619,8 +603,8 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
         let extensions = C::list_of_extensions();
         let extensions = extensions.as_ref();
 
-        DeviceCreateInfo {
-            inner: vk::DeviceCreateInfo {
+        unsafe {
+            DeviceCreateInfo::from_c(vk::DeviceCreateInfo {
                 s_type: vk::StructureType::DEVICE_CREATE_INFO,
                 p_next: std::ptr::null(),
                 flags: vk::DeviceCreateFlags::empty(),
@@ -634,10 +618,7 @@ impl<'a> DeviceCreateInfo<'a, (), ()> {
                     .expect("list of extensions len bigger than u32::MAX"),
                 pp_enabled_extension_names: extensions.as_ptr().cast(),
                 p_enabled_features: std::ptr::null(),
-            },
-            _config: PhantomData,
-            _refs: PhantomData,
-            _queue_scope: PhantomData,
+            })
         }
     }
 }
