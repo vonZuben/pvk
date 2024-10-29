@@ -52,6 +52,17 @@ pub fn sdk_registry_path() -> Option<PathBuf> {
 }
 
 /**
+Provide path to the bin folder in the Vulkan SDK
+
+This is the folder where build tools
+ */
+#[allow(unused)]
+pub fn sdk_bin_path() -> Option<PathBuf> {
+    let path = sdk_path()?.join("bin");
+    Some(path)
+}
+
+/**
 Provide path to vk.xml
 
 Defaults to the file in the registry folder of the Vulkan SDK.
