@@ -1,0 +1,10 @@
+[package]
+name = "vk-safe-demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+vk-safe = { path = "../vk-safe" }
+
+[build-dependencies]
+generator = { path="../generator" }

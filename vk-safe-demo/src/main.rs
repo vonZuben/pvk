@@ -1,5 +1,3 @@
-// trace_macros!(true);
-
 /*!
 This is an example program that grows along side with the development of the vk-safe API in order to test all functions together.
 Thus, I try to make use of all APIs here as I add them.

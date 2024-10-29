@@ -39,6 +39,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vk-safe-demo"
+version = "0.1.0"
+dependencies = [
+ "generator",
+ "vk-safe",
+]
+
+[[package]]
 name = "vk-safe-sys"
 version = "0.1.0"
 dependencies = [
