@@ -179,6 +179,12 @@ pub mod structs;
 
 pub mod enumerator;
 
+/// All raw vulkan types exported by vk-safe-sys
+pub mod raw {
+    #[doc(hidden)]
+    pub use vk_safe_sys::*;
+}
+
 /// # Vulkan enumerations
 ///
 /// 🚧 docs in progress

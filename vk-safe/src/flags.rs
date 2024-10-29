@@ -86,13 +86,13 @@ macro_rules! flags {
         $vis struct $name;
 
         {
-            use vk_safe_sys::flag_types::$f_type::{$($has,)* $($not,)*};
+            use $crate::flags::$f_type::{$($has,)* $($not,)*};
 
-            unsafe impl vk_safe_sys::flag_traits::$f_type for $name {}
+            unsafe impl $crate::flags::flag_traits::$f_type for $name {}
 
-            type Type = vk_safe_sys::$f_type;
+            type Type = $crate::raw::$f_type;
 
-            unsafe impl vk_safe_sys::flag_traits::Flags<Type> for $name {
+            unsafe impl $crate::flags::flag_traits::Flags<Type> for $name {
                 const INCLUDES: Type = ( Type::empty() $( .or(Type::$has) )* );
                 const EXCLUDES: Type = ( Type::empty() $( .or(Type::$not) )* );
             }
@@ -112,13 +112,13 @@ macro_rules! flags {
             #[derive(Copy, Clone)]
             struct PrivateFlagsImpl;
 
-            use vk_safe_sys::flag_types::$f_type::{$($has,)* $($not,)*};
+            use $crate::flags::$f_type::{$($has,)* $($not,)*};
 
-            unsafe impl vk_safe_sys::flag_traits::$f_type for PrivateFlagsImpl {}
+            unsafe impl $crate::flags::flag_traits::$f_type for PrivateFlagsImpl {}
 
-            type Type = vk_safe_sys::$f_type;
+            type Type = $crate::raw::$f_type;
 
-            unsafe impl vk_safe_sys::flag_traits::Flags<Type> for PrivateFlagsImpl {
+            unsafe impl $crate::flags::flag_traits::Flags<Type> for PrivateFlagsImpl {
                 const INCLUDES: Type = ( Type::empty() $( .or(Type::$has) )* );
                 const EXCLUDES: Type = ( Type::empty() $( .or(Type::$not) )* );
             }
