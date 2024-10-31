@@ -42,13 +42,7 @@ pub(crate) fn make_command_pool<'a, D: Device<Commands: DestroyCommandPool>, F, 
 }
 
 /// [`CommandPool`] implementor
-///
-/// ⚠️ This is **NOT** intended to be public. This is only
-/// exposed as a stopgap solution to over capturing in
-/// RPITIT. After some kind of precise capturing is possible,
-/// this type will be made private and <code>impl [CommandPool]</code>
-/// will be returned.
-pub struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool>, F, Q> {
+pub(crate) struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool>, F, Q> {
     handle: vk::CommandPool,
     device: &'a D,
     flags: PhantomData<F>,

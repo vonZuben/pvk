@@ -203,12 +203,14 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
         println!("Vertex Shader: {vertex_shader:?}");
         println!("Fragment Shader: {fragment_shader:?}");
 
-        let command_pool = device
-            .create_command_pool(&vk::CommandPoolCreateInfo::new(
+        let command_pool = vk::create_command_pool(
+            &device,
+            &vk::CommandPoolCreateInfo::new(
                 vk::flags!(CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT - PROTECTED_BIT),
                 &queue_family,
-            ))
-            .unwrap();
+            ),
+        )
+        .unwrap();
 
         println!("{command_pool:#?}");
 

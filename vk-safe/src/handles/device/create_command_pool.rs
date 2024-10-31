@@ -1,23 +1,24 @@
 use super::Device;
 
 use crate::error::Error;
-use crate::handles::command_pool::{_CommandPool, make_command_pool};
+use crate::handles::command_pool::{make_command_pool, CommandPool};
 use crate::structs::CommandPoolCreateInfo;
 use crate::type_conversions::ToC;
 
 use vk_safe_sys as vk;
 
+use vk::flag_traits::CommandPoolCreateFlags;
 use vk::has_command::{CreateCommandPool, DestroyCommandPool};
 
-pub(crate) fn create_command_pool<
+pub fn create_command_pool<
     'a,
     D: Device<Commands: CreateCommandPool + DestroyCommandPool>,
-    F,
-    T,
+    F: CommandPoolCreateFlags,
+    Q: Send,
 >(
     device: &'a D,
-    create_info: &CommandPoolCreateInfo<D, F, T>,
-) -> Result<_CommandPool<'a, D, F, T>, Error> {
+    create_info: &CommandPoolCreateInfo<D, F, Q>,
+) -> Result<impl CommandPool<Device = D, Flags = F, QueueFamily = Q> + use<'a, D, F, Q>, Error> {
     check_vuids::check_vuids!(CreateCommandPool);
 
     #[allow(unused_labels)]

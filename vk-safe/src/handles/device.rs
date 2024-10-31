@@ -1,5 +1,4 @@
 use super::command_buffer::_CommandBuffers;
-use super::command_pool::_CommandPool;
 use super::device_memory::{DeviceMemory, MappedMemory, _DeviceMemory};
 use super::physical_device::PhysicalDevice;
 use super::shader_module::_ShaderModule;
@@ -216,31 +215,32 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         get_queue_family(self, queue_config, queue_family_properties, capability, tag)
     }
 
-    #[cfg(VK_VERSION_1_0)]
-    /**
-    Create a CommandPool
+    // ****TODO: if `use<>` becomes available in RPITIT, then this can be uncommented
+    // #[cfg(VK_VERSION_1_0)]
+    // /**
+    // Create a CommandPool
 
-    ```
-    # use vk_safe::vk;
-    # use vk::traits::*;
-    # fn tst<'a, D: Device<Commands: vk::device::VERSION_1_0>>
-    #   (device: D, queue_family: impl vk::QueueFamily<'a, Device = D>) {
-    vk::flags!(CPflags: CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT);
-    let command_pool = device
-    .create_command_pool(&vk::CommandPoolCreateInfo::new(CPflags, &queue_family))
-    .unwrap();
-    # }
-    ```
-    */
-    fn create_command_pool<'a, F, T>(
-        &'a self,
-        create_info: &CommandPoolCreateInfo<Self, F, T>,
-    ) -> Result<_CommandPool<'a, Self, F, T>, Error>
-    where
-        Self::Commands: vk::has_command::CreateCommandPool + vk::has_command::DestroyCommandPool,
-    {
-        create_command_pool(self, create_info)
-    }
+    // ```
+    // # use vk_safe::vk;
+    // # use vk::traits::*;
+    // # fn tst<'a, D: Device<Commands: vk::device::VERSION_1_0>>
+    // #   (device: D, queue_family: impl vk::QueueFamily<'a, Device = D>) {
+    // vk::flags!(CPflags: CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT);
+    // let command_pool = device
+    // .create_command_pool(&vk::CommandPoolCreateInfo::new(CPflags, &queue_family))
+    // .unwrap();
+    // # }
+    // ```
+    // */
+    // fn create_command_pool<'a, F, T>(
+    //     &'a self,
+    //     create_info: &CommandPoolCreateInfo<Self, F, T>,
+    // ) -> Result<_CommandPool<'a, Self, F, T>, Error>
+    // where
+    //     Self::Commands: vk::has_command::CreateCommandPool + vk::has_command::DestroyCommandPool,
+    // {
+    //     create_command_pool(self, create_info)
+    // }
 
     #[cfg(VK_VERSION_1_0)]
     /**
