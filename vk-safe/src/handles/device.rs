@@ -2,6 +2,7 @@ use super::command_buffer::_CommandBuffers;
 use super::command_pool::_CommandPool;
 use super::device_memory::{DeviceMemory, MappedMemory, _DeviceMemory};
 use super::physical_device::PhysicalDevice;
+use super::shader_module::_ShaderModule;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::buffer::Buffer;
@@ -33,6 +34,7 @@ pub_use_modules!(
     get_queue_family;
     create_command_pool;
     allocate_command_buffers;
+    create_shader_module;
 };
 );
 
@@ -271,6 +273,27 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         Self::Commands: vk::has_command::AllocateCommandBuffers,
     {
         allocate_command_buffers(self, info)
+    }
+
+    #[cfg(VK_VERSION_1_0)]
+    /**
+    Create a ShaderModule
+
+    A [`ShaderModule`] contain shader code and one or more entry points. Shaders are selected from a
+    shader module by specifying an entry point as part of pipeline creation. The stages of a pipeline
+    can use shaders that come from different modules. The shader code defining a shader module must be
+    in the SPIR-V format, as described by the Vulkan Environment for SPIR-V appendix.
+
+    <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateShaderModule.html>
+     */
+    fn create_shader_module<'a>(
+        &'a self,
+        info: &ShaderModuleCreateInfo,
+    ) -> Result<_ShaderModule<'a, Self>, Error>
+    where
+        Self::Commands: vk::has_command::CreateShaderModule + vk::has_command::DestroyShaderModule,
+    {
+        create_shader_module(self, info)
     }
 }
 

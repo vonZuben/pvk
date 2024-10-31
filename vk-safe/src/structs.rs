@@ -19,5 +19,6 @@ pub_use_modules!(
         mapped_memory_range;
         command_pool_create_info;
         command_buffer_alloc_info;
+        shader_module_create_info;
     };
 );

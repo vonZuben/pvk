@@ -9,6 +9,7 @@ queue;
 device_memory;
 command_pool;
 command_buffer;
+shader_module;
 );
 
 /// A handle which can dispatch Vulkan Commands

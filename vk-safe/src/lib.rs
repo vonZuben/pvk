@@ -157,14 +157,17 @@ mod helper_macros;
 #[macro_use]
 mod error_macros;
 
-pub mod buffer;
 mod type_conversions;
 mod vk_str;
 
 mod entry; // not finalized on if this should be pub
 
+pub mod spirv;
+
 pub use vk_safe_sys::VkVersion;
 pub use vk_str::VkStr;
+
+pub mod buffer;
 
 pub mod scope;
 
@@ -254,6 +257,7 @@ pub mod context {
 /// which are better organized.
 pub mod vk {
     pub use super::context::{device_context, instance_context};
+    pub use super::spirv::SpirvBinary;
 
     pub use super::enumerations::*;
     pub use super::flags::*;
