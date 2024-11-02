@@ -155,7 +155,7 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
         )
         .unwrap();
     let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
-    let mem = device.allocate_memory(&alloc_info).unwrap();
+    let mem = vk::allocate_memory(&device, &alloc_info).unwrap();
     println!("--Example allocated memory handle--");
     println!("{mem:?}");
 

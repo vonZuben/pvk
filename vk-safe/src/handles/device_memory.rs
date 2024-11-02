@@ -21,17 +21,28 @@ pub trait DeviceMemory: Handle<RawHandle = vk::DeviceMemory> + ThreadSafeHandle 
 }
 
 /// [`DeviceMemory`] implementor
-///
-/// ⚠️ This is **NOT** intended to be public. This is only
-/// exposed as a stopgap solution to over capturing in
-/// RPITIT. After some kind of precise capturing is possible,
-/// this type will be made private and <code>impl [DeviceMemory]</code>
-/// will be returned.
-pub struct _DeviceMemory<'a, D: Device<Commands: FreeMemory>, P, H> {
+struct _DeviceMemory<'a, D: Device<Commands: FreeMemory>, P, H> {
     handle: vk::DeviceMemory,
     device: &'a D,
     property_flags: PhantomData<P>,
     heap_flags: PhantomData<H>,
+}
+
+pub(crate) fn make_device_memory<
+    'a,
+    D: Device<Commands: FreeMemory>,
+    P: MemoryPropertyFlags,
+    H: MemoryHeapFlags,
+>(
+    handle: vk::DeviceMemory,
+    device: &'a D,
+) -> impl DeviceMemory<Device = D, PropertyFlags = P, HeapFlags = H> + use<'a, D, P, H> {
+    _DeviceMemory {
+        handle,
+        device,
+        property_flags: PhantomData,
+        heap_flags: PhantomData,
+    }
 }
 
 impl<'a, D: Device<Commands: FreeMemory>, P, H> _DeviceMemory<'a, D, P, H> {

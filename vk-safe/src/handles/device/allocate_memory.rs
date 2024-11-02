@@ -4,13 +4,13 @@ use std::mem::MaybeUninit;
 
 use crate::structs::MemoryAllocateInfo;
 use crate::type_conversions::ConvertWrapper;
-use crate::vk::_DeviceMemory;
+use crate::vk::{make_device_memory, DeviceMemory};
 
 use vk_safe_sys as vk;
 
 use vk::has_command::{AllocateMemory, FreeMemory};
 
-pub(crate) fn allocate_memory<
+pub fn allocate_memory<
     'a,
     D: Device<Commands: AllocateMemory + FreeMemory>,
     P: vk::flag_traits::MemoryPropertyFlags,
@@ -20,7 +20,7 @@ pub(crate) fn allocate_memory<
     info: &MemoryAllocateInfo<D::PhysicalDevice, P, H>,
 ) -> Result<
     // impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
-    _DeviceMemory<'a, D, P, H>,
+    impl DeviceMemory<Device = D, PropertyFlags = P, HeapFlags = H> + use<'a, D, P, H>,
     vk::Result,
 > {
     check_vuids::check_vuids!(AllocateMemory);
@@ -129,6 +129,6 @@ pub(crate) fn allocate_memory<
             memory.as_mut_ptr(),
         );
         check_raw_err!(ret);
-        Ok(_DeviceMemory::new(memory.assume_init(), device))
+        Ok(make_device_memory(memory.assume_init(), device))
     }
 }

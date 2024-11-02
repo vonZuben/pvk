@@ -1,5 +1,5 @@
 use super::command_buffer::_CommandBuffers;
-use super::device_memory::{DeviceMemory, MappedMemory, _DeviceMemory};
+use super::device_memory::{DeviceMemory, MappedMemory};
 use super::physical_device::PhysicalDevice;
 use super::shader_module::_ShaderModule;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
@@ -43,42 +43,43 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     type PhysicalDevice: PhysicalDevice;
     type QueueConfig;
 
-    #[cfg(VK_VERSION_1_0)]
-    /// Allocate memory on the Device
-    ///
-    /// Provide a [`MemoryAllocateInfo`] structure with the information
-    /// about amount and type of memory you want to allocate.
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<
-    /// #   D: vk::Device<Commands: vk::device::VERSION_1_0>,
-    /// #   P: vk::flag_traits::MemoryPropertyFlags,
-    /// #   H: vk::flag_traits::MemoryHeapFlags,
-    /// # >
-    /// #   (device: D, alloc_info: vk::MemoryAllocateInfo<D::PhysicalDevice, P, H>) {
-    /// let memory = device.allocate_memory(&alloc_info);
-    /// # }
-    /// ```
-    ///
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html>
-    fn allocate_memory<
-        P: vk::flag_traits::MemoryPropertyFlags,
-        H: vk::flag_traits::MemoryHeapFlags,
-    >(
-        &self,
-        info: &MemoryAllocateInfo<Self::PhysicalDevice, P, H>,
-    ) -> Result<
-        // impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
-        _DeviceMemory<Self, P, H>,
-        vk::Result,
-    >
-    where
-        Self::Commands: vk::has_command::AllocateMemory + vk::has_command::FreeMemory,
-    {
-        allocate_memory(self, info)
-    }
+    // ****TODO: if `use<>` becomes available in RPITIT, then this can be uncommented
+    // #[cfg(VK_VERSION_1_0)]
+    // /// Allocate memory on the Device
+    // ///
+    // /// Provide a [`MemoryAllocateInfo`] structure with the information
+    // /// about amount and type of memory you want to allocate.
+    // ///
+    // /// ```rust
+    // /// # use vk_safe::vk;
+    // /// # use vk::traits::*;
+    // /// # fn tst<
+    // /// #   D: vk::Device<Commands: vk::device::VERSION_1_0>,
+    // /// #   P: vk::flag_traits::MemoryPropertyFlags,
+    // /// #   H: vk::flag_traits::MemoryHeapFlags,
+    // /// # >
+    // /// #   (device: D, alloc_info: vk::MemoryAllocateInfo<D::PhysicalDevice, P, H>) {
+    // /// let memory = device.allocate_memory(&alloc_info);
+    // /// # }
+    // /// ```
+    // ///
+    // /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateMemory.html>
+    // fn allocate_memory<
+    //     P: vk::flag_traits::MemoryPropertyFlags,
+    //     H: vk::flag_traits::MemoryHeapFlags,
+    // >(
+    //     &self,
+    //     info: &MemoryAllocateInfo<Self::PhysicalDevice, P, H>,
+    // ) -> Result<
+    //     // impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
+    //     _DeviceMemory<Self, P, H>,
+    //     vk::Result,
+    // >
+    // where
+    //     Self::Commands: vk::has_command::AllocateMemory + vk::has_command::FreeMemory,
+    // {
+    //     allocate_memory(self, info)
+    // }
 
     #[cfg(VK_VERSION_1_0)]
     /// Map memory for host access
