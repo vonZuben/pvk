@@ -29,10 +29,15 @@ pub trait CommandPool: Handle<RawHandle = vk::CommandPool> + Send {
     type QueueFamily;
 }
 
-pub(crate) fn make_command_pool<'a, D: Device<Commands: DestroyCommandPool>, F, Q>(
+pub(crate) fn make_command_pool<
+    'a,
+    D: Device<Commands: DestroyCommandPool>,
+    F: CommandPoolCreateFlags,
+    Q: Send,
+>(
     handle: vk::CommandPool,
     device: &'a D,
-) -> _CommandPool<'a, D, F, Q> {
+) -> impl CommandPool<Device = D, Flags = F, QueueFamily = Q> + use<'a, D, F, Q> {
     _CommandPool {
         handle,
         device,
@@ -42,7 +47,7 @@ pub(crate) fn make_command_pool<'a, D: Device<Commands: DestroyCommandPool>, F, 
 }
 
 /// [`CommandPool`] implementor
-pub(crate) struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool>, F, Q> {
+struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool>, F, Q> {
     handle: vk::CommandPool,
     device: &'a D,
     flags: PhantomData<F>,
