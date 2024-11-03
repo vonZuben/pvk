@@ -74,6 +74,9 @@ impl krs_quote::ToTokens for Bitmask {
             #[repr(transparent)]
             #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
             pub struct {@name}(pub(crate) {@ty});
+            unsafe impl crate::flag_traits::FlagType for {@name} {
+                const EMPTY: Self = Self(0);
+            }
             vk_bitflags_wrapped!({@name}, {@ty});
         );
     }

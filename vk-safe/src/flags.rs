@@ -88,8 +88,6 @@ macro_rules! flags {
         {
             use $crate::flags::$f_type::{$($has,)* $($not,)*};
 
-            unsafe impl $crate::flags::flag_traits::$f_type for $name {}
-
             type Type = $crate::raw::$f_type;
 
             unsafe impl $crate::flags::flag_traits::Flags<Type> for $name {
@@ -113,8 +111,6 @@ macro_rules! flags {
             struct PrivateFlagsImpl;
 
             use $crate::flags::$f_type::{$($has,)* $($not,)*};
-
-            unsafe impl $crate::flags::flag_traits::$f_type for PrivateFlagsImpl {}
 
             type Type = $crate::raw::$f_type;
 

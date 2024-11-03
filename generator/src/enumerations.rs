@@ -78,13 +78,18 @@ impl krs_quote::ToTokens for Flags<'_> {
                 use std::cmp::Eq;
                 use std::ops::{BitAnd, BitOr, BitXor};
 
+                pub unsafe trait FlagType:  BitAnd<Output = Self>
+                                            + BitOr<Output = Self>
+                                            + BitXor<Output = Self>
+                                            + Eq
+                                            + Copy
+                {
+                    const EMPTY: Self;
+                }
+
                 pub unsafe trait Flags<Type>: Send + Sync + Copy
                 where
-                    Type: BitAnd<Output = Type>
-                        + BitOr<Output = Type>
-                        + BitXor<Output = Type>
-                        + Eq
-                        + Copy
+                    Type: FlagType
                 {
                     /// Flags that **must** be included
                     const INCLUDES: Type;
@@ -97,6 +102,11 @@ impl krs_quote::ToTokens for Flags<'_> {
                             && (Self::INCLUDES | flags == flags)
                             && (Self::EXCLUDES & flags == empty)
                     }
+                }
+
+                unsafe impl<T: FlagType> Flags<T> for () {
+                    const INCLUDES: T = T::EMPTY;
+                    const EXCLUDES: T = T::EMPTY;
                 }
 
                 {@* {@flag_traits}}
@@ -190,18 +200,13 @@ impl krs_quote::ToTokens for FlagTraits<'_> {
 
         krs_quote_with!(tokens <-
             pub unsafe trait {@target} : Flags<crate::{@target}> {}
+            unsafe impl<T: Flags<crate::{@target}>> {@target} for T {}
             {@*
                 unsafe impl Flags<crate::{@target}> for crate::flag_types::{@target}::{@variants} {
                     const INCLUDES: crate::{@target} = crate::{@target}::{@variants};
                     const EXCLUDES: crate::{@target} = crate::{@target}::empty();
                 }
-                unsafe impl {@target} for crate::flag_types::{@target}::{@variants} {}
             }
-            unsafe impl Flags<crate::{@target}> for () {
-                const INCLUDES: crate::{@target} = crate::{@target}::empty();
-                const EXCLUDES: crate::{@target} = crate::{@target}::empty();
-            }
-            unsafe impl {@target} for () {}
         );
     }
 }
