@@ -4,8 +4,8 @@ use std::mem::MaybeUninit;
 
 use crate::enumerator::Enumerator;
 use crate::error::Error;
-use crate::handles::device::_Device;
-use crate::scope::{HasScope, Tag};
+use crate::handles::device::{make_device, Device};
+use crate::scope::{Captures, HasScope, Tag};
 use crate::structs::DeviceCreateInfo;
 use crate::type_conversions::ConvertWrapper;
 
@@ -33,7 +33,7 @@ mod private {
     }
 }
 
-pub(crate) fn create_device<
+pub fn create_device<
     't,
     P: PhysicalDevice<Commands: CreateDevice + EnumerateDeviceExtensionProperties>,
     C,
@@ -44,8 +44,8 @@ pub(crate) fn create_device<
     create_info: &DeviceCreateInfo<C, Z>,
     tag: Tag<'t>,
 ) -> Result<
-    // impl Device<Context = C::Commands, PhysicalDevice = S, QueueConfig = Z> + Captures<Tag<'t>>,
-    _Device<C::Commands, P, Z, Tag<'t>>,
+    impl Device<Commands = C::Commands, PhysicalDevice = P, QueueConfig = Z>
+        + Captures<(Tag<'t>, P, C, Z)>,
     Error,
 >
 where
@@ -137,5 +137,5 @@ where
         device = handle.assume_init();
     }
     let loader = |command_name| unsafe { vk::GetDeviceProcAddr(device, command_name) };
-    Ok(_Device::new(device, C::Commands::load(loader)?, tag))
+    Ok(make_device(device, C::Commands::load(loader)?, tag))
 }

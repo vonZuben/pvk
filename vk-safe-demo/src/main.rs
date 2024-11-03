@@ -143,7 +143,7 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
     let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
     vk::tag!(dt);
-    let device = pd.create_device(&device_create_info, dt).unwrap();
+    let device = vk::create_device(&pd, &device_create_info, dt).unwrap();
 
     println!("--Example Device handle--");
     println!("{device:#?}");

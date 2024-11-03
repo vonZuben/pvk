@@ -314,13 +314,7 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
 // }
 
 /// [`Device`] implementor
-///
-/// ⚠️ This is **NOT** intended to be public. This is only
-/// exposed as a stopgap solution to over capturing in
-/// RPITIT. After some kind of precise capturing is possible,
-/// this type will be made private and <code>impl [Device]</code>
-/// will be returned.
-pub struct _Device<C: DestroyDevice, P, Q, T> {
+struct _Device<C: DestroyDevice, P, Q, T> {
     handle: vk::Device,
     commands: C,
     tag: PhantomData<T>,
@@ -328,15 +322,17 @@ pub struct _Device<C: DestroyDevice, P, Q, T> {
     queue_config: PhantomData<Q>,
 }
 
-impl<'t, C: DestroyDevice, P, Q> _Device<C, P, Q, Tag<'t>> {
-    pub(crate) fn new(handle: vk::Device, commands: C, _tag: Tag<'t>) -> Self {
-        Self {
-            handle,
-            commands,
-            tag: PhantomData,
-            physical_device: PhantomData,
-            queue_config: PhantomData,
-        }
+pub(crate) fn make_device<'t, C: DestroyDevice + Version, P: PhysicalDevice, Q>(
+    handle: vk::Device,
+    commands: C,
+    _tag: Tag<'t>,
+) -> impl Device<Commands = C, QueueConfig = Q, PhysicalDevice = P> + use<'t, C, P, Q> {
+    _Device {
+        handle,
+        commands,
+        tag: PhantomData::<Tag<'t>>,
+        physical_device: PhantomData,
+        queue_config: PhantomData,
     }
 }
 
