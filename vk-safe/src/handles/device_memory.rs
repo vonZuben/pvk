@@ -45,17 +45,6 @@ pub(crate) fn make_device_memory<
     }
 }
 
-impl<'a, D: Device<Commands: FreeMemory>, P, H> _DeviceMemory<'a, D, P, H> {
-    pub(crate) fn new(handle: vk::DeviceMemory, device: &'a D) -> Self {
-        Self {
-            handle,
-            device,
-            property_flags: PhantomData,
-            heap_flags: PhantomData,
-        }
-    }
-}
-
 unsafe impl<D: Device<Commands: FreeMemory>, P, H> Send for _DeviceMemory<'_, D, P, H> {}
 unsafe impl<D: Device<Commands: FreeMemory>, P, H> Sync for _DeviceMemory<'_, D, P, H> {}
 impl<D: Device<Commands: FreeMemory>, P, H> ThreadSafeHandle for _DeviceMemory<'_, D, P, H> {}
