@@ -1,7 +1,6 @@
 use super::command_buffer::_CommandBuffers;
 use super::device_memory::{DeviceMemory, MappedMemory};
 use super::physical_device::PhysicalDevice;
-use super::shader_module::_ShaderModule;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::buffer::Buffer;
@@ -276,26 +275,27 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         allocate_command_buffers(self, info)
     }
 
-    #[cfg(VK_VERSION_1_0)]
-    /**
-    Create a ShaderModule
+    // ****TODO: if `use<>` becomes available in RPITIT, then this can be uncommented
+    // #[cfg(VK_VERSION_1_0)]
+    // /**
+    // Create a ShaderModule
 
-    A [`ShaderModule`] contain shader code and one or more entry points. Shaders are selected from a
-    shader module by specifying an entry point as part of pipeline creation. The stages of a pipeline
-    can use shaders that come from different modules. The shader code defining a shader module must be
-    in the SPIR-V format, as described by the Vulkan Environment for SPIR-V appendix.
+    // A [`ShaderModule`] contain shader code and one or more entry points. Shaders are selected from a
+    // shader module by specifying an entry point as part of pipeline creation. The stages of a pipeline
+    // can use shaders that come from different modules. The shader code defining a shader module must be
+    // in the SPIR-V format, as described by the Vulkan Environment for SPIR-V appendix.
 
-    <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateShaderModule.html>
-     */
-    fn create_shader_module<'a>(
-        &'a self,
-        info: &ShaderModuleCreateInfo,
-    ) -> Result<_ShaderModule<'a, Self>, Error>
-    where
-        Self::Commands: vk::has_command::CreateShaderModule + vk::has_command::DestroyShaderModule,
-    {
-        create_shader_module(self, info)
-    }
+    // <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateShaderModule.html>
+    //  */
+    // fn create_shader_module<'a>(
+    //     &'a self,
+    //     info: &ShaderModuleCreateInfo,
+    // ) -> Result<_ShaderModule<'a, Self>, Error>
+    // where
+    //     Self::Commands: vk::has_command::CreateShaderModule + vk::has_command::DestroyShaderModule,
+    // {
+    //     create_shader_module(self, info)
+    // }
 }
 
 // #[allow(unused)]

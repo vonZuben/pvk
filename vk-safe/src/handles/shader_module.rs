@@ -9,13 +9,7 @@ pub trait ShaderModule: Handle<RawHandle = vk::ShaderModule> + ThreadSafeHandle 
 }
 
 /// [`ShaderModule`] implementor
-///
-/// ⚠️ This is **NOT** intended to be public. This is only
-/// exposed as a stopgap solution to over capturing in
-/// RPITIT. After some kind of precise capturing is possible,
-/// this type will be made private and <code>impl [ShaderModule]</code>
-/// will be returned.
-pub struct _ShaderModule<'a, D: Device<Commands: DestroyShaderModule>> {
+struct _ShaderModule<'a, D: Device<Commands: DestroyShaderModule>> {
     handle: vk::ShaderModule,
     device: &'a D,
 }
@@ -23,7 +17,7 @@ pub struct _ShaderModule<'a, D: Device<Commands: DestroyShaderModule>> {
 pub(crate) fn make_shader_module<'a, D: Device<Commands: DestroyShaderModule>>(
     device: &'a D,
     handle: vk::ShaderModule,
-) -> _ShaderModule<'a, D> {
+) -> impl ShaderModule<Device = D> + use<'a, D> {
     _ShaderModule { handle, device }
 }
 

@@ -189,16 +189,16 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
             vk::SpirvBinary::load_from_file_path(build_dir.join("fragment.spv"))
                 .expect("could not load fragment shader from file")
         };
-        let vertex_shader = device
-            .create_shader_module(&vk::ShaderModuleCreateInfo::from_spirv_binary(
-                &vertex_shader_spirv,
-            ))
-            .unwrap();
-        let fragment_shader = device
-            .create_shader_module(&vk::ShaderModuleCreateInfo::from_spirv_binary(
-                &fragment_shader_spirv,
-            ))
-            .unwrap();
+        let vertex_shader = vk::create_shader_module(
+            &device,
+            &vk::ShaderModuleCreateInfo::from_spirv_binary(&vertex_shader_spirv),
+        )
+        .unwrap();
+        let fragment_shader = vk::create_shader_module(
+            &device,
+            &vk::ShaderModuleCreateInfo::from_spirv_binary(&fragment_shader_spirv),
+        )
+        .unwrap();
 
         println!("Vertex Shader: {vertex_shader:?}");
         println!("Fragment Shader: {fragment_shader:?}");

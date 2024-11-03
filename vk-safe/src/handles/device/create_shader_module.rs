@@ -1,7 +1,7 @@
 use super::Device;
 
 use crate::error::Error;
-use crate::handles::shader_module::{_ShaderModule, make_shader_module};
+use crate::handles::shader_module::{make_shader_module, ShaderModule};
 use crate::type_conversions::ConvertWrapper;
 use crate::vk::ShaderModuleCreateInfo;
 
@@ -11,13 +11,10 @@ use vk_safe_sys as vk;
 
 use vk::has_command::{CreateShaderModule, DestroyShaderModule};
 
-pub(crate) fn create_shader_module<
-    'a,
-    D: Device<Commands: CreateShaderModule + DestroyShaderModule>,
->(
+pub fn create_shader_module<'a, D: Device<Commands: CreateShaderModule + DestroyShaderModule>>(
     device: &'a D,
     info: &ShaderModuleCreateInfo,
-) -> Result<_ShaderModule<'a, D>, Error> {
+) -> Result<impl ShaderModule<Device = D> + use<'a, D>, Error> {
     check_vuids::check_vuids!(CreateShaderModule);
 
     #[allow(unused_labels)]
