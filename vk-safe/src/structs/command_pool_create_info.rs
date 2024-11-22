@@ -8,7 +8,7 @@ use vk::flag_traits::CommandPoolCreateFlags;
 struct_wrapper!(
 /// Info for creating a CommandPool
 ///
-/// used with [`create_command_pool`](crate::vk::Device::create_command_pool)
+/// used with [`create_command_pool`](crate::vk::create_command_pool)
 ///
 /// Must use the [`flags!`](crate::flags!) macro to declare the flags
 /// that will be used with the CommandPool.

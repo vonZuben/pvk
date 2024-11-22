@@ -1,6 +1,6 @@
 //! SPRI-V code
 //!
-//! Use [`SpirvCode`] to load pre-compiled spir-v code for Vulkan shaders.
+//! Use [`SpirvBinary`] to load pre-compiled spir-v code for Vulkan shaders.
 
 use std::fs::File;
 use std::io::{self, Read};

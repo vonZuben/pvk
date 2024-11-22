@@ -10,7 +10,7 @@ use vk::Version;
 struct_wrapper!(
 /// info for creating a Device
 ///
-/// To be used with [`create_device`](crate::vk::PhysicalDevice::create_device)
+/// To be used with [`create_device`](crate::vk::create_device)
 ///
 /// see <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkDeviceCreateInfo.html>
 DeviceCreateInfo<'a, Config, QueueScope,>
