@@ -1,8 +1,6 @@
 use super::PhysicalDevice;
 
-use crate::buffer::Buffer;
 use crate::enumerator::{Enumerator, EnumeratorTarget};
-use crate::error::Error;
 use crate::scope::Captures;
 use crate::structs::QueueFamilies;
 
@@ -51,46 +49,12 @@ pub(crate) fn get_physical_device_queue_family_properties<
         // enumerator_code2!
     }
 
-    struct QueueFamilyPropertiesEnumerator<F>(F);
+    let fptr = physical_device
+        .commands()
+        .GetPhysicalDeviceQueueFamilyProperties()
+        .get_fptr();
 
-    impl<F, P> Enumerator<vk::QueueFamilyProperties, QueueFamiliesTarget<P>>
-        for QueueFamilyPropertiesEnumerator<F>
-    where
-        F: Fn(&mut u32, *mut vk::QueueFamilyProperties),
-    {
-        fn get_len(&self) -> Result<usize, Error> {
-            let mut len = 0;
-            // UNSAFE warning
-            // the call to this is actually unsafe, but can't be reflected with the Fn trait
-            // However, this can only be used internal to this macro, so it is fine
-            let res = self.0(&mut len, std::ptr::null_mut());
-            check_raw_err!(res);
-            Ok(len.try_into()?)
-        }
-
-        fn get_enumerate<B: Buffer<vk::QueueFamilyProperties>>(
-            &self,
-            mut buffer: B,
-        ) -> Result<QueueFamilies<P, B>, Error> {
-            let mut len = buffer.capacity().try_into()?;
-            // UNSAFE warning
-            // the call to this is actually unsafe, but can't be reflected with the Fn trait
-            // However, this can only be used internal to this macro, so it is fine
-            let res = self.0(&mut len, buffer.ptr_mut());
-            check_raw_err!(res);
-            unsafe {
-                buffer.set_len(len.try_into()?);
-            }
-            Ok(QueueFamilies::new(buffer))
-        }
-    }
-
-    QueueFamilyPropertiesEnumerator(move |len: &mut _, buffer: *mut _| unsafe {
-        physical_device
-            .commands()
-            .GetPhysicalDeviceQueueFamilyProperties()
-            .get_fptr()(physical_device.raw_handle(), len, buffer)
-    })
+    make_enumerator!(fptr; (physical_device.raw_handle()) )
 }
 
 /// impl Enumerator target for GetPhysicalDeviceQueueFamilyProperties
@@ -98,4 +62,8 @@ pub struct QueueFamiliesTarget<S>(PhantomData<S>);
 
 impl<S> EnumeratorTarget for QueueFamiliesTarget<S> {
     type Target<B> = QueueFamilies<S, B>;
+
+    fn make_target<B>(buffer: B) -> Self::Target<B> {
+        QueueFamilies::new(buffer)
+    }
 }

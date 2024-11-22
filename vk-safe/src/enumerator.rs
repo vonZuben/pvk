@@ -1,7 +1,9 @@
+use std::convert::{TryFrom, TryInto};
 use std::marker::PhantomData;
 
 use crate::buffer::Buffer;
 use crate::error::Error;
+use crate::type_conversions::ConvertWrapper;
 
 /// Types which enumerate or get items Vulkan
 ///
@@ -62,6 +64,8 @@ pub trait Enumerator<I, T: EnumeratorTarget = DefaultTarget> {
 pub trait EnumeratorTarget {
     /// Target which is generic over buffer type
     type Target<B>;
+
+    fn make_target<B>(buffer: B) -> Self::Target<B>;
 }
 
 /// Default target for an Enumerator
@@ -75,4 +79,86 @@ pub struct DefaultTarget(PhantomData<()>);
 
 impl EnumeratorTarget for DefaultTarget {
     type Target<B> = B;
+
+    fn make_target<B>(buffer: B) -> Self::Target<B> {
+        buffer
+    }
+}
+
+/// Internally most [`Enumerator`] implementors are wrappers
+/// around closures that call the underlying Vulkan Command.
+/// The structure for this is always very similar, and this
+/// trait helps reduce code repetition for such implementors.
+pub(crate) struct EnumeratorClosure<F, I, C, L, R> {
+    closure: F,
+    item: PhantomData<I>,
+    convert: PhantomData<C>,
+    len: PhantomData<*mut L>,
+    raw: PhantomData<*mut R>,
+}
+
+impl<F, I, C, L, R> EnumeratorClosure<F, I, C, L, R> {
+    /// Make the EnumeratorClosure from a given closure
+    ///
+    /// The closure should be one which calls an underlying
+    /// Vulkan Command and takes a pointer and len for c array
+    pub(crate) fn new<O>(closure: F) -> Self
+    where
+        F: Fn(*mut L, *mut R) -> O,
+    {
+        Self {
+            closure,
+            item: PhantomData,
+            convert: PhantomData,
+            len: PhantomData,
+            raw: PhantomData,
+        }
+    }
+
+    /// Call the underlying closure/Vulkan Command
+    ///
+    /// The caller must ensure that buffer is a valid pointer to len number of R
+    unsafe fn call<O>(&self, len: *mut L, buffer: *mut R) -> O
+    where
+        F: Fn(*mut L, *mut R) -> O,
+    {
+        (self.closure)(len, buffer)
+    }
+}
+
+impl<F, L, R, I, T, O, C> Enumerator<I, T> for EnumeratorClosure<F, I, C, L, R>
+where
+    T: EnumeratorTarget,
+    I: ConvertWrapper<R, C>,
+    F: Fn(*mut L, *mut R) -> O,
+    L: TryInto<usize> + TryFrom<usize>,
+    <L as TryFrom<usize>>::Error: std::error::Error + 'static,
+    <L as TryInto<usize>>::Error: std::error::Error + 'static,
+    O: crate::error::VkResultExt,
+{
+    fn get_len(&self) -> Result<usize, Error> {
+        let mut len = 0.try_into()?;
+        let res;
+        unsafe {
+            res = self.call(&mut len, std::ptr::null_mut());
+        }
+        check_raw_err!(res);
+        Ok(len.try_into()?)
+    }
+
+    fn get_enumerate<B: Buffer<I>>(
+        &self,
+        mut buffer: B,
+    ) -> Result<<T as EnumeratorTarget>::Target<B>, Error> {
+        let mut len = buffer.capacity().try_into()?;
+        let res;
+        unsafe {
+            res = self.call(&mut len, buffer.ptr_mut().to_c());
+        }
+        check_raw_err!(res);
+        unsafe {
+            buffer.set_len(len.try_into()?);
+        }
+        Ok(T::make_target(buffer))
+    }
 }

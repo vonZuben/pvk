@@ -1,42 +1,8 @@
 macro_rules! make_enumerator {
     ( $command:expr; ( $($param:expr),* ) ) => {{
-        use crate::type_conversions::ToC;
-
-        struct Enumerator<F, C>(F, std::marker::PhantomData<*mut C>);
-
-        impl<F, C, R, Res: $crate::error::VkResultExt> $crate::enumerator::Enumerator<R> for Enumerator<F, C>
-        where
-            F: Fn(&mut u32, *mut C) -> Res,
-            R: crate::type_conversions::ConvertWrapper<C>,
-        {
-            fn get_len(&self) -> Result<usize, $crate::error::Error> {
-                let mut len = 0;
-                // UNSAFE warning
-                // the call to this is actually unsafe, but can't be reflected with the Fn trait
-                // However, this can only be used internal to this macro, so it is fine
-                let res = self.0(&mut len, std::ptr::null_mut());
-                check_raw_err!(res);
-                Ok(len.try_into()?)
-            }
-
-            fn get_enumerate<B: $crate::buffer::Buffer<R>>(
-                &self,
-                mut buffer: B,
-            ) -> Result<B, $crate::error::Error> {
-                let mut len = buffer.capacity().try_into()?;
-                // UNSAFE warning
-                // the call to this is actually unsafe, but can't be reflected with the Fn trait
-                // However, this can only be used internal to this macro, so it is fine
-                let res = self.0(&mut len, buffer.ptr_mut().to_c());
-                check_raw_err!(res);
-                unsafe {
-                    buffer.set_len(len.try_into()?);
-                }
-                Ok(buffer)
-            }
-        }
-
-        Enumerator( move |len: &mut _, buffer: *mut _| unsafe { $command($($param.to_c(),)* len, buffer) }, std::marker::PhantomData )
+        #[allow(unused)]
+        use $crate::type_conversions::ToC;
+        $crate::enumerator::EnumeratorClosure::new(move |len: *mut _, buffer: *mut _| unsafe { $command($($param.to_c(),)* len, buffer) })
     }};
 }
 
