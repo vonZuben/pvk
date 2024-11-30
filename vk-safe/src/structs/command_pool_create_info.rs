@@ -1,5 +1,5 @@
 use crate::type_conversions::ConvertWrapper;
-use crate::vk::QueueFamily;
+use crate::vk::QueueFamilyMarker;
 
 use vk_safe_sys as vk;
 
@@ -22,7 +22,7 @@ impl Deref, Debug
 );
 
 impl<D, F: CommandPoolCreateFlags, T> CommandPoolCreateInfo<D, F, T> {
-    pub fn new<'a>(flags: F, queue_family: &impl QueueFamily<'a, Device = D, Tag = T>) -> Self {
+    pub fn new<'a>(flags: F, queue_family_marker: &QueueFamilyMarker<T>) -> Self {
         check_vuids::check_vuids!(CommandPoolCreateInfo);
 
         #[allow(unused_labels)]
@@ -79,7 +79,7 @@ impl<D, F: CommandPoolCreateFlags, T> CommandPoolCreateInfo<D, F, T> {
                 s_type: vk::StructureType::COMMAND_POOL_CREATE_INFO,
                 p_next: std::ptr::null(),
                 flags: F::INCLUDES,
-                queue_family_index: queue_family.family_index(),
+                queue_family_index: queue_family_marker.family_index(),
             })
         }
     }

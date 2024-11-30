@@ -170,15 +170,21 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
 
     for queue_config in queue_configs {
         vk::tag!(family_tag);
-        let queue_family = device
-            .get_queue_family(
-                &queue_config,
-                &queue_family_properties,
-                vk::flags!(QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT),
-                family_tag,
-            )
-            .unwrap();
-        println!("Configured Queue Family: {:#?}", queue_family);
+        let (queue_family_marker, queues_iter) = vk::get_device_queues(
+            &device,
+            queue_config,
+            &queue_family_properties,
+            vk::flags!(QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT),
+            family_tag,
+        )
+        .unwrap();
+        println!("Configured Queue Family: {:#?}", queue_family_marker);
+
+        let queues: Vec<_> = queues_iter.collect();
+
+        for q in queues.iter() {
+            println!("{q:#?}");
+        }
 
         let build_dir = std::path::Path::new(env!("OUT_DIR"));
         let vertex_shader_spirv = unsafe {
@@ -207,7 +213,7 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
             &device,
             &vk::CommandPoolCreateInfo::new(
                 vk::flags!(CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT - PROTECTED_BIT),
-                &queue_family,
+                &queue_family_marker,
             ),
         )
         .unwrap();
@@ -226,9 +232,6 @@ fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1
         for command_buffer in command_buffers {
             println!("{command_buffer:#?}");
         }
-
-        let queue = queue_family.get_device_queue(0).unwrap();
-        println!("Queue: {:#?}", queue);
     }
 
     unsafe {

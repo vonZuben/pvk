@@ -29,7 +29,7 @@ pub_use_modules!(
     flush_mapped_memory_ranges;
     unmap_memory;
     wait_idle;
-    get_queue_family;
+    get_device_queues;
     create_command_pool;
     allocate_command_buffers;
     create_shader_module;
@@ -190,30 +190,31 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
         wait_idle(self)
     }
 
-    #[cfg(VK_VERSION_1_0)]
-    /// Get a QueueFamily which should have specific capabilities
-    ///
-    /// In vk-safe, you do not directly get queues from the Device. Rather,
-    /// you first get a type that represents a [`QueueFamily`] that you already
-    /// configured by by passing in the same queue configuration and properties
-    /// parameters used when creating the Device.
-    ///
-    /// From the returned [`QueueFamily`], you can obtain individual
-    /// [`Queue`](crate::vk::Queue) objects.
-    ///
-    /// Returns the [`QueueFamily`] if the [`QueueFlags`](vk::flag_traits::QueueFlags)
-    /// are supported. Otherwise returns [`UnsupportedCapability`].
-    ///
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>
-    fn get_queue_family<'a, 't, Q: vk::flag_traits::QueueFlags>(
-        &'a self,
-        queue_config: &DeviceQueueCreateInfo<Self::QueueConfig>,
-        queue_family_properties: &QueueFamiliesRef<Self::PhysicalDevice>,
-        capability: Q,
-        tag: Tag<'t>,
-    ) -> Result<_QueueFamily<'a, Self, Q, Tag<'t>>, UnsupportedCapability> {
-        get_queue_family(self, queue_config, queue_family_properties, capability, tag)
-    }
+    // ****TODO: if `use<>` becomes available in RPITIT, then this can be uncommented
+    // #[cfg(VK_VERSION_1_0)]
+    // /// Get a QueueFamily which should have specific capabilities
+    // ///
+    // /// In vk-safe, you do not directly get queues from the Device. Rather,
+    // /// you first get a type that represents a [`QueueFamily`] that you already
+    // /// configured by by passing in the same queue configuration and properties
+    // /// parameters used when creating the Device.
+    // ///
+    // /// From the returned [`QueueFamily`], you can obtain individual
+    // /// [`Queue`](crate::vk::Queue) objects.
+    // ///
+    // /// Returns the [`QueueFamily`] if the [`QueueFlags`](vk::flag_traits::QueueFlags)
+    // /// are supported. Otherwise returns [`UnsupportedCapability`].
+    // ///
+    // /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetDeviceQueue.html>
+    // fn get_queue_family<'a, 't, Q: vk::flag_traits::QueueFlags>(
+    //     &'a self,
+    //     queue_config: &DeviceQueueCreateInfo<Self::QueueConfig>,
+    //     queue_family_properties: &QueueFamiliesRef<Self::PhysicalDevice>,
+    //     capability: Q,
+    //     tag: Tag<'t>,
+    // ) -> Result<_QueueFamily<'a, Self, Q, Tag<'t>>, UnsupportedCapability> {
+    //     get_queue_family(self, queue_config, queue_family_properties, capability, tag)
+    // }
 
     // ****TODO: if `use<>` becomes available in RPITIT, then this can be uncommented
     // #[cfg(VK_VERSION_1_0)]
