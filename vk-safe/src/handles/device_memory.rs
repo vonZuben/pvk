@@ -4,7 +4,6 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::handles::device::Device;
-use crate::type_conversions::ToC;
 
 use vk_safe_sys as vk;
 
@@ -135,7 +134,7 @@ impl<D: Device<Commands: FreeMemory>, P, H> Drop for _DeviceMemory<'_, D, P, H> 
             self.device.commands().FreeMemory().get_fptr()(
                 self.device.raw_handle(),
                 self.raw_handle(),
-                None.to_c(),
+                std::ptr::null(),
             )
         }
     }

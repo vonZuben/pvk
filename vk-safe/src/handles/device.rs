@@ -8,7 +8,6 @@ use crate::error::Error;
 use crate::flags::{Excludes, Includes};
 use crate::scope::Tag;
 use crate::structs::*;
-use crate::type_conversions::ToC;
 use crate::VkVersion;
 
 use std::fmt;
@@ -429,6 +428,6 @@ impl<C: DestroyDevice, P, Q, T> Drop for _Device<C, P, Q, T> {
             // TODO always null for now
         }
 
-        unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.commands.DestroyDevice().get_fptr()(self.handle, std::ptr::null()) }
     }
 }

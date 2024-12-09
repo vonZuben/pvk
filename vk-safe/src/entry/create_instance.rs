@@ -2,7 +2,6 @@ use crate::error::Error;
 use crate::handles::instance::{make_instance, Instance};
 use crate::scope::{Captures, Tag};
 use crate::structs::InstanceCreateInfo;
-use crate::type_conversions::ToC;
 
 use std::mem::MaybeUninit;
 
@@ -79,7 +78,7 @@ where
     let mut handle = MaybeUninit::uninit();
     let instance;
     unsafe {
-        let res = command(&create_info.inner, None.to_c(), handle.as_mut_ptr());
+        let res = command(&create_info.inner, std::ptr::null(), handle.as_mut_ptr());
         check_raw_err!(res);
         instance = handle.assume_init();
     }

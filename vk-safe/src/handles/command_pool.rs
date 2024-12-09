@@ -4,8 +4,6 @@ use super::Handle;
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::type_conversions::ToC;
-
 use vk_safe_sys as vk;
 
 use vk::flag_traits::CommandPoolCreateFlags;
@@ -172,7 +170,7 @@ impl<'a, D: Device<Commands: DestroyCommandPool>, F, Q> Drop for _CommandPool<'a
             self.device.commands().DestroyCommandPool().get_fptr()(
                 self.device.raw_handle(),
                 self.handle,
-                None.to_c(),
+                std::ptr::null(),
             );
         }
     }

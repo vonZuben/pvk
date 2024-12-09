@@ -251,10 +251,85 @@ where
     }
 }
 
+unsafe impl<T, U, L> ConvertWrapper<*const T, (Other, L)> for Option<&U>
+where
+    U: ConvertWrapper<T, L> + Sized,
+{
+    fn to_c(self) -> *const T
+    where
+        T: Sized,
+        Self: Sized,
+    {
+        // This is sound according to https://doc.rust-lang.org/std/option/#representation
+        // and because T and U have simple wrapper relation according to ConvertWrapper
+        unsafe { std::mem::transmute(self) }
+    }
+
+    unsafe fn from_c(c: *const T) -> Self
+    where
+        T: Sized,
+        Self: Sized,
+    {
+        // This is sound according to https://doc.rust-lang.org/std/option/#representation
+        // and because T and U have simple wrapper relation according to ConvertWrapper
+        unsafe { std::mem::transmute(c) }
+    }
+}
+
+unsafe impl<T, U, L> ConvertWrapper<*mut T, (Other, L)> for Option<&U>
+where
+    U: ConvertWrapper<T, L> + Sized,
+{
+    fn to_c(self) -> *mut T
+    where
+        T: Sized,
+        Self: Sized,
+    {
+        // This is sound according to https://doc.rust-lang.org/std/option/#representation
+        // and because T and U have simple wrapper relation according to ConvertWrapper
+        unsafe { std::mem::transmute(self) }
+    }
+
+    unsafe fn from_c(c: *mut T) -> Self
+    where
+        T: Sized,
+        Self: Sized,
+    {
+        // This is sound according to https://doc.rust-lang.org/std/option/#representation
+        // and because T and U have simple wrapper relation according to ConvertWrapper
+        unsafe { std::mem::transmute(c) }
+    }
+}
+
+unsafe impl<T, U, L> ConvertWrapper<*mut T, (Other, L)> for Option<&mut U>
+where
+    U: ConvertWrapper<T, L> + Sized,
+{
+    fn to_c(self) -> *mut T
+    where
+        T: Sized,
+        Self: Sized,
+    {
+        // This is sound according to https://doc.rust-lang.org/std/option/#representation
+        // and because T and U have simple wrapper relation according to ConvertWrapper
+        unsafe { std::mem::transmute(self) }
+    }
+
+    unsafe fn from_c(c: *mut T) -> Self
+    where
+        T: Sized,
+        Self: Sized,
+    {
+        // This is sound according to https://doc.rust-lang.org/std/option/#representation
+        // and because T and U have simple wrapper relation according to ConvertWrapper
+        unsafe { std::mem::transmute(c) }
+    }
+}
+
 /// Allow converting from raw c type to wrapper in const context
 pub(crate) const unsafe fn convert_wrapper_from_c<T, U>(u: U) -> T
 where
-    T: ConvertWrapper<U>,
+    T: ConvertWrapper<U> + Sized,
 {
     union C<A, B> {
         a: ManuallyDrop<A>,

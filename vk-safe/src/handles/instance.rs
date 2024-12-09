@@ -3,7 +3,6 @@ use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::enumerator::Enumerator;
 use crate::scope::{Captures, Tag};
-use crate::type_conversions::ToC;
 use crate::VkVersion;
 
 use std::fmt;
@@ -186,6 +185,6 @@ impl<C: DestroyInstance, T> Drop for _Instance<C, T> {
             // TODO: VkAllocationCallbacks not currently supported
         }
 
-        unsafe { self.commands.DestroyInstance().get_fptr()(self.handle, None.to_c()) }
+        unsafe { self.commands.DestroyInstance().get_fptr()(self.handle, std::ptr::null()) }
     }
 }

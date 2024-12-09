@@ -3,7 +3,7 @@ use super::Device;
 use crate::error::Error;
 use crate::handles::command_pool::{make_command_pool, CommandPool};
 use crate::structs::CommandPoolCreateInfo;
-use crate::type_conversions::ToC;
+use crate::type_conversions::ConvertWrapper;
 
 use vk_safe_sys as vk;
 
@@ -80,7 +80,7 @@ pub fn create_command_pool<
         let res = fptr(
             device.raw_handle(),
             create_info.to_c(),
-            None.to_c(),
+            std::ptr::null(),
             handle.as_mut_ptr(),
         );
         check_raw_err!(res);
