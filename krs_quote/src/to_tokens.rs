@@ -114,6 +114,14 @@ impl<F: Fn(&mut TokenStream)> ToTokens for ToTokensClosure<F> {
     }
 }
 
+#[macro_export]
+/// slight convenience macro to make [`ToTokensClosure`]
+macro_rules! to_tokens_closure {
+    ( $tokens:ident $closure_body:block ) => {
+        $crate::ToTokensClosure(move |$tokens: &mut _| $closure_body)
+    };
+}
+
 macro_rules! impl_to_tokens_for_numbers {
     ( $( $nt:ty ),* $(,)? ) => {
         $(
