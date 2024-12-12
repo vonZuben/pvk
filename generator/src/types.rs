@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-use krs_quote::{krs_quote_with, ToTokens};
+use krs_quote::{krs_quote_with, to_tokens_closure, ToTokens};
 
-use crate::utils::{case, VkTyName};
+use crate::utils::{case, VecMap, VkTyName};
 
 use crate::ctype;
 
@@ -431,33 +431,180 @@ impl krs_quote::ToTokens for FunctionPointer {
     }
 }
 
+#[derive(Clone, Copy)]
+enum TypeIndex {
+    TypeDef(usize),
+    Bitmask(usize),
+    Struct(usize),
+    Union(usize),
+    Handle(usize),
+    Enum(usize),
+    FunctionPointer(usize),
+}
+
 // =================================================================
 /// Definitions
 /// collect all definitions together for outputting together
 #[derive(Default)]
 pub struct Types {
-    pub type_defs: Vec<TypeDef>,
-    pub bitmasks: Vec<Bitmask>,
-    pub structs: Vec<Struct2>,
-    pub unions: Vec<Union>,
-    pub handles: Vec<Handle2>,
-    pub enumerations: Vec<Enum2>,
-    pub function_pointers: Vec<FunctionPointer>,
+    map: VecMap<VkTyName, TypeIndex>,
+
+    type_defs: Vec<Type<TypeDef>>,
+    bitmasks: Vec<Type<Bitmask>>,
+    structs: Vec<Type<Struct2>>,
+    unions: Vec<Type<Union>>,
+    handles: Vec<Type<Handle2>>,
+    enumerations: Vec<Type<Enum2>>,
+    function_pointers: Vec<Type<FunctionPointer>>,
 
     // in order to avoid external ".h" files and c libraries, we do not generate the external types and just treat them generically
     // to achieve this, we treat such types as generic, and a user needs to determine the correct type
-    pub generic_types: HashSet<VkTyName>,
+    generic_types: HashSet<VkTyName>,
+}
+
+struct Type<T> {
+    enabled: bool,
+    ty: T,
+}
+
+impl<T> Type<T> {
+    fn new(ty: T) -> Self {
+        // *********** TODO ******************
+        // should be disabled by default
+        Self { enabled: true, ty }
+    }
+}
+
+impl<T: ToTokens> ToTokens for Type<T> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        if self.enabled {
+            self.ty.to_tokens(tokens);
+        }
+    }
 }
 
 impl Types {
-    pub fn structs_to_tokens(&self) -> impl krs_quote::ToTokens + use<'_> {
-        krs_quote::ToTokensClosure(move |tokens: &mut _| {
+    // ************ Generic types *********************
+    pub fn is_generic(&self, name: VkTyName) -> bool {
+        self.generic_types.contains(&name)
+    }
+
+    pub fn add_generic_type(&mut self, name: VkTyName) {
+        self.generic_types.insert(name);
+    }
+
+    // ************ TypeDef *********************
+    pub fn insert_type_def(&mut self, type_def: TypeDef) {
+        let index = self.type_defs.len();
+        let name = type_def.name;
+        self.type_defs.push(Type::new(type_def));
+        self.map.push(name, TypeIndex::TypeDef(index));
+    }
+
+    pub fn type_defs_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
+            for type_def in self.type_defs.iter() {
+                type_def.to_tokens(tokens);
+            }
+        })
+    }
+
+    // ************ Bitmask *********************
+    pub fn insert_bitmask(&mut self, bitmask: Bitmask) {
+        let index = self.bitmasks.len();
+        let name = bitmask.name;
+        self.bitmasks.push(Type::new(bitmask));
+        self.map.push(name, TypeIndex::Bitmask(index));
+    }
+
+    pub fn bitmasks_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
+            for bitmask in self.bitmasks.iter() {
+                bitmask.to_tokens(tokens);
+            }
+        })
+    }
+
+    // ************ Struct *********************
+    pub fn insert_struct(&mut self, stct: Struct2) {
+        let index = self.structs.len();
+        let name = stct.name;
+        self.structs.push(Type::new(stct));
+        self.map.push(name, TypeIndex::Struct(index));
+    }
+
+    pub fn structs_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
             for s in self.structs.iter() {
                 StructToToken {
-                    s,
+                    s: &s.ty,
                     g: &self.generic_types,
                 }
                 .to_tokens(tokens)
+            }
+        })
+    }
+
+    // ************ Union *********************
+    pub fn insert_union(&mut self, u: Union) {
+        let index = self.unions.len();
+        let name = u.name;
+        self.unions.push(Type::new(u));
+        self.map.push(name, TypeIndex::Union(index));
+    }
+
+    pub fn unions_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
+            for u in self.unions.iter() {
+                u.to_tokens(tokens);
+            }
+        })
+    }
+
+    // ************ Handle *********************
+    pub fn insert_handle(&mut self, handle: Handle2) {
+        let index = self.handles.len();
+        let name = handle.name;
+        self.handles.push(Type::new(handle));
+        self.map.push(name, TypeIndex::Handle(index));
+    }
+
+    pub fn handles_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
+            for handle in self.handles.iter() {
+                handle.to_tokens(tokens);
+            }
+        })
+    }
+
+    // ************ Enum *********************
+    pub fn insert_enum(&mut self, enm: Enum2) {
+        let index = self.enumerations.len();
+        let name = enm.name;
+        self.enumerations.push(Type::new(enm));
+        self.map.push(name, TypeIndex::Enum(index));
+    }
+
+    pub fn enums_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
+            for enm in self.enumerations.iter() {
+                enm.to_tokens(tokens);
+            }
+        })
+    }
+
+    // ************ FunctionPointer *********************
+    pub fn insert_function_pointer(&mut self, fptr: FunctionPointer) {
+        let index = self.function_pointers.len();
+        let name = fptr.name;
+        self.function_pointers.push(Type::new(fptr));
+        self.map.push(name, TypeIndex::FunctionPointer(index));
+    }
+
+    pub fn function_pointers_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
+            for fptr in self.function_pointers.iter() {
+                fptr.to_tokens(tokens);
             }
         })
     }
