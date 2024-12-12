@@ -9,6 +9,16 @@ pub struct EnumVariantsCollection {
     enum_variants: utils::VecMap<utils::VkTyName, EnumVariants>,
 }
 
+impl EnumVariantsCollection {
+    pub fn enable_variants(&mut self, target: VkTyName) {
+        let variants = self
+            .enum_variants
+            .get_mut(target)
+            .expect("trying to enable variants for type that does not exist");
+        variants.enabled = true;
+    }
+}
+
 pub struct Enumerations<'a>(&'a EnumVariantsCollection);
 
 impl<'a> Enumerations<'a> {
@@ -23,7 +33,7 @@ impl krs_quote::ToTokens for Enumerations<'_> {
             .0
             .enum_variants
             .iter()
-            .filter(|ev| matches!(ev.kind, EnumKind::Normal));
+            .filter(|ev| ev.enabled && matches!(ev.kind, EnumKind::Normal));
 
         let enum_types = variants.clone().map(|ev| EnumTypes(ev));
         let enum_traits = variants.clone().map(|ev| EnumTraits(ev));
@@ -59,7 +69,7 @@ impl krs_quote::ToTokens for Flags<'_> {
             .0
             .enum_variants
             .iter()
-            .filter(|ev| matches!(ev.kind, EnumKind::BitFlags));
+            .filter(|ev| ev.enabled && matches!(ev.kind, EnumKind::BitFlags));
 
         let flag_types = variants.clone().map(|ev| EnumTypes(ev));
         let flag_traits = variants.clone().map(|ev| FlagTraits(ev));
@@ -239,6 +249,7 @@ impl krs_quote::ToTokens for ModName {
 
 pub struct EnumVariants {
     target: VkTyName,
+    enabled: bool,
     kind: EnumKind,
     variants: utils::VecMap<VkTyName, crate::constants::Constant3>,
 }
@@ -248,6 +259,7 @@ impl EnumVariants {
         let target = target.into();
         Self {
             target,
+            enabled: true, // ************** TODO ************* disabled by default
             kind,
             variants: Default::default(),
         }
@@ -266,6 +278,11 @@ impl EnumVariants {
 
 impl krs_quote::ToTokens for EnumVariants {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        // generate no tokens if the target type is not enabled
+        if !self.enabled {
+            return;
+        }
+
         let target = self.target;
         let target_string = utils::ctype_to_rtype(self.target.as_str());
         let variants = self.variants.iter();
