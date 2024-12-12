@@ -2,19 +2,15 @@ use krs_quote::krs_quote_with;
 
 use crate::utils::{VecMap, VkTyName};
 
-use crate::definitions;
+use crate::types;
 
 #[derive(Default)]
 pub struct Commands2 {
-    function_pointers: VecMap<VkTyName, definitions::FunctionPointer>,
+    function_pointers: VecMap<VkTyName, types::FunctionPointer>,
 }
 
 impl Commands2 {
-    pub fn push(
-        &mut self,
-        name: impl Into<VkTyName>,
-        function_pointer: definitions::FunctionPointer,
-    ) {
+    pub fn push(&mut self, name: impl Into<VkTyName>, function_pointer: types::FunctionPointer) {
         let name = name.into();
         self.function_pointers.push(name, function_pointer);
     }

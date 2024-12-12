@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use krs_quote::krs_quote;
 
@@ -9,10 +9,10 @@ use crate::utils::{self, VecMap};
 use crate::commands;
 use crate::constants;
 use crate::ctype;
-use crate::definitions;
 use crate::enumerations;
 use crate::extensions;
 use crate::features;
+use crate::types;
 
 #[derive(Copy, Clone)]
 enum CommandType {
@@ -47,19 +47,16 @@ pub struct Generator {
     // metadata
     // when generating commands to load per feature, we use this to determine command_types
     command_types: HashMap<utils::VkTyName, CommandType>,
-    // in order to avoid external ".h" files and c libraries, we do not generate the external types and just treat them generically
-    // to achieve this, we treat such types as generic, and a user needs to determine the correct type
-    generic_types: HashSet<utils::VkTyName>,
 
     // code generation
-    definitions: definitions::Definitions2,
+    types: types::Types,
     constants: VecMap<utils::VkTyName, constants::Constant3>,
     // this includes all things traditionally considered enumerations, and things that are additionally considered as bitflags/bitmasks
     enum_collection: enumerations::EnumVariantsCollection,
     commands: commands::Commands2,
     feature_collection: features::FeatureCollection,
     extensions: extensions::ExtensionCollection,
-    aliases: utils::VecMap<utils::VkTyName, definitions::TypeDef>,
+    aliases: utils::VecMap<utils::VkTyName, types::TypeDef>,
 }
 
 impl Generator {
@@ -111,13 +108,13 @@ impl Generator {
 
     /// C style type aliases
     pub fn c_type_defs(&self) -> String {
-        let c_type_defs = &self.definitions.type_defs;
+        let c_type_defs = &self.types.type_defs;
         krs_quote!({@* {@c_type_defs} }).to_string()
     }
 
     /// Vulkan bitmasks (generated as Rust structs with associated constant values)
     pub fn bitmasks(&self) -> String {
-        let bitmasks = &self.definitions.bitmasks;
+        let bitmasks = &self.types.bitmasks;
         krs_quote!({@* {@bitmasks} }).to_string()
     }
 
@@ -129,25 +126,25 @@ impl Generator {
 
     /// C style struct definitions
     pub fn structs(&self) -> String {
-        let structs = &self.definitions.structs;
+        let structs = &self.types.structs_to_tokens();
         krs_quote!({@structs}).to_string()
     }
 
     /// C style union definitions
     pub fn unions(&self) -> String {
-        let unions = &self.definitions.unions;
+        let unions = &self.types.unions;
         krs_quote!({@* {@unions} }).to_string()
     }
 
     /// Vulkan handle types
     pub fn handles(&self) -> String {
-        let handles = &self.definitions.handles;
+        let handles = &self.types.handles;
         krs_quote!({@* {@handles} }).to_string()
     }
 
     /// Vulkan enum types (generated as Rust structs with associated constant values)
     pub fn enumerations(&self) -> String {
-        let enumerations = &self.definitions.enumerations;
+        let enumerations = &self.types.enumerations;
         krs_quote!({@* {@enumerations} }).to_string()
     }
 
@@ -159,7 +156,7 @@ impl Generator {
 
     /// Vulkan function pointers for some specific niche stuff
     pub fn function_pointers(&self) -> String {
-        let function_pointers = &self.definitions.function_pointers;
+        let function_pointers = &self.types.function_pointers;
         krs_quote!({@* {@function_pointers} }).to_string()
     }
 
@@ -208,14 +205,13 @@ impl<'a> VisitVkParse<'a> for Generator {
             return;
         } else {
             let name = utils::VkTyName::new(name);
-            self.aliases
-                .push(name, definitions::TypeDef::new(name, alias));
+            self.aliases.push(name, types::TypeDef::new(name, alias));
         }
     }
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {
         let enum_name = enm.name.as_deref().expect("error: enum with no name");
-        let enum_def = definitions::Enum2::new(enum_name);
-        self.definitions.enumerations.push(enum_def);
+        let enum_def = types::Enum2::new(enum_name);
+        self.types.enumerations.push(enum_def);
     }
     fn visit_command(&mut self, def_wrapper: crate::vk_parse_visitor::CommandDefWrapper<'a>) {
         let def = def_wrapper.def;
@@ -225,9 +221,9 @@ impl<'a> VisitVkParse<'a> for Generator {
             .insert(command_name, command_type(&def_wrapper.raw));
 
         // generate actual command
-        let mut function_pointer = definitions::FunctionPointer::new(command_name);
+        let mut function_pointer = types::FunctionPointer::new(command_name);
         let fields = def.params.into_iter().map(|mut field| {
-            if self.generic_types.contains(&field.ty.name()) {
+            if self.types.generic_types.contains(&field.ty.name()) {
                 field.ty.set_external();
             }
             field
@@ -316,17 +312,17 @@ impl<'a> VisitVkParse<'a> for Generator {
     }
     fn visit_struct_def(&mut self, def: crate::vk_parse_visitor::StructDef<'a>) {
         let struct_name = utils::VkTyName::new(def.name);
-        let stct = self
-            .definitions
-            .structs
-            .get_mut_or_default(struct_name, definitions::Struct2::new(def.name));
+
+        self.types.structs.push(types::Struct2::new(def.name));
+        let stct = self.types.structs.last_mut().unwrap();
+
         let mut generic_struct = false;
         for member in def.members {
             use crate::vk_parse_visitor::MemberKind;
             match member {
                 MemberKind::Member(mut field) => {
                     field.set_public();
-                    if self.generic_types.contains(&field.ty.name()) {
+                    if self.types.generic_types.contains(&field.ty.name()) {
                         field.ty.set_external();
                         generic_struct = true;
                     }
@@ -341,12 +337,11 @@ impl<'a> VisitVkParse<'a> for Generator {
             }
         }
         if generic_struct {
-            self.generic_types.insert(struct_name);
-            self.definitions.structs.generic_struct(struct_name);
+            self.types.generic_types.insert(struct_name);
         }
     }
     fn visit_union(&mut self, def: crate::vk_parse_visitor::UnionDef<'a>) {
-        let mut uni = definitions::Union::new(def.name);
+        let mut uni = types::Union::new(def.name);
         let fields = def.members.filter_map(|member| match member {
             crate::vk_parse_visitor::MemberKind::Comment(_) => None,
             crate::vk_parse_visitor::MemberKind::Member(mut member) => {
@@ -356,7 +351,7 @@ impl<'a> VisitVkParse<'a> for Generator {
             crate::vk_parse_visitor::MemberKind::UnsupportedApi => None,
         });
         uni.extend_fields(fields);
-        self.definitions.unions.push(uni);
+        self.types.unions.push(uni);
     }
     fn visit_constant(&mut self, spec: crate::vk_parse_visitor::VkParseEnumConstant<'a>) {
         let name = utils::VkTyName::new(spec.enm.name.as_str());
@@ -371,11 +366,11 @@ impl<'a> VisitVkParse<'a> for Generator {
             .push(name, constants::Constant3::new(name, ty, val, None));
     }
     fn visit_basetype(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
-        let mut type_def = definitions::TypeDef::new(basetype.name, basetype.ty);
+        let mut type_def = types::TypeDef::new(basetype.name, basetype.ty);
         if basetype.ptr {
             type_def.set_ptr();
         }
-        self.definitions.type_defs.push(type_def);
+        self.types.type_defs.push(type_def);
     }
     fn visit_bitmask(&mut self, basetype: crate::vk_parse_visitor::VkBasetype<'a>) {
         assert!(!basetype.ptr);
@@ -385,25 +380,25 @@ impl<'a> VisitVkParse<'a> for Generator {
             name,
             enumerations::EnumVariants::new(name, enumerations::EnumKind::BitFlags),
         );
-        let bitmask = definitions::Bitmask::new(name, basetype.ty);
-        self.definitions.bitmasks.push(bitmask);
+        let bitmask = types::Bitmask::new(name, basetype.ty);
+        self.types.bitmasks.push(bitmask);
     }
     fn visit_handle(&mut self, def: crate::vk_parse_visitor::HandleDef<'a>) {
         let dispatch = match def.kind {
             crate::vk_parse_visitor::HandleKind::Dispatchable => true,
             crate::vk_parse_visitor::HandleKind::NonDispatchable => false,
         };
-        let handle = definitions::Handle2::new(def.name, dispatch);
-        self.definitions.handles.push(handle);
+        let handle = types::Handle2::new(def.name, dispatch);
+        self.types.handles.push(handle);
     }
     fn visit_fptr(&mut self, def: crate::vk_parse_visitor::FptrDef<'a>) {
         if def.name == "PFN_vkVoidFunction" {
             return; // This is a special case that has a unique definition in the generated code
         }
-        let mut fptr = definitions::FunctionPointer::new(def.name);
+        let mut fptr = types::FunctionPointer::new(def.name);
         fptr.extend_fields(def.params);
         fptr.set_return_type(def.return_type);
-        self.definitions.function_pointers.push(fptr);
+        self.types.function_pointers.push(fptr);
     }
     fn visit_feature_name(&mut self, _name: utils::VkTyName) {}
     fn visit_require_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
@@ -431,8 +426,8 @@ impl<'a> VisitVkParse<'a> for Generator {
             .modify_with(def.version, |fc| fc.remove_command(def.name));
     }
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
-        self.generic_types.insert(name);
+        self.types.generic_types.insert(name);
     }
-    fn visit_api_version(&mut self, _version: (u32, u32)) {}
-    fn visit_header_version(&mut self, _version: u32) {}
+    // fn visit_api_version(&mut self, _version: (u32, u32)) {}
+    // fn visit_header_version(&mut self, _version: u32) {}
 }

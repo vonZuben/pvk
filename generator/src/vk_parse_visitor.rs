@@ -18,8 +18,8 @@ pub trait VisitVkParse<'a> {
     fn visit_require_command(&mut self, def: CommandRef<'a>);
     fn visit_remove_command(&mut self, def: CommandRef<'a>);
     fn visit_external_type(&mut self, name: crate::utils::VkTyName);
-    fn visit_api_version(&mut self, version: (u32, u32));
-    fn visit_header_version(&mut self, version: u32);
+    // fn visit_api_version(&mut self, version: (u32, u32));
+    // fn visit_header_version(&mut self, version: u32);
 }
 
 pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl VisitVkParse<'a>) {
@@ -197,7 +197,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         number: None,
                                         enm,
                                         target: None,
-                                        is_alias: false,
+                                        _is_alias: false,
                                     });
                                 }
                                 EnumsChild::Comment(_) => {}
@@ -216,7 +216,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         number: None,
                                         enm,
                                         target: enms.name.as_deref(),
-                                        is_alias: enm.spec.is_alias(),
+                                        _is_alias: enm.spec.is_alias(),
                                     });
                                 }
                                 EnumsChild::Comment(_) => {}
@@ -283,7 +283,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 number: None,
                                                 enm,
                                                 target: extends,
-                                                is_alias: enm.spec.is_alias(),
+                                                _is_alias: enm.spec.is_alias(),
                                             });
                                         }
                                     }
@@ -407,14 +407,14 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                     number: extension.number,
                                                     enm,
                                                     target: extends,
-                                                    is_alias: enm.spec.is_alias(),
+                                                    _is_alias: enm.spec.is_alias(),
                                                 });
                                             } else if enm.spec.is_some() {
                                                 visitor.visit_constant(VkParseEnumConstant {
                                                     number: extension.number,
                                                     enm,
                                                     target: extends,
-                                                    is_alias: enm.spec.is_alias(),
+                                                    _is_alias: enm.spec.is_alias(),
                                                 })
                                             }
                                         }
@@ -478,7 +478,7 @@ pub struct VkParseEnumConstant<'a> {
     pub number: Option<i64>,
     pub enm: &'a vk_parse::Enum,
     pub target: Option<&'a str>,
-    pub is_alias: bool,
+    pub _is_alias: bool,
 }
 
 #[derive(Clone)]

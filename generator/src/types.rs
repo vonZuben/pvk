@@ -1,8 +1,9 @@
+use std::collections::HashSet;
 use std::marker::PhantomData;
 
-use krs_quote::krs_quote_with;
+use krs_quote::{krs_quote_with, ToTokens};
 
-use crate::utils::{case, VecMap, VkTyName};
+use crate::utils::{case, VkTyName};
 
 use crate::ctype;
 
@@ -108,46 +109,9 @@ impl Struct2 {
     }
 }
 
-#[derive(Default)]
-pub struct StructCollection {
-    structs: VecMap<VkTyName, Struct2>,
-    generic_types: std::collections::HashSet<VkTyName>,
-}
-
-impl std::ops::Deref for StructCollection {
-    type Target = VecMap<VkTyName, Struct2>;
-    fn deref(&self) -> &Self::Target {
-        &self.structs
-    }
-}
-
-impl std::ops::DerefMut for StructCollection {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.structs
-    }
-}
-
-impl StructCollection {
-    pub fn generic_struct(&mut self, name: VkTyName) {
-        self.generic_types.insert(name);
-    }
-}
-
-impl krs_quote::ToTokens for StructCollection {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        for s in self.structs.iter() {
-            StructToToken {
-                s,
-                g: &self.generic_types,
-            }
-            .to_tokens(tokens)
-        }
-    }
-}
-
 struct StructToToken<'a> {
     s: &'a Struct2,
-    g: &'a std::collections::HashSet<VkTyName>,
+    g: &'a HashSet<VkTyName>,
 }
 
 impl krs_quote::ToTokens for StructToToken<'_> {
@@ -471,34 +435,30 @@ impl krs_quote::ToTokens for FunctionPointer {
 /// Definitions
 /// collect all definitions together for outputting together
 #[derive(Default)]
-pub struct Definitions2 {
+pub struct Types {
     pub type_defs: Vec<TypeDef>,
     pub bitmasks: Vec<Bitmask>,
-    pub structs: StructCollection,
+    pub structs: Vec<Struct2>,
     pub unions: Vec<Union>,
     pub handles: Vec<Handle2>,
     pub enumerations: Vec<Enum2>,
     pub function_pointers: Vec<FunctionPointer>,
+
+    // in order to avoid external ".h" files and c libraries, we do not generate the external types and just treat them generically
+    // to achieve this, we treat such types as generic, and a user needs to determine the correct type
+    pub generic_types: HashSet<VkTyName>,
 }
 
-impl krs_quote::ToTokens for Definitions2 {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let type_defs = &self.type_defs;
-        let bitmasks = &self.bitmasks;
-        let structs = &self.structs;
-        let unions = &self.unions;
-        let handles = &self.handles;
-        let enumerations = &self.enumerations;
-        let function_pointers = &self.function_pointers;
-
-        krs_quote_with!(tokens <-
-            {@* {@type_defs} }
-            {@* {@bitmasks} }
-            {@structs}
-            {@* {@unions} }
-            {@* {@handles} }
-            {@* {@enumerations} }
-            {@* {@function_pointers} }
-        );
+impl Types {
+    pub fn structs_to_tokens(&self) -> impl krs_quote::ToTokens + use<'_> {
+        krs_quote::ToTokensClosure(move |tokens: &mut _| {
+            for s in self.structs.iter() {
+                StructToToken {
+                    s,
+                    g: &self.generic_types,
+                }
+                .to_tokens(tokens)
+            }
+        })
     }
 }

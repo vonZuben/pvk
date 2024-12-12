@@ -229,6 +229,7 @@ impl krs_quote::ToTokens for VersionValues<'_> {
 #[derive(Copy, Clone)]
 enum RequireRemove {
     Require(VkTyName),
+    #[allow(dead_code)]
     Remove(VkTyName),
 }
 
