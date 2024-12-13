@@ -18,6 +18,7 @@ pub trait VisitVkParse<'a> {
     fn visit_require_command(&mut self, def: CommandRef<'a>);
     fn visit_remove_command(&mut self, def: CommandRef<'a>);
     fn visit_external_type(&mut self, name: crate::utils::VkTyName);
+    fn visit_require_type(&mut self, name: &'a str);
     // fn visit_api_version(&mut self, version: (u32, u32));
     // fn visit_header_version(&mut self, version: u32);
 }
@@ -273,9 +274,11 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                 match item {
                                     Comment(_) => {}
                                     Type {
-                                        name: _,
+                                        name: type_name,
                                         comment: _,
-                                    } => {}
+                                    } => {
+                                        visitor.visit_require_type(&type_name);
+                                    }
                                     Enum(enm) => {
                                         let extends = enm.spec.extends();
                                         if extends.is_some() {
@@ -394,9 +397,11 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     match item {
                                         Comment(_) => {}
                                         Type {
-                                            name: _,
+                                            name: type_name,
                                             comment: _,
-                                        } => {}
+                                        } => {
+                                            visitor.visit_require_type(&type_name);
+                                        }
                                         Enum(enm) => {
                                             if !supported_api(enm.api.as_ref()) {
                                                 continue;

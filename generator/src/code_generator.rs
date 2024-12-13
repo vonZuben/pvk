@@ -56,7 +56,6 @@ pub struct Generator {
     commands: commands::Commands2,
     feature_collection: features::FeatureCollection,
     extensions: extensions::ExtensionCollection,
-    aliases: utils::VecMap<utils::VkTyName, types::TypeDef>,
 }
 
 impl Generator {
@@ -65,7 +64,7 @@ impl Generator {
         match self.command_types.get(&cmd) {
             Some(cmd_type) => Some(*cmd_type),
             None => {
-                let alias_name = self.aliases.get(cmd)?.ty;
+                let alias_name = self.types.get_alias_def(cmd)?.ty;
                 self.command_types.get(&alias_name).map(|ct| *ct)
             }
         }
@@ -73,7 +72,7 @@ impl Generator {
 
     // if there is an alias, return the alias, otherwise, return name
     fn get_alias_or_name(&self, name: utils::VkTyName) -> utils::VkTyName {
-        match self.aliases.get(name) {
+        match self.types.get_alias_def(name) {
             Some(td) => td.ty,
             None => name,
         }
@@ -190,8 +189,8 @@ impl Generator {
     /// extension to a core version, which causes the name
     /// to change slightly)
     pub fn aliases(&self) -> String {
-        let aliases = self.aliases.iter();
-        krs_quote!({@* {@aliases} }).to_string()
+        let aliases = self.types.aliases_to_tokens();
+        krs_quote!({@aliases}).to_string()
     }
 }
 
@@ -205,7 +204,7 @@ impl<'a> VisitVkParse<'a> for Generator {
             return;
         } else {
             let name = utils::VkTyName::new(name);
-            self.aliases.push(name, types::TypeDef::new(name, alias));
+            self.types.insert_alias(types::TypeDef::new(name, alias));
         }
     }
     fn visit_enum(&mut self, enm: &'a vk_parse::Type) {
@@ -298,6 +297,8 @@ impl<'a> VisitVkParse<'a> for Generator {
             .extensions
             .get_mut(ex_name)
             .expect("error: this should already exist from visiting the node");
+
+        self.commands.enable_command(cmd_name);
 
         match cmd_type {
             CommandType::Instance => ex.push_instance_command(cmd_name),
@@ -406,6 +407,9 @@ impl<'a> VisitVkParse<'a> for Generator {
     fn visit_require_command(&mut self, def: crate::vk_parse_visitor::CommandRef<'a>) {
         let cmd_name = utils::VkTyName::new(def.name);
         let fcc = &mut self.feature_collection;
+
+        self.commands.enable_command(cmd_name);
+
         match self
             .command_types
             .get(&cmd_name)
@@ -429,6 +433,11 @@ impl<'a> VisitVkParse<'a> for Generator {
     }
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
         self.types.add_generic_type(name);
+    }
+    fn visit_require_type(&mut self, name: &'a str) {
+        let name = name.into();
+        self.types.enable_type(name);
+        self.enum_collection.enable_variants(name);
     }
     // fn visit_api_version(&mut self, _version: (u32, u32)) {}
     // fn visit_header_version(&mut self, _version: u32) {}

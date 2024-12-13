@@ -11,11 +11,9 @@ pub struct EnumVariantsCollection {
 
 impl EnumVariantsCollection {
     pub fn enable_variants(&mut self, target: VkTyName) {
-        let variants = self
-            .enum_variants
+        self.enum_variants
             .get_mut(target)
-            .expect("trying to enable variants for type that does not exist");
-        variants.enabled = true;
+            .map(|variants| variants.enabled = true);
     }
 }
 
@@ -259,7 +257,7 @@ impl EnumVariants {
         let target = target.into();
         Self {
             target,
-            enabled: true, // ************** TODO ************* disabled by default
+            enabled: false,
             kind,
             variants: Default::default(),
         }

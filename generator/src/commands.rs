@@ -16,7 +16,7 @@ impl Commands2 {
             name,
             Command {
                 function_pointer,
-                enabled: true,
+                enabled: false,
             },
         );
     }

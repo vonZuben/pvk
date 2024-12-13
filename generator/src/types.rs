@@ -440,6 +440,7 @@ enum TypeIndex {
     Handle(usize),
     Enum(usize),
     FunctionPointer(usize),
+    Alias(usize),
 }
 
 // =================================================================
@@ -457,6 +458,8 @@ pub struct Types {
     enumerations: Vec<Type<Enum2>>,
     function_pointers: Vec<Type<FunctionPointer>>,
 
+    aliases: Vec<Type<TypeDef>>,
+
     // in order to avoid external ".h" files and c libraries, we do not generate the external types and just treat them generically
     // to achieve this, we treat such types as generic, and a user needs to determine the correct type
     generic_types: HashSet<VkTyName>,
@@ -469,9 +472,7 @@ struct Type<T> {
 
 impl<T> Type<T> {
     fn new(ty: T) -> Self {
-        // *********** TODO ******************
-        // should be disabled by default
-        Self { enabled: true, ty }
+        Self { enabled: false, ty }
     }
 }
 
@@ -484,6 +485,21 @@ impl<T: ToTokens> ToTokens for Type<T> {
 }
 
 impl Types {
+    pub fn enable_type(&mut self, name: VkTyName) {
+        self.map.get(name).map(|&index| match index {
+            TypeIndex::TypeDef(i) => unsafe { self.type_defs.get_unchecked_mut(i).enabled = true },
+            TypeIndex::Bitmask(i) => unsafe { self.bitmasks.get_unchecked_mut(i).enabled = true },
+            TypeIndex::Struct(i) => unsafe { self.structs.get_unchecked_mut(i).enabled = true },
+            TypeIndex::Union(i) => unsafe { self.unions.get_unchecked_mut(i).enabled = true },
+            TypeIndex::Handle(i) => unsafe { self.handles.get_unchecked_mut(i).enabled = true },
+            TypeIndex::Enum(i) => unsafe { self.enumerations.get_unchecked_mut(i).enabled = true },
+            TypeIndex::FunctionPointer(i) => unsafe {
+                self.function_pointers.get_unchecked_mut(i).enabled = true
+            },
+            TypeIndex::Alias(i) => unsafe { self.aliases.get_unchecked_mut(i).enabled = true },
+        });
+    }
+
     // ************ Generic types *********************
     pub fn is_generic(&self, name: VkTyName) -> bool {
         self.generic_types.contains(&name)
@@ -535,7 +551,7 @@ impl Types {
 
     pub fn structs_to_tokens(&self) -> impl ToTokens + use<'_> {
         to_tokens_closure!(tokens {
-            for s in self.structs.iter() {
+            for s in self.structs.iter().filter(|s|s.enabled){
                 StructToToken {
                     s: &s.ty,
                     g: &self.generic_types,
@@ -606,6 +622,29 @@ impl Types {
             for fptr in self.function_pointers.iter() {
                 fptr.to_tokens(tokens);
             }
+        })
+    }
+
+    // ************ Alias *********************
+    pub fn insert_alias(&mut self, def: TypeDef) {
+        let index = self.aliases.len();
+        let name = def.name;
+        self.aliases.push(Type::new(def));
+        self.map.push(name, TypeIndex::Alias(index));
+    }
+
+    pub fn aliases_to_tokens(&self) -> impl ToTokens + use<'_> {
+        to_tokens_closure!(tokens {
+            for def in self.aliases.iter() {
+                def.to_tokens(tokens);
+            }
+        })
+    }
+
+    pub fn get_alias_def(&self, name: VkTyName) -> Option<&TypeDef> {
+        self.map.get(name).and_then(|&index| match index {
+            TypeIndex::Alias(i) => unsafe { Some(&self.aliases.get_unchecked(i).ty) },
+            _ => None,
         })
     }
 }
