@@ -6,21 +6,48 @@ use crate::types;
 
 #[derive(Default)]
 pub struct Commands2 {
-    function_pointers: VecMap<VkTyName, types::FunctionPointer>,
+    commands: VecMap<VkTyName, Command>,
 }
 
 impl Commands2 {
     pub fn push(&mut self, name: impl Into<VkTyName>, function_pointer: types::FunctionPointer) {
         let name = name.into();
-        self.function_pointers.push(name, function_pointer);
+        self.commands.push(
+            name,
+            Command {
+                function_pointer,
+                enabled: true,
+            },
+        );
     }
+
+    pub fn enable_command(&mut self, name: VkTyName) {
+        let cmd = self
+            .commands
+            .get_mut(name)
+            .expect("trying to enable command that does not exist");
+        cmd.enabled = true;
+    }
+}
+
+struct Command {
+    function_pointer: types::FunctionPointer,
+    enabled: bool,
 }
 
 impl krs_quote::ToTokens for Commands2 {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let function_pointers = self.function_pointers.iter();
-        let commands = self.function_pointers.iter().map(|fptr| fptr.name);
-        let command_names = self.function_pointers.iter().map(|fptr| fptr.name.as_str());
+        let function_pointers = self.commands.iter().filter_map(|cmd| {
+            if cmd.enabled {
+                Some(&cmd.function_pointer)
+            } else {
+                None
+            }
+        });
+
+        let commands = function_pointers.clone().map(|fptr| fptr.name);
+        let command_names = function_pointers.clone().map(|fptr| fptr.name.as_str());
+
         krs_quote_with!( tokens <-
             {@* {@function_pointers}}
 
