@@ -10,6 +10,9 @@ if applicable
 mod format;
 use format as VkFormat;
 
+mod structure_type;
+use structure_type as VkStructureType;
+
 use krs_quote::{krs_quote_with, ToTokens, TokenStream};
 
 use crate::utils::VkTyName;
@@ -43,7 +46,7 @@ macro_rules! match_enums {
 
 impl<I: Variants> ToTokens for Properties<I> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        match_enums!(self tokens: VkFormat);
+        match_enums!(self tokens: VkFormat, VkStructureType);
     }
 }
 

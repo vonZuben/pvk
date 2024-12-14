@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use krs_quote::{krs_quote_with, to_tokens_closure, ToTokens};
 
-use crate::utils::{case, VecMap, VkTyName};
+use crate::utils::{case, StrAsCode, VecMap, VkTyName};
 
 use crate::ctype;
 
@@ -118,12 +118,57 @@ impl krs_quote::ToTokens for StructToToken<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.s.name;
 
-        let generics = self.s.fields.iter().filter_map(|field| {
-            if field.ty.is_external() || self.g.contains(&field.ty.name()) {
-                Some(field.ty.name())
-            } else {
-                None
-            }
+        let generics: Vec<_> = self
+            .s
+            .fields
+            .iter()
+            .filter_map(|field| {
+                if field.ty.is_external() || self.g.contains(&field.ty.name()) {
+                    Some(field.ty.name())
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let normalized_struct_name = case::normalize(&name).as_code();
+
+        let p_next = self
+            .s
+            .fields
+            .iter()
+            .find(|field| field.name.as_str() == "pNext");
+
+        let not_base_struct = match name.as_str() {
+            "VkBaseOutStructure" | "VkBaseInStructure" => false,
+            _ => true,
+        };
+
+        let base_structure = p_next.filter(|_| not_base_struct).map(|_| {
+            krs_quote::ToTokensClosure(|tokens: &mut _| {
+                krs_quote_with!(tokens <-
+                    impl<{@,* {@generics}}> BaseStructure for {@name}<{@,* {@generics}}> {
+                        const S_TYPE: StructureType = {@normalized_struct_name};
+                        fn p_next(&self) -> *const BaseInStructure {
+                            self.p_next.cast()
+                        }
+                    }
+                )
+            })
+        });
+
+        let base_structure_mut = p_next.filter(|_| not_base_struct).map(|field| {
+            krs_quote::ToTokensClosure(|tokens: &mut _| {
+                if matches!(field.ty.ptr_type(), Some(ctype::Pointer::Mut)) {
+                    krs_quote_with!(tokens <-
+                        impl<{@,* {@generics}}> BaseStructureMut for {@name}<{@,* {@generics}}> {
+                            fn p_next_mut(&mut self) -> *mut BaseOutStructure {
+                                self.p_next.cast()
+                            }
+                        }
+                    )
+                }
+            })
         });
 
         match self.s.non_normative {
@@ -135,6 +180,8 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                     pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
+                    {@base_structure}
+                    {@base_structure_mut}
                 );
             }
             true => {
@@ -146,6 +193,8 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                     pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
+                    {@base_structure}
+                    {@base_structure_mut}
                 );
             }
         }

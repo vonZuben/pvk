@@ -68,6 +68,20 @@ impl ToTokens for VulkanCommand {
             pub trait Version {
                 const VERSION: crate::VkVersion;
             }
+
+            const _ASSERT_BASE_STRUCTURES_EQUAL: () = {
+                assert!(std::mem::size_of::<BaseInStructure>() == std::mem::size_of::<BaseOutStructure>());
+                assert!(std::mem::align_of::<BaseInStructure>() == std::mem::align_of::<BaseOutStructure>());
+            };
+
+            pub trait BaseStructure {
+                const S_TYPE: StructureType;
+                fn p_next(&self) -> *const BaseInStructure;
+            }
+
+            pub trait BaseStructureMut: BaseStructure {
+                fn p_next_mut(&mut self) -> *mut BaseOutStructure;
+            }
         )
     }
 }

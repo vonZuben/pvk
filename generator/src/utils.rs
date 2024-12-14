@@ -288,4 +288,17 @@ pub mod case {
 
         out
     }
+
+    pub fn normalize(s: &str) -> String {
+        s.chars()
+            .filter_map(|c| {
+                assert!(c.is_ascii());
+                if c == '_' {
+                    None
+                } else {
+                    Some(c.to_ascii_lowercase())
+                }
+            })
+            .collect()
+    }
 }

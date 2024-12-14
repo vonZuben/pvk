@@ -194,6 +194,9 @@ impl Ctype {
     pub fn name(&self) -> utils::VkTyName {
         self.inner.basetype.name
     }
+    pub fn ptr_type(&self) -> Option<Pointer> {
+        self.inner.basetype.pointers.first().map(|p| *p)
+    }
 }
 
 impl krs_quote::ToTokens for Ctype {
