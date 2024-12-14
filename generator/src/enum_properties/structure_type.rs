@@ -28,7 +28,7 @@ impl<I: Iterator<Item = VkTyName> + Clone> ToTokensDelegate<I> for Delegate {
         let real_names = variants.clone().map(|t| t.0);
 
         krs_quote_with!(tokens <-
-            {@* const {@normalized_struct_names}: StructureType = StructureType::{@real_names}; }
+            {@* pub(crate) const {@normalized_struct_names}: StructureType = StructureType::{@real_names}; }
         );
     }
 }
