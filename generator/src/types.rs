@@ -90,15 +90,17 @@ pub struct Struct2 {
     name: VkTyName,
     fields: Vec<ctype::Cfield>,
     pub non_normative: bool,
+    extends: Vec<VkTyName>,
 }
 
 impl Struct2 {
-    pub fn new(name: impl Into<VkTyName>) -> Self {
+    pub fn new(name: impl Into<VkTyName>, extends: Vec<VkTyName>) -> Self {
         let name = name.into();
         Self {
             name,
             fields: Default::default(),
             non_normative: false,
+            extends,
         }
     }
     pub fn push_field(&mut self, field: ctype::Cfield) {
@@ -130,6 +132,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                 }
             })
             .collect();
+        let generics = &generics;
 
         let normalized_struct_name = case::normalize(&name).as_code();
 
@@ -171,6 +174,14 @@ impl krs_quote::ToTokens for StructToToken<'_> {
             })
         });
 
+        let extends = self.s.extends.iter().map(|extends| {
+            krs_quote::to_tokens_closure!(tokens {
+                krs_quote_with!(tokens <-
+                    unsafe impl<{@,* {@generics}}> StructExtends<{@extends}> for {@name}<{@,* {@generics}}> {}
+                )
+            })
+        });
+
         match self.s.non_normative {
             false => {
                 let fields = &self.s.fields;
@@ -180,6 +191,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                     pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
+                    {@* {@extends}}
                     {@base_structure}
                     {@base_structure_mut}
                 );
@@ -193,6 +205,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                     pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
+                    {@* {@extends}}
                     {@base_structure}
                     {@base_structure_mut}
                 );

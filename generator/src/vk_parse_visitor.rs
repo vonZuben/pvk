@@ -1,4 +1,4 @@
-use crate::{ctype, utils};
+use crate::{ctype, utils::VkTyName};
 
 pub trait VisitVkParse<'a> {
     fn visit_alias(&mut self, name: &'a str, alias: &'a str);
@@ -14,10 +14,10 @@ pub trait VisitVkParse<'a> {
     fn visit_union(&mut self, def: UnionDef<'a>);
     fn visit_handle(&mut self, def: HandleDef<'a>);
     fn visit_fptr(&mut self, def: FptrDef<'a>);
-    fn visit_feature_name(&mut self, name: crate::utils::VkTyName);
+    fn visit_feature_name(&mut self, name: VkTyName);
     fn visit_require_command(&mut self, def: CommandRef<'a>);
     fn visit_remove_command(&mut self, def: CommandRef<'a>);
-    fn visit_external_type(&mut self, name: crate::utils::VkTyName);
+    fn visit_external_type(&mut self, name: VkTyName);
     fn visit_require_type(&mut self, name: &'a str);
     // fn visit_api_version(&mut self, version: (u32, u32));
     // fn visit_header_version(&mut self, version: u32);
@@ -70,6 +70,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                                 members: Members {
                                                     members: members.iter(),
                                                 },
+                                                extends: Extends(ty.structextends.as_deref()),
                                             });
                                         }
                                         vk_parse::TypeSpec::None => {}
@@ -495,6 +496,30 @@ pub enum VkParseExtensionParts<'a> {
 pub struct StructDef<'a> {
     pub name: &'a str,
     pub members: Members<'a>,
+    pub extends: Extends<'a>,
+}
+
+#[derive(Clone, Copy)]
+pub struct Extends<'a>(Option<&'a str>);
+
+pub struct ExtendsIter<'a>(Option<std::str::Split<'a, char>>);
+
+impl<'a> Iterator for ExtendsIter<'a> {
+    type Item = VkTyName;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.as_mut().and_then(|i| i.next().map(Into::into))
+    }
+}
+
+impl<'a> IntoIterator for Extends<'a> {
+    type Item = VkTyName;
+
+    type IntoIter = ExtendsIter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ExtendsIter(self.0.map(|e| e.split(',')).into())
+    }
 }
 
 pub struct UnionDef<'a> {
@@ -691,7 +716,7 @@ pub struct FptrDef<'a> {
 
 pub struct CommandRef<'a> {
     pub name: &'a str,
-    pub version: crate::utils::VkTyName,
+    pub version: VkTyName,
 }
 
 pub struct CommandDef<'a> {
@@ -947,7 +972,7 @@ fn parse_command<'a>(code: &'a str) -> Result<CommandDef<'a>, ()> {
     })
 }
 
-fn parse_external_opaque_type(code: &str) -> Result<utils::VkTyName, ()> {
+fn parse_external_opaque_type(code: &str) -> Result<VkTyName, ()> {
     use crate::simple_parse::*;
 
     let input = crate::simple_parse::TokenIter::new(code);

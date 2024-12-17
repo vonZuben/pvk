@@ -314,7 +314,7 @@ impl<'a> VisitVkParse<'a> for Generator {
     fn visit_struct_def(&mut self, def: crate::vk_parse_visitor::StructDef<'a>) {
         let struct_name = utils::VkTyName::new(def.name);
 
-        let mut stct = types::Struct2::new(def.name);
+        let mut stct = types::Struct2::new(def.name, def.extends.into_iter().collect());
 
         let mut generic_struct = false;
         for member in def.members {

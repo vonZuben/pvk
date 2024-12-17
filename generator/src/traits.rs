@@ -82,6 +82,9 @@ impl ToTokens for VulkanCommand {
             pub trait BaseStructureMut: BaseStructure {
                 fn p_next_mut(&mut self) -> *mut BaseOutStructure;
             }
+
+            /// The implementor can be added to the pNext chain of `T`
+            pub unsafe trait StructExtends<T> {}
         )
     }
 }
