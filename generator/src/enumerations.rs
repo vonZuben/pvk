@@ -164,6 +164,7 @@ impl krs_quote::ToTokens for EnumTypes<'_> {
         });
 
         krs_quote_with!(tokens <-
+            #[allow(non_snake_case)]
             pub mod {@target} {
                 {@* {@variants} }
             }
@@ -287,11 +288,16 @@ impl krs_quote::ToTokens for EnumVariants {
 
         let mod_name = ModName::new(target);
 
-        let variant_name_strings = self.variants.iter().map(|c| c.name().normalize());
-
         let variant_names = self.variants.iter().map(|c| *c.name());
 
-        let properties = crate::enum_properties::properties(target, variant_names.clone());
+        let variants_dbg = self
+            .variants
+            .iter()
+            .filter(|c| !c.is_alias())
+            .map(|c| c.name());
+        let variants_dbg_strings = variants_dbg.clone().map(|c| c.normalize());
+
+        let properties = crate::enum_properties::properties(target, self.variants.iter());
 
         krs_quote_with!(tokens <-
             impl {@target} {
@@ -299,8 +305,12 @@ impl krs_quote::ToTokens for EnumVariants {
             }
             // add this to allow easily importing all names for the given type, since Rust does not currently allow importing const names from impl
             pub mod {@mod_name} {
+                #[allow(unused_imports)]
                 use super::{@target};
-                {@* pub const {@variant_names}: {@target} = {@target}::{@variant_names}; }
+                {@*
+                    #[allow(non_upper_case_globals)]
+                    pub const {@variant_names}: {@target} = {@target}::{@variant_names};
+                }
             }
 
             {@properties}
@@ -312,7 +322,7 @@ impl krs_quote::ToTokens for EnumVariants {
                     impl std::fmt::Debug for {@target} {
                         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                         let to_print = match *self {
-                            {@* Self::{@variant_names} => {@variant_name_strings},}
+                            {@* Self::{@variants_dbg} => {@variants_dbg_strings},}
                             _ => "Unknown Variant",
                         };
                         f.debug_tuple({@target_string})
@@ -330,7 +340,7 @@ impl krs_quote::ToTokens for EnumVariants {
                         let to_print = std::iter::from_fn(|| self_copy.take_lowest_bit())
                             .map(|bit| {
                                 match bit {
-                                    {@* Self::{@variant_names} => {@variant_name_strings},}
+                                    {@* Self::{@variants_dbg} => {@variants_dbg_strings},}
                                     _ => "Unknown Bit",
                                 }
                             })

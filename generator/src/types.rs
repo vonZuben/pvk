@@ -150,6 +150,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
         let base_structure = p_next.filter(|_| not_base_struct).map(|_| {
             krs_quote::ToTokensClosure(|tokens: &mut _| {
                 krs_quote_with!(tokens <-
+                    #[allow(non_camel_case_types)]
                     impl<{@,* {@generics}}> BaseStructure for {@name}<{@,* {@generics}}> {
                         const S_TYPE: StructureType = {@normalized_struct_name};
                         fn p_next(&self) -> *const BaseInStructure {
@@ -164,6 +165,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
             krs_quote::ToTokensClosure(|tokens: &mut _| {
                 if matches!(field.ty.ptr_type(), Some(ctype::Pointer::Mut)) {
                     krs_quote_with!(tokens <-
+                        #[allow(non_camel_case_types)]
                         impl<{@,* {@generics}}> BaseStructureMut for {@name}<{@,* {@generics}}> {
                             fn p_next_mut(&mut self) -> *mut BaseOutStructure {
                                 self.p_next.cast()
@@ -177,6 +179,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
         let extends = self.s.extends.iter().map(|extends| {
             krs_quote::to_tokens_closure!(tokens {
                 krs_quote_with!(tokens <-
+                    #[allow(non_camel_case_types)]
                     unsafe impl<{@,* {@generics}}> StructExtends<{@extends}> for {@name}<{@,* {@generics}}> {}
                 )
             })
@@ -188,6 +191,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                 krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[derive(Copy, Clone, Debug)]
+                    #[allow(non_camel_case_types)]
                     pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
@@ -202,6 +206,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                     #[repr(C)]
                     #[repr(packed)]
                     #[derive(Copy, Clone, Debug)]
+                    #[allow(non_camel_case_types)]
                     pub struct {@name} <{@,* {@generics}}> {
                         {@* {@fields} , }
                     }
@@ -473,12 +478,14 @@ impl krs_quote::ToTokens for FunctionPointer {
 
             #[repr(transparent)]
             #[derive(Copy, Clone)]
+            #[allow(non_camel_case_types)]
             pub struct {@name}(PFN_vkVoidFunction);
 
             impl {@name} {
                 pub unsafe fn new(fptr: PFN_vkVoidFunction) -> Self {
                     Self(fptr)
                 }
+                #[allow(non_camel_case_types)]
                 pub {@unsafe_get} fn get_fptr<{@,* {@generics}}>(self) -> {@fn_type}<{@,* {@generics}}> {
                     unsafe { std::mem::transmute(self) }
                 }

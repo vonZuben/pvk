@@ -59,6 +59,8 @@ impl krs_quote::ToTokens for Constant3 {
         let visibility = self.visibility;
 
         krs_quote_with!( tokens <-
+            #[allow(unused_parens)]
+            #[allow(non_upper_case_globals)]
             {@visibility} const {@name}: {@ty} = {@val};
         );
     }

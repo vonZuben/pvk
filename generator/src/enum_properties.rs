@@ -15,10 +15,11 @@ use structure_type as VkStructureType;
 
 use krs_quote::{krs_quote_with, ToTokens, TokenStream};
 
+use crate::constants::Constant3;
 use crate::utils::VkTyName;
 
-pub trait Variants: Iterator<Item = VkTyName> + Clone {}
-impl<T> Variants for T where T: Iterator<Item = VkTyName> + Clone {}
+pub trait Variants<'a>: Iterator<Item = &'a Constant3> + Clone {}
+impl<'a, T> Variants<'a> for T where T: Iterator<Item = &'a Constant3> + Clone {}
 
 struct Properties<I> {
     target: VkTyName,
@@ -44,7 +45,7 @@ macro_rules! match_enums {
     };
 }
 
-impl<I: Variants> ToTokens for Properties<I> {
+impl<'a, I: Variants<'a>> ToTokens for Properties<I> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match_enums!(self tokens: VkFormat, VkStructureType);
     }
@@ -57,6 +58,6 @@ trait ToTokensDelegate<I> {
     fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream);
 }
 
-pub fn properties<I: Variants>(target: VkTyName, variants: I) -> impl ToTokens {
+pub fn properties<'a, I: Variants<'a>>(target: VkTyName, variants: I) -> impl ToTokens {
     Properties::new(target, variants)
 }

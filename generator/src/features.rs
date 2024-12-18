@@ -154,8 +154,12 @@ impl krs_quote::ToTokens for VersionStruct<'_> {
         let command = self.commands.iter().filter(|r| r.is_require());
 
         krs_quote_with!(tokens <-
+            #[allow(non_camel_case_types)]
+            #[allow(non_snake_case)]
             pub struct {@name} {
-                {@* pub {@command}: {@command}, }
+                {@*
+                    pub {@command}: {@command},
+                }
             }
 
             impl {@name} {
@@ -180,6 +184,7 @@ impl krs_quote::ToTokens for VersionTrait<'_> {
         let commands = self.commands.iter().filter(|c| c.is_require());
 
         krs_quote_with!(tokens <-
+            #[allow(non_camel_case_types)]
             pub trait {@name} : CommandProvider + Version {@* + {@commands}} {}
             impl<T> {@name} for T where T: CommandProvider + Version {@* + {@commands}} {}
         );

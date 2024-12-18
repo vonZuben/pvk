@@ -69,6 +69,7 @@ impl krs_quote::ToTokens for Commands2 {
             pub mod has_command {
                 {@*
                     pub trait {@commands} {
+                        #[allow(non_snake_case)]
                         fn {@commands}(&self) -> super::{@commands};
                     }
 

@@ -14,6 +14,7 @@ impl krs_quote::ToTokens for StaticCode {
                 }
             }
 
+            #[allow(non_camel_case_types)]
             pub type PFN_vkVoidFunction = unsafe extern "system" fn() -> ();
 
             /// raw c string that is guaranteed to be a valid string for use in Vulkan context

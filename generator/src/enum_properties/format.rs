@@ -2,14 +2,18 @@ use super::*;
 
 pub struct Delegate;
 
-impl<I: Iterator<Item = VkTyName> + Clone> ToTokensDelegate<I> for Delegate {
+impl<'a, I: Variants<'a>> ToTokensDelegate<I> for Delegate {
     fn delegate_to_tokens(params: &Properties<I>, tokens: &mut TokenStream) {
         let target = params.target;
-        let variants = &params.variants;
+        let variants_names = params
+            .variants
+            .clone()
+            .filter(|v| !v.is_alias())
+            .map(|v| v.name());
 
-        let is_compressed = variants.clone().map(|v| v.contains("_BLOCK"));
-        let is_multi_planar = variants.clone().map(|v| v.contains("PLANE_"));
-        let has_depth_stencil: Vec<_> = variants
+        let is_compressed = variants_names.clone().map(|v| v.contains("_BLOCK"));
+        let is_multi_planar = variants_names.clone().map(|v| v.contains("PLANE_"));
+        let has_depth_stencil: Vec<_> = variants_names
             .clone()
             .map(|v| has_depth_stencil(v.as_str()))
             .collect();
@@ -20,25 +24,25 @@ impl<I: Iterator<Item = VkTyName> + Clone> ToTokensDelegate<I> for Delegate {
             impl {@target} {
                 pub const fn is_compressed_format(self) -> bool {
                     match self {
-                        {@* Self::{@variants} => {@is_compressed}, }
+                        {@* Self::{@variants_names} => {@is_compressed}, }
                         _ => panic!("invalid Format"),
                     }
                 }
                 pub const fn is_multi_planar_format(self) -> bool {
                     match self {
-                        {@* Self::{@variants} => {@is_multi_planar}, }
+                        {@* Self::{@variants_names} => {@is_multi_planar}, }
                         _ => panic!("invalid Format"),
                     }
                 }
                 pub const fn has_depth_component(self) -> bool {
                     match self {
-                        {@* Self::{@variants} => {@has_depth}, }
+                        {@* Self::{@variants_names} => {@has_depth}, }
                         _ => panic!("invalid Format"),
                     }
                 }
                 pub const fn has_stencil_component(self) -> bool {
                     match self {
-                        {@* Self::{@variants} => {@has_stencil}, }
+                        {@* Self::{@variants_names} => {@has_stencil}, }
                         _ => panic!("invalid Format"),
                     }
                 }

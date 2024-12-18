@@ -208,7 +208,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
 
                 #[doc(hidden)]
                 pub mod traits {
-                    {@* pub trait {@extension_names} {} }
+                    {@* #[allow(non_camel_case_types)] pub trait {@extension_names} {} }
                 }
 
                 #[doc(hidden)]
@@ -237,11 +237,16 @@ impl krs_quote::ToTokens for ExtensionStruct<'_> {
 
         krs_quote_with!(tokens <-
             #[doc(hidden)]
+            #[allow(non_camel_case_types)]
+            #[allow(non_snake_case)]
             pub struct {@name} {
-                {@* pub {@command}: {@command}, }
+                {@*
+                    pub {@command}: {@command},
+                }
             }
 
             impl {@name} {
+                #[allow(unused_variables)]
                 pub fn load(loader: impl FunctionLoader) -> std::result::Result<Self, CommandLoadError> {
                     Ok(Self {
                         {@* {@command} : {@command}::load(loader)?, }
@@ -262,6 +267,7 @@ impl krs_quote::ToTokens for ExtensionTrait<'_> {
         let name = self.name;
         let commands = self.commands.iter();
         krs_quote_with!(tokens <-
+            #[allow(non_camel_case_types)]
             pub trait {@name} : CommandProvider {@* + {@commands}} {}
             impl<T> {@name} for T where T: CommandProvider {@* + {@commands}} {}
         );
@@ -364,7 +370,9 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
                     krs_quote_with!(tokens <-
                         #[doc(hidden)]
                         pub mod instance {
+                            #[allow(unused_imports)]
                             use crate::extension::instance::traits::*;
+                            #[allow(unused_imports)]
                             use crate::version::instance::traits::*;
 
                             #[doc(hidden)]
@@ -383,8 +391,11 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
         krs_quote_with!(tokens <-
 
             #[doc(hidden)]
+            #[allow(non_snake_case)]
             pub mod {@name} {
+                #[allow(unused_imports)]
                 use crate::dependencies::traits::*;
+                #[allow(unused_imports)]
                 use crate::version::{@mod_name}::traits::*;
 
                 #[doc(hidden)]
@@ -502,6 +513,7 @@ impl krs_quote::ToTokens for DependencyTermTraits<'_> {
 
                 krs_quote_with!(tokens <-
                     #[doc(hidden)]
+                    #[allow(non_camel_case_types)]
                     pub trait {@name}<{@,* {@options}}> {}
                     impl<T, {@,* {@options}}> {@name}<{@,* {@options}}> for T where T: {@+* {@sub_terms}} {}
                 );
@@ -542,8 +554,13 @@ impl krs_quote::ToTokens for DependencyTermTraits<'_> {
 
                 krs_quote_with!(tokens <-
                     #[doc(hidden)]
+                    #[allow(non_camel_case_types)]
                     pub trait {@name}<O0, {@,* {@sub_options}}> {}
-                    {@* #[doc(hidden)] pub struct {@option_names};}
+                    {@*
+                        #[doc(hidden)]
+                        #[allow(non_camel_case_types)]
+                        pub struct {@option_names};
+                    }
 
                     {@* impl<T, {@,* {@sub_options}}> {@name}<{@option_names}, {@,* {@sub_options}}> for T where T: {@sub_terms} {} }
                 );
