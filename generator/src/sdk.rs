@@ -7,6 +7,7 @@ const VULKAN_SDK: EnvironmentVarName = "VULKAN_SDK";
 const VK_SDK_PATH: EnvironmentVarName = "VK_SDK_PATH";
 const VK_XML_OVERRIDE: EnvironmentVarName = "VK_XML_OVERRIDE";
 const VALIDUSAGE_JSON_OVERRIDE: EnvironmentVarName = "VALIDUSAGE_JSON_OVERRIDE";
+const VK_BIN_OVERRIDE: EnvironmentVarName = "VK_BIN_OVERRIDE";
 
 /**
 Provides an iterator over all environment variables that are relevant for generating the Vulkan code
@@ -18,6 +19,7 @@ pub fn relevant_env() -> impl Iterator<Item = &'static str> {
     [
         VK_XML_OVERRIDE,
         VALIDUSAGE_JSON_OVERRIDE,
+        VK_BIN_OVERRIDE,
         VULKAN_SDK,
         VK_SDK_PATH,
     ]
@@ -58,8 +60,10 @@ This is the folder where build tools
  */
 #[allow(unused)]
 pub fn sdk_bin_path() -> Option<PathBuf> {
-    let path = sdk_path()?.join("bin");
-    Some(path)
+    match var_os(VK_BIN_OVERRIDE) {
+        Some(path) => Some(path.into()),
+        None => sdk_path().map(|path| path.join("bin")),
+    }
 }
 
 /**
