@@ -134,41 +134,65 @@ impl krs_quote::ToTokens for StructToToken<'_> {
             .collect();
         let generics = &generics;
 
-        let normalized_struct_name = case::normalize(&name).as_code();
-
-        let p_next = self
-            .s
-            .fields
-            .iter()
-            .find(|field| field.name.as_str() == "pNext");
-
         let not_base_struct = match name.as_str() {
             "VkBaseOutStructure" | "VkBaseInStructure" => false,
             _ => true,
         };
 
-        let base_structure = p_next.filter(|_| not_base_struct).map(|_| {
-            krs_quote::ToTokensClosure(|tokens: &mut _| {
-                krs_quote_with!(tokens <-
-                    #[allow(non_camel_case_types)]
-                    impl<{@,* {@generics}}> BaseStructure for {@name}<{@,* {@generics}}> {
-                        const S_TYPE: StructureType = {@normalized_struct_name};
-                        fn p_next(&self) -> *const BaseInStructure {
-                            self.p_next.cast()
-                        }
-                    }
-                )
-            })
-        });
-
-        let base_structure_mut = p_next.filter(|_| not_base_struct).map(|field| {
-            krs_quote::ToTokensClosure(|tokens: &mut _| {
-                if matches!(field.ty.ptr_type(), Some(ctype::Pointer::Mut)) {
+        let s_type_trait = self
+            .s
+            .fields
+            .iter()
+            .filter(|_| not_base_struct)
+            .find(|f| f.name.as_str() == "sType")
+            .map(|_| {
+                let normalized_struct_name = case::normalize(&name).as_code();
+                to_tokens_closure!(tokens {
                     krs_quote_with!(tokens <-
                         #[allow(non_camel_case_types)]
-                        impl<{@,* {@generics}}> BaseStructureMut for {@name}<{@,* {@generics}}> {
+                        unsafe impl<{@,* {@generics}}> Stype for {@name}<{@,* {@generics}}> {
+                            const S_TYPE: StructureType = {@normalized_struct_name};
+                        }
+                    )
+                })
+            });
+
+        let base_structure_trait = self
+        .s
+        .fields
+        .iter()
+        .filter(|_| not_base_struct)
+        .find(|f| f.name.as_str() == "pNext")
+        .map(|f| {
+            to_tokens_closure!(tokens {
+                if matches!(f.ty.ptr_type(), Some(ctype::Pointer::Mut)) {
+                    krs_quote_with!(tokens <-
+                        #[allow(non_camel_case_types)]
+                        unsafe impl<{@,* {@generics}}> BaseStructureMut for {@name}<{@,* {@generics}}> {
                             fn p_next_mut(&mut self) -> *mut BaseOutStructure {
                                 self.p_next.cast()
+                            }
+                            fn as_base_structure_mut(&mut self) -> *mut BaseOutStructure {
+                                (self as *mut Self).cast()
+                            }
+                            unsafe fn set_p_next_mut(&mut self, p_next: *mut BaseOutStructure) {
+                                self.p_next = p_next.cast();
+                            }
+                        }
+                    )
+                }
+                else {
+                    krs_quote_with!(tokens <-
+                        #[allow(non_camel_case_types)]
+                        unsafe impl <{@,* {@generics}}> BaseStructure for {@name}<{@,* {@generics}}> {
+                            fn p_next(&self) -> *const BaseInStructure {
+                                self.p_next.cast()
+                            }
+                            fn as_base_structure(&self) -> *const BaseInStructure {
+                                (self as *const Self).cast()
+                            }
+                            unsafe fn set_p_next(&mut self, p_next: *const BaseInStructure) {
+                                self.p_next = p_next.cast();
                             }
                         }
                     )
@@ -196,8 +220,8 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                         {@* {@fields} , }
                     }
                     {@* {@extends}}
-                    {@base_structure}
-                    {@base_structure_mut}
+                    {@s_type_trait}
+                    {@base_structure_trait}
                 );
             }
             true => {
@@ -211,8 +235,8 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                         {@* {@fields} , }
                     }
                     {@* {@extends}}
-                    {@base_structure}
-                    {@base_structure_mut}
+                    {@s_type_trait}
+                    {@base_structure_trait}
                 );
             }
         }

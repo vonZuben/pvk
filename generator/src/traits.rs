@@ -69,18 +69,20 @@ impl ToTokens for VulkanCommand {
                 const VERSION: crate::VkVersion;
             }
 
-            const _ASSERT_BASE_STRUCTURES_EQUAL: () = {
-                assert!(std::mem::size_of::<BaseInStructure>() == std::mem::size_of::<BaseOutStructure>());
-                assert!(std::mem::align_of::<BaseInStructure>() == std::mem::align_of::<BaseOutStructure>());
-            };
-
-            pub trait BaseStructure {
+            pub unsafe trait Stype {
                 const S_TYPE: StructureType;
-                fn p_next(&self) -> *const BaseInStructure;
             }
 
-            pub trait BaseStructureMut: BaseStructure {
+            pub unsafe trait BaseStructure: Stype {
+                fn p_next(&self) -> *const BaseInStructure;
+                fn as_base_structure(&self) -> *const BaseInStructure;
+                unsafe fn set_p_next(&mut self, p_next: *const BaseInStructure);
+            }
+
+            pub unsafe trait BaseStructureMut: Stype {
                 fn p_next_mut(&mut self) -> *mut BaseOutStructure;
+                fn as_base_structure_mut(&mut self) -> *mut BaseOutStructure;
+                unsafe fn set_p_next_mut(&mut self, p_next: *mut BaseOutStructure);
             }
 
             /// The implementor can be added to the pNext chain of `T`
