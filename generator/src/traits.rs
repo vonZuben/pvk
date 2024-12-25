@@ -73,12 +73,18 @@ impl ToTokens for VulkanCommand {
                 const S_TYPE: StructureType;
             }
 
+            /// Indicates that a pointer to Self can be safely read and written to as a pointer to BaseInStructure
+            ///
+            /// also provides some maybe useful convenience methods
             pub unsafe trait BaseStructure: Stype {
                 fn p_next(&self) -> *const BaseInStructure;
                 fn as_base_structure(&self) -> *const BaseInStructure;
                 unsafe fn set_p_next(&mut self, p_next: *const BaseInStructure);
             }
 
+            /// Indicates that a pointer to Self can be safely read and written to as a pointer to BaseOutStructure
+            ///
+            /// also provides some maybe useful convenience methods
             pub unsafe trait BaseStructureMut: Stype {
                 fn p_next_mut(&mut self) -> *mut BaseOutStructure;
                 fn as_base_structure_mut(&mut self) -> *mut BaseOutStructure;
