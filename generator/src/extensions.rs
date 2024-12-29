@@ -173,39 +173,6 @@ impl krs_quote::ToTokens for ExtensionCollection {
 
             #[cfg(not(doc))]
             pub mod dependencies {
-                #[repr(C)]
-                pub struct R<C, T>(C, T);
-
-                #[repr(C)]
-                pub struct End;
-
-                /// provide the number of elements in the list
-                unsafe trait Len {
-                    const LEN: usize;
-                }
-
-                unsafe impl Len for End {
-                    const LEN: usize = 0;
-                }
-
-                unsafe impl<C: Len, T> Len for R<C, T> {
-                    const LEN: usize = 1 + C::LEN;
-                }
-
-                /// ensure each element in the list is the same type
-                unsafe trait ListOf<T> {}
-
-                unsafe impl<T> ListOf<T> for End {}
-
-                unsafe impl<C: ListOf<T>, T> ListOf<T> for R<C, T> {}
-
-                impl<C, T> AsRef<[T]> for R<C, T> where Self: ListOf<T> + Len {
-                    fn as_ref(&self) -> &[T] {
-                        let ptr: *const T = self as *const Self as *const T;
-                        unsafe { std::slice::from_raw_parts(ptr, Self::LEN) }
-                    }
-                }
-
                 #[doc(hidden)]
                 pub mod traits {
                     {@* #[allow(non_camel_case_types)] pub trait {@extension_names} {} }
