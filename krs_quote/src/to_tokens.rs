@@ -1,4 +1,5 @@
 use std::fmt;
+use std::iter::Peekable;
 use std::rc::Rc;
 
 use crate::runtime::GetTokenIter;
@@ -96,6 +97,12 @@ impl<T: ToTokens> ToTokens for Option<T> {
             Some(t) => t.to_tokens(tokens),
             None => {}
         }
+    }
+}
+
+impl<T: ToTokens> ToTokens for std::cell::Ref<'_, T> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        (**self).to_tokens(tokens)
     }
 }
 
@@ -222,45 +229,36 @@ impl<T: SpecialToken> From<T> for RawToken {
     }
 }
 
-// Some(()) signals something was generated, and None means nothing was generated
-type Signal = Option<()>;
-
 #[doc(hidden)]
-pub struct TokenAdvancer<S, I, T> {
+pub struct TokenAdvancer<S, I: Iterator> {
     source: S,
-    iter: Option<I>,
-    to_tokens: Option<T>,
+    iter: Option<Peekable<I>>,
 }
 
-impl<S: GetTokenIter> TokenAdvancer<S, S::TokenIter, S::Item> {
+impl<S: GetTokenIter> TokenAdvancer<S, S::TokenIter> {
     pub fn new(source: S) -> Self {
-        Self {
-            source,
-            iter: None,
-            to_tokens: None,
-        }
+        Self { source, iter: None }
     }
 }
 
 #[doc(hidden)]
 pub trait GenerateTokens {
     fn init(&mut self);
-    fn advance_token(&mut self) -> Signal;
+    fn advance_token(&mut self) -> bool;
     fn to_tokens(&mut self, ts: &mut TokenStream);
 }
 
-impl<S: GetTokenIter> GenerateTokens for TokenAdvancer<S, S::TokenIter, S::Item> {
+impl<S: GetTokenIter> GenerateTokens for TokenAdvancer<S, S::TokenIter> {
     fn init(&mut self) {
-        self.iter = Some(self.source.get_token_iter());
+        self.iter = Some(self.source.get_token_iter().peekable());
     }
 
-    fn advance_token(&mut self) -> Signal {
-        self.to_tokens = Some(self.iter.as_mut().unwrap().next()?); // although next() already returns Option, we need to know if it was some or not for the Signal, so we also re-wrap in Some(_)
-        Some(())
+    fn advance_token(&mut self) -> bool {
+        self.iter.as_mut().unwrap().peek().is_some()
     }
 
     fn to_tokens(&mut self, ts: &mut TokenStream) {
-        self.to_tokens.as_ref().unwrap().to_tokens(ts);
+        self.iter.as_mut().unwrap().next().to_tokens(ts);
     }
 }
 
@@ -271,11 +269,13 @@ impl<'a, const N: usize> GenerateTokens for [Box<dyn GenerateTokens + 'a>; N] {
         }
     }
 
-    fn advance_token(&mut self) -> Signal {
+    fn advance_token(&mut self) -> bool {
         for x in self.iter_mut() {
-            x.advance_token()?;
+            if x.advance_token() == false {
+                return false;
+            }
         }
-        Some(())
+        true
     }
 
     fn to_tokens(&mut self, ts: &mut TokenStream) {
@@ -311,13 +311,13 @@ impl<T: ToTokens> GenerateTokens for SkipFirst<T> {
         self.skip = Skip::Init;
     }
 
-    fn advance_token(&mut self) -> Signal {
+    fn advance_token(&mut self) -> bool {
         match self.skip {
             Skip::Init => self.skip = Skip::Skip,
             Skip::Skip => self.skip = Skip::Ok,
             Skip::Ok => {}
         };
-        Some(())
+        true
     }
 
     fn to_tokens(&mut self, ts: &mut TokenStream) {
@@ -353,13 +353,13 @@ impl<T: ToTokens> GenerateTokens for One<T> {
         self.state = OneState::One;
     }
 
-    fn advance_token(&mut self) -> Signal {
+    fn advance_token(&mut self) -> bool {
         match self.state {
             OneState::One => {
                 self.state = OneState::Done;
-                Some(())
+                true
             }
-            OneState::Done => None,
+            OneState::Done => false,
         }
     }
 
@@ -374,13 +374,13 @@ pub struct Repeat<R>(pub R);
 impl<R: GenerateTokens> GenerateTokens for Repeat<R> {
     fn init(&mut self) {}
 
-    fn advance_token(&mut self) -> Signal {
-        Some(())
+    fn advance_token(&mut self) -> bool {
+        true
     }
 
     fn to_tokens(&mut self, ts: &mut TokenStream) {
         self.0.init();
-        while self.0.advance_token().is_some() {
+        while self.0.advance_token() {
             self.0.to_tokens(ts);
         }
     }
