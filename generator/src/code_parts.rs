@@ -22,6 +22,7 @@ macro_rules! code_parts {
             versions,
             extensions,
             aliases,
+            dependencies,
         )$($semi)?
     };
 }

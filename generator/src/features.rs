@@ -36,6 +36,10 @@ impl FeatureCollection {
     pub fn feature_names_iter(&self) -> impl Iterator<Item = &str> + Clone {
         self.versions.iter().map(|f| f.version.as_str())
     }
+
+    pub fn features(&self) -> impl Iterator<Item = VkTyName> + Clone + use<'_> {
+        self.versions.iter().map(|f| f.version)
+    }
 }
 
 impl krs_quote::ToTokens for FeatureCollection {

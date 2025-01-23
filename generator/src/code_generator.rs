@@ -192,6 +192,17 @@ impl Generator {
         let aliases = self.types.aliases_to_tokens();
         krs_quote!({@aliases}).to_string()
     }
+
+    /// generates a module with traits that represent all versions and extensions
+    /// used when checking that a specific version of extension is supported as
+    /// a dependency before certain features can be used
+    pub fn dependencies(&self) -> String {
+        let dependencies = crate::dependencies::dependencies_to_tokens(
+            self.feature_collection.features(),
+            self.extensions.extensions(),
+        );
+        krs_quote!({@dependencies}).to_string()
+    }
 }
 
 // =================================================================
@@ -434,9 +445,13 @@ impl<'a> VisitVkParse<'a> for Generator {
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
         self.types.add_generic_type(name);
     }
-    fn visit_require_type(&mut self, name: &'a str) {
+    fn visit_require_type(&mut self, name: &'a str, from: &'a str) {
         let name = name.into();
+        // let from = from.into();
         self.types.enable_type(name);
+        if let Some(alias) = self.types.get_alias_def(name) {
+            self.types.enable_type(alias.ty);
+        }
         self.enum_collection.enable_variants(name);
     }
     // fn visit_api_version(&mut self, _version: (u32, u32)) {}

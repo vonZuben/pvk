@@ -20,6 +20,7 @@ mod code_generator;
 mod commands;
 mod constants;
 mod ctype;
+mod dependencies;
 mod enum_properties;
 mod enumerations;
 mod extensions;

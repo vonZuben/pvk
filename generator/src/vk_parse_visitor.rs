@@ -18,7 +18,7 @@ pub trait VisitVkParse<'a> {
     fn visit_require_command(&mut self, def: CommandRef<'a>);
     fn visit_remove_command(&mut self, def: CommandRef<'a>);
     fn visit_external_type(&mut self, name: VkTyName);
-    fn visit_require_type(&mut self, name: &'a str);
+    fn visit_require_type(&mut self, name: &'a str, from: &'a str);
     // fn visit_api_version(&mut self, version: (u32, u32));
     // fn visit_header_version(&mut self, version: u32);
 }
@@ -278,7 +278,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         name: type_name,
                                         comment: _,
                                     } => {
-                                        visitor.visit_require_type(&type_name);
+                                        visitor.visit_require_type(&type_name, &feature.name);
                                     }
                                     Enum(enm) => {
                                         let extends = enm.spec.extends();
@@ -401,7 +401,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                             name: type_name,
                                             comment: _,
                                         } => {
-                                            visitor.visit_require_type(&type_name);
+                                            visitor.visit_require_type(&type_name, &extension.name);
                                         }
                                         Enum(enm) => {
                                             if !supported_api(enm.api.as_ref()) {

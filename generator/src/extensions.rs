@@ -2,7 +2,7 @@ use krs_quote::krs_quote_with;
 
 use crate::utils::{StrAsCode, VecMap, VkTyName};
 
-use std::fmt::Write;
+use std::cell::{Ref, RefCell};
 use std::ops::{Deref, DerefMut};
 
 // a collection of extensions
@@ -26,6 +26,10 @@ impl ExtensionCollection {
         self.extensions
             .iter()
             .map(|e| e.extension_name.name_as_str())
+    }
+
+    pub fn extensions(&self) -> impl Iterator<Item = VkTyName> + Clone + use<'_> {
+        self.extensions.iter().map(|e| e.extension_name.name())
     }
 }
 
@@ -55,43 +59,44 @@ impl krs_quote::ToTokens for ExtensionCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let extensions = self.extensions.iter();
 
-        let extension_names = self.extensions.iter().map(|e| e.extension_name);
-
         // structs
-        let instance_structs =
+        let instance_command_structs =
             extensions
                 .clone()
                 .filter(instance_filter)
-                .map(|e| ExtensionStruct {
+                .map(|e| ExtensionCommandStruct {
                     name: e.extension_name,
                     commands: &e.instance_command_names,
                 });
-        let device_structs = extensions
-            .clone()
-            .filter(device_filter)
-            .map(|e| ExtensionStruct {
-                name: e.extension_name,
-                commands: &e.device_command_names,
-            });
+        let device_command_structs =
+            extensions
+                .clone()
+                .filter(device_filter)
+                .map(|e| ExtensionCommandStruct {
+                    name: e.extension_name,
+                    commands: &e.device_command_names,
+                });
 
         // traits
-        let instance_traits = extensions
-            .clone()
-            .filter(instance_filter)
-            .map(|e| ExtensionTrait {
-                name: e.extension_name,
-                commands: &e.instance_command_names,
-            });
-        let device_traits = extensions
-            .clone()
-            .filter(device_filter)
-            .map(|e| ExtensionTrait {
-                name: e.extension_name,
-                commands: &e.device_command_names,
-            });
+        let instance_command_traits =
+            extensions
+                .clone()
+                .filter(instance_filter)
+                .map(|e| ExtensionCommandTrait {
+                    name: e.extension_name,
+                    commands: &e.instance_command_names,
+                });
+        let device_command_traits =
+            extensions
+                .clone()
+                .filter(device_filter)
+                .map(|e| ExtensionCommandTrait {
+                    name: e.extension_name,
+                    commands: &e.device_command_names,
+                });
 
         // commands macro
-        let instance_macros =
+        let instance_command_macros =
             extensions
                 .clone()
                 .filter(instance_filter)
@@ -100,7 +105,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
                     mod_name: "instance",
                     commands: &e.instance_command_names,
                 });
-        let device_macros =
+        let device_command_macros =
             extensions
                 .clone()
                 .filter(device_filter)
@@ -115,76 +120,79 @@ impl krs_quote::ToTokens for ExtensionCollection {
             extensions
                 .clone()
                 .filter(instance_filter)
-                .map(|e| ExtensionDependencyMacros {
+                .map(|e| ExtensionLoadsMacros {
                     info: e,
                     suffix: "instance_loads",
                     for_kind: ExtensionKind::Instance,
-                    all_extensions: self,
                 });
         let device_dep_macros =
             extensions
                 .clone()
                 .filter(device_filter)
-                .map(|e| ExtensionDependencyMacros {
+                .map(|e| ExtensionLoadsMacros {
                     info: e,
                     suffix: "device_loads",
                     for_kind: ExtensionKind::Device,
-                    all_extensions: self,
                 });
+
+        let macro_dependency_traits = extensions.clone().map(|e| MacroDependencyTraits {
+            info: e,
+            all_extensions: self,
+        });
 
         krs_quote_with!(tokens <-
 
             #[doc(hidden)]
             pub mod extension {
                 pub mod instance {
-                    pub mod traits {
+                    pub mod command_traits {
                         use crate::has_command::*;
                         use crate::CommandProvider;
-                        {@* {@instance_traits}}
+                        {@* {@instance_command_traits}}
                     }
                     #[doc(hidden)]
-                    pub mod macros {
-                        {@* {@instance_macros}}
+                    pub mod command_macros {
+                        {@* {@instance_command_macros}}
                     }
                     #[doc(hidden)]
-                    pub mod structs {
+                    pub mod command_structs {
                         use super::super::super::*;
-                        {@* {@instance_structs}}
+                        {@* {@instance_command_structs}}
                     }
                 }
 
                 pub mod device {
-                    pub mod traits {
+                    pub mod command_traits {
                         use crate::has_command::*;
                         use crate::CommandProvider;
-                        {@* {@device_traits}}
+                        {@* {@device_command_traits}}
                     }
                     #[doc(hidden)]
-                    pub mod macros {
-                        {@* {@device_macros}}
+                    pub mod command_macros {
+                        {@* {@device_command_macros}}
                     }
                     #[doc(hidden)]
-                    pub mod structs {
+                    pub mod command_structs {
                         use super::super::super::*;
-                        {@* {@device_structs}}
+                        {@* {@device_command_structs}}
                     }
                 }
             }
 
             #[cfg(not(doc))]
-            pub mod dependencies {
-                #[doc(hidden)]
-                pub mod traits {
-                    {@* #[allow(non_camel_case_types)] pub trait {@extension_names} {} }
-                }
+            pub mod macro_dependency_traits {
+                {@* {@macro_dependency_traits}}
+            }
 
+            #[cfg(not(doc))]
+            pub mod macro_loads {
                 #[doc(hidden)]
-                pub mod instance {
+                pub mod instance_loads {
                     {@* {@instance_dep_macros}}
                 }
 
                 #[doc(hidden)]
-                pub mod device {
+                pub mod device_loads {
                     {@* {@device_dep_macros}}
                 }
             }
@@ -192,12 +200,12 @@ impl krs_quote::ToTokens for ExtensionCollection {
     }
 }
 
-struct ExtensionStruct<'a> {
+struct ExtensionCommandStruct<'a> {
     name: ExtensionName,
     commands: &'a [VkTyName],
 }
 
-impl krs_quote::ToTokens for ExtensionStruct<'_> {
+impl krs_quote::ToTokens for ExtensionCommandStruct<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let command = self.commands.iter();
@@ -224,12 +232,12 @@ impl krs_quote::ToTokens for ExtensionStruct<'_> {
     }
 }
 
-struct ExtensionTrait<'a> {
+struct ExtensionCommandTrait<'a> {
     name: ExtensionName,
     commands: &'a [VkTyName],
 }
 
-impl krs_quote::ToTokens for ExtensionTrait<'_> {
+impl krs_quote::ToTokens for ExtensionCommandTrait<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let commands = self.commands.iter();
@@ -265,14 +273,147 @@ impl krs_quote::ToTokens for ExtensionCommandMacros<'_> {
     }
 }
 
-struct ExtensionDependencyMacros<'a> {
+struct MacroDependencyTraits<'a> {
     info: &'a ExtensionInfo,
-    suffix: &'a str,
-    for_kind: ExtensionKind,
     all_extensions: &'a ExtensionCollection,
 }
 
-impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
+impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.info.extension_name;
+
+        let options = (0..)
+            .into_iter()
+            .map(|n| krs_quote::Token::from(format!("O{n}")));
+        let options = &options;
+
+        let instance_dependencies = self
+            .info
+            .dependencies
+            .as_ref()
+            .and_then(|dep| get_instance_dependency_terms(self.all_extensions, dep))
+            .map(|deps| {
+                let solutions = DependencyTermSolution::from(deps);
+                RefCell::new(solutions)
+            });
+
+        let device_dependencies = self
+            .info
+            .dependencies
+            .as_ref()
+            .and_then(|dep| get_device_dependency_terms(self.all_extensions, dep))
+            .map(|deps| {
+                let solutions = DependencyTermSolution::from(deps);
+                RefCell::new(solutions)
+            });
+
+        let dependencies_to_tokens = |deps| {
+            krs_quote::to_tokens_closure!(tokens {
+                if let &Some(ref deps) = deps {
+                    let solutions = SolutionIterator::new(deps);
+
+                    let message = format!("The dependencies for `{}` are not satisfied", name.name_as_str());
+                    let notes: Vec<_> = solutions.clone().map(|s| {
+                        s.get_solution_terms().iter().map(|t| t.as_str()).my_intersperse(" + ").collect::<String>()
+                    }).collect();
+
+                    let label;
+                    if notes.len() == 1 {
+                        label = "Enable the below Version/Extensions for this."
+                    }
+                    else {
+                        label = "Enable one of the below sets of Version/Extensions for this."
+                    }
+
+                    krs_quote_with!(tokens <-
+                        #[allow(unused_imports)]
+                        use crate::dependencies::*;
+
+                        #[diagnostic::on_unimplemented(
+                            message = {@message},
+                            label = {@label},
+                            {@,* note = {@notes}}
+                        )]
+                        pub trait HasDependency<O> {}
+
+                        {@*
+                            struct {@options};
+                            impl<T> HasDependency<{@options}> for T where T: {@solutions} {}
+                        }
+                    )
+                }
+                else {
+                    krs_quote_with!(tokens <-
+                        pub trait HasDependency<O> {}
+                        struct O;
+                        impl<T> HasDependency<O> for T {}
+                    )
+                }
+            })
+        };
+
+        let instance_dependencies = dependencies_to_tokens(&instance_dependencies);
+
+        let device_dependencies = dependencies_to_tokens(&device_dependencies);
+
+        krs_quote_with!(tokens <-
+            #[doc(hidden)]
+            #[allow(non_snake_case)]
+            pub mod {@name} {
+                pub mod instance {
+                    {@instance_dependencies}
+                }
+
+                pub mod device {
+                    {@device_dependencies}
+                }
+            }
+        )
+    }
+}
+
+struct Intersperse<I: Iterator> {
+    iter: std::iter::Peekable<I>,
+    separator: I::Item,
+    sep_next: bool,
+}
+
+trait IntoIntersperse: Iterator + Sized {
+    fn my_intersperse(self, separator: Self::Item) -> Intersperse<Self> {
+        Intersperse {
+            iter: self.peekable(),
+            separator,
+            sep_next: false,
+        }
+    }
+}
+
+impl<I: Iterator> IntoIntersperse for I {}
+
+impl<I: Iterator> Iterator for Intersperse<I>
+where
+    I::Item: Copy,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.sep_next && self.iter.peek().is_some() {
+            self.sep_next = false;
+            Some(self.separator)
+        } else {
+            self.sep_next = true;
+            self.iter.next()
+        }
+    }
+}
+
+struct ExtensionLoadsMacros<'a> {
+    info: &'a ExtensionInfo,
+    suffix: &'a str,
+    for_kind: ExtensionKind,
+}
+
+impl krs_quote::ToTokens for ExtensionLoadsMacros<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.info.extension_name;
         let loads = match name {
@@ -286,94 +427,9 @@ impl krs_quote::ToTokens for ExtensionDependencyMacros<'_> {
         .map(|s| format!("{s}{}{}", "\\", "0")) // building the null character in a way that is only seen as a null character in the generated code
         .into_iter();
 
-        let instance_dependencies = self.info.dependencies.as_ref().and_then(|dep| {
-            get_instance_dependency_terms(self.all_extensions, dep).map(DependencyTermMeta::from)
-        });
-        let device_dependencies = self.info.dependencies.as_ref().and_then(|dep| {
-            get_device_dependency_terms(self.all_extensions, dep).map(DependencyTermMeta::from)
-        });
-
-        let (main_dependencies, secondary_dependencies) = match self.for_kind {
-            ExtensionKind::Instance => (instance_dependencies, None),
-            ExtensionKind::Device => (device_dependencies, instance_dependencies),
-        };
-
-        let mod_name = match self.for_kind {
-            ExtensionKind::Instance => "instance".as_code(),
-            ExtensionKind::Device => "device".as_code(),
-        };
-
-        fn dependency_parts(
-            dep: Option<&DependencyTermMeta>,
-        ) -> (
-            Option<DependencyTermTraits>,
-            impl Iterator<Item = VkTyName> + Clone,
-            Option<crate::utils::TokenWrapper>,
-        ) {
-            (
-                dep.map(DependencyTermTraits::from),
-                dep.map(|dep| dep.name).into_iter(),
-                dep.map(|dep| {
-                    String::from_iter(
-                        (0..dep.number_of_options)
-                            .into_iter()
-                            .map(|n| format!("O{n},")),
-                    )
-                    .as_code()
-                }),
-            )
-        }
-
-        let (main_dependency_traits, main_dep_name, main_options) =
-            dependency_parts(main_dependencies.as_ref());
-
-        let (secondary_dependency_traits, secondary_dep_name, secondary_options) =
-            dependency_parts(secondary_dependencies.as_ref());
-
-        let secondary_deps = match self.for_kind {
-            ExtensionKind::Instance => None,
-            ExtensionKind::Device => Some(krs_quote::ToTokensClosure(
-                |tokens: &mut krs_quote::TokenStream| {
-                    krs_quote_with!(tokens <-
-                        #[doc(hidden)]
-                        pub mod instance {
-                            #[allow(unused_imports)]
-                            use crate::extension::instance::traits::*;
-                            #[allow(unused_imports)]
-                            use crate::version::instance::traits::*;
-
-                            #[doc(hidden)]
-                            pub trait HasDependency<O> {}
-                            impl<I, {@secondary_options}> HasDependency<({@secondary_options})> for I {@* where I: {@secondary_dep_name}<{@secondary_options}> } {}
-
-                            {@secondary_dependency_traits}
-                        }
-                    )
-                },
-            )),
-        };
-
         let macro_name = format!("{}_{}", name.name_as_str(), self.suffix).as_code();
 
         krs_quote_with!(tokens <-
-
-            #[doc(hidden)]
-            #[allow(non_snake_case)]
-            pub mod {@name} {
-                #[allow(unused_imports)]
-                use crate::dependencies::traits::*;
-                #[allow(unused_imports)]
-                use crate::version::{@mod_name}::traits::*;
-
-                #[doc(hidden)]
-                pub const fn check_dependencies<T {@* : {@main_dep_name}<{@main_options}>, {@main_options} }>
-                    (_infer: std::marker::PhantomData<T>) {}
-
-                {@main_dependency_traits}
-
-                {@secondary_deps}
-            }
-
             #[doc(hidden)]
             #[macro_export]
             macro_rules! {@macro_name} {
@@ -445,213 +501,192 @@ impl krs_quote::ToTokens for ExtensionKind {
     }
 }
 
-struct DependencyTermTraits<'a> {
-    dependencies: &'a DependencyTermMeta,
-}
-
-impl krs_quote::ToTokens for DependencyTermTraits<'_> {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        match self.dependencies.inner {
-            DependencyTermMetaInner::Single(_) => {}
-            DependencyTermMetaInner::And(ref terms) => {
-                let name = self.dependencies.name;
-                let mut option_count = 0;
-
-                let sub_terms: Vec<_> = terms
-                    .iter()
-                    .map(|term| {
-                        let mut options = String::with_capacity(4 * term.number_of_options); // assuming single digit number of options, len of "O#, " is 4
-                        for n in std::iter::from_fn(|| {
-                            let tmp = option_count;
-                            option_count += 1;
-                            Some(tmp)
-                        })
-                        .take(term.number_of_options)
-                        {
-                            write!(options, "O{n}, ").unwrap()
-                        }
-                        format!("{}<{}>", term.name, options).as_code()
-                    })
-                    .collect();
-
-                let options = (0..self.dependencies.number_of_options)
-                    .into_iter()
-                    .map(|n| format!("O{n}").as_code());
-
-                krs_quote_with!(tokens <-
-                    #[doc(hidden)]
-                    #[allow(non_camel_case_types)]
-                    pub trait {@name}<{@,* {@options}}> {}
-                    impl<T, {@,* {@options}}> {@name}<{@,* {@options}}> for T where T: {@+* {@sub_terms}} {}
-                );
-
-                for term in terms.iter() {
-                    DependencyTermTraits { dependencies: term }.to_tokens(tokens);
-                }
-            }
-            DependencyTermMetaInner::Or(ref terms) => {
-                let name = self.dependencies.name;
-                let mut option_count = 1;
-
-                let sub_terms: Vec<_> = terms
-                    .iter()
-                    .map(|term| {
-                        let mut options = String::with_capacity(4 * term.number_of_options); // assuming single digit number of options, len of "O#, " is 4
-                        for n in std::iter::from_fn(|| {
-                            let tmp = option_count;
-                            option_count += 1;
-                            Some(tmp)
-                        })
-                        .take(term.number_of_options)
-                        {
-                            write!(options, "O{n}, ").unwrap()
-                        }
-                        format!("{}<{}>", term.name, options).as_code()
-                    })
-                    .collect();
-
-                let sub_options = (1..self.dependencies.number_of_options)
-                    .into_iter()
-                    .map(|n| format!("O{n}").as_code());
-
-                let option_names: Vec<_> = terms
-                    .iter()
-                    .map(|term| format!("O_{}", term.name).as_code())
-                    .collect();
-
-                krs_quote_with!(tokens <-
-                    #[doc(hidden)]
-                    #[allow(non_camel_case_types)]
-                    pub trait {@name}<O0, {@,* {@sub_options}}> {}
-                    {@*
-                        #[doc(hidden)]
-                        #[allow(non_camel_case_types)]
-                        pub struct {@option_names};
-                    }
-
-                    {@* impl<T, {@,* {@sub_options}}> {@name}<{@option_names}, {@,* {@sub_options}}> for T where T: {@sub_terms} {} }
-                );
-
-                for term in terms.iter() {
-                    DependencyTermTraits { dependencies: term }.to_tokens(tokens);
-                }
-            }
-        }
-    }
-}
-
-impl<'a> From<&'a DependencyTermMeta> for DependencyTermTraits<'a> {
-    fn from(dependencies: &'a DependencyTermMeta) -> Self {
-        Self { dependencies }
-    }
-}
-
 #[derive(Debug)]
-pub enum DependencyKind {
+enum DependencyKind {
     Version,
     InstanceExtension,
     DeviceExtension,
 }
 
-#[derive(Clone)]
-struct DependencyTermMeta {
-    name: VkTyName,
-    number_of_options: usize,
-    inner: DependencyTermMetaInner,
-}
-
-impl std::fmt::Debug for DependencyTermMeta {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DependencyTerm")
-            .field("name", &self.name.as_str())
-            .field("number_of_options", &self.number_of_options)
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-#[derive(Clone)]
-enum DependencyTermMetaInner {
+/// Identify possible solutions of the terms
+///
+/// Terms that include 'Or' clauses have different permutations
+/// of solutions for all combinations of options for all
+/// 'Or' clauses.
+///
+/// This identifies a specific permutation with an index for each 'Or'
+/// clause. The first/default solution is an arbitrary solution with
+/// zero index for all 'Or' clauses.
+///
+/// Each permutation can be iterated through by incrementing the
+/// index with [`increment`].
+enum DependencyTermSolution {
     Single(VkTyName),
-    And(Vec<DependencyTermMeta>),
-    Or(Vec<DependencyTermMeta>),
+    And(Vec<DependencyTermSolution>),
+    Or(usize, Vec<DependencyTermSolution>),
 }
 
-impl DependencyTermMetaInner {
-    fn name(&self) -> VkTyName {
+/// Report increment result
+enum IncrementResult {
+    /// There are no 'Or' clauses and nothing to increment
+    NoIncrement,
+    /// Has incremented
+    Incremented,
+    /// Has incremented and looped back to the first/default solution
+    LoopBack,
+}
+
+impl DependencyTermSolution {
+    /// increment to the next possible solution
+    ///
+    /// Recursively check the Term tree and increment the
+    /// index of one `Or` clause at a time. When the index of
+    /// and `Or` clause has been incremented enough times to
+    /// loop back to the first/default index, increment the
+    /// next `Or` claus ein the tree.
+    ///
+    /// IncrementResult::LoopBack will be reported when
+    /// all solutions have been iterated, and it has looped back
+    /// to the first/default solution.
+    fn increment(&mut self) -> IncrementResult {
         match self {
-            DependencyTermMetaInner::Single(name) => *name,
-            DependencyTermMetaInner::And(ref terms) => {
-                let mut terms = terms.iter().peekable();
-                let mut name = String::new();
-                while let Some(term) = terms.next() {
-                    if terms.peek().is_some() {
-                        name.push_str(term.name.as_str());
-                        name.push_str("__AND__");
-                    } else {
-                        name.push_str(term.name.as_str());
+            DependencyTermSolution::Single(_) => IncrementResult::NoIncrement,
+            DependencyTermSolution::And(vec) => {
+                use IncrementResult::*;
+
+                let mut result = NoIncrement;
+                for term in vec.iter_mut() {
+                    match term.increment() {
+                        NoIncrement => {}
+                        Incremented => {
+                            result = Incremented;
+                            break;
+                        }
+                        LoopBack => {
+                            result = LoopBack;
+                        }
                     }
                 }
-                name.into()
+                result
             }
-            DependencyTermMetaInner::Or(ref terms) => {
-                let mut terms = terms.iter().peekable();
-                let mut name = String::new();
-                while let Some(term) = terms.next() {
-                    if terms.peek().is_some() {
-                        name.push_str(term.name.as_str());
-                        name.push_str("__OR__");
-                    } else {
-                        name.push_str(term.name.as_str());
+            DependencyTermSolution::Or(index, vec) => {
+                use IncrementResult::*;
+
+                let mut result = NoIncrement;
+                for term in vec.iter_mut() {
+                    match term.increment() {
+                        NoIncrement => {}
+                        Incremented => {
+                            result = Incremented;
+                            break;
+                        }
+                        LoopBack => {
+                            result = LoopBack;
+                        }
                     }
                 }
-                name.into()
+
+                match result {
+                    NoIncrement | LoopBack => {
+                        *index += 1;
+                        if *index == vec.len() {
+                            *index = 0;
+                            LoopBack
+                        } else {
+                            Incremented
+                        }
+                    }
+                    Incremented => Incremented,
+                }
             }
         }
     }
 
-    fn number_of_options(&self) -> usize {
+    fn get_solution_terms(&self) -> Vec<VkTyName> {
+        fn get_solution_helper(solution: &DependencyTermSolution, terms: &mut Vec<VkTyName>) {
+            match solution {
+                DependencyTermSolution::Single(vk_ty_name) => terms.push(*vk_ty_name),
+                DependencyTermSolution::And(vec) => {
+                    for term in vec {
+                        get_solution_helper(term, terms);
+                    }
+                }
+                DependencyTermSolution::Or(index, vec) => {
+                    get_solution_helper(unsafe { vec.get_unchecked(*index) }, terms)
+                }
+            };
+        }
+
+        let mut vec = Vec::new();
+        get_solution_helper(self, &mut vec);
+        vec
+    }
+}
+
+impl krs_quote::ToTokens for DependencyTermSolution {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         match self {
-            DependencyTermMetaInner::Single(_) => 0,
-            DependencyTermMetaInner::And(ref terms) => terms
-                .iter()
-                .fold(0, |count, term| count + term.number_of_options),
-            DependencyTermMetaInner::Or(ref terms) => terms
-                .iter()
-                .fold(1, |count, term| count + term.number_of_options),
-        }
-    }
-}
-
-impl std::fmt::Debug for DependencyTermMetaInner {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Single(arg0) => f.debug_tuple("Single").field(&arg0.as_str()).finish(),
-            Self::And(arg0) => f.debug_tuple("And").field(arg0).finish(),
-            Self::Or(arg0) => f.debug_tuple("Or").field(arg0).finish(),
-        }
-    }
-}
-
-impl From<DependencyTerm> for DependencyTermMeta {
-    fn from(raw_term: DependencyTerm) -> Self {
-        let inner: DependencyTermMetaInner = raw_term.into();
-        Self {
-            name: inner.name(),
-            number_of_options: inner.number_of_options(),
-            inner,
-        }
-    }
-}
-
-impl From<DependencyTerm> for DependencyTermMetaInner {
-    fn from(raw_term: DependencyTerm) -> Self {
-        match raw_term {
-            DependencyTerm::Single(name) => Self::Single(name),
-            DependencyTerm::And(terms) => {
-                Self::And(terms.into_iter().map(|rt| rt.into()).collect())
+            DependencyTermSolution::Single(vk_ty_name) => {
+                krs_quote_with!(tokens <- {@vk_ty_name} +) // output intended for trait bounds
             }
-            DependencyTerm::Or(terms) => Self::Or(terms.into_iter().map(|rt| rt.into()).collect()),
+            DependencyTermSolution::And(vec) => {
+                for term in vec {
+                    term.to_tokens(tokens);
+                }
+            }
+            DependencyTermSolution::Or(index, vec) => {
+                unsafe { vec.get_unchecked(*index) }.to_tokens(tokens)
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+struct SolutionIterator<'a> {
+    /// RefCell is used since we cannot use GAT in Iterator trait
+    terms: &'a RefCell<DependencyTermSolution>,
+    start: bool,
+}
+
+impl<'a> SolutionIterator<'a> {
+    fn new(terms: &'a RefCell<DependencyTermSolution>) -> Self {
+        Self { terms, start: true }
+    }
+}
+
+impl<'a> Iterator for SolutionIterator<'a> {
+    type Item = Ref<'a, DependencyTermSolution>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use IncrementResult::*;
+
+        if self.start {
+            self.start = false;
+            Some(self.terms.borrow())
+        } else {
+            let result = self.terms.borrow_mut().increment();
+            match result {
+                NoIncrement | LoopBack => {
+                    self.start = true;
+                    None
+                }
+                Incremented => Some(self.terms.borrow()),
+            }
+        }
+    }
+}
+
+impl From<DependencyTerm> for DependencyTermSolution {
+    fn from(value: DependencyTerm) -> Self {
+        match value {
+            DependencyTerm::Single(vk_ty_name) => Self::Single(vk_ty_name),
+            DependencyTerm::And(vec) => {
+                Self::And(vec.into_iter().map(DependencyTermSolution::from).collect())
+            }
+            DependencyTerm::Or(vec) => Self::Or(
+                0,
+                vec.into_iter().map(DependencyTermSolution::from).collect(),
+            ),
         }
     }
 }
