@@ -8,7 +8,7 @@ pub(crate) fn dependencies_to_tokens(
     let names = features.chain(extensions);
     to_tokens_closure!(tokens {
         krs_quote_with!(tokens <-
-            pub mod dependencies {
+            pub mod dependency {
                 {@*
                     #[allow(non_camel_case_types)]
                     pub trait {@names} {}

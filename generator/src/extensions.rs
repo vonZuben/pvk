@@ -147,7 +147,6 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 pub mod instance {
                     pub mod command_traits {
                         use crate::has_command::*;
-                        use crate::CommandProvider;
                         {@* {@instance_command_traits}}
                     }
                     #[doc(hidden)]
@@ -164,7 +163,6 @@ impl krs_quote::ToTokens for ExtensionCollection {
                 pub mod device {
                     pub mod command_traits {
                         use crate::has_command::*;
-                        use crate::CommandProvider;
                         {@* {@device_command_traits}}
                     }
                     #[doc(hidden)]
@@ -243,8 +241,8 @@ impl krs_quote::ToTokens for ExtensionCommandTrait<'_> {
         let commands = self.commands.iter();
         krs_quote_with!(tokens <-
             #[allow(non_camel_case_types)]
-            pub trait {@name} : CommandProvider {@* + {@commands}} {}
-            impl<T> {@name} for T where T: CommandProvider {@* + {@commands}} {}
+            pub trait {@name} : crate::dependency::{@name} {@* + {@commands}} {}
+            impl<T> {@name} for T where T: crate::dependency::{@name} {@* + {@commands}} {}
         );
     }
 }
@@ -307,27 +305,35 @@ impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
                 RefCell::new(solutions)
             });
 
-        let dependencies_to_tokens = |deps| {
+        let dependencies_to_tokens = |deps, level| {
             krs_quote::to_tokens_closure!(tokens {
                 if let &Some(ref deps) = deps {
                     let solutions = SolutionIterator::new(deps);
 
-                    let message = format!("The dependencies for `{}` are not satisfied", name.name_as_str());
-                    let notes: Vec<_> = solutions.clone().map(|s| {
-                        s.get_solution_terms().iter().map(|t| t.as_str()).my_intersperse(" + ").collect::<String>()
+                    let message = format!("The {level} dependencies for `{}` are not satisfied", name.name_as_str());
+                    let solution_text: Vec<_> = solutions.clone().map(|s| {
+                        s.get_solution_terms().iter()
+                            .map(|t| t.as_str())
+                            .my_intersperse(" + ")
+                            .collect::<String>()
                     }).collect();
 
-                    let label;
-                    if notes.len() == 1 {
-                        label = "Enable the below Version/Extensions for this."
+                    let mut label;
+                    if solution_text.len() == 1 {
+                        label = format!("For {}, the {level} must enable {}", name.name_as_str(), solution_text[0]);
                     }
                     else {
-                        label = "Enable one of the below sets of Version/Extensions for this."
+                        label = format!("For {}, the {level} must enable one of:\n\t\t", name.name_as_str());
+                        label.extend(solution_text.clone()
+                            .iter().map(|s|s.as_str())
+                            .my_intersperse("; or\n\t\t")
+                        );
                     }
 
+                    let notes = solution_text.iter().map(|s| format!("consider using: {s}"));
+
                     krs_quote_with!(tokens <-
-                        #[allow(unused_imports)]
-                        use crate::dependencies::*;
+                        use crate::dependency::*;
 
                         #[diagnostic::on_unimplemented(
                             message = {@message},
@@ -337,7 +343,7 @@ impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
                         pub trait HasDependency<O> {}
 
                         {@*
-                            struct {@options};
+                            pub struct {@options};
                             impl<T> HasDependency<{@options}> for T where T: {@solutions} {}
                         }
                     )
@@ -345,16 +351,16 @@ impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
                 else {
                     krs_quote_with!(tokens <-
                         pub trait HasDependency<O> {}
-                        struct O;
+                        pub struct O;
                         impl<T> HasDependency<O> for T {}
                     )
                 }
             })
         };
 
-        let instance_dependencies = dependencies_to_tokens(&instance_dependencies);
+        let instance_dependencies = dependencies_to_tokens(&instance_dependencies, "Instance");
 
-        let device_dependencies = dependencies_to_tokens(&device_dependencies);
+        let device_dependencies = dependencies_to_tokens(&device_dependencies, "Device");
 
         krs_quote_with!(tokens <-
             #[doc(hidden)]

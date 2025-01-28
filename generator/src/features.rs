@@ -100,44 +100,41 @@ impl krs_quote::ToTokens for FeatureCollection {
                     {@* {@version_values}}
                 }
                 pub mod instance {
-                    pub mod traits {
-                        use crate::CommandProvider;
+                    pub mod command_traits {
                         use crate::has_command::*;
                         use crate::Version;
                         {@* {@instance_traits}}
                     }
-                    pub mod macros {
+                    pub mod command_macros {
                         {@* {@instance_macros}}
                     }
-                    pub mod structs {
+                    pub mod command_structs {
                         use super::super::super::*;
                         {@* {@instance_structs}}
                     }
                 }
 
                 pub mod device {
-                    pub mod traits {
-                        use crate::CommandProvider;
+                    pub mod command_traits {
                         use crate::has_command::*;
                         use crate::Version;
                         {@* {@device_traits}}
                     }
-                    pub mod macros {
+                    pub mod command_macros {
                         {@* {@device_macros}}
                     }
-                    pub mod structs {
+                    pub mod command_structs {
                         use super::super::super::*;
                         {@* {@device_structs}}
                     }
                 }
 
                 pub mod entry {
-                    use crate::CommandProvider;
                     use crate::has_command::*;
                     use crate::Version;
                     {@* {@entry_traits}}
                     {@* {@entry_macros}}
-                    pub mod structs {
+                    pub mod command_structs {
                         use super::super::super::*;
                         {@* {@entry_structs}}
                     }
@@ -189,8 +186,8 @@ impl krs_quote::ToTokens for VersionTrait<'_> {
 
         krs_quote_with!(tokens <-
             #[allow(non_camel_case_types)]
-            pub trait {@name} : CommandProvider + Version {@* + {@commands}} {}
-            impl<T> {@name} for T where T: CommandProvider + Version {@* + {@commands}} {}
+            pub trait {@name} : crate::dependency::{@name} + Version {@* + {@commands}} {}
+            impl<T> {@name} for T where T: crate::dependency::{@name} + Version {@* + {@commands}} {}
         );
     }
 }

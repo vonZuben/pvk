@@ -63,8 +63,6 @@ impl ToTokens for VulkanCommand {
                 }
             }
 
-            pub unsafe trait CommandProvider {}
-
             pub trait Version {
                 const VERSION: crate::VkVersion;
             }
