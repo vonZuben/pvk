@@ -68,22 +68,9 @@ impl krs_quote::ToTokens for Commands2 {
             #[doc(hidden)]
             pub mod has_command {
                 {@*
-                    pub trait {@commands} {
+                    pub trait {@commands}<O> {
                         #[allow(non_snake_case)]
                         fn {@commands}(&self) -> super::{@commands};
-                    }
-
-                    #[doc(hidden)]
-                    #[macro_export]
-                    macro_rules! {@commands} {
-                        ($target:ident $provider:ident) => {
-                            #[allow(non_snake_case)]
-                            impl $crate::has_command::{@commands} for $target {
-                                fn {@commands}(&self) -> $crate::{@commands} {
-                                    self.$provider.{@commands}
-                                }
-                            }
-                        };
                     }
                 }
             }

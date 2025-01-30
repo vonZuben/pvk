@@ -67,6 +67,9 @@ impl ToTokens for VulkanCommand {
                 const VERSION: crate::VkVersion;
             }
 
+            pub unsafe trait InstanceLabel {}
+            pub unsafe trait DeviceLabel {}
+
             pub unsafe trait Stype {
                 const S_TYPE: StructureType;
             }

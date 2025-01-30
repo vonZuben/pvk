@@ -59,61 +59,23 @@ impl krs_quote::ToTokens for ExtensionCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let extensions = self.extensions.iter();
 
+        let traits = extensions.clone().map(|e| ExtensionTrait {
+            name: e.extension_name,
+        });
+
         // structs
-        let instance_command_structs =
-            extensions
-                .clone()
-                .filter(instance_filter)
-                .map(|e| ExtensionCommandStruct {
-                    name: e.extension_name,
-                    commands: &e.instance_command_names,
-                });
-        let device_command_structs =
-            extensions
-                .clone()
-                .filter(device_filter)
-                .map(|e| ExtensionCommandStruct {
-                    name: e.extension_name,
-                    commands: &e.device_command_names,
-                });
-
-        // traits
-        let instance_command_traits =
-            extensions
-                .clone()
-                .filter(instance_filter)
-                .map(|e| ExtensionCommandTrait {
-                    name: e.extension_name,
-                    commands: &e.instance_command_names,
-                });
-        let device_command_traits =
-            extensions
-                .clone()
-                .filter(device_filter)
-                .map(|e| ExtensionCommandTrait {
-                    name: e.extension_name,
-                    commands: &e.device_command_names,
-                });
-
-        // commands macro
-        let instance_command_macros =
-            extensions
-                .clone()
-                .filter(instance_filter)
-                .map(|e| ExtensionCommandMacros {
-                    name: e.extension_name,
-                    mod_name: "instance",
-                    commands: &e.instance_command_names,
-                });
-        let device_command_macros =
-            extensions
-                .clone()
-                .filter(device_filter)
-                .map(|e| ExtensionCommandMacros {
-                    name: e.extension_name,
-                    mod_name: "device",
-                    commands: &e.device_command_names,
-                });
+        let instance_command_structs = extensions.clone().map(|e| ExtensionCommandStruct {
+            name: e.extension_name,
+            commands: &e.instance_command_names,
+            label_trait: "InstanceLabel",
+            command_method: "instance_commands",
+        });
+        let device_command_structs = extensions.clone().map(|e| ExtensionCommandStruct {
+            name: e.extension_name,
+            commands: &e.device_command_names,
+            label_trait: "DeviceLabel",
+            command_method: "device_commands",
+        });
 
         // dependency macros
         let instance_dep_macros =
@@ -144,36 +106,16 @@ impl krs_quote::ToTokens for ExtensionCollection {
 
             #[doc(hidden)]
             pub mod extension {
-                pub mod instance {
-                    pub mod command_traits {
-                        use crate::has_command::*;
-                        {@* {@instance_command_traits}}
-                    }
-                    #[doc(hidden)]
-                    pub mod command_macros {
-                        {@* {@instance_command_macros}}
-                    }
-                    #[doc(hidden)]
-                    pub mod command_structs {
-                        use super::super::super::*;
-                        {@* {@instance_command_structs}}
-                    }
+                {@* {@traits}}
+
+                pub mod instance_command_structs {
+                    use crate::LoadCommands;
+                    {@* {@instance_command_structs}}
                 }
 
-                pub mod device {
-                    pub mod command_traits {
-                        use crate::has_command::*;
-                        {@* {@device_command_traits}}
-                    }
-                    #[doc(hidden)]
-                    pub mod command_macros {
-                        {@* {@device_command_macros}}
-                    }
-                    #[doc(hidden)]
-                    pub mod command_structs {
-                        use super::super::super::*;
-                        {@* {@device_command_structs}}
-                    }
+                pub mod device_command_structs {
+                    use crate::LoadCommands;
+                    {@* {@device_command_structs}}
                 }
             }
 
@@ -201,12 +143,16 @@ impl krs_quote::ToTokens for ExtensionCollection {
 struct ExtensionCommandStruct<'a> {
     name: ExtensionName,
     commands: &'a [VkTyName],
+    label_trait: &'a str,
+    command_method: &'a str,
 }
 
 impl krs_quote::ToTokens for ExtensionCommandStruct<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let command = self.commands.iter();
+        let label_trait = self.label_trait.as_code();
+        let command_method = self.command_method.as_code();
 
         krs_quote_with!(tokens <-
             #[doc(hidden)]
@@ -214,59 +160,51 @@ impl krs_quote::ToTokens for ExtensionCommandStruct<'_> {
             #[allow(non_snake_case)]
             pub struct {@name} {
                 {@*
-                    pub {@command}: {@command},
+                    pub {@command}: crate::{@command},
                 }
             }
 
             impl {@name} {
                 #[allow(unused_variables)]
-                pub fn load(loader: impl FunctionLoader) -> std::result::Result<Self, CommandLoadError> {
+                pub fn load(loader: impl crate::FunctionLoader) -> std::result::Result<Self, crate::CommandLoadError> {
                     Ok(Self {
-                        {@* {@command} : {@command}::load(loader)?, }
+                        {@* {@command} : crate::{@command}::load(loader)?, }
                     })
                 }
             }
-        );
-    }
-}
 
-struct ExtensionCommandTrait<'a> {
-    name: ExtensionName,
-    commands: &'a [VkTyName],
-}
-
-impl krs_quote::ToTokens for ExtensionCommandTrait<'_> {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let name = self.name;
-        let commands = self.commands.iter();
-        krs_quote_with!(tokens <-
-            #[allow(non_camel_case_types)]
-            pub trait {@name} : crate::dependency::{@name} {@* + {@commands}} {}
-            impl<T> {@name} for T where T: crate::dependency::{@name} {@* + {@commands}} {}
-        );
-    }
-}
-
-struct ExtensionCommandMacros<'a> {
-    name: ExtensionName,
-    mod_name: &'a str,
-    commands: &'a [VkTyName],
-}
-
-impl krs_quote::ToTokens for ExtensionCommandMacros<'_> {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let name = self.name;
-        let commands = self.commands.iter();
-        let macro_name = format!("{}_{}", name.name_as_str(), self.mod_name).as_code();
-        krs_quote_with!(tokens <-
-            #[doc(hidden)]
-            #[macro_export]
-            macro_rules! {@macro_name} {
-                ( $target:ident ) => {
-                    {@* $crate::{@commands}!($target {@name}); }
+            {@*
+                impl<T> crate::has_command::{@command}<{@name}> for T
+                    where T: super::{@name} + crate::{@label_trait}
+                {
+                    fn {@command}(&self) -> crate::{@command} {
+                        self.{@command_method}().{@command}
+                    }
                 }
             }
-            pub use {@macro_name} as {@name};
+        );
+    }
+}
+
+struct ExtensionTrait {
+    name: ExtensionName,
+}
+
+impl krs_quote::ToTokens for ExtensionTrait {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+
+        krs_quote_with!(tokens <-
+            #[allow(non_camel_case_types)]
+            pub unsafe trait {@name} {
+                fn instance_commands(&self) -> &instance_command_structs::{@name} where Self: crate::InstanceLabel {
+                    unreachable!();
+                }
+
+                fn device_commands(&self) -> &device_command_structs::{@name} where Self: crate::DeviceLabel {
+                    unreachable!();
+                }
+            }
         );
     }
 }

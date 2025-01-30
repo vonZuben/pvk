@@ -46,49 +46,21 @@ impl krs_quote::ToTokens for FeatureCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let versions = self.versions.iter();
 
+        // trait
+        let traits = versions.clone().map(|v| VersionTrait { name: v.version });
+
         // structs
-        let instance_structs = versions.clone().map(|v| VersionStruct {
+        let instance_command_structs = versions.clone().map(|v| VersionStruct {
             name: v.version,
             commands: &v.instance_command_names,
+            label_trait: "InstanceLabel",
+            command_method: "instance_commands",
         });
-        let device_structs = versions.clone().map(|v| VersionStruct {
+        let device_command_structs = versions.clone().map(|v| VersionStruct {
             name: v.version,
             commands: &v.device_command_names,
-        });
-        let entry_structs = versions.clone().map(|v| VersionStruct {
-            name: v.version,
-            commands: &v.entry_command_names,
-        });
-
-        // traits
-        let instance_traits = versions.clone().map(|v| VersionTrait {
-            name: v.version,
-            commands: &v.instance_command_names,
-        });
-        let device_traits = versions.clone().map(|v| VersionTrait {
-            name: v.version,
-            commands: &v.device_command_names,
-        });
-        let entry_traits = versions.clone().map(|v| VersionTrait {
-            name: v.version,
-            commands: &v.entry_command_names,
-        });
-
-        // macros
-        let instance_macros = versions.clone().map(|v| VersionMacros {
-            name: v.version,
-            mod_name: "instance",
-            commands: &v.instance_command_names,
-        });
-        let device_macros = versions.clone().map(|v| VersionMacros {
-            name: v.version,
-            mod_name: "device",
-            commands: &v.device_command_names,
-        });
-        let entry_macros = versions.clone().map(|v| VersionMacros {
-            name: v.version,
-            mod_name: "entry",
-            commands: &v.entry_command_names,
+            label_trait: "DeviceLabel",
+            command_method: "device_commands",
         });
 
         let version_values = versions.clone().map(|v| VersionValues { feature: v });
@@ -99,45 +71,18 @@ impl krs_quote::ToTokens for FeatureCollection {
                 pub mod numbers {
                     {@* {@version_values}}
                 }
-                pub mod instance {
-                    pub mod command_traits {
-                        use crate::has_command::*;
-                        use crate::Version;
-                        {@* {@instance_traits}}
-                    }
-                    pub mod command_macros {
-                        {@* {@instance_macros}}
-                    }
-                    pub mod command_structs {
-                        use super::super::super::*;
-                        {@* {@instance_structs}}
-                    }
+
+                use crate::Version;
+                {@* {@traits}}
+
+                pub mod instance_command_structs {
+                    use crate::LoadCommands;
+                    {@* {@instance_command_structs}}
                 }
 
-                pub mod device {
-                    pub mod command_traits {
-                        use crate::has_command::*;
-                        use crate::Version;
-                        {@* {@device_traits}}
-                    }
-                    pub mod command_macros {
-                        {@* {@device_macros}}
-                    }
-                    pub mod command_structs {
-                        use super::super::super::*;
-                        {@* {@device_structs}}
-                    }
-                }
-
-                pub mod entry {
-                    use crate::has_command::*;
-                    use crate::Version;
-                    {@* {@entry_traits}}
-                    {@* {@entry_macros}}
-                    pub mod command_structs {
-                        use super::super::super::*;
-                        {@* {@entry_structs}}
-                    }
+                pub mod device_command_structs {
+                    use crate::LoadCommands;
+                    {@* {@device_command_structs}}
                 }
             }
         )
@@ -147,71 +92,67 @@ impl krs_quote::ToTokens for FeatureCollection {
 struct VersionStruct<'a> {
     name: VkTyName,
     commands: &'a [RequireRemove],
+    label_trait: &'a str,
+    command_method: &'a str,
 }
 
 impl krs_quote::ToTokens for VersionStruct<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let command = self.commands.iter().filter(|r| r.is_require());
+        let label_trait = self.label_trait.as_code();
+        let command_method = self.command_method.as_code();
 
         krs_quote_with!(tokens <-
+            #[doc(hidden)]
             #[allow(non_camel_case_types)]
             #[allow(non_snake_case)]
             pub struct {@name} {
                 {@*
-                    pub {@command}: {@command},
+                    pub {@command}: crate::{@command},
                 }
             }
 
             impl {@name} {
-                pub fn load(loader: impl FunctionLoader) -> std::result::Result<Self, CommandLoadError> {
+                pub fn load(loader: impl crate::FunctionLoader) -> std::result::Result<Self, crate::CommandLoadError> {
                     Ok(Self {
-                        {@* {@command} : {@command}::load(loader)?, }
+                        {@* {@command} : crate::{@command}::load(loader)?, }
                     })
                 }
             }
+
+            {@*
+                impl<T> crate::has_command::{@command}<{@name}> for T
+                    where T: super::{@name} + crate::{@label_trait}
+                {
+                    fn {@command}(&self) -> crate::{@command} {
+                        self.{@command_method}().{@command}
+                    }
+                }
+            }
         );
     }
 }
 
-struct VersionTrait<'a> {
+struct VersionTrait {
     name: VkTyName,
-    commands: &'a [RequireRemove],
 }
 
-impl krs_quote::ToTokens for VersionTrait<'_> {
+impl krs_quote::ToTokens for VersionTrait {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
-        let commands = self.commands.iter().filter(|c| c.is_require());
 
         krs_quote_with!(tokens <-
             #[allow(non_camel_case_types)]
-            pub trait {@name} : crate::dependency::{@name} + Version {@* + {@commands}} {}
-            impl<T> {@name} for T where T: crate::dependency::{@name} + Version {@* + {@commands}} {}
-        );
-    }
-}
+            pub unsafe trait {@name} : Version {
+                fn instance_commands(&self) -> &instance_command_structs::{@name} where Self: crate::InstanceLabel {
+                    unreachable!();
+                }
 
-struct VersionMacros<'a> {
-    name: VkTyName,
-    mod_name: &'a str,
-    commands: &'a [RequireRemove],
-}
-
-impl krs_quote::ToTokens for VersionMacros<'_> {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let name = self.name;
-        let commands = self.commands.iter().filter(|c| c.is_require());
-        let macro_name = format!("{}_{}", name, self.mod_name).as_code();
-        krs_quote_with!(tokens <-
-            #[doc(hidden)]
-            #[macro_export]
-            macro_rules! {@macro_name} {
-                ( $target:ident ) => {
-                    {@* $crate::{@commands}!($target {@name}); }
+                fn device_commands(&self) -> &device_command_structs::{@name} where Self: crate::DeviceLabel {
+                    unreachable!();
                 }
             }
-            pub use {@macro_name} as {@name};
         );
     }
 }
