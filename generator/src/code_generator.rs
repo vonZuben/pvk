@@ -277,20 +277,20 @@ impl<'a> VisitVkParse<'a> for Generator {
             _ => panic!("error: unexpected extension kind"),
         };
 
-        let mut extension_commands = extensions::ExtensionInfo::new(ex_name, kind);
+        let mut extension_info =
+            extensions::ExtensionInfo::new(ex_name, kind, info.promoted_to.map(Into::into));
 
         match info.name_parts {
             crate::vk_parse_visitor::VkParseExtensionParts::Base(_) => match info.dependencies {
-                Some(dep) => extension_commands.dependencies(dep),
+                Some(dep) => extension_info.dependencies(dep),
                 None => {}
             },
             crate::vk_parse_visitor::VkParseExtensionParts::Extended(terms) => {
-                extension_commands.dependencies(terms)
+                extension_info.dependencies(terms)
             }
         }
 
-        self.extensions
-            .get_mut_or_default(ex_name, extension_commands);
+        self.extensions.get_mut_or_default(ex_name, extension_info);
     }
     fn visit_ex_cmd_ref(
         &mut self,

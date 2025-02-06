@@ -391,6 +391,7 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                         .ext_type
                                         .as_deref()
                                         .expect("error: expected ex_type"),
+                                    promoted_to: extension.promotedto.as_deref(),
                                 });
 
                                 for item in items.iter() {
@@ -690,6 +691,7 @@ pub struct ExtensionInfo<'a, 'p> {
     pub name_parts: &'p VkParseExtensionParts<'a>,
     pub dependencies: Option<Term<'a>>,
     pub kind: &'a str,
+    pub promoted_to: Option<&'a str>,
 }
 
 pub struct VkBasetype<'a> {

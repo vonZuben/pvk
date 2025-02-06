@@ -287,7 +287,7 @@ impl Feature {
     }
 }
 
-fn parse_version(ver: &str) -> FeatureVersion {
+pub(crate) fn parse_version(ver: &str) -> FeatureVersion {
     let mut tokens = ver.split('_');
 
     // assert that first text is equal to VK and VERSION
@@ -314,8 +314,8 @@ fn parse_version(ver: &str) -> FeatureVersion {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-struct FeatureVersion {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) struct FeatureVersion {
     major: usize,
     minor: usize,
 }
@@ -325,5 +325,39 @@ impl krs_quote::ToTokens for FeatureVersion {
         let major = self.major;
         let minor = self.minor;
         krs_quote_with!(tokens <- ({@major}, {@minor}, 0) );
+    }
+}
+
+/// Compare feature versions form a functionality perspective
+///
+/// X > Y means X has all functionality of Y, and more
+/// X = Y means X and Y have the same functionality
+/// X < Y means X has less functionality than Y
+impl std::cmp::PartialOrd for FeatureVersion {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self.major.partial_cmp(&other.major) {
+            Some(core::cmp::Ordering::Equal) => {}
+            _ => panic!(
+                "It is not currently clear how functionality of different major versions compare"
+            ),
+        }
+        self.minor.partial_cmp(&other.minor)
+    }
+}
+
+/// Compare feature versions form a functionality perspective
+///
+/// X > Y means X has all functionality of Y, and more
+/// X = Y means X and Y have the same functionality
+/// X < Y means X has less functionality than Y
+impl std::cmp::Ord for FeatureVersion {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.major.cmp(&other.major) {
+            core::cmp::Ordering::Equal => {}
+            _ => panic!(
+                "It is not currently clear how functionality of different major versions compare"
+            ),
+        }
+        self.minor.cmp(&other.minor)
     }
 }

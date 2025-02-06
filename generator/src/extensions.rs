@@ -22,6 +22,10 @@ impl ExtensionCollection {
             .unwrap_or(DependencyKind::Version)
     }
 
+    fn find(&self, name: VkTyName) -> Option<&ExtensionInfo> {
+        self.extensions.get(ExtensionName::Base { name })
+    }
+
     pub fn extension_names_iter(&self) -> impl Iterator<Item = &str> + Clone {
         self.extensions
             .iter()
@@ -97,7 +101,7 @@ impl krs_quote::ToTokens for ExtensionCollection {
                     for_kind: ExtensionKind::Device,
                 });
 
-        let macro_dependency_traits = extensions.clone().map(|e| MacroDependencyTraits {
+        let macro_dependency_traits = extensions.clone().map(|e| DependencyTraits {
             info: e,
             all_extensions: self,
         });
@@ -209,12 +213,12 @@ impl krs_quote::ToTokens for ExtensionTrait {
     }
 }
 
-struct MacroDependencyTraits<'a> {
+struct DependencyTraits<'a> {
     info: &'a ExtensionInfo,
     all_extensions: &'a ExtensionCollection,
 }
 
-impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
+impl krs_quote::ToTokens for DependencyTraits<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.info.extension_name;
 
@@ -246,11 +250,18 @@ impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
         let dependencies_to_tokens = |deps, level| {
             krs_quote::to_tokens_closure!(tokens {
                 if let &Some(ref deps) = deps {
-                    let solutions = SolutionIterator::new(deps);
+                    let mut solutions: Vec<_> = SolutionIterator::new(deps).map(|s|s.get_solution_terms(self.all_extensions)).collect();
+                    // the Solution terms have redundant terms removed, which may result in duplicates
+                    // so remove the duplicates
+                    // we assume that duplicates will be next to each other due to how
+                    // the terms are parsed in the first place, so no sorting is needed
+                    // solutions.sort();
+                    solutions.dedup();
+                    let solutions = solutions;
 
                     let message = format!("The {level} dependencies for `{}` are not satisfied", name.name_as_str());
-                    let solution_text: Vec<_> = solutions.clone().map(|s| {
-                        s.get_solution_terms().iter()
+                    let solution_text: Vec<_> = solutions.iter().map(|s| {
+                        s.iter()
                             .map(|t| t.as_str())
                             .my_intersperse(" + ")
                             .collect::<String>()
@@ -270,6 +281,15 @@ impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
 
                     let notes = solution_text.iter().map(|s| format!("consider using: {s}"));
 
+                    let bounds = solutions.iter().map(|s|
+                        krs_quote::to_tokens_closure!(tokens {
+                            let bounds = s.iter().copied();
+                            krs_quote_with!(tokens <-
+                                {@+* {@bounds}}
+                            )
+                        })
+                    );
+
                     krs_quote_with!(tokens <-
                         use crate::dependency::*;
 
@@ -282,7 +302,7 @@ impl krs_quote::ToTokens for MacroDependencyTraits<'_> {
 
                         {@*
                             pub struct {@options};
-                            impl<T> HasDependency<{@options}> for T where T: {@solutions} {}
+                            impl<T> HasDependency<{@options}> for T where T: {@bounds} {}
                         }
                     )
                 }
@@ -546,7 +566,15 @@ impl DependencyTermSolution {
         }
     }
 
-    fn get_solution_terms(&self) -> Vec<VkTyName> {
+    /// Provide the terms of the current solution
+    ///
+    /// All extensions are considered when providing the terms in order
+    /// to remove redundant terms (e.g. if a solution requires multiple versions
+    /// which are redundant, or extensions which are redundant with included version)
+    fn get_solution_terms(
+        &self,
+        all_extensions: &ExtensionCollection,
+    ) -> solution_terms::SolutionTerms {
         fn get_solution_helper(solution: &DependencyTermSolution, terms: &mut Vec<VkTyName>) {
             match solution {
                 DependencyTermSolution::Single(vk_ty_name) => terms.push(*vk_ty_name),
@@ -563,27 +591,135 @@ impl DependencyTermSolution {
 
         let mut vec = Vec::new();
         get_solution_helper(self, &mut vec);
-        vec
+        unsafe { solution_terms::SolutionTerms::new(vec, all_extensions) }
     }
 }
 
-impl krs_quote::ToTokens for DependencyTermSolution {
-    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        match self {
-            DependencyTermSolution::Single(vk_ty_name) => {
-                krs_quote_with!(tokens <- {@vk_ty_name} +) // output intended for trait bounds
+mod solution_terms {
+    use crate::utils::VkTyName;
+
+    /// Terms of a particular solution
+    ///
+    /// When this is created,
+    #[derive(PartialEq, Eq)]
+    pub struct SolutionTerms(Vec<VkTyName>);
+
+    impl SolutionTerms {
+        /// Store the terms of a particular solution
+        ///
+        /// Removes redundant terms when created.
+        ///
+        /// The order of the provided terms of a particular solution
+        /// must be consistent between with respect to all possible solutions \
+        /// to the same extension dependencies. Otherwise, different solutions
+        /// may not compare properly after redundancies are removed.
+        pub unsafe fn new(
+            terms: Vec<VkTyName>,
+            all_extensions: &super::ExtensionCollection,
+        ) -> Self {
+            use crate::features::FeatureVersion;
+
+            #[derive(Clone, Copy)]
+            enum Scope {
+                Version(FeatureVersion),
+                Extension,
             }
-            DependencyTermSolution::And(vec) => {
-                for term in vec {
-                    term.to_tokens(tokens);
+
+            impl Scope {
+                /// Check if this scope encompasses another scope
+                ///
+                /// If the scope is defined by a version, then larger versions encompass smaller versions (for now)
+                /// TODO, if Vulkan 2.x is ever released, it should be considered how functionality from 1.x if maintained or depreciated
+                ///
+                /// If the scopes are defined by Extensions, then assume they are not the same
+                fn encompasses(&self, other: &Self) -> bool {
+                    match (self, other) {
+                        (Scope::Version(lhs), Scope::Version(rhs)) => lhs > rhs,
+                        _ => false,
+                    }
+                }
+
+                fn max_version(self, other: Self) -> Self {
+                    match (self, other) {
+                        (Scope::Version(lhs), Scope::Version(rhs)) => {
+                            Scope::Version(std::cmp::max(lhs, rhs))
+                        }
+                        (Scope::Version(_), Scope::Extension) => self,
+                        (Scope::Extension, Scope::Version(_)) => other,
+                        (Scope::Extension, Scope::Extension) => self,
+                    }
                 }
             }
-            DependencyTermSolution::Or(index, vec) => {
-                unsafe { vec.get_unchecked(*index) }.to_tokens(tokens)
+
+            /// Get scope of the term, and the possible promoted scope
+            fn get_scope(
+                term: VkTyName,
+                all_extensions: &crate::extensions::ExtensionCollection,
+            ) -> (Scope, Scope) {
+                let mut scope = Scope::Extension;
+                let mut promoted_scope = Scope::Extension;
+
+                match all_extensions.find(term) {
+                    // term is an extension, so check if it was promoted to a version
+                    Some(ex) => match ex.promoted_to {
+                        Some(promoted) => {
+                            if all_extensions.find(promoted).is_none() {
+                                // must have been promoted to a version
+                                promoted_scope =
+                                    Scope::Version(crate::features::parse_version(&promoted));
+                            }
+                        }
+                        None => {}
+                    },
+                    // term must be a version
+                    None => scope = Scope::Version(crate::features::parse_version(&term)),
+                }
+
+                (scope, promoted_scope)
             }
+
+            let scopes: Vec<_> = terms
+                .iter()
+                .map(|term| get_scope(*term, all_extensions))
+                .collect();
+            let max_version = scopes
+                .iter()
+                .fold(Scope::Extension, |cur, (scope, _)| cur.max_version(*scope));
+
+            let removed_redundant: Vec<_> = terms
+                .into_iter()
+                .zip(scopes)
+                .filter(|(_, (scope, promoted_scope))| {
+                    !max_version.encompasses(&scope.max_version(*promoted_scope))
+                })
+                .map(|(term, _)| term)
+                .collect();
+
+            Self(removed_redundant)
+        }
+        pub fn iter(&self) -> impl Iterator<Item = &VkTyName> + Clone + use<'_> {
+            self.0.iter()
         }
     }
 }
+
+// impl krs_quote::ToTokens for DependencyTermSolution {
+//     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+//         match self {
+//             DependencyTermSolution::Single(vk_ty_name) => {
+//                 krs_quote_with!(tokens <- {@vk_ty_name} +) // output intended for trait bounds
+//             }
+//             DependencyTermSolution::And(vec) => {
+//                 for term in vec {
+//                     term.to_tokens(tokens);
+//                 }
+//             }
+//             DependencyTermSolution::Or(index, vec) => {
+//                 unsafe { vec.get_unchecked(*index) }.to_tokens(tokens)
+//             }
+//         }
+//     }
+// }
 
 #[derive(Clone)]
 struct SolutionIterator<'a> {
@@ -833,16 +969,22 @@ pub struct ExtensionInfo {
     device_command_names: Vec<VkTyName>,
     kind: ExtensionKind,
     dependencies: Option<DependencyTerm>,
+    promoted_to: Option<VkTyName>,
 }
 
 impl ExtensionInfo {
-    pub fn new(extension_name: ExtensionName, kind: ExtensionKind) -> Self {
+    pub fn new(
+        extension_name: ExtensionName,
+        kind: ExtensionKind,
+        promoted_to: Option<VkTyName>,
+    ) -> Self {
         Self {
             extension_name,
             instance_command_names: Default::default(),
             device_command_names: Default::default(),
             kind,
             dependencies: Default::default(),
+            promoted_to,
         }
     }
     pub fn push_instance_command(&mut self, command: VkTyName) {
