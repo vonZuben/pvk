@@ -1,14 +1,14 @@
 use std::borrow::Cow;
 use std::collections::HashSet;
 use std::fmt;
-use std::sync::atomic::{self, AtomicBool};
+
+use std::sync::Mutex;
 
 use std::cmp::{Eq, PartialEq};
 
 use std::hash::Hash;
 
-static mut INTERNER: Option<Interner> = None;
-static mut LOCKED: AtomicBool = AtomicBool::new(false);
+static INTERNER: Mutex<Option<Interner>> = Mutex::new(None);
 
 pub struct Interner {
     strings: HashSet<String>,
@@ -17,34 +17,21 @@ pub struct Interner {
 impl Interner {
     // should only be called once by one thread
     pub unsafe fn init() {
-        if INTERNER.is_none() {
-            INTERNER = Some(Interner {
+        let mut interner = INTERNER.lock().unwrap();
+        if interner.is_none() {
+            *interner = Some(Interner {
                 strings: HashSet::new(),
             });
         }
     }
-    // should only be called by one thread at a time, and should ensure init called before
+    // should ensure init called before calling this
     pub fn intern<'a>(s: impl Into<Cow<'a, str>>) -> Istring {
-        // This is using some sketchy cheap method of ensuring only one thread is interning at a time
-        // panic if already being used
-        // this is only intended to be used in single thread anyway, but better safe than sorry (who knows whats in future)
-        unsafe {
-            LOCKED
-                .compare_exchange(
-                    false,
-                    true,
-                    atomic::Ordering::Acquire,
-                    atomic::Ordering::Acquire,
-                )
-                .unwrap();
-        }
-
         let s = s.into();
-        let inner;
-        unsafe {
-            inner = INTERNER.as_mut().unwrap();
-        }
-        let ret = match inner.strings.get(s.as_ref()) {
+
+        let mut interner = INTERNER.lock().unwrap();
+        let inner = interner.as_mut().unwrap();
+
+        match inner.strings.get(s.as_ref()) {
             Some(s) => Istring::new(s.as_str()),
             None => {
                 let s = s.into_owned();
@@ -52,20 +39,7 @@ impl Interner {
                 assert!(inner.strings.insert(s));
                 Istring::new(ptr)
             }
-        };
-
-        unsafe {
-            LOCKED
-                .compare_exchange(
-                    true,
-                    false,
-                    atomic::Ordering::Release,
-                    atomic::Ordering::Relaxed,
-                )
-                .unwrap();
         }
-
-        ret
     }
 }
 
