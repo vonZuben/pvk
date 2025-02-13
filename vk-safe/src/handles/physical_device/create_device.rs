@@ -35,25 +35,34 @@ mod private {
 
 pub fn create_device<
     't,
-    P: PhysicalDevice<Commands: CreateDevice + EnumerateDeviceExtensionProperties>,
-    C,
-    O,
+    P: PhysicalDevice<Commands: CreateDevice<Create> + EnumerateDeviceExtensionProperties<Enumerate>>,
+    Ctx,
     Z: HasScope<P>,
+    Create,
+    Enumerate,
+    Destroy,
 >(
     physical_device: &P,
-    create_info: &DeviceCreateInfo<C, Z>,
+    create_info: &DeviceCreateInfo<Ctx, Z>,
     tag: Tag<'t>,
 ) -> Result<
-    impl Device<Commands = C::Commands, PhysicalDevice = P, QueueConfig = Z>
-        + Captures<(Tag<'t>, P, C, Z)>,
+    impl Device<Commands = Ctx::Commands, PhysicalDevice = P, QueueConfig = Z>
+        + Captures<(Tag<'t>, P, Ctx, Z)>,
     Error,
 >
 where
-    C: Context + InstanceDependencies<P::Commands, O> + Send + Sync,
-    C::Commands: DestroyDevice + LoadCommands + Version + VersionCheck<P::Commands> + Send + Sync,
+    Ctx: Context + Send + Sync,
+    Ctx::Commands: DestroyDevice<Destroy>
+        + LoadCommands
+        + Version
+        + VersionCheck<P::Commands>
+        + InstanceDependencies<P::Commands>
+        + Send
+        + Sync
+        + vk::DeviceLabel,
 {
     // check version requirement
-    let _ = C::Commands::VALID;
+    let _ = Ctx::Commands::VALID;
 
     check_vuids::check_vuids!(CreateDevice);
 
@@ -137,5 +146,5 @@ where
         device = handle.assume_init();
     }
     let loader = |command_name| unsafe { vk::GetDeviceProcAddr(device, command_name) };
-    Ok(make_device(device, C::Commands::load(loader)?, tag))
+    Ok(make_device(device, Ctx::Commands::load(loader)?, tag))
 }

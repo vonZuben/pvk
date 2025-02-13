@@ -11,10 +11,11 @@ use vk::has_command::AllocateCommandBuffers;
 
 pub(crate) fn allocate_command_buffers<
     'a,
-    D: Device<Commands: AllocateCommandBuffers>,
+    D: Device<Commands: AllocateCommandBuffers<X>>,
     Pool,
     Level,
     B: Buffer<vk::CommandBuffer>,
+    X,
 >(
     device: &'a D,
     alloc_info: CommandBufferAllocateInfo<'_, B, Pool, Level>,

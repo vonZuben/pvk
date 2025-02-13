@@ -12,7 +12,8 @@ use vk::has_command::EnumerateDeviceExtensionProperties;
 pub(crate) fn enumerate_device_extension_properties<
     'p,
     'a,
-    P: PhysicalDevice<Commands: EnumerateDeviceExtensionProperties>,
+    P: PhysicalDevice<Commands: EnumerateDeviceExtensionProperties<X>>,
+    X,
 >(
     physical_device: &'p P,
     layer_name: Option<VkStr<'a>>,

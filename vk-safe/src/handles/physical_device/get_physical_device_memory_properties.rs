@@ -10,7 +10,8 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceMemoryProperties;
 
 pub(crate) fn get_physical_device_memory_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceMemoryProperties>,
+    P: PhysicalDevice<Commands: GetPhysicalDeviceMemoryProperties<X>>,
+    X,
 >(
     physical_device: &P,
 ) -> PhysicalDeviceMemoryProperties<P> {

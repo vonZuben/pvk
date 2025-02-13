@@ -8,7 +8,7 @@ pub trait Context {
     type Commands: LoadCommands;
 }
 
-pub unsafe trait InstanceDependencies<I, O> {}
+pub unsafe trait InstanceDependencies<I> {}
 
 pub unsafe trait Extensions {
     fn list_of_extensions() -> impl AsRef<[VkStrRaw]>;
@@ -62,50 +62,67 @@ macro_rules! instance_context {
                 type Commands = commands::$name;
             }
 
-            unsafe impl $crate::CommandProvider for $name {}
-
             unsafe impl $crate::context::Extensions for $name {
                 fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
                     use std::ffi::c_char;
                     use $crate::context::macro_helper::*;
                     let l = End;
-                    $( $crate::dependencies::instance::$e_provider!(l); )*
+                    $( $crate::macro_loads::instance_loads::$e_provider!(l); )*
                     l
                 }
             }
 
             mod commands {
+                unsafe impl $crate::InstanceLabel for $name {}
+
                 $(
-                    use $crate::version::instance::traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
-                    $crate::version::instance::macros::$v_provider!($name);
+                    use $crate::version::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
+
+                    unsafe impl $v_provider for $name {
+                        fn instance_commands(&self) -> &$crate::version::instance_command_structs::$v_provider
+                            where Self: $crate::InstanceLabel
+                        {
+                            &self.$v_provider
+                        }
+                    }
+
                     impl $crate::Version for $name {
                         const VERSION: $crate::VkVersion = $crate::VkVersion::from_triple($crate::version::numbers::$v_provider);
                     }
                 )?
 
                 $(
-                    use $crate::extension::instance::traits::$e_provider; // this is here for autocomplete (see above)
-                    impl $crate::dependencies::traits::$e_provider for $name {}
-                    $crate::extension::instance::macros::$e_provider!($name);
-                    const _ : () = {
-                        $crate::dependencies::instance::$e_provider::check_dependencies(std::marker::PhantomData::<$name>)
-                    };
+                    use $crate::extension::$e_provider; // this is here for autocomplete (see above)
+
+                    unsafe impl $e_provider for $name {
+                        fn instance_commands(&self) -> &$crate::extension::instance_command_structs::$e_provider
+                            where Self: $crate::InstanceLabel
+                        {
+                            &self.$e_provider
+                        }
+                    }
                 )*
 
-                unsafe impl $crate::CommandProvider for $name {}
+                const _: () = {
+                    #[allow(non_camel_case_types)]
+                    const fn check_dependencies<
+                        T: $( $crate::macro_dependency_traits::$e_provider::instance::HasDependency + )*
+                    >(_: std::marker::PhantomData<T>) {}
+                    check_dependencies(std::marker::PhantomData::<$name>);
+                };
 
                 #[allow(non_snake_case)]
                 pub struct $name {
-                    $( $v_provider: $crate::version::instance::structs::$v_provider, )?
-                    $( $e_provider: $crate::extension::instance::structs::$e_provider, )*
+                    $( $v_provider: $crate::version::instance_command_structs::$v_provider, )?
+                    $( $e_provider: $crate::extension::instance_command_structs::$e_provider, )*
                 }
 
                 impl $crate::LoadCommands for $name {
                     fn load(loader: impl $crate::FunctionLoader) -> std::result::Result<Self, $crate::CommandLoadError> {
                         Ok(
                             Self {
-                                $( $v_provider: $crate::version::instance::structs::$v_provider::load(loader)?, )?
-                                $( $e_provider: $crate::extension::instance::structs::$e_provider::load(loader)?, )*
+                                $( $v_provider: $crate::version::instance_command_structs::$v_provider::load(loader)?, )?
+                                $( $e_provider: $crate::extension::instance_command_structs::$e_provider::load(loader)?, )*
                             }
                         )
                     }
@@ -152,54 +169,67 @@ macro_rules! device_context {
                 type Commands = commands::$name;
             }
 
-            unsafe impl $crate::CommandProvider for $name {}
-
-            #[allow(non_camel_case_types)]
-            unsafe impl<I $(, $e_provider)*> $crate::context::InstanceDependencies<I, ( $($e_provider),* )> for $name
-                where I: $crate::CommandProvider $( + $crate::dependencies::device::$e_provider::instance::HasDependency<$e_provider> )* {}
-
             unsafe impl $crate::context::Extensions for $name {
                 fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
                     use std::ffi::c_char;
                     use $crate::context::macro_helper::*;
                     let l = End;
-                    $( $crate::dependencies::device::$e_provider!(l); )*
+                    $( $crate::macro_loads::device_loads::$e_provider!(l); )*
                     l
                 }
             }
 
             mod commands {
+                unsafe impl $crate::DeviceLabel for $name {}
+
                 $(
-                    use $crate::version::device::traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
-                    $crate::version::device::macros::$v_provider!($name);
+                    use $crate::version::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
+
+                    unsafe impl $v_provider for $name {
+                        fn device_commands(&self) -> &$crate::version::device_command_structs::$v_provider where Self: $crate::DeviceLabel {
+                            &self.$v_provider
+                        }
+                    }
+
                     impl $crate::Version for $name {
                         const VERSION: $crate::VkVersion = $crate::VkVersion::from_triple($crate::version::numbers::$v_provider);
                     }
                 )?
 
                 $(
-                    use $crate::extension::device::traits::$e_provider; // this is here for autocomplete (see above)
-                    impl $crate::dependencies::traits::$e_provider for $name {}
-                    $crate::extension::device::macros::$e_provider!($name);
-                    const _ : () = {
-                        $crate::dependencies::device::$e_provider::check_dependencies(std::marker::PhantomData::<$name>)
-                    };
+                    use $crate::extension::$e_provider; // this is here for autocomplete (see above)
+
+                    unsafe impl $e_provider for $name {
+                        fn device_commands(&self) -> &$crate::extension::device_command_structs::$e_provider where Self: $crate::DeviceLabel {
+                            &self.$e_provider
+                        }
+                    }
                 )*
 
-                unsafe impl $crate::CommandProvider for $name {}
+                #[allow(non_camel_case_types)]
+                unsafe impl<I> $crate::context::InstanceDependencies<I> for $name
+                    where I: $( $crate::macro_dependency_traits::$e_provider::instance::HasDependency + )* {}
+
+                const _: () = {
+                    #[allow(non_camel_case_types)]
+                    const fn check_dependencies<
+                        T: $( $crate::macro_dependency_traits::$e_provider::device::HasDependency + )*
+                    >(_: std::marker::PhantomData<T>) {}
+                    check_dependencies(std::marker::PhantomData::<$name>);
+                };
 
                 #[allow(non_snake_case)]
                 pub struct $name {
-                    $( $v_provider: $crate::version::device::structs::$v_provider, )?
-                    $( $e_provider: $crate::extension::device::structs::$e_provider, )*
+                    $( $v_provider: $crate::version::device_command_structs::$v_provider, )?
+                    $( $e_provider: $crate::extension::device_command_structs::$e_provider, )*
                 }
 
                 impl $crate::LoadCommands for $name {
                     fn load(loader: impl $crate::FunctionLoader) -> std::result::Result<Self, $crate::CommandLoadError> {
                         Ok(
                             Self {
-                                $( $v_provider: $crate::version::device::structs::$v_provider::load(loader)?, )?
-                                $( $e_provider: $crate::extension::device::structs::$e_provider::load(loader)?, )*
+                                $( $v_provider: $crate::version::device_command_structs::$v_provider::load(loader)?, )?
+                                $( $e_provider: $crate::extension::device_command_structs::$e_provider::load(loader)?, )*
                             }
                         )
                     }

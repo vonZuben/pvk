@@ -27,7 +27,9 @@ pub_use_modules!(
 ///
 /// Vulkan doc:
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html>
-pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + ThreadSafeHandle {
+pub trait Instance:
+    DispatchableHandle<RawHandle = vk::Instance, Commands: vk::InstanceLabel> + ThreadSafeHandle
+{
     const VERSION: VkVersion;
 
     #[cfg(VK_VERSION_1_0)]
@@ -57,26 +59,27 @@ pub trait Instance: DispatchableHandle<RawHandle = vk::Instance> + ThreadSafeHan
     ///
     /// Vulkan docs:
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html>
-    fn enumerate_physical_devices(&self) -> impl Enumerator<PhysicalDeviceHandle<Self>>
+    fn enumerate_physical_devices<X>(&self) -> impl Enumerator<PhysicalDeviceHandle<Self>>
     where
-        Self::Commands: vk::has_command::EnumeratePhysicalDevices,
+        Self::Commands: vk::has_command::EnumeratePhysicalDevices<X>,
     {
         enumerate_physical_devices::enumerate_physical_devices(self)
     }
 }
 
 // Hidden type which implements [Instance]
-struct _Instance<C: DestroyInstance, T> {
+struct _Instance<C: DestroyInstance<X>, X, T> {
     handle: vk::Instance,
     commands: C,
     tag: PhantomData<T>,
+    destroy: PhantomData<X>,
 }
 
-unsafe impl<C: DestroyInstance, T> Send for _Instance<C, T> {}
-unsafe impl<C: DestroyInstance, T> Sync for _Instance<C, T> {}
-impl<C: DestroyInstance, T> ThreadSafeHandle for _Instance<C, T> {}
+unsafe impl<C: DestroyInstance<X>, X, T> Send for _Instance<C, X, T> {}
+unsafe impl<C: DestroyInstance<X>, X, T> Sync for _Instance<C, X, T> {}
+impl<C: DestroyInstance<X>, X, T> ThreadSafeHandle for _Instance<C, X, T> {}
 
-impl<C: DestroyInstance, T> fmt::Debug for _Instance<C, T> {
+impl<C: DestroyInstance<X>, X, T> fmt::Debug for _Instance<C, X, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Instance")
             .field("handle", &self.handle)
@@ -85,17 +88,18 @@ impl<C: DestroyInstance, T> fmt::Debug for _Instance<C, T> {
     }
 }
 
-impl<C: DestroyInstance, T> _Instance<C, T> {
+impl<C: DestroyInstance<X>, X, T> _Instance<C, X, T> {
     fn new(handle: vk::Instance, commands: C, _tag: T) -> Self {
         Self {
             handle,
             commands,
             tag: PhantomData,
+            destroy: PhantomData,
         }
     }
 }
 
-impl<C: DestroyInstance, T> Handle for _Instance<C, T> {
+impl<C: DestroyInstance<X>, X, T> Handle for _Instance<C, X, T> {
     type RawHandle = vk::Instance;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -103,7 +107,7 @@ impl<C: DestroyInstance, T> Handle for _Instance<C, T> {
     }
 }
 
-impl<C: DestroyInstance, T> DispatchableHandle for _Instance<C, T> {
+impl<C: DestroyInstance<X>, X, T> DispatchableHandle for _Instance<C, X, T> {
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -111,11 +115,11 @@ impl<C: DestroyInstance, T> DispatchableHandle for _Instance<C, T> {
     }
 }
 
-impl<C: DestroyInstance + Version, T> Instance for _Instance<C, T> {
+impl<C: DestroyInstance<X> + Version + vk::InstanceLabel, X, T> Instance for _Instance<C, X, T> {
     const VERSION: VkVersion = C::VERSION;
 }
 
-pub(crate) fn make_instance<C: DestroyInstance + Version>(
+pub(crate) fn make_instance<C: DestroyInstance<X> + Version + vk::InstanceLabel, X>(
     handle: vk::Instance,
     commands: C,
     tag: Tag,
@@ -124,7 +128,7 @@ pub(crate) fn make_instance<C: DestroyInstance + Version>(
 }
 
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInstance.html>
-impl<C: DestroyInstance, T> Drop for _Instance<C, T> {
+impl<C: DestroyInstance<X>, X, T> Drop for _Instance<C, X, T> {
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyInstance);
 

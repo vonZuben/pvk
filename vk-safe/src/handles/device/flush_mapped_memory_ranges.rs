@@ -8,7 +8,7 @@ use vk_safe_sys as vk;
 
 use vk::has_command::FlushMappedMemoryRanges;
 
-pub(crate) fn flush_mapped_memory_ranges<D: Device<Commands: FlushMappedMemoryRanges>>(
+pub(crate) fn flush_mapped_memory_ranges<D: Device<Commands: FlushMappedMemoryRanges<X>>, X>(
     device: &D,
     ranges: &[MappedMemoryRange<D>],
 ) -> Result<(), Error> {

@@ -197,10 +197,8 @@ impl Generator {
     /// used when checking that a specific version of extension is supported as
     /// a dependency before certain features can be used
     pub fn dependencies(&self) -> String {
-        let dependencies = crate::dependencies::dependencies_to_tokens(
-            self.feature_collection.features(),
-            self.extensions.extensions(),
-        );
+        let dependencies =
+            crate::dependencies::dependencies_to_tokens(&self.feature_collection, &self.extensions);
         krs_quote!({@dependencies}).to_string()
     }
 }

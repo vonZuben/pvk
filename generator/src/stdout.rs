@@ -53,6 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn prelude() -> String {
     krs_quote! {
+        #![feature(marker_trait_attr)]
         use std::ffi::*;
         fn main(){println!("Success")}
     }

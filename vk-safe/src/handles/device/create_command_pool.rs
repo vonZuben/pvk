@@ -12,13 +12,16 @@ use vk::has_command::{CreateCommandPool, DestroyCommandPool};
 
 pub fn create_command_pool<
     'a,
-    D: Device<Commands: CreateCommandPool + DestroyCommandPool>,
+    D: Device<Commands: CreateCommandPool<X> + DestroyCommandPool<Y>>,
     F: CommandPoolCreateFlags,
     Q: Send,
+    X,
+    Y,
 >(
     device: &'a D,
     create_info: &CommandPoolCreateInfo<D, F, Q>,
-) -> Result<impl CommandPool<Device = D, Flags = F, QueueFamily = Q> + use<'a, D, F, Q>, Error> {
+) -> Result<impl CommandPool<Device = D, Flags = F, QueueFamily = Q> + use<'a, D, F, Q, X, Y>, Error>
+{
     check_vuids::check_vuids!(CreateCommandPool);
 
     #[allow(unused_labels)]

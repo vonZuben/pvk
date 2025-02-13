@@ -19,12 +19,12 @@ use vk::Version;
 ///
 /// See also
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateInstance.html>
-pub fn create_instance<'t, C: Context>(
+pub fn create_instance<'t, C: Context, X>(
     create_info: &InstanceCreateInfo<C>,
     tag: Tag<'t>,
 ) -> Result<impl Instance<Commands = C::Commands> + Captures<Tag<'t>>, Error>
 where
-    C::Commands: DestroyInstance + Version + LoadCommands,
+    C::Commands: DestroyInstance<X> + Version + LoadCommands + vk::InstanceLabel,
 {
     check_vuids::check_vuids!(CreateInstance);
 

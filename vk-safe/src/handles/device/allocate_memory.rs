@@ -12,15 +12,17 @@ use vk::has_command::{AllocateMemory, FreeMemory};
 
 pub fn allocate_memory<
     'a,
-    D: Device<Commands: AllocateMemory + FreeMemory>,
+    D: Device<Commands: AllocateMemory<X> + FreeMemory<Y>>,
     P: vk::flag_traits::MemoryPropertyFlags,
     H: vk::flag_traits::MemoryHeapFlags,
+    X,
+    Y,
 >(
     device: &'a D,
     info: &MemoryAllocateInfo<D::PhysicalDevice, P, H>,
 ) -> Result<
     // impl DeviceMemory<Device = S, PropertyFlags = P, HeapFlags = H> + Captures<&Self>,
-    impl DeviceMemory<Device = D, PropertyFlags = P, HeapFlags = H> + use<'a, D, P, H>,
+    impl DeviceMemory<Device = D, PropertyFlags = P, HeapFlags = H> + use<'a, D, P, H, X, Y>,
     vk::Result,
 > {
     check_vuids::check_vuids!(AllocateMemory);

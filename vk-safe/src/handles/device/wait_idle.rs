@@ -6,8 +6,8 @@ use vk_safe_sys as vk;
 
 use vk::has_command::DeviceWaitIdle;
 
-pub(crate) unsafe fn wait_idle(
-    device: &impl Device<Commands: DeviceWaitIdle>,
+pub(crate) unsafe fn wait_idle<X>(
+    device: &impl Device<Commands: DeviceWaitIdle<X>>,
 ) -> Result<(), Error> {
     let fptr = device.commands().DeviceWaitIdle().get_fptr();
 

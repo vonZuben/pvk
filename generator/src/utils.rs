@@ -126,7 +126,7 @@ impl<K: Eq + Hash + Copy, V> VecMap<K, V> {
     }
 
     /// iterate of the keys and values in insertion order
-    pub fn ordered_key_value_iter<'a>(&'a self) -> Option<impl Iterator<Item = (K, &V)> + 'a> {
+    pub fn ordered_key_value_iter<'a>(&'a self) -> Option<impl Iterator<Item = (K, &'a V)> + 'a> {
         match self.key_copies {
             None => None,
             Some(ref keys) => Some(keys.iter().copied().zip(self.vec.iter())),

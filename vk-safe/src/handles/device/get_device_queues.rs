@@ -25,7 +25,7 @@ pub UnsupportedCapability
 /// is consumed and cannot be used again.
 ///
 /// The returned Queues
-pub fn get_device_queues<'a, 't, D: Device<Commands: GetDeviceQueue>, Q: QueueFlags>(
+pub fn get_device_queues<'a, 't, D: Device<Commands: GetDeviceQueue<X>>, Q: QueueFlags, X>(
     device: &'a D,
     family_config: DeviceQueueCreateInfo<D::QueueConfig>,
     queue_family_properties: &QueueFamiliesRef<D::PhysicalDevice>,

@@ -3,13 +3,16 @@ This is an example program that grows along side with the development of the vk-
 Thus, I try to make use of all APIs here as I add them.
  */
 
+// trace_macros!(true);
+
 use vk_safe::vk;
 use vk_safe::vk_str;
 
 use vk::traits::*;
 
 vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
-vk::device_context!(DeviceContext: VERSION_1_0);
+// vk::device_context!(DeviceContext: VERSION_1_0);
+vk::device_context!(DeviceContext: VERSION_1_0 + KHR_maintenance1 + KHR_bind_memory2 + KHR_get_memory_requirements2 + KHR_sampler_ycbcr_conversion + KHR_image_format_list + EXT_image_drm_format_modifier);
 
 fn main() {
     println!(
@@ -63,7 +66,7 @@ fn main() {
     }
 }
 
-fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::instance::VERSION_1_0>) {
+fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::VERSION_1_1>) {
     println!("-------");
     println!("{:#?}", pd.get_physical_device_properties());
 

@@ -29,30 +29,40 @@ pub trait CommandPool: Handle<RawHandle = vk::CommandPool> + Send {
 
 pub(crate) fn make_command_pool<
     'a,
-    D: Device<Commands: DestroyCommandPool>,
+    D: Device<Commands: DestroyCommandPool<X>>,
     F: CommandPoolCreateFlags,
-    Q: Send,
+    Q,
+    X,
 >(
     handle: vk::CommandPool,
     device: &'a D,
-) -> impl CommandPool<Device = D, Flags = F, QueueFamily = Q> + use<'a, D, F, Q> {
+) -> impl CommandPool<Device = D, Flags = F, QueueFamily = Q> + use<'a, D, X, F, Q> {
     _CommandPool {
         handle,
         device,
         flags: PhantomData,
         queue_family: PhantomData,
+        destroy: PhantomData,
     }
 }
 
 /// [`CommandPool`] implementor
-struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool>, F, Q> {
+struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> {
     handle: vk::CommandPool,
     device: &'a D,
     flags: PhantomData<F>,
     queue_family: PhantomData<Q>,
+    destroy: PhantomData<X>,
 }
 
-impl<D: Device<Commands: DestroyCommandPool>, F, Q> fmt::Debug for _CommandPool<'_, D, F, Q> {
+unsafe impl<'a, D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> Send
+    for _CommandPool<'_, D, X, F, Q>
+{
+}
+
+impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> fmt::Debug
+    for _CommandPool<'_, D, X, F, Q>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("_CommandPool")
             .field("handle", &self.handle)
@@ -60,7 +70,7 @@ impl<D: Device<Commands: DestroyCommandPool>, F, Q> fmt::Debug for _CommandPool<
     }
 }
 
-impl<D: Device<Commands: DestroyCommandPool>, F, Q> Handle for _CommandPool<'_, D, F, Q> {
+impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> Handle for _CommandPool<'_, D, X, F, Q> {
     type RawHandle = vk::CommandPool;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -68,8 +78,8 @@ impl<D: Device<Commands: DestroyCommandPool>, F, Q> Handle for _CommandPool<'_, 
     }
 }
 
-impl<D: Sync + Device<Commands: DestroyCommandPool>, F: Send + CommandPoolCreateFlags, Q: Send>
-    CommandPool for _CommandPool<'_, D, F, Q>
+impl<D: Device<Commands: DestroyCommandPool<X>>, X, F: CommandPoolCreateFlags, Q> CommandPool
+    for _CommandPool<'_, D, X, F, Q>
 {
     type Device = D;
 
@@ -78,7 +88,7 @@ impl<D: Sync + Device<Commands: DestroyCommandPool>, F: Send + CommandPoolCreate
     type QueueFamily = Q;
 }
 
-impl<'a, D: Device<Commands: DestroyCommandPool>, F, Q> Drop for _CommandPool<'a, D, F, Q> {
+impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> Drop for _CommandPool<'_, D, X, F, Q> {
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyCommandPool);
 

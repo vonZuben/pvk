@@ -11,7 +11,8 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
 
 pub(crate) fn get_physical_device_queue_family_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceQueueFamilyProperties>,
+    P: PhysicalDevice<Commands: GetPhysicalDeviceQueueFamilyProperties<X>>,
+    X,
 >(
     physical_device: &P,
 ) -> impl Enumerator<vk::QueueFamilyProperties, QueueFamiliesTarget<P>> + Captures<&P> {

@@ -13,12 +13,13 @@ use vk::flag_types::MemoryPropertyFlags::HOST_VISIBLE_BIT;
 use vk::has_command::MapMemory;
 
 pub(crate) fn map_memory<
-    D: Device<Commands: MapMemory>,
+    D: Device<Commands: MapMemory<X>>,
     M: DeviceMemory<
         Device = D,
         PropertyFlags: Includes<HOST_VISIBLE_BIT>,
         HeapFlags: Excludes<MULTI_INSTANCE_BIT>,
     >,
+    X,
 >(
     device: &D,
     memory: M,

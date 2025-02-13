@@ -10,7 +10,7 @@ use crate::utils::{StrAsCode, VecMap, VkTyName};
 // previous to a specific version
 
 #[derive(Default)]
-pub struct FeatureCollection {
+pub(crate) struct FeatureCollection {
     versions: VecMap<VkTyName, Feature>,
 }
 
@@ -37,7 +37,7 @@ impl FeatureCollection {
         self.versions.iter().map(|f| f.version.as_str())
     }
 
-    pub fn features(&self) -> impl Iterator<Item = VkTyName> + Clone + use<'_> {
+    pub fn features(&self) -> impl DoubleEndedIterator<Item = VkTyName> + Clone + use<'_> {
         self.versions.iter().map(|f| f.version)
     }
 }
@@ -318,6 +318,12 @@ pub(crate) fn parse_version(ver: &str) -> FeatureVersion {
 pub(crate) struct FeatureVersion {
     major: usize,
     minor: usize,
+}
+
+impl std::fmt::Debug for FeatureVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "v{}.{}.x", self.major, self.minor)
+    }
 }
 
 impl krs_quote::ToTokens for FeatureVersion {

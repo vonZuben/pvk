@@ -10,8 +10,9 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceFormatProperties;
 
 pub(crate) fn get_physical_device_format_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceFormatProperties>,
+    P: PhysicalDevice<Commands: GetPhysicalDeviceFormatProperties<X>>,
     F: vk::enum_traits::Format,
+    X,
 >(
     physical_device: &P,
     _format: F,

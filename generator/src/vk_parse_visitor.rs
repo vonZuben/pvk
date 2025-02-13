@@ -803,7 +803,7 @@ impl<'a> Iterator for Parameters<'a> {
     }
 }
 
-fn parse_basetype<'a>(code: &'a str) -> Result<VkBasetype, ()> {
+fn parse_basetype<'a>(code: &'a str) -> Result<VkBasetype<'a>, ()> {
     use crate::simple_parse::*;
 
     let input = TokenIter::new(code);

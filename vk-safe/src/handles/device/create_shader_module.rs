@@ -11,10 +11,15 @@ use vk_safe_sys as vk;
 
 use vk::has_command::{CreateShaderModule, DestroyShaderModule};
 
-pub fn create_shader_module<'a, D: Device<Commands: CreateShaderModule + DestroyShaderModule>>(
+pub fn create_shader_module<
+    'a,
+    D: Device<Commands: CreateShaderModule<X> + DestroyShaderModule<Y>>,
+    X,
+    Y,
+>(
     device: &'a D,
     info: &ShaderModuleCreateInfo,
-) -> Result<impl ShaderModule<Device = D> + use<'a, D>, Error> {
+) -> Result<impl ShaderModule<Device = D> + use<'a, D, X, Y>, Error> {
     check_vuids::check_vuids!(CreateShaderModule);
 
     #[allow(unused_labels)]

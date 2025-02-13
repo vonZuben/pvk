@@ -233,17 +233,8 @@ pub mod enumerations {
 pub mod context {
     pub use vk_safe_sys::{device_context, instance_context};
 
-    /// available versions and extensions for Instance context
-    pub mod instance {
-        pub use vk_safe_sys::extension::instance::traits::*;
-        pub use vk_safe_sys::version::instance::traits::*;
-    }
-
-    /// available versions and extensions for Device context
-    pub mod device {
-        pub use vk_safe_sys::extension::device::traits::*;
-        pub use vk_safe_sys::version::device::traits::*;
-    }
+    pub use vk_safe_sys::extensions::*;
+    pub use vk_safe_sys::version::*;
 }
 
 /// The main module for using this crate
@@ -255,7 +246,8 @@ pub mod context {
 /// When referring to the documentation, it is better to look at the different modules
 /// which are better organized.
 pub mod vk {
-    pub use super::context::{device_context, instance_context};
+    pub use super::context::*;
+
     pub use super::spirv::SpirvBinary;
 
     pub use super::enumerations::*;
@@ -280,7 +272,4 @@ pub mod vk {
     pub use super::entry::*;
 
     pub use super::scope::tag;
-
-    pub use super::context::device;
-    pub use super::context::instance;
 }

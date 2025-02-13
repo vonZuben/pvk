@@ -4,7 +4,7 @@ use vk_safe_sys as vk;
 
 use vk::has_command::UnmapMemory;
 
-pub(crate) fn unmap_memory<D: Device<Commands: UnmapMemory>, M: DeviceMemory<Device = D>>(
+pub(crate) fn unmap_memory<D: Device<Commands: UnmapMemory<X>>, M: DeviceMemory<Device = D>, X>(
     device: &D,
     mapped_memory: MappedMemory<M>,
 ) -> M {

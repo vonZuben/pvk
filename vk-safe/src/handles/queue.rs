@@ -10,7 +10,9 @@ use vk_safe_sys as vk;
 
 use vk::flag_traits::QueueFlags;
 
-pub trait Queue: DispatchableHandle<RawHandle = vk::Queue> + ThreadSafeHandle {
+pub trait Queue:
+    DispatchableHandle<RawHandle = vk::Queue, Commands: vk::DeviceLabel> + ThreadSafeHandle
+{
     type Device;
     type Capability: QueueFlags;
     type Family;

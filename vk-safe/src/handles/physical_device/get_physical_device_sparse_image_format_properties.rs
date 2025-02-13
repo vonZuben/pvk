@@ -15,9 +15,10 @@ unit_error!(OnlyOneSampleCountAllowed);
 unit_error!(UnsupportedSampleCount);
 
 pub(crate) fn get_physical_device_sparse_image_format_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceSparseImageFormatProperties>,
+    P: PhysicalDevice<Commands: GetPhysicalDeviceSparseImageFormatProperties<X>>,
     Params: ImageParameters,
     SampleCount: vk::flag_traits::SampleCountFlags,
+    X,
 >(
     physical_device: &P,
     _samples: SampleCount,

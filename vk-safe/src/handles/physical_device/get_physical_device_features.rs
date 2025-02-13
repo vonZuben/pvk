@@ -10,7 +10,8 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceFeatures;
 
 pub(crate) fn get_physical_device_features<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceFeatures>,
+    P: PhysicalDevice<Commands: GetPhysicalDeviceFeatures<X>>,
+    X,
 >(
     physical_device: &P,
 ) -> PhysicalDeviceFeatures<P> {

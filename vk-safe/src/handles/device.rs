@@ -35,7 +35,9 @@ pub_use_modules!(
 };
 );
 
-pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
+pub trait Device:
+    DispatchableHandle<RawHandle = vk::Device, Commands: vk::DeviceLabel> + ThreadSafeHandle
+{
     const VERSION: VkVersion;
 
     type PhysicalDevice: PhysicalDevice;
@@ -107,12 +109,13 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
             PropertyFlags: Includes<HOST_VISIBLE_BIT>,
             HeapFlags: Excludes<MULTI_INSTANCE_BIT>,
         >,
+        X,
     >(
         &self,
         memory: M,
     ) -> Result<MappedMemory<M>, Error>
     where
-        Self::Commands: vk::has_command::MapMemory,
+        Self::Commands: vk::has_command::MapMemory<X>,
     {
         map_memory(self, memory)
     }
@@ -133,9 +136,9 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// ```
     ///
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkFlushMappedMemoryRanges.html>
-    fn flush_mapped_memory_ranges(&self, ranges: &[MappedMemoryRange<Self>]) -> Result<(), Error>
+    fn flush_mapped_memory_ranges<X>(&self, ranges: &[MappedMemoryRange<Self>]) -> Result<(), Error>
     where
-        Self::Commands: vk::has_command::FlushMappedMemoryRanges,
+        Self::Commands: vk::has_command::FlushMappedMemoryRanges<X>,
     {
         flush_mapped_memory_ranges(self, ranges)
     }
@@ -153,9 +156,9 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// let memory = device.unmap_memory(mapped_memory);
     /// # }
     /// ```
-    fn unmap_memory<M: DeviceMemory<Device = Self>>(&self, mapped_memory: MappedMemory<M>) -> M
+    fn unmap_memory<M: DeviceMemory<Device = Self>, X>(&self, mapped_memory: MappedMemory<M>) -> M
     where
-        Self::Commands: vk::has_command::UnmapMemory,
+        Self::Commands: vk::has_command::UnmapMemory<X>,
     {
         unmap_memory(self, mapped_memory)
     }
@@ -182,9 +185,9 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     /// let result = unsafe { device.wait_idle() };
     /// # }
     /// ```
-    unsafe fn wait_idle(&self) -> Result<(), Error>
+    unsafe fn wait_idle<X>(&self) -> Result<(), Error>
     where
-        Self::Commands: vk::has_command::DeviceWaitIdle,
+        Self::Commands: vk::has_command::DeviceWaitIdle<X>,
     {
         wait_idle(self)
     }
@@ -265,12 +268,12 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
     ```
     <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkAllocateCommandBuffers.html>
      */
-    fn allocate_command_buffers<'a, Pool, Level, B: Buffer<vk::CommandBuffer>>(
+    fn allocate_command_buffers<'a, Pool, Level, B: Buffer<vk::CommandBuffer>, X>(
         &'a self,
         info: CommandBufferAllocateInfo<'_, B, Pool, Level>,
     ) -> Result<_CommandBuffers<'a, Self, Level, B>, Error>
     where
-        Self::Commands: vk::has_command::AllocateCommandBuffers,
+        Self::Commands: vk::has_command::AllocateCommandBuffers<X>,
     {
         allocate_command_buffers(self, info)
     }
@@ -314,33 +317,41 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
 // }
 
 /// [`Device`] implementor
-struct _Device<C: DestroyDevice, P, Q, T> {
+struct _Device<C: DestroyDevice<X>, P, Q, T, X> {
     handle: vk::Device,
     commands: C,
     tag: PhantomData<T>,
     physical_device: PhantomData<P>,
     queue_config: PhantomData<Q>,
+    destroy: PhantomData<X>,
 }
 
-pub(crate) fn make_device<'t, C: DestroyDevice + Version, P: PhysicalDevice, Q>(
+pub(crate) fn make_device<
+    't,
+    C: DestroyDevice<X> + Version + vk::DeviceLabel,
+    P: PhysicalDevice,
+    Q,
+    X,
+>(
     handle: vk::Device,
     commands: C,
     _tag: Tag<'t>,
-) -> impl Device<Commands = C, QueueConfig = Q, PhysicalDevice = P> + use<'t, C, P, Q> {
+) -> impl Device<Commands = C, QueueConfig = Q, PhysicalDevice = P> + use<'t, C, P, Q, X> {
     _Device {
         handle,
         commands,
         tag: PhantomData::<Tag<'t>>,
         physical_device: PhantomData,
         queue_config: PhantomData,
+        destroy: PhantomData,
     }
 }
 
-unsafe impl<C: DestroyDevice, P, Q, T> Send for _Device<C, P, Q, T> {}
-unsafe impl<C: DestroyDevice, P, Q, T> Sync for _Device<C, P, Q, T> {}
-impl<C: DestroyDevice, P, Q, T> ThreadSafeHandle for _Device<C, P, Q, T> {}
+unsafe impl<C: DestroyDevice<X>, P, Q, T, X> Send for _Device<C, P, Q, T, X> {}
+unsafe impl<C: DestroyDevice<X>, P, Q, T, X> Sync for _Device<C, P, Q, T, X> {}
+impl<C: DestroyDevice<X>, P, Q, T, X> ThreadSafeHandle for _Device<C, P, Q, T, X> {}
 
-impl<C: DestroyDevice, P, Q, T> fmt::Debug for _Device<C, P, Q, T> {
+impl<C: DestroyDevice<X>, P, Q, T, X> fmt::Debug for _Device<C, P, Q, T, X> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("_Device")
             .field("handle", &self.handle)
@@ -348,7 +359,7 @@ impl<C: DestroyDevice, P, Q, T> fmt::Debug for _Device<C, P, Q, T> {
     }
 }
 
-impl<C: DestroyDevice, P, Q, T> Handle for _Device<C, P, Q, T> {
+impl<C: DestroyDevice<X>, P, Q, T, X> Handle for _Device<C, P, Q, T, X> {
     type RawHandle = vk::Device;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -356,7 +367,7 @@ impl<C: DestroyDevice, P, Q, T> Handle for _Device<C, P, Q, T> {
     }
 }
 
-impl<C: DestroyDevice, P, Q, T> DispatchableHandle for _Device<C, P, Q, T> {
+impl<C: DestroyDevice<X>, P, Q, T, X> DispatchableHandle for _Device<C, P, Q, T, X> {
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -364,14 +375,16 @@ impl<C: DestroyDevice, P, Q, T> DispatchableHandle for _Device<C, P, Q, T> {
     }
 }
 
-impl<C: DestroyDevice + Version, P: PhysicalDevice, Q, T> Device for _Device<C, P, Q, T> {
+impl<C: DestroyDevice<X> + Version + vk::DeviceLabel, P: PhysicalDevice, Q, T, X> Device
+    for _Device<C, P, Q, T, X>
+{
     const VERSION: VkVersion = C::VERSION;
 
     type PhysicalDevice = P;
     type QueueConfig = Q;
 }
 
-impl<C: DestroyDevice, P, Q, T> Drop for _Device<C, P, Q, T> {
+impl<C: DestroyDevice<X>, P, Q, T, X> Drop for _Device<C, P, Q, T, X> {
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyDevice);
 

@@ -22,7 +22,7 @@ impl ExtensionCollection {
             .unwrap_or(DependencyKind::Version)
     }
 
-    fn find(&self, name: VkTyName) -> Option<&ExtensionInfo> {
+    pub fn find(&self, name: VkTyName) -> Option<&ExtensionInfo> {
         self.extensions.get(ExtensionName::Base { name })
     }
 
@@ -32,8 +32,8 @@ impl ExtensionCollection {
             .map(|e| e.extension_name.name_as_str())
     }
 
-    pub fn extensions(&self) -> impl Iterator<Item = VkTyName> + Clone + use<'_> {
-        self.extensions.iter().map(|e| e.extension_name.name())
+    pub fn extensions(&self) -> impl Iterator<Item = &ExtensionInfo> + Clone + use<'_> {
+        self.extensions.iter()
     }
 }
 
@@ -222,11 +222,6 @@ impl krs_quote::ToTokens for DependencyTraits<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.info.extension_name;
 
-        let options = (0..)
-            .into_iter()
-            .map(|n| krs_quote::Token::from(format!("O{n}")));
-        let options = &options;
-
         let instance_dependencies = self
             .info
             .dependencies
@@ -298,19 +293,19 @@ impl krs_quote::ToTokens for DependencyTraits<'_> {
                             label = {@label},
                             {@,* note = {@notes}}
                         )]
-                        pub trait HasDependency<O> {}
+                        #[marker]
+                        pub trait HasDependency {}
 
                         {@*
-                            pub struct {@options};
-                            impl<T> HasDependency<{@options}> for T where T: {@bounds} {}
+                            impl<T> HasDependency for T where T: {@bounds} {}
                         }
                     )
                 }
                 else {
                     krs_quote_with!(tokens <-
-                        pub trait HasDependency<O> {}
-                        pub struct O;
-                        impl<T> HasDependency<O> for T {}
+                        #[marker]
+                        pub trait HasDependency {}
+                        impl<T> HasDependency for T {}
                     )
                 }
             })
@@ -963,7 +958,7 @@ fn get_term_kind(
 
 /// Command Names for a given extension
 /// intended to generate code within a instance/device extension_names module
-pub struct ExtensionInfo {
+pub(crate) struct ExtensionInfo {
     extension_name: ExtensionName,
     instance_command_names: Vec<VkTyName>,
     device_command_names: Vec<VkTyName>,
@@ -995,5 +990,11 @@ impl ExtensionInfo {
     }
     pub fn dependencies<'a>(&mut self, dependencies: impl Into<DependencyTerm>) {
         self.dependencies = Some(dependencies.into())
+    }
+    pub fn promoted_to(&self) -> Option<VkTyName> {
+        self.promoted_to
+    }
+    pub fn name(&self) -> ExtensionName {
+        self.extension_name
     }
 }
