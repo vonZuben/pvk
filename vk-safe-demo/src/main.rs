@@ -11,7 +11,6 @@ use vk_safe::vk_str;
 use vk::traits::*;
 
 vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
-// vk::device_context!(DeviceContext: VERSION_1_0);
 vk::device_context!(DeviceContext: VERSION_1_0 + KHR_maintenance1 + KHR_bind_memory2 + KHR_get_memory_requirements2 + KHR_sampler_ycbcr_conversion + KHR_image_format_list + EXT_image_drm_format_modifier);
 
 fn main() {

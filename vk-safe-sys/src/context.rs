@@ -62,16 +62,6 @@ macro_rules! instance_context {
                 type Commands = commands::$name;
             }
 
-            unsafe impl $crate::context::Extensions for $name {
-                fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
-                    use std::ffi::c_char;
-                    use $crate::context::macro_helper::*;
-                    let l = End;
-                    $( $crate::macro_loads::instance_loads::$e_provider!(l); )*
-                    l
-                }
-            }
-
             mod commands {
                 unsafe impl $crate::InstanceLabel for $name {}
 
@@ -128,6 +118,16 @@ macro_rules! instance_context {
                     }
                 }
             }
+
+            unsafe impl $crate::context::Extensions for $name {
+                fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
+                    use std::ffi::c_char;
+                    use $crate::context::macro_helper::*;
+                    let l = End;
+                    $( $crate::macro_loads::instance_loads::$e_provider!(l); )*
+                    l
+                }
+            }
         };
     }
 }
@@ -167,16 +167,6 @@ macro_rules! device_context {
         const _: () = {
             impl $crate::context::Context for $name {
                 type Commands = commands::$name;
-            }
-
-            unsafe impl $crate::context::Extensions for $name {
-                fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
-                    use std::ffi::c_char;
-                    use $crate::context::macro_helper::*;
-                    let l = End;
-                    $( $crate::macro_loads::device_loads::$e_provider!(l); )*
-                    l
-                }
             }
 
             mod commands {
@@ -233,6 +223,16 @@ macro_rules! device_context {
                             }
                         )
                     }
+                }
+            }
+
+            unsafe impl $crate::context::Extensions for $name {
+                fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
+                    use std::ffi::c_char;
+                    use $crate::context::macro_helper::*;
+                    let l = End;
+                    $( $crate::macro_loads::device_loads::$e_provider!(l); )*
+                    l
                 }
             }
         };
