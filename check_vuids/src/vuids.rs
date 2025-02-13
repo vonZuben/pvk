@@ -53,13 +53,13 @@ impl RefFromStr<'static> for VuidLine {
 
 /// for implementing function like parse on str, but using [RefFromStr]
 trait MyParse<'a> {
-    fn my_parse<F>(&'a self) -> std::result::Result<F, <F as RefFromStr>::Err>
+    fn my_parse<F>(&'a self) -> std::result::Result<F, <F as RefFromStr<'a>>::Err>
     where
         F: RefFromStr<'a>;
 }
 
 impl<'a> MyParse<'a> for str {
-    fn my_parse<F>(&'a self) -> std::result::Result<F, <F as RefFromStr>::Err>
+    fn my_parse<F>(&'a self) -> std::result::Result<F, <F as RefFromStr<'a>>::Err>
     where
         F: RefFromStr<'a>,
     {

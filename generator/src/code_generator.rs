@@ -443,9 +443,8 @@ impl<'a> VisitVkParse<'a> for Generator {
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
         self.types.add_generic_type(name);
     }
-    fn visit_require_type(&mut self, name: &'a str, from: &'a str) {
+    fn visit_require_type(&mut self, name: &'a str, _from: &'a str) {
         let name = name.into();
-        // let from = from.into();
         self.types.enable_type(name);
         if let Some(alias) = self.types.get_alias_def(name) {
             self.types.enable_type(alias.ty);

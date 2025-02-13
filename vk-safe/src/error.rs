@@ -31,6 +31,7 @@ impl From<Error> for Box<dyn std::error::Error> {
 /// This trait allows handling each case in the same way
 pub(crate) trait VkResultExt {
     fn is_err(&self) -> bool;
+    #[allow(unused)]
     fn is_success(&self) -> bool;
     fn get_error(self) -> vk::Result;
 }
