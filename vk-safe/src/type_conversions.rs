@@ -68,7 +68,8 @@ pub struct MaybeUninitLabel();
 /// By default, this trait performs the conversion
 /// by manually reinterpreting the bytes of Self to T,
 /// while ensuring that the size and alignment match.
-pub(crate) unsafe trait ConvertWrapper<T: ?Sized, L = Other> {
+#[doc(hidden)]
+pub unsafe trait ConvertWrapper<T: ?Sized, L = Other> {
     /// Convert to raw c-type
     ///
     /// Convert from the safe api wrapper type to the raw c-type.

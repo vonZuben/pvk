@@ -66,8 +66,14 @@ fn main() {
 }
 
 fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::VERSION_1_1>) {
-    println!("-------");
-    println!("{:#?}", pd.get_physical_device_properties());
+    // println!("-------");
+    // println!("{:#?}", pd.get_physical_device_properties());
+
+    println!("---get_physical_device_properties2----");
+    let props2 = pd.get_physical_device_properties2(vk_safe::p_next!(
+        PhysicalDeviceExternalMemoryHostPropertiesEXT
+    ));
+    println!("{props2:#?}");
 
     println!("-------");
     println!("{:#?}", pd.get_physical_device_features());

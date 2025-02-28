@@ -75,25 +75,36 @@ impl ToTokens for VulkanCommand {
             }
 
             /// Indicates that a pointer to Self can be safely read and written to as a pointer to BaseInStructure
-            ///
-            /// also provides some maybe useful convenience methods
             pub unsafe trait BaseStructure: Stype {
-                fn p_next(&self) -> *const BaseInStructure;
-                fn as_base_structure(&self) -> *const BaseInStructure;
-                unsafe fn set_p_next(&mut self, p_next: *const BaseInStructure);
+                fn set_s_type(this: *mut Self) {
+                    let this: *mut BaseInStructure = this.cast();
+                    unsafe {
+                        std::ptr::write(&raw mut (*this).s_type, Self::S_TYPE);
+                    }
+                }
+
+                fn p_next(this: *mut Self, p_next: *const BaseInStructure) {
+                    let this: *mut BaseInStructure = this.cast();
+                    unsafe {
+                        std::ptr::write(&raw mut (*this).p_next, p_next);
+                    }
+                }
             }
 
             /// Indicates that a pointer to Self can be safely read and written to as a pointer to BaseOutStructure
-            ///
-            /// also provides some maybe useful convenience methods
-            pub unsafe trait BaseStructureMut: Stype {
-                fn p_next_mut(&mut self) -> *mut BaseOutStructure;
-                fn as_base_structure_mut(&mut self) -> *mut BaseOutStructure;
-                unsafe fn set_p_next_mut(&mut self, p_next: *mut BaseOutStructure);
+            pub unsafe trait BaseStructureMut: BaseStructure {
+                fn p_next_mut(this: *mut Self, p_next: *mut BaseOutStructure) {
+                    let this: *mut BaseOutStructure = this.cast();
+                    unsafe {
+                        std::ptr::write(&raw mut (*this).p_next, p_next);
+                    }
+                }
             }
 
             /// The implementor can be added to the pNext chain of `T`
             pub unsafe trait StructExtends<T> {}
+
+            unsafe impl<T> StructExtends<T> for () {}
         )
     }
 }

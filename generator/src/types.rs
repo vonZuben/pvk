@@ -112,20 +112,20 @@ impl Struct2 {
 }
 
 struct StructToToken<'a> {
-    s: &'a Struct2,
-    g: &'a HashSet<VkTyName>,
+    s_type: &'a Struct2,
+    generic_types: &'a HashSet<VkTyName>,
 }
 
 impl krs_quote::ToTokens for StructToToken<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
-        let name = self.s.name;
+        let name = self.s_type.name;
 
         let generics: Vec<_> = self
-            .s
+            .s_type
             .fields
             .iter()
             .filter_map(|field| {
-                if field.ty.is_external() || self.g.contains(&field.ty.name()) {
+                if field.ty.is_external() || self.generic_types.contains(&field.ty.name()) {
                     Some(field.ty.name())
                 } else {
                     None
@@ -140,7 +140,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
         };
 
         let s_type_trait = self
-            .s
+            .s_type
             .fields
             .iter()
             .filter(|_| not_base_struct)
@@ -158,7 +158,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
             });
 
         let base_structure_trait = self
-        .s
+        .s_type
         .fields
         .iter()
         .filter(|_| not_base_struct)
@@ -168,39 +168,21 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                 if matches!(f.ty.ptr_type(), Some(ctype::Pointer::Mut)) {
                     krs_quote_with!(tokens <-
                         #[allow(non_camel_case_types)]
-                        unsafe impl<{@,* {@generics}}> BaseStructureMut for {@name}<{@,* {@generics}}> {
-                            fn p_next_mut(&mut self) -> *mut BaseOutStructure {
-                                self.p_next.cast()
-                            }
-                            fn as_base_structure_mut(&mut self) -> *mut BaseOutStructure {
-                                (self as *mut Self).cast()
-                            }
-                            unsafe fn set_p_next_mut(&mut self, p_next: *mut BaseOutStructure) {
-                                self.p_next = p_next.cast();
-                            }
-                        }
+                        unsafe impl<{@,* {@generics}}> BaseStructure for {@name}<{@,* {@generics}}> {}
+                        #[allow(non_camel_case_types)]
+                        unsafe impl<{@,* {@generics}}> BaseStructureMut for {@name}<{@,* {@generics}}> {}
                     )
                 }
                 else {
                     krs_quote_with!(tokens <-
                         #[allow(non_camel_case_types)]
-                        unsafe impl <{@,* {@generics}}> BaseStructure for {@name}<{@,* {@generics}}> {
-                            fn p_next(&self) -> *const BaseInStructure {
-                                self.p_next.cast()
-                            }
-                            fn as_base_structure(&self) -> *const BaseInStructure {
-                                (self as *const Self).cast()
-                            }
-                            unsafe fn set_p_next(&mut self, p_next: *const BaseInStructure) {
-                                self.p_next = p_next.cast();
-                            }
-                        }
+                        unsafe impl <{@,* {@generics}}> BaseStructure for {@name}<{@,* {@generics}}> {}
                     )
                 }
             })
         });
 
-        let extends = self.s.extends.iter().map(|extends| {
+        let extends = self.s_type.extends.iter().map(|extends| {
             krs_quote::to_tokens_closure!(tokens {
                 krs_quote_with!(tokens <-
                     #[allow(non_camel_case_types)]
@@ -209,9 +191,9 @@ impl krs_quote::ToTokens for StructToToken<'_> {
             })
         });
 
-        match self.s.non_normative {
+        match self.s_type.non_normative {
             false => {
-                let fields = &self.s.fields;
+                let fields = &self.s_type.fields;
                 krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[derive(Copy, Clone, Debug)]
@@ -225,7 +207,7 @@ impl krs_quote::ToTokens for StructToToken<'_> {
                 );
             }
             true => {
-                let fields = BitFieldIter::new(self.s.fields.iter());
+                let fields = BitFieldIter::new(self.s_type.fields.iter());
                 krs_quote_with!(tokens <-
                     #[repr(C)]
                     #[repr(packed)]
@@ -646,8 +628,8 @@ impl Types {
         to_tokens_closure!(tokens {
             for s in self.structs.iter().filter(|s|s.enabled){
                 StructToToken {
-                    s: &s.ty,
-                    g: &self.generic_types,
+                    s_type: &s.ty,
+                    generic_types: &self.generic_types,
                 }
                 .to_tokens(tokens)
             }

@@ -4,6 +4,7 @@ use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 use crate::enumerator::Enumerator;
 use crate::error::Error;
 use crate::scope::{Captures, Tag};
+use crate::struct_extension::{Extended, Pnext};
 use crate::structs::*;
 use crate::vk_str::VkStr;
 
@@ -30,6 +31,10 @@ pub_use_modules!(
     get_physical_device_memory_properties;
     create_device;
 };
+
+#[cfg(VK_VERSION_1_1)]{
+    get_physical_device_properties2;
+}
 
 );
 
@@ -62,6 +67,30 @@ pub trait PhysicalDevice:
         Self::Commands: vk::has_command::GetPhysicalDeviceProperties<X>,
     {
         get_physical_device_properties(self)
+    }
+
+    #[cfg(VK_VERSION_1_1)]
+    /// Query the properties of the PhysicalDevice
+    ///
+    /// ```rust
+    /// # use vk_safe::vk;
+    /// # use vk::traits::*;
+    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_1>>
+    /// #   (physical_device: P) {
+    /// let properties = physical_device.get_physical_device_properties2(());
+    /// # }
+    /// ```
+    ///
+    /// Vulkan docs:
+    /// <https://registry.khronos.org/VulkanSC/specs/1.0-extensions/man/html/vkGetPhysicalDeviceProperties2.html>
+    fn get_physical_device_properties2<Pn: Pnext<vk::PhysicalDeviceProperties2>, X>(
+        &self,
+        p_next: Pn,
+    ) -> Extended<PhysicalDeviceProperties2<Self>, Pn::Pnext<Self>>
+    where
+        Self::Commands: vk::has_command::GetPhysicalDeviceProperties2<X>,
+    {
+        get_physical_device_properties2(self, p_next)
     }
 
     #[cfg(VK_VERSION_1_0)]

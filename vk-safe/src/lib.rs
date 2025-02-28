@@ -170,6 +170,9 @@ pub mod buffer;
 
 pub mod scope;
 
+#[doc(hidden)]
+pub mod struct_extension;
+
 pub mod flags;
 
 // pub mod dispatchable_handles;

@@ -21,4 +21,14 @@ pub_use_modules!(
         command_buffer_alloc_info;
         shader_module_create_info;
     };
+
+    #[cfg(VK_VERSION_1_1)]
+    {
+        physical_device_properties2;
+    };
+
+    #[cfg(VK_EXT_external_memory_host)]
+    {
+        physical_device_external_memory_host_properties_ext
+    };
 );

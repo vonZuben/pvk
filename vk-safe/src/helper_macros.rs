@@ -209,3 +209,20 @@ macro_rules! pub_use_modules {
         )*
     };
 }
+
+/// initialize sType and pNext for a pnext chain
+macro_rules! init_pnext {
+    (
+        $struct_extensions:ident: $p_next_ty:ident;
+        $base:ident: $base_ty:ident $($generics:tt)*
+    ) => {
+        let mut $struct_extensions = $p_next_ty::uninit();
+        let struct_extensions_ptr = $struct_extensions.as_mut_ptr();
+        let p_next_head = $crate::struct_extension::LinkMut::link_mut(struct_extensions_ptr);
+
+        let mut $base = std::mem::MaybeUninit::<$base_ty $($generics)* >::uninit();
+        let base_struct_ptr: *mut vk_safe_sys::$base_ty = $base.as_mut_ptr().to_c();
+
+        vk_safe_sys::BaseStructureMut::p_next_mut(base_struct_ptr, p_next_head);
+    };
+}
