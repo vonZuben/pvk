@@ -14,6 +14,7 @@ mod code_parts;
 
 mod intern;
 
+mod dependency_terms;
 mod simple_parse;
 
 mod code_generator;
