@@ -279,22 +279,19 @@ impl<'a> VisitVkParse<'a> for Generator {
             extensions::ExtensionInfo::new(ex_name, kind, info.promoted_to.map(Into::into));
 
         match info.name_parts {
-            crate::vk_parse_visitor::VkParseExtensionParts::Base(_) => match info.dependencies {
+            crate::vk_parse_visitor::Term::Single(_) => match info.dependencies {
                 Some(dep) => extension_info.dependencies(dep),
                 None => {}
             },
-            crate::vk_parse_visitor::VkParseExtensionParts::Extended(terms) => {
-                extension_info.dependencies(terms)
+            crate::vk_parse_visitor::Term::And(_) => extension_info.dependencies(info.name_parts),
+            crate::vk_parse_visitor::Term::Or(_) => {
+                panic!("should not have extension name with or terms")
             }
         }
 
         self.extensions.get_mut_or_default(ex_name, extension_info);
     }
-    fn visit_ex_cmd_ref(
-        &mut self,
-        cmd_name: &'a str,
-        parts: &crate::vk_parse_visitor::VkParseExtensionParts<'a>,
-    ) {
+    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &crate::vk_parse_visitor::Term<'a>) {
         let cmd_name = utils::VkTyName::new(cmd_name);
         let cmd_name = self.get_alias_or_name(cmd_name);
         let cmd_type = self

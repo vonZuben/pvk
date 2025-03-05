@@ -6,7 +6,7 @@ pub trait VisitVkParse<'a> {
     fn visit_command(&mut self, def_wrapper: CommandDefWrapper<'a>);
     fn visit_ex_enum(&mut self, spec: VkParseEnumConstant<'a>);
     fn visit_ex_require_node(&mut self, info: ExtensionInfo<'a, '_>);
-    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &VkParseExtensionParts<'a>);
+    fn visit_ex_cmd_ref(&mut self, cmd_name: &'a str, parts: &Term<'a>);
     fn visit_struct_def(&mut self, def: StructDef<'a>);
     fn visit_constant(&mut self, spec: VkParseEnumConstant<'a>);
     fn visit_basetype(&mut self, basetype: VkBasetype<'a>);
@@ -368,10 +368,8 @@ pub fn visit_vk_parse<'a>(registry: &'a vk_parse::Registry, visitor: &mut impl V
                                     _ => panic!("error: not expecting feature, extension, and depends additions at the same time"),
                                 };
                                 let parts = match extended {
-                                    Some(term) => VkParseExtensionParts::Extended(
-                                        term.prepend(&extension.name),
-                                    ),
-                                    None => VkParseExtensionParts::Base(&extension.name),
+                                    Some(term) => term.prepend(&extension.name),
+                                    None => Term::Single(&extension.name),
                                 };
 
                                 let dependent_extensions =
@@ -486,12 +484,6 @@ pub struct VkParseEnumConstant<'a> {
     pub enm: &'a vk_parse::Enum,
     pub target: Option<&'a str>,
     pub _is_alias: bool,
-}
-
-#[derive(Clone)]
-pub enum VkParseExtensionParts<'a> {
-    Base(&'a str),
-    Extended(Term<'a>),
 }
 
 pub struct StructDef<'a> {
@@ -688,7 +680,7 @@ pub enum MemberKind<'a> {
 }
 
 pub struct ExtensionInfo<'a, 'p> {
-    pub name_parts: &'p VkParseExtensionParts<'a>,
+    pub name_parts: &'p Term<'a>,
     pub dependencies: Option<Term<'a>>,
     pub kind: &'a str,
     pub promoted_to: Option<&'a str>,

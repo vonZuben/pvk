@@ -411,15 +411,16 @@ pub enum ExtensionName {
 }
 
 impl ExtensionName {
-    pub fn new<'a>(parts: &crate::vk_parse_visitor::VkParseExtensionParts) -> Self {
-        match parts {
-            crate::vk_parse_visitor::VkParseExtensionParts::Base(name) => ExtensionName::Base {
+    pub fn new<'a>(term: &crate::vk_parse_visitor::Term) -> Self {
+        match term {
+            crate::vk_parse_visitor::Term::Single(name) => ExtensionName::Base {
                 name: (*name).into(),
             },
-            crate::vk_parse_visitor::VkParseExtensionParts::Extended(terms) => {
-                ExtensionName::Extra {
-                    name: terms.name().into(),
-                }
+            crate::vk_parse_visitor::Term::And(_) => ExtensionName::Extra {
+                name: term.name().into(),
+            },
+            crate::vk_parse_visitor::Term::Or(_) => {
+                panic!("extension name should not have or terms")
             }
         }
     }
