@@ -440,12 +440,13 @@ impl<'a> VisitVkParse<'a> for Generator {
     fn visit_external_type(&mut self, name: crate::utils::VkTyName) {
         self.types.add_generic_type(name);
     }
-    fn visit_require_type(&mut self, name: &'a str, _from: &'a str) {
+    fn visit_require_type(&mut self, name: &'a str, from: &crate::vk_parse_visitor::Term<'a>) {
         let name = name.into();
-        self.types.enable_type(name);
+        let from: crate::dependency_terms::DependencyTerm = from.into();
         if let Some(alias) = self.types.get_alias_def(name) {
-            self.types.enable_type(alias.ty);
+            self.types.enable_type(alias.ty, from.clone());
         }
+        self.types.enable_type(name, from);
         self.enum_collection.enable_variants(name);
     }
     // fn visit_api_version(&mut self, _version: (u32, u32)) {}

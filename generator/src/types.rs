@@ -1,9 +1,11 @@
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
 use krs_quote::{krs_quote_with, to_tokens_closure, ToTokens};
 
-use crate::utils::{case, StrAsCode, VecMap, VkTyName};
+use crate::dependency_terms::{DependencyTerm, DependencyTermSolution, SolutionCollection};
+use crate::utils::{case, IntoIntersperse, StrAsCode, VecMap, VkTyName};
 
 use crate::ctype;
 
@@ -91,6 +93,7 @@ pub struct Struct2 {
     fields: Vec<ctype::Cfield>,
     pub non_normative: bool,
     extends: Vec<VkTyName>,
+    dependencies: Option<DependencyTerm>,
 }
 
 impl Struct2 {
@@ -101,6 +104,7 @@ impl Struct2 {
             fields: Default::default(),
             non_normative: false,
             extends,
+            dependencies: Default::default(),
         }
     }
     pub fn push_field(&mut self, field: ctype::Cfield) {
@@ -108,6 +112,12 @@ impl Struct2 {
     }
     pub fn non_normative(&mut self) {
         self.non_normative = true;
+    }
+    fn requires(&mut self, term: DependencyTerm) {
+        match self.dependencies {
+            Some(ref mut deps) => deps.or(term),
+            None => self.dependencies = Some(term),
+        }
     }
 }
 
@@ -294,6 +304,93 @@ impl<'a, I: Iterator<Item = &'a ctype::Cfield>> Iterator for BitFieldIter<'a, I>
         } else {
             Some(field.clone())
         }
+    }
+}
+
+/// structs should only be added to p_next chains if the implementation
+/// supports them with the appropriate Feature version or extension.
+struct StructDependency<'a>(&'a Struct2);
+
+impl<'a> StructDependency<'a> {
+    fn new(s: &'a Struct2) -> Self {
+        Self(s)
+    }
+}
+
+impl ToTokens for StructDependency<'_> {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.0.name;
+
+        let dependencies = self
+            .0
+            .dependencies
+            .as_ref()
+            .expect("all structs should have at least one dependency which defines them");
+        let solutions = DependencyTermSolution::from(dependencies.clone());
+        let solutions = RefCell::new(solutions);
+
+        let dependencies_to_tokens = |deps| {
+            krs_quote::to_tokens_closure!(tokens {
+                let solutions = SolutionCollection::new(deps);
+
+                let message = format!("The dependencies for `{}` are not satisfied", name.as_str());
+                let solution_text: Vec<_> = solutions.iter().map(|s| {
+                    s.iter()
+                        .map(|t| t.as_str())
+                        .my_intersperse(" + ")
+                        .collect::<String>()
+                }).collect();
+
+                let mut label;
+                if solution_text.len() == 1 {
+                    label = format!("For {}, you must enable {}", name.as_str(), solution_text[0]);
+                }
+                else {
+                    label = format!("For {}, the must enable one of:\n\t\t", name.as_str());
+                    label.extend(solution_text.clone()
+                        .iter().map(|s|s.as_str())
+                        .my_intersperse("; or\n\t\t")
+                    );
+                }
+
+                let notes = solution_text.iter().map(|s| format!("consider using: {s}"));
+
+                let bounds = solutions.iter().map(|s|
+                    krs_quote::to_tokens_closure!(tokens {
+                        let bounds = s.iter().copied();
+                        krs_quote_with!(tokens <-
+                            {@+* {@bounds}}
+                        )
+                    })
+                );
+
+                krs_quote_with!(tokens <-
+                    use crate::dependency::*;
+
+                    #[diagnostic::on_unimplemented(
+                        message = {@message},
+                        label = {@label},
+                        {@,* note = {@notes}}
+                    )]
+                    #[marker]
+                    pub trait HasDependency {}
+
+                    {@*
+                        impl<T> HasDependency for T where T: {@bounds} {}
+                    }
+                )
+            })
+        };
+
+        let dependencies = dependencies_to_tokens(&solutions);
+
+        krs_quote_with!(tokens <-
+            #[doc(hidden)]
+            #[allow(non_snake_case)]
+            pub mod {@name} {
+                {@dependencies}
+            }
+        )
     }
 }
 
@@ -535,8 +632,9 @@ pub struct Types {
 
     aliases: Vec<Type<TypeDef>>,
 
-    // in order to avoid external ".h" files and c libraries, we do not generate the external types and just treat them generically
-    // to achieve this, we treat such types as generic, and a user needs to determine the correct type
+    // in order to avoid external ".h" files and c libraries, we do not generate the external types and
+    // just treat them as generic types.
+    // When creating a a API that uses the generated types, the concrete type can be hard coded as appropriate.
     generic_types: HashSet<VkTyName>,
 }
 
@@ -560,18 +658,23 @@ impl<T: ToTokens> ToTokens for Type<T> {
 }
 
 impl Types {
-    pub fn enable_type(&mut self, name: VkTyName) {
+    pub fn enable_type(&mut self, name: VkTyName, from: DependencyTerm) {
+        use TypeIndex::*;
         self.map.get(name).map(|&index| match index {
-            TypeIndex::TypeDef(i) => unsafe { self.type_defs.get_unchecked_mut(i).enabled = true },
-            TypeIndex::Bitmask(i) => unsafe { self.bitmasks.get_unchecked_mut(i).enabled = true },
-            TypeIndex::Struct(i) => unsafe { self.structs.get_unchecked_mut(i).enabled = true },
-            TypeIndex::Union(i) => unsafe { self.unions.get_unchecked_mut(i).enabled = true },
-            TypeIndex::Handle(i) => unsafe { self.handles.get_unchecked_mut(i).enabled = true },
-            TypeIndex::Enum(i) => unsafe { self.enumerations.get_unchecked_mut(i).enabled = true },
-            TypeIndex::FunctionPointer(i) => unsafe {
+            TypeDef(i) => unsafe { self.type_defs.get_unchecked_mut(i).enabled = true },
+            Bitmask(i) => unsafe { self.bitmasks.get_unchecked_mut(i).enabled = true },
+            Struct(i) => {
+                let s_ty = unsafe { self.structs.get_unchecked_mut(i) };
+                s_ty.enabled = true;
+                s_ty.ty.requires(from);
+            }
+            Union(i) => unsafe { self.unions.get_unchecked_mut(i).enabled = true },
+            Handle(i) => unsafe { self.handles.get_unchecked_mut(i).enabled = true },
+            Enum(i) => unsafe { self.enumerations.get_unchecked_mut(i).enabled = true },
+            FunctionPointer(i) => unsafe {
                 self.function_pointers.get_unchecked_mut(i).enabled = true
             },
-            TypeIndex::Alias(i) => unsafe { self.aliases.get_unchecked_mut(i).enabled = true },
+            Alias(i) => unsafe { self.aliases.get_unchecked_mut(i).enabled = true },
         });
     }
 
@@ -633,6 +736,18 @@ impl Types {
                 }
                 .to_tokens(tokens)
             }
+
+            let struct_dependencies = self
+                .structs
+                .iter()
+                .filter(|s| s.enabled)
+                .map(|s| StructDependency::new(&s.ty));
+
+            krs_quote_with!(tokens <-
+                pub mod struct_dependencies {
+                    {@* {@struct_dependencies}}
+                }
+            )
         })
     }
 

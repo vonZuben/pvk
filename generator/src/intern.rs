@@ -72,6 +72,12 @@ impl fmt::Debug for Istring {
     }
 }
 
+impl Default for Istring {
+    fn default() -> Self {
+        Self { ptr: "" }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

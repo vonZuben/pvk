@@ -4,7 +4,7 @@ use crate::dependency_terms::{
     get_device_dependency_terms, get_instance_dependency_terms, DependencyKind, DependencyTerm,
     DependencyTermSolution, SolutionCollection,
 };
-use crate::utils::{StrAsCode, VecMap, VkTyName};
+use crate::utils::{IntoIntersperse, StrAsCode, VecMap, VkTyName};
 
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
@@ -249,7 +249,7 @@ impl krs_quote::ToTokens for DependencyTraits<'_> {
         let dependencies_to_tokens = |deps, level| {
             krs_quote::to_tokens_closure!(tokens {
                 if let &Some(ref deps) = deps {
-                    let solutions = SolutionCollection::new(deps, &self.all_extensions);
+                    let solutions = SolutionCollection::new_simplified(deps, &self.all_extensions);
 
                     let message = format!("The {level} dependencies for `{}` are not satisfied", name.name_as_str());
                     let solution_text: Vec<_> = solutions.iter().map(|s| {
@@ -325,41 +325,6 @@ impl krs_quote::ToTokens for DependencyTraits<'_> {
                 }
             }
         )
-    }
-}
-
-struct Intersperse<I: Iterator> {
-    iter: std::iter::Peekable<I>,
-    separator: I::Item,
-    sep_next: bool,
-}
-
-trait IntoIntersperse: Iterator + Sized {
-    fn my_intersperse(self, separator: Self::Item) -> Intersperse<Self> {
-        Intersperse {
-            iter: self.peekable(),
-            separator,
-            sep_next: false,
-        }
-    }
-}
-
-impl<I: Iterator> IntoIntersperse for I {}
-
-impl<I: Iterator> Iterator for Intersperse<I>
-where
-    I::Item: Copy,
-{
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.sep_next && self.iter.peek().is_some() {
-            self.sep_next = false;
-            Some(self.separator)
-        } else {
-            self.sep_next = true;
-            self.iter.next()
-        }
     }
 }
 

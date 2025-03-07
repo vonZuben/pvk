@@ -178,7 +178,7 @@ impl<'a, K: Eq + Hash, V> VecMapEntry<'a, K, V> {
 }
 
 // This is for ensuring all names are handled consistently
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, Default)]
 pub struct VkTyName {
     name: Istring,
 }
@@ -300,5 +300,40 @@ pub mod case {
                 }
             })
             .collect()
+    }
+}
+
+pub struct Intersperse<I: Iterator> {
+    iter: std::iter::Peekable<I>,
+    separator: I::Item,
+    sep_next: bool,
+}
+
+pub trait IntoIntersperse: Iterator + Sized {
+    fn my_intersperse(self, separator: Self::Item) -> Intersperse<Self> {
+        Intersperse {
+            iter: self.peekable(),
+            separator,
+            sep_next: false,
+        }
+    }
+}
+
+impl<I: Iterator> IntoIntersperse for I {}
+
+impl<I: Iterator> Iterator for Intersperse<I>
+where
+    I::Item: Copy,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.sep_next && self.iter.peek().is_some() {
+            self.sep_next = false;
+            Some(self.separator)
+        } else {
+            self.sep_next = true;
+            self.iter.next()
+        }
     }
 }

@@ -39,6 +39,11 @@ impl DependencyTerm {
             }
         }
     }
+
+    pub fn or(&mut self, other: DependencyTerm) {
+        let this = std::mem::replace(self, DependencyTerm::Single(Default::default()));
+        let _ = std::mem::replace(self, DependencyTerm::Or(vec![this, other]));
+    }
 }
 
 impl std::fmt::Debug for DependencyTerm {
@@ -299,39 +304,52 @@ impl DependencyTermSolution {
     /// All extensions are considered when providing the terms in order
     /// to remove redundant terms (e.g. if a solution requires multiple versions
     /// which are redundant, or extensions which are redundant with included version)
-    fn get_solution_terms(
-        &self,
-        all_extensions: &ExtensionCollection,
-    ) -> solution_terms::SolutionTerms {
-        fn get_solution_helper(solution: &DependencyTermSolution, terms: &mut Vec<VkTyName>) {
-            match solution {
-                DependencyTermSolution::Single(vk_ty_name) => terms.push(*vk_ty_name),
-                DependencyTermSolution::And(vec) => {
-                    for term in vec {
-                        get_solution_helper(term, terms);
-                    }
-                }
-                DependencyTermSolution::Or(index, vec) => {
-                    get_solution_helper(unsafe { vec.get_unchecked(*index) }, terms)
-                }
-            };
-        }
-
+    fn get_solution_terms_simplified(&self, all_extensions: &ExtensionCollection) -> SolutionTerms {
         let mut vec = Vec::new();
         get_solution_helper(self, &mut vec);
-        solution_terms::SolutionTerms::new(vec, all_extensions)
+        SolutionTerms::new_simplified(vec, all_extensions)
+    }
+
+    fn get_solution_terms(&self) -> SolutionTerms {
+        let mut vec = Vec::new();
+        get_solution_helper(self, &mut vec);
+        SolutionTerms::new(vec)
     }
 }
 
-pub struct SolutionCollection(Vec<solution_terms::SolutionTerms>);
+fn get_solution_helper(solution: &DependencyTermSolution, terms: &mut Vec<VkTyName>) {
+    match solution {
+        DependencyTermSolution::Single(vk_ty_name) => terms.push(*vk_ty_name),
+        DependencyTermSolution::And(vec) => {
+            for term in vec {
+                get_solution_helper(term, terms);
+            }
+        }
+        DependencyTermSolution::Or(index, vec) => {
+            get_solution_helper(unsafe { vec.get_unchecked(*index) }, terms)
+        }
+    };
+}
+
+pub struct SolutionCollection(Vec<SolutionTerms>);
 
 impl SolutionCollection {
-    pub fn new(
+    /// obtain all solutions
+    pub fn new(solutions: &RefCell<DependencyTermSolution>) -> Self {
+        let mut solutions: Vec<_> = SolutionIterator::new(solutions)
+            .map(|s| s.get_solution_terms())
+            .collect();
+        solutions.dedup();
+        Self(solutions)
+    }
+
+    /// acquire solutions while removing solutions that overlap
+    pub fn new_simplified(
         solutions: &RefCell<DependencyTermSolution>,
         all_extensions: &ExtensionCollection,
     ) -> Self {
         let mut solutions: Vec<_> = SolutionIterator::new(solutions)
-            .map(|s| s.get_solution_terms(all_extensions))
+            .map(|s| s.get_solution_terms_simplified(all_extensions))
             .collect();
         // the Solution terms have redundant terms removed, which may result in duplicates
         // so remove the duplicates
@@ -342,10 +360,12 @@ impl SolutionCollection {
         Self(solutions)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &solution_terms::SolutionTerms> + Clone {
+    pub fn iter(&self) -> impl Iterator<Item = &SolutionTerms> + Clone {
         self.0.iter()
     }
 }
+
+pub use solution_terms::SolutionTerms;
 
 mod solution_terms {
     use crate::utils::VkTyName;
@@ -357,6 +377,10 @@ mod solution_terms {
     pub struct SolutionTerms(Vec<VkTyName>);
 
     impl SolutionTerms {
+        pub fn new(terms: Vec<VkTyName>) -> Self {
+            Self(terms)
+        }
+
         /// Store the terms of a particular solution
         ///
         /// Removes redundant terms when created.
@@ -365,7 +389,10 @@ mod solution_terms {
         /// must be consistent between with respect to all possible solutions \
         /// to the same extension dependencies. Otherwise, different solutions
         /// may not compare properly after redundancies are removed.
-        pub fn new(terms: Vec<VkTyName>, all_extensions: &super::ExtensionCollection) -> Self {
+        pub fn new_simplified(
+            terms: Vec<VkTyName>,
+            all_extensions: &super::ExtensionCollection,
+        ) -> Self {
             use crate::features::FeatureVersion;
 
             #[derive(Clone, Copy)]
