@@ -53,13 +53,11 @@ impl krs_quote::ToTokens for FeatureCollection {
         let instance_command_structs = versions.clone().map(|v| VersionStruct {
             name: v.version,
             commands: &v.instance_command_names,
-            label_trait: "InstanceLabel",
             command_method: "instance_commands",
         });
         let device_command_structs = versions.clone().map(|v| VersionStruct {
             name: v.version,
             commands: &v.device_command_names,
-            label_trait: "DeviceLabel",
             command_method: "device_commands",
         });
 
@@ -92,7 +90,6 @@ impl krs_quote::ToTokens for FeatureCollection {
 struct VersionStruct<'a> {
     name: VkTyName,
     commands: &'a [RequireRemove],
-    label_trait: &'a str,
     command_method: &'a str,
 }
 
@@ -100,7 +97,6 @@ impl krs_quote::ToTokens for VersionStruct<'_> {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
         let command = self.commands.iter().filter(|r| r.is_require());
-        let label_trait = self.label_trait.as_code();
         let command_method = self.command_method.as_code();
 
         krs_quote_with!(tokens <-
@@ -123,7 +119,7 @@ impl krs_quote::ToTokens for VersionStruct<'_> {
 
             {@*
                 impl<T> crate::has_command::{@command}<{@name}> for T
-                    where T: super::{@name} + crate::{@label_trait}
+                    where T: super::{@name}
                 {
                     fn {@command}(&self) -> crate::{@command} {
                         self.{@command_method}().{@command}
@@ -144,13 +140,23 @@ impl krs_quote::ToTokens for VersionTrait {
 
         krs_quote_with!(tokens <-
             #[allow(non_camel_case_types)]
-            pub unsafe trait {@name} : Version {
-                fn instance_commands(&self) -> &instance_command_structs::{@name} where Self: crate::InstanceLabel {
+            pub unsafe trait {@name} {
+                fn instance_commands(&self) -> &instance_command_structs::{@name} {
                     unreachable!();
                 }
 
-                fn device_commands(&self) -> &device_command_structs::{@name} where Self: crate::DeviceLabel {
+                fn device_commands(&self) -> &device_command_structs::{@name} {
                     unreachable!();
+                }
+            }
+
+            unsafe impl<T> {@name} for T where T: crate::CommandWrapper<Commands: {@name}> {
+                fn instance_commands(&self) -> &instance_command_structs::{@name} {
+                    self.commands().instance_commands()
+                }
+
+                fn device_commands(&self) -> &device_command_structs::{@name} {
+                    self.commands().device_commands()
                 }
             }
         );

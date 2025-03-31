@@ -44,7 +44,7 @@ pub_use_modules!(
 ///
 /// Obtained using [`PhysicalDeviceHandle::tag`].
 pub trait PhysicalDevice:
-    DispatchableHandle<RawHandle = vk::PhysicalDevice, Commands: vk::InstanceLabel> + ThreadSafeHandle
+    DispatchableHandle<RawHandle = vk::PhysicalDevice, Commands: vk::Version> + ThreadSafeHandle
 {
     type Instance: Instance;
 
@@ -64,7 +64,7 @@ pub trait PhysicalDevice:
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html>
     fn get_physical_device_properties<X>(&self) -> PhysicalDeviceProperties<Self>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceProperties<X>,
+        Self: vk::has_command::GetPhysicalDeviceProperties<X>,
     {
         get_physical_device_properties(self)
     }
@@ -88,7 +88,7 @@ pub trait PhysicalDevice:
         p_next: Pn,
     ) -> Extended<PhysicalDeviceProperties2<Self>, Pn::Pnext<Self>>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceProperties2<X>,
+        Self: vk::has_command::GetPhysicalDeviceProperties2<X>,
     {
         get_physical_device_properties2(self, p_next)
     }
@@ -108,7 +108,7 @@ pub trait PhysicalDevice:
     /// ```
     fn enumerate_device_layer_properties<X>(&self) -> impl Enumerator<LayerProperties<Self>>
     where
-        Self::Commands: vk::has_command::EnumerateDeviceLayerProperties<X>,
+        Self: vk::has_command::EnumerateDeviceLayerProperties<X>,
     {
         enumerate_device_layer_properties(self)
     }
@@ -126,7 +126,7 @@ pub trait PhysicalDevice:
     /// ```
     fn get_physical_device_features<X>(&self) -> PhysicalDeviceFeatures<Self>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceFeatures<X>,
+        Self: vk::has_command::GetPhysicalDeviceFeatures<X>,
     {
         get_physical_device_features(self)
     }
@@ -152,7 +152,7 @@ pub trait PhysicalDevice:
         layer_name: Option<VkStr>,
     ) -> impl Enumerator<ExtensionProperties<Self>>
     where
-        Self::Commands: vk::has_command::EnumerateDeviceExtensionProperties<X>,
+        Self: vk::has_command::EnumerateDeviceExtensionProperties<X>,
     {
         enumerate_device_extension_properties(self, layer_name)
     }
@@ -176,7 +176,7 @@ pub trait PhysicalDevice:
         format: F,
     ) -> FormatProperties<Self, F>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceFormatProperties<X>,
+        Self: vk::has_command::GetPhysicalDeviceFormatProperties<X>,
     {
         get_physical_device_format_properties(self, format)
     }
@@ -209,7 +209,7 @@ pub trait PhysicalDevice:
         params: Params,
     ) -> Result<ImageFormatProperties<Self, Params>, Error>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceImageFormatProperties<X>,
+        Self: vk::has_command::GetPhysicalDeviceImageFormatProperties<X>,
     {
         get_physical_device_image_format_properties(self, params)
     }
@@ -253,7 +253,7 @@ pub trait PhysicalDevice:
         image_format_properties: ImageFormatProperties<Self, Params>,
     ) -> Result<impl Enumerator<SparseImageFormatProperties<Self>>, Error>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceSparseImageFormatProperties<X>,
+        Self: vk::has_command::GetPhysicalDeviceSparseImageFormatProperties<X>,
     {
         get_physical_device_sparse_image_format_properties(self, samples, image_format_properties)
     }
@@ -278,7 +278,7 @@ pub trait PhysicalDevice:
         &self,
     ) -> impl Enumerator<vk::QueueFamilyProperties, QueueFamiliesTarget<Self>>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceQueueFamilyProperties<X>,
+        Self: vk::has_command::GetPhysicalDeviceQueueFamilyProperties<X>,
     {
         get_physical_device_queue_family_properties(self)
     }
@@ -296,7 +296,7 @@ pub trait PhysicalDevice:
     /// ```
     fn get_physical_device_memory_properties<X>(&self) -> PhysicalDeviceMemoryProperties<Self>
     where
-        Self::Commands: vk::has_command::GetPhysicalDeviceMemoryProperties<X>,
+        Self: vk::has_command::GetPhysicalDeviceMemoryProperties<X>,
     {
         get_physical_device_memory_properties(self)
     }
@@ -330,11 +330,11 @@ pub trait PhysicalDevice:
     //     Error,
     // >
     // where
-    //     Self::Commands:
+    //     Self:
     //         vk::has_command::CreateDevice + vk::has_command::EnumerateDeviceExtensionProperties,
-    //     C: Context + InstanceDependencies<Self::Commands, O> + Send + Sync,
+    //     C: Context + InstanceDependencies<Self, O> + Send + Sync,
     //     C::Commands:
-    //         DestroyDevice + LoadCommands + Version + VersionCheck<Self::Commands> + Send + Sync,
+    //         DestroyDevice + LoadCommands + Version + VersionCheck<Self> + Send + Sync,
     // {
     //     create_device(self, create_info, tag)
     // }
@@ -436,13 +436,15 @@ impl<I, T> Handle for _PhysicalDevice<'_, I, T> {
     }
 }
 
-impl<I: Instance, T> DispatchableHandle for _PhysicalDevice<'_, I, T> {
+impl<I: Instance, T> vk::CommandWrapper for _PhysicalDevice<'_, I, T> {
     type Commands = I::Commands;
 
     fn commands(&self) -> &Self::Commands {
         self.instance.commands()
     }
 }
+
+impl<I: Instance, T> DispatchableHandle for _PhysicalDevice<'_, I, T> {}
 
 impl<I: Instance, T> PhysicalDevice for _PhysicalDevice<'_, I, T> {
     type Instance = I;

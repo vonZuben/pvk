@@ -12,7 +12,7 @@ use vk::has_command::EnumerateDeviceExtensionProperties;
 pub(crate) fn enumerate_device_extension_properties<
     'p,
     'a,
-    P: PhysicalDevice<Commands: EnumerateDeviceExtensionProperties<X>>,
+    P: PhysicalDevice + EnumerateDeviceExtensionProperties<X>,
     X,
 >(
     physical_device: &'p P,
@@ -62,7 +62,7 @@ pub(crate) fn enumerate_device_extension_properties<
     }
 
     make_enumerator!(
-        physical_device.commands().EnumerateDeviceExtensionProperties().get_fptr();
+        physical_device.EnumerateDeviceExtensionProperties().get_fptr();
         (physical_device.raw_handle(), layer_name)
     )
 }

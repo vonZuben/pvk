@@ -28,7 +28,7 @@ pub_use_modules!(
 /// Vulkan doc:
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html>
 pub trait Instance:
-    DispatchableHandle<RawHandle = vk::Instance, Commands: vk::InstanceLabel> + ThreadSafeHandle
+    DispatchableHandle<RawHandle = vk::Instance, Commands: Version> + ThreadSafeHandle
 {
     const VERSION: VkVersion;
 
@@ -61,7 +61,7 @@ pub trait Instance:
     /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html>
     fn enumerate_physical_devices<X>(&self) -> impl Enumerator<PhysicalDeviceHandle<Self>>
     where
-        Self::Commands: vk::has_command::EnumeratePhysicalDevices<X>,
+        Self: vk::has_command::EnumeratePhysicalDevices<X>,
     {
         enumerate_physical_devices::enumerate_physical_devices(self)
     }
@@ -107,7 +107,7 @@ impl<C: DestroyInstance<X>, X, T> Handle for _Instance<C, X, T> {
     }
 }
 
-impl<C: DestroyInstance<X>, X, T> DispatchableHandle for _Instance<C, X, T> {
+impl<C: DestroyInstance<X>, X, T> vk::CommandWrapper for _Instance<C, X, T> {
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -115,11 +115,13 @@ impl<C: DestroyInstance<X>, X, T> DispatchableHandle for _Instance<C, X, T> {
     }
 }
 
-impl<C: DestroyInstance<X> + Version + vk::InstanceLabel, X, T> Instance for _Instance<C, X, T> {
+impl<C: DestroyInstance<X>, X, T> DispatchableHandle for _Instance<C, X, T> {}
+
+impl<C: DestroyInstance<X> + Version, X, T> Instance for _Instance<C, X, T> {
     const VERSION: VkVersion = C::VERSION;
 }
 
-pub(crate) fn make_instance<C: DestroyInstance<X> + Version + vk::InstanceLabel, X>(
+pub(crate) fn make_instance<C: DestroyInstance<X> + Version, X>(
     handle: vk::Instance,
     commands: C,
     tag: Tag,

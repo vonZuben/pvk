@@ -16,10 +16,7 @@ shader_module;
 ///
 /// This is mostly an implementation detail and you are not
 /// intended to implement this yourself.
-pub trait DispatchableHandle: Handle {
-    type Commands;
-    fn commands(&self) -> &Self::Commands;
-}
+pub trait DispatchableHandle: Handle + vk_safe_sys::CommandWrapper {}
 
 /// A handle which represents a Vulkan object
 ///

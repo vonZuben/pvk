@@ -24,7 +24,7 @@ pub fn create_instance<'t, C: Context, X>(
     tag: Tag<'t>,
 ) -> Result<impl Instance<Commands = C::Commands> + Captures<Tag<'t>>, Error>
 where
-    C::Commands: DestroyInstance<X> + Version + LoadCommands + vk::InstanceLabel,
+    C::Commands: DestroyInstance<X> + Version + LoadCommands,
 {
     check_vuids::check_vuids!(CreateInstance);
 

@@ -10,7 +10,7 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceProperties;
 
 pub(crate) fn get_physical_device_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceProperties<X>>,
+    P: PhysicalDevice + GetPhysicalDeviceProperties<X>,
     X,
 >(
     physical_device: &P,
@@ -40,10 +40,10 @@ pub(crate) fn get_physical_device_properties<
     }
 
     unsafe {
-        physical_device
-            .commands()
-            .GetPhysicalDeviceProperties()
-            .get_fptr()(physical_device.raw_handle(), properties.as_mut_ptr());
+        physical_device.GetPhysicalDeviceProperties().get_fptr()(
+            physical_device.raw_handle(),
+            properties.as_mut_ptr(),
+        );
         PhysicalDeviceProperties::from_c(properties.assume_init())
     }
 }

@@ -35,9 +35,7 @@ pub_use_modules!(
 };
 );
 
-pub trait Device:
-    DispatchableHandle<RawHandle = vk::Device, Commands: vk::DeviceLabel> + ThreadSafeHandle
-{
+pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
     const VERSION: VkVersion;
 
     type PhysicalDevice: PhysicalDevice;
@@ -326,13 +324,7 @@ struct _Device<C: DestroyDevice<X>, P, Q, T, X> {
     destroy: PhantomData<X>,
 }
 
-pub(crate) fn make_device<
-    't,
-    C: DestroyDevice<X> + Version + vk::DeviceLabel,
-    P: PhysicalDevice,
-    Q,
-    X,
->(
+pub(crate) fn make_device<'t, C: DestroyDevice<X> + Version, P: PhysicalDevice, Q, X>(
     handle: vk::Device,
     commands: C,
     _tag: Tag<'t>,
@@ -367,7 +359,7 @@ impl<C: DestroyDevice<X>, P, Q, T, X> Handle for _Device<C, P, Q, T, X> {
     }
 }
 
-impl<C: DestroyDevice<X>, P, Q, T, X> DispatchableHandle for _Device<C, P, Q, T, X> {
+impl<C: DestroyDevice<X>, P, Q, T, X> vk::CommandWrapper for _Device<C, P, Q, T, X> {
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -375,9 +367,9 @@ impl<C: DestroyDevice<X>, P, Q, T, X> DispatchableHandle for _Device<C, P, Q, T,
     }
 }
 
-impl<C: DestroyDevice<X> + Version + vk::DeviceLabel, P: PhysicalDevice, Q, T, X> Device
-    for _Device<C, P, Q, T, X>
-{
+impl<C: DestroyDevice<X>, P, Q, T, X> DispatchableHandle for _Device<C, P, Q, T, X> {}
+
+impl<C: DestroyDevice<X> + Version, P: PhysicalDevice, Q, T, X> Device for _Device<C, P, Q, T, X> {
     const VERSION: VkVersion = C::VERSION;
 
     type PhysicalDevice = P;

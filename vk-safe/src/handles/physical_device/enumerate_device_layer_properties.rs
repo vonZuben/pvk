@@ -9,7 +9,7 @@ use vk_safe_sys as vk;
 use vk::has_command::EnumerateDeviceLayerProperties;
 
 pub(crate) fn enumerate_device_layer_properties<
-    P: PhysicalDevice<Commands: EnumerateDeviceLayerProperties<X>>,
+    P: PhysicalDevice + EnumerateDeviceLayerProperties<X>,
     X,
 >(
     physical_device: &P,
@@ -48,7 +48,7 @@ pub(crate) fn enumerate_device_layer_properties<
     }
 
     make_enumerator!(
-        physical_device.commands().EnumerateDeviceLayerProperties().get_fptr();
+        physical_device.EnumerateDeviceLayerProperties().get_fptr();
         (physical_device.raw_handle())
     )
 }

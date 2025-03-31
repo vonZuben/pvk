@@ -9,7 +9,7 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceProperties2;
 
 pub(crate) fn get_physical_device_properties2<
-    Pd: PhysicalDevice<Commands: GetPhysicalDeviceProperties2<X>>,
+    Pd: PhysicalDevice + GetPhysicalDeviceProperties2<X>,
     Pn: Pnext<vk::PhysicalDeviceProperties2>,
     X,
 >(
@@ -44,10 +44,10 @@ pub(crate) fn get_physical_device_properties2<
     );
 
     unsafe {
-        physical_device
-            .commands()
-            .GetPhysicalDeviceProperties2()
-            .get_fptr()(physical_device.raw_handle(), properties.as_mut_ptr().to_c());
+        physical_device.GetPhysicalDeviceProperties2().get_fptr()(
+            physical_device.raw_handle(),
+            properties.as_mut_ptr().to_c(),
+        );
 
         make_extended(
             ConvertWrapper::from_c(properties.assume_init()),

@@ -65,7 +65,7 @@ fn main() {
     }
 }
 
-fn run_physical_device(pd: impl PhysicalDevice<Commands: vk::VERSION_1_1>) {
+fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
     // println!("-------");
     // println!("{:#?}", pd.get_physical_device_properties());
 

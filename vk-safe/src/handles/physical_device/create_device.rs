@@ -35,7 +35,7 @@ mod private {
 
 pub fn create_device<
     't,
-    P: PhysicalDevice<Commands: CreateDevice<Create> + EnumerateDeviceExtensionProperties<Enumerate>>,
+    P: PhysicalDevice + CreateDevice<Create> + EnumerateDeviceExtensionProperties<Enumerate>,
     Ctx,
     Z: HasScope<P>,
     Create,
@@ -56,10 +56,9 @@ where
         + LoadCommands
         + Version
         + VersionCheck<P::Commands>
-        + InstanceDependencies<P::Commands>
+        + InstanceDependencies<P>
         + Send
-        + Sync
-        + vk::DeviceLabel,
+        + Sync,
 {
     // check version requirement
     let _ = Ctx::Commands::VALID;
@@ -136,7 +135,7 @@ where
 
     let device;
     unsafe {
-        let res = physical_device.commands().CreateDevice().get_fptr()(
+        let res = physical_device.CreateDevice().get_fptr()(
             physical_device.raw_handle(),
             create_info.to_c(),
             std::ptr::null(),

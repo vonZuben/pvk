@@ -8,11 +8,7 @@ use vk_safe_sys as vk;
 
 use vk::has_command::EnumeratePhysicalDevices;
 
-pub(crate) fn enumerate_physical_devices<
-    'a,
-    I: Instance<Commands: EnumeratePhysicalDevices<X>>,
-    X,
->(
+pub(crate) fn enumerate_physical_devices<'a, I: Instance + EnumeratePhysicalDevices<X>, X>(
     instance: &'a I,
 ) -> impl Enumerator<PhysicalDeviceHandle<I>> + Captures<&'a I> {
     check_vuids::check_vuids!(EnumeratePhysicalDevices);
@@ -49,5 +45,5 @@ pub(crate) fn enumerate_physical_devices<
         //enumerator_code2!
     }
 
-    make_enumerator!(instance.commands().EnumeratePhysicalDevices().get_fptr(); (instance.raw_handle()))
+    make_enumerator!(instance.EnumeratePhysicalDevices().get_fptr(); (instance.raw_handle()))
 }

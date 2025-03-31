@@ -63,15 +63,11 @@ macro_rules! instance_context {
             }
 
             mod commands {
-                unsafe impl $crate::InstanceLabel for $name {}
-
                 $(
                     use $crate::version::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
 
                     unsafe impl $v_provider for $name {
-                        fn instance_commands(&self) -> &$crate::version::instance_command_structs::$v_provider
-                            where Self: $crate::InstanceLabel
-                        {
+                        fn instance_commands(&self) -> &$crate::version::instance_command_structs::$v_provider {
                             &self.$v_provider
                         }
                     }
@@ -85,9 +81,7 @@ macro_rules! instance_context {
                     use $crate::extension::$e_provider; // this is here for autocomplete (see above)
 
                     unsafe impl $e_provider for $name {
-                        fn instance_commands(&self) -> &$crate::extension::instance_command_structs::$e_provider
-                            where Self: $crate::InstanceLabel
-                        {
+                        fn instance_commands(&self) -> &$crate::extension::instance_command_structs::$e_provider {
                             &self.$e_provider
                         }
                     }
@@ -170,13 +164,11 @@ macro_rules! device_context {
             }
 
             mod commands {
-                unsafe impl $crate::DeviceLabel for $name {}
-
                 $(
                     use $crate::version::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
 
                     unsafe impl $v_provider for $name {
-                        fn device_commands(&self) -> &$crate::version::device_command_structs::$v_provider where Self: $crate::DeviceLabel {
+                        fn device_commands(&self) -> &$crate::version::device_command_structs::$v_provider {
                             &self.$v_provider
                         }
                     }
@@ -190,7 +182,7 @@ macro_rules! device_context {
                     use $crate::extension::$e_provider; // this is here for autocomplete (see above)
 
                     unsafe impl $e_provider for $name {
-                        fn device_commands(&self) -> &$crate::extension::device_command_structs::$e_provider where Self: $crate::DeviceLabel {
+                        fn device_commands(&self) -> &$crate::extension::device_command_structs::$e_provider {
                             &self.$e_provider
                         }
                     }

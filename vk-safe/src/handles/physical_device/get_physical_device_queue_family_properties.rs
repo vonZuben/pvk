@@ -11,7 +11,7 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceQueueFamilyProperties;
 
 pub(crate) fn get_physical_device_queue_family_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceQueueFamilyProperties<X>>,
+    P: PhysicalDevice + GetPhysicalDeviceQueueFamilyProperties<X>,
     X,
 >(
     physical_device: &P,
@@ -51,7 +51,6 @@ pub(crate) fn get_physical_device_queue_family_properties<
     }
 
     let fptr = physical_device
-        .commands()
         .GetPhysicalDeviceQueueFamilyProperties()
         .get_fptr();
 

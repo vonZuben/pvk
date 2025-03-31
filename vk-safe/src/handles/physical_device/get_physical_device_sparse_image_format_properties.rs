@@ -15,7 +15,7 @@ unit_error!(OnlyOneSampleCountAllowed);
 unit_error!(UnsupportedSampleCount);
 
 pub(crate) fn get_physical_device_sparse_image_format_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceSparseImageFormatProperties<X>>,
+    P: PhysicalDevice + GetPhysicalDeviceSparseImageFormatProperties<X>,
     Params: ImageParameters,
     SampleCount: vk::flag_traits::SampleCountFlags,
     X,
@@ -141,7 +141,7 @@ pub(crate) fn get_physical_device_sparse_image_format_properties<
     }
 
     Ok(make_enumerator!(
-        physical_device.commands().GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
+        physical_device.GetPhysicalDeviceSparseImageFormatProperties().get_fptr();
                 (
                     physical_device.raw_handle(),
                     Params::format(),

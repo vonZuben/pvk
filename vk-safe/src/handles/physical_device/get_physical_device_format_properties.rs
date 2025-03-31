@@ -10,7 +10,7 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceFormatProperties;
 
 pub(crate) fn get_physical_device_format_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceFormatProperties<X>>,
+    P: PhysicalDevice + GetPhysicalDeviceFormatProperties<X>,
     F: vk::enum_traits::Format,
     X,
 >(
@@ -52,7 +52,6 @@ pub(crate) fn get_physical_device_format_properties<
     let mut properties = MaybeUninit::uninit();
     unsafe {
         physical_device
-            .commands()
             .GetPhysicalDeviceFormatProperties()
             .get_fptr()(
             physical_device.raw_handle(),

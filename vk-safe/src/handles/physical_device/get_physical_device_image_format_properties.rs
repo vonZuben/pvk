@@ -11,7 +11,7 @@ use vk_safe_sys as vk;
 use vk::has_command::GetPhysicalDeviceImageFormatProperties;
 
 pub(crate) fn get_physical_device_image_format_properties<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceImageFormatProperties<X>>,
+    P: PhysicalDevice + GetPhysicalDeviceImageFormatProperties<X>,
     Params: ImageParameters,
     X,
 >(
@@ -23,7 +23,6 @@ pub(crate) fn get_physical_device_image_format_properties<
 
     let mut properties = MaybeUninit::uninit();
     let command = physical_device
-        .commands()
         .GetPhysicalDeviceImageFormatProperties()
         .get_fptr();
     unsafe {

@@ -9,10 +9,7 @@ use vk_safe_sys as vk;
 
 use vk::has_command::GetPhysicalDeviceFeatures;
 
-pub(crate) fn get_physical_device_features<
-    P: PhysicalDevice<Commands: GetPhysicalDeviceFeatures<X>>,
-    X,
->(
+pub(crate) fn get_physical_device_features<P: PhysicalDevice + GetPhysicalDeviceFeatures<X>, X>(
     physical_device: &P,
 ) -> PhysicalDeviceFeatures<P> {
     check_vuids::check_vuids!(GetPhysicalDeviceFeatures);
@@ -39,10 +36,10 @@ pub(crate) fn get_physical_device_features<
 
     let mut features = MaybeUninit::uninit();
     unsafe {
-        physical_device
-            .commands()
-            .GetPhysicalDeviceFeatures()
-            .get_fptr()(physical_device.raw_handle(), features.as_mut_ptr());
+        physical_device.GetPhysicalDeviceFeatures().get_fptr()(
+            physical_device.raw_handle(),
+            features.as_mut_ptr(),
+        );
         PhysicalDeviceFeatures::from_c(features.assume_init())
     }
 }

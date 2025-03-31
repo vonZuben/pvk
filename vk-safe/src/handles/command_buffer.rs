@@ -51,13 +51,15 @@ impl<'a, D, L> Handle for _CommandBuffer<'a, D, L> {
     }
 }
 
-impl<'a, D: Device, L> DispatchableHandle for _CommandBuffer<'a, D, L> {
+impl<'a, D: Device, L> vk::CommandWrapper for _CommandBuffer<'a, D, L> {
     type Commands = D::Commands;
 
     fn commands(&self) -> &Self::Commands {
         self.device.commands()
     }
 }
+
+impl<'a, D: Device, L> DispatchableHandle for _CommandBuffer<'a, D, L> {}
 
 impl<'a, D: Device, L: CommandBufferLevel> CommandBuffer for _CommandBuffer<'a, D, L> {
     type Device = D;
