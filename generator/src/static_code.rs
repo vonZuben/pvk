@@ -34,6 +34,23 @@ impl krs_quote::ToTokens for StaticCode {
                 }
             }
 
+            impl std::cmp::PartialEq for VkStrRaw {
+                fn eq(&self, other: &Self) -> bool {
+                    let mut this = self.as_ptr();
+                    let mut other = other.as_ptr();
+                    unsafe {
+                        while *this == *other {
+                            if *this == 0 {
+                                return true;
+                            }
+                            this = this.add(1);
+                            other = other.add(1);
+                        }
+                        false
+                    }
+                }
+            }
+
             use std::fmt;
 
             // =================VkVersion===========================

@@ -51,7 +51,7 @@ impl<'a, D, L> Handle for _CommandBuffer<'a, D, L> {
     }
 }
 
-impl<'a, D: Device, L> vk::CommandWrapper for _CommandBuffer<'a, D, L> {
+impl<'a, D: Device, L> vk::Commands for _CommandBuffer<'a, D, L> {
     type Commands = D::Commands;
 
     fn commands(&self) -> &Self::Commands {

@@ -103,9 +103,27 @@ impl ToTokens for VulkanCommand {
 
             unsafe impl<T> StructExtends<T> for () {}
 
-            pub trait CommandWrapper {
+            pub trait Commands {
                 type Commands;
                 fn commands(&self) -> &Self::Commands;
+            }
+
+            /// Represents level of Vulkan support
+            ///
+            /// Represent specific Version (Feature level) and Extensions
+            /// that are supported, but not necessarily providing access to
+            /// specific functionality.
+            ///
+            /// This is useful to label a type as supporting specific things
+            /// even if the type does not provide the functionality itself.
+            ///
+            /// e.g. a PhysicalDevice handle type can be said to support different
+            /// Device level Extensions, even though the PhysicalDevice handle
+            /// itself does not provide Device level commands. This is helpful
+            /// to verify Device level p_next dependencies for a PhysicalDevice.
+            pub unsafe trait Support {
+                type Version;
+                type Extensions;
             }
         )
     }

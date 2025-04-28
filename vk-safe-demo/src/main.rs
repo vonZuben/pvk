@@ -11,7 +11,7 @@ use vk_safe::vk_str;
 use vk::traits::*;
 
 vk::instance_context!(InstanceContext: VERSION_1_1 + KHR_surface);
-vk::device_context!(DeviceContext: VERSION_1_0 + KHR_maintenance1 + KHR_bind_memory2 + KHR_get_memory_requirements2 + KHR_sampler_ycbcr_conversion + KHR_image_format_list + EXT_image_drm_format_modifier);
+vk::device_context!(DeviceContext: VERSION_1_0 + KHR_maintenance1 + KHR_bind_memory2 + KHR_get_memory_requirements2 + KHR_sampler_ycbcr_conversion + KHR_image_format_list + EXT_image_drm_format_modifier + EXT_external_memory_host + KHR_external_memory);
 
 fn main() {
     println!(
@@ -66,25 +66,29 @@ fn main() {
 }
 
 fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
-    // println!("-------");
-    // println!("{:#?}", pd.get_physical_device_properties());
+    println!("-------");
+    println!("{:#?}", pd.get_physical_device_properties());
 
-    println!("---get_physical_device_properties2----");
-    let props2 = pd.get_physical_device_properties2(vk_safe::p_next!(
-        PhysicalDeviceExternalMemoryHostPropertiesEXT
-    ));
-    println!("{props2:#?}");
+    // println!("--Supported device extensions--");
+    // let extensions = pd
+    //     .enumerate_device_extension_properties(None)
+    //     .auto_get_enumerate()
+    //     .unwrap();
+    // println!("{:#?}", extensions);
+
+    // vk::device_context!(ExternalMemoryHostProperties: + EXT_external_memory_host);
+    // let pd = pd
+    //     .check_device_extensions(&extensions, ExternalMemoryHostProperties)
+    //     .unwrap();
+
+    // println!("---get_physical_device_properties2----");
+    // let props2 = pd.get_physical_device_properties2(vk_safe::p_next!(
+    //     PhysicalDeviceExternalMemoryHostPropertiesEXT
+    // ));
+    // println!("{props2:#?}");
 
     println!("-------");
     println!("{:#?}", pd.get_physical_device_features());
-
-    println!("--Supported device extensions--");
-    println!(
-        "{:#?}",
-        pd.enumerate_device_extension_properties(None)
-            .auto_get_enumerate()
-            .unwrap()
-    );
 
     println!("--Available device layers (NOTE: device layers are depreciated by Vulkan)--");
     println!(
@@ -151,7 +155,7 @@ fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
     let device_create_info = vk::DeviceCreateInfo::new(DeviceContext, &queue_configs);
 
     vk::tag!(dt);
-    let device = vk::create_device(&pd, &device_create_info, dt).unwrap();
+    let device = pd.create_device(&device_create_info, dt).unwrap();
 
     println!("--Example Device handle--");
     println!("{device:#?}");

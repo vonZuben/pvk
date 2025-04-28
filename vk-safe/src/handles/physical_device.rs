@@ -1,41 +1,33 @@
 use super::instance::Instance;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
-use crate::enumerator::Enumerator;
-use crate::error::Error;
 use crate::scope::{Captures, Tag};
-use crate::struct_extension::{Extended, Pnext};
-use crate::structs::*;
-use crate::vk_str::VkStr;
 
 use std::fmt;
 use std::marker::PhantomData;
 
 use vk_safe_sys as vk;
 
-// TODO for create_device method, uncomment with the method below when use<> is possible in trait methods
-// use vk::context::{Context, InstanceDependencies, LoadCommands};
-// use vk::has_command::DestroyDevice;
-// use vk::Version;
+use vk::Support;
 
-pub_use_modules!(
-#[cfg(VK_VERSION_1_0)] {
-    get_physical_device_properties;
-    get_physical_device_features;
-    enumerate_device_extension_properties;
-    enumerate_device_layer_properties;
-    get_physical_device_format_properties;
-    get_physical_device_image_format_properties;
-    get_physical_device_sparse_image_format_properties;
-    get_physical_device_queue_family_properties;
-    get_physical_device_memory_properties;
-    create_device;
-};
-
-#[cfg(VK_VERSION_1_1)]{
-    get_physical_device_properties2;
-}
-
+handle_command_collection_trait!(
+    NAME(PhysicalDeviceCommands)
+    IMPL( _PhysicalDevice['a, I, T, V, E] where I: Instance )
+    #[cfg(VK_VERSION_1_0)] {
+        GetPhysicalDeviceProperties,
+        EnumerateDeviceLayerProperties,
+        GetPhysicalDeviceFeatures,
+        EnumerateDeviceExtensionProperties,
+        GetPhysicalDeviceFormatProperties,
+        GetPhysicalDeviceImageFormatProperties,
+        GetPhysicalDeviceSparseImageFormatProperties,
+        GetPhysicalDeviceQueueFamilyProperties,
+        GetPhysicalDeviceMemoryProperties,
+        CreateDevice,
+    }
+    #[cfg(VK_VERSION_1_1)] {
+        GetPhysicalDeviceProperties2,
+    }
 );
 
 /// PhysicalDevice handle trait
@@ -44,300 +36,77 @@ pub_use_modules!(
 ///
 /// Obtained using [`PhysicalDeviceHandle::tag`].
 pub trait PhysicalDevice:
-    DispatchableHandle<RawHandle = vk::PhysicalDevice, Commands: vk::Version> + ThreadSafeHandle
+    DispatchableHandle<RawHandle = vk::PhysicalDevice, Commands: vk::Version>
+    + ThreadSafeHandle
+    + Support<Version = Self::DeviceVersion, Extensions = Self::DeviceExtensions>
+    + Copy // should this be Copy???
+    + PhysicalDeviceCommands
 {
     type Instance: Instance;
+    type DeviceVersion;
+    type DeviceExtensions;
 
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the properties of the PhysicalDevice
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let physical_device_properties = physical_device.get_physical_device_properties();
-    /// # }
-    /// ```
-    ///
-    /// Vulkan docs:
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkGetPhysicalDeviceProperties.html>
-    fn get_physical_device_properties<X>(&self) -> PhysicalDeviceProperties<Self>
-    where
-        Self: vk::has_command::GetPhysicalDeviceProperties<X>,
-    {
-        get_physical_device_properties(self)
-    }
-
-    #[cfg(VK_VERSION_1_1)]
-    /// Query the properties of the PhysicalDevice
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_1>>
-    /// #   (physical_device: P) {
-    /// let properties = physical_device.get_physical_device_properties2(());
-    /// # }
-    /// ```
-    ///
-    /// Vulkan docs:
-    /// <https://registry.khronos.org/VulkanSC/specs/1.0-extensions/man/html/vkGetPhysicalDeviceProperties2.html>
-    fn get_physical_device_properties2<Pn: Pnext<vk::PhysicalDeviceProperties2>, X>(
-        &self,
-        p_next: Pn,
-    ) -> Extended<PhysicalDeviceProperties2<Self>, Pn::Pnext<Self>>
-    where
-        Self: vk::has_command::GetPhysicalDeviceProperties2<X>,
-    {
-        get_physical_device_properties2(self, p_next)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the device level layers supported by the PhysicalDevice
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let layer_properties = physical_device.enumerate_device_layer_properties()
-    ///     .auto_get_enumerate()
-    ///     .unwrap();
-    /// # }
-    /// ```
-    fn enumerate_device_layer_properties<X>(&self) -> impl Enumerator<LayerProperties<Self>>
-    where
-        Self: vk::has_command::EnumerateDeviceLayerProperties<X>,
-    {
-        enumerate_device_layer_properties(self)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the features supported by the PhysicalDevice
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let features = physical_device.get_physical_device_features();
-    /// # }
-    /// ```
-    fn get_physical_device_features<X>(&self) -> PhysicalDeviceFeatures<Self>
-    where
-        Self: vk::has_command::GetPhysicalDeviceFeatures<X>,
-    {
-        get_physical_device_features(self)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the device level extensions supported by the PhysicalDevice
-    ///
-    /// If `layer_name` is `None`, only extensions provided by the Vulkan implementation.
-    /// are returned. If `layer_name` is `Some(layer_name)`, device extensions provided
-    /// by that layer are returned.
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let extension_properties =
-    ///     physical_device.enumerate_device_extension_properties(None).auto_get_enumerate();
-    /// # }
-    /// ```
-    fn enumerate_device_extension_properties<X>(
-        &self,
-        layer_name: Option<VkStr>,
-    ) -> impl Enumerator<ExtensionProperties<Self>>
-    where
-        Self: vk::has_command::EnumerateDeviceExtensionProperties<X>,
-    {
-        enumerate_device_extension_properties(self, layer_name)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the format properties of the PhysicalDevice
-    ///
-    /// Provide the [`Format`](crate::vk::Format) to get the properties of that format
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let format_properties =
-    ///     physical_device.get_physical_device_format_properties(vk::Format::R8G8B8A8_SRGB);
-    /// # }
-    /// ```
-    fn get_physical_device_format_properties<F: vk::enum_traits::Format, X>(
-        &self,
-        format: F,
-    ) -> FormatProperties<Self, F>
-    where
-        Self: vk::has_command::GetPhysicalDeviceFormatProperties<X>,
-    {
-        get_physical_device_format_properties(self, format)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the image format properties of the PhysicalDevice
-    ///
-    /// Provide [`ImageParameters`] with the parameters of an image,
-    /// to get the format properties of an image created with such parameters
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let image_params = vk::ImageParameters::new(
-    ///     vk::Format::R8G8B8A8_SRGB,
-    ///     vk::ImageType::TYPE_2D,
-    ///     vk::ImageTiling::OPTIMAL,
-    ///     vk::flags!(ImageUsageFlags + COLOR_ATTACHMENT_BIT + TRANSFER_DST_BIT),
-    ///     (),
-    /// );
-    ///
-    /// let image_format_properties =
-    /// physical_device.get_physical_device_image_format_properties(image_params);
-    /// # }
-    /// ```
-    fn get_physical_device_image_format_properties<Params: ImageParameters::ImageParameters, X>(
-        &self,
-        params: Params,
-    ) -> Result<ImageFormatProperties<Self, Params>, Error>
-    where
-        Self: vk::has_command::GetPhysicalDeviceImageFormatProperties<X>,
-    {
-        get_physical_device_image_format_properties(self, params)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the sparse image format properties of the PhysicalDevice
-    ///
-    /// ### Note
-    /// This requires [`ImageFormatProperties`] from
-    /// [`get_physical_device_image_format_properties`](PhysicalDevice::get_physical_device_image_format_properties()),
-    /// which provides [`ImageParameters`] and ensures that the sample count you choose is supported
-    /// by an image with such parameters.
-    ///
-    /// Must provide the storage space to return the properties to.
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<
-    /// #   P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>,
-    /// #   Params: vk::ImageParameters::ImageParameters,
-    /// # >
-    /// #   (physical_device: P, image_format_properties: vk::ImageFormatProperties<P, Params>) {
-    /// let sparse_image_format_properties =
-    ///     physical_device.get_physical_device_sparse_image_format_properties(
-    ///         vk::SampleCountFlags::TYPE_1_BIT,
-    ///         image_format_properties,
-    ///     )
-    ///     .unwrap()
-    ///     .auto_get_enumerate()
-    ///     .unwrap();
-    /// # }
-    /// ```
-    fn get_physical_device_sparse_image_format_properties<
-        Params: ImageParameters::ImageParameters,
-        SampleCount: vk::flag_traits::SampleCountFlags,
-        X,
-    >(
-        &self,
-        samples: SampleCount,
-        image_format_properties: ImageFormatProperties<Self, Params>,
-    ) -> Result<impl Enumerator<SparseImageFormatProperties<Self>>, Error>
-    where
-        Self: vk::has_command::GetPhysicalDeviceSparseImageFormatProperties<X>,
-    {
-        get_physical_device_sparse_image_format_properties(self, samples, image_format_properties)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the queue family properties of the PhysicalDevice
-    ///
-    /// Must provide the storage space to return the properties to.
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let queue_family_properties =
-    ///     physical_device.get_physical_device_queue_family_properties()
-    ///     .auto_get_enumerate()
-    ///     .unwrap();
-    /// # }
-    /// ```
-    fn get_physical_device_queue_family_properties<X>(
-        &self,
-    ) -> impl Enumerator<vk::QueueFamilyProperties, QueueFamiliesTarget<Self>>
-    where
-        Self: vk::has_command::GetPhysicalDeviceQueueFamilyProperties<X>,
-    {
-        get_physical_device_queue_family_properties(self)
-    }
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Query the memory properties of the PhysicalDevice
-    ///
-    /// ```rust
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>>
-    /// #   (physical_device: P) {
-    /// let memory_properties = physical_device.get_physical_device_memory_properties();
-    /// # }
-    /// ```
-    fn get_physical_device_memory_properties<X>(&self) -> PhysicalDeviceMemoryProperties<Self>
-    where
-        Self: vk::has_command::GetPhysicalDeviceMemoryProperties<X>,
-    {
-        get_physical_device_memory_properties(self)
-    }
-
-    // ****TODO: if `use<>` becomes available in RPITIT, then this can be uncommented
-    // /// Create a device from the PhysicalDevice
+    // /// Check if the actual Device supports the requested Vulkan version
     // ///
-    // /// In order to create a Device, you first define the Version and Extensions you will
-    // /// use with [`vk::device_context!`]. You can then create an [`DeviceCreateInfo`]
-    // /// structure along with an array of [`DeviceQueueCreateInfo`].
-    // ///
-    // /// ```rust
-    // /// # use vk_safe::vk;
-    // /// # vk::device_context!(D: VERSION_1_0);
-    // /// # use vk::traits::*;
-    // /// # fn tst<P: vk::PhysicalDevice<Commands: vk::instance::VERSION_1_0>, T>
-    // /// #   (physical_device: P, create_info: &vk::DeviceCreateInfo<D, (P, T)>, queue_properties: &vk::QueueFamiliesRef<P>) {
-    // /// vk::tag!(tag);
-    // /// let device = physical_device.create_device(create_info, tag).unwrap();
-    // /// # }
-    // /// ```
-    // ///
-    // /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkCreateDevice.html>
-    // fn create_device<'t, C, O, Z: HasScope<Self>>(
-    //     &self,
-    //     create_info: &DeviceCreateInfo<C, Z>,
-    //     tag: Tag<'t>,
-    // ) -> Result<
-    //     // impl Device<Context = D::Commands, PhysicalDevice = S, QueueConfig = Z> + Captures<Tag<'t>>,
-    //     _Device<C::Commands, Self, Z, Tag<'t>>,
-    //     Error,
-    // >
-    // where
-    //     Self:
-    //         vk::has_command::CreateDevice + vk::has_command::EnumerateDeviceExtensionProperties,
-    //     C: Context + InstanceDependencies<Self, O> + Send + Sync,
-    //     C::Commands:
-    //         DestroyDevice + LoadCommands + Version + VersionCheck<Self> + Send + Sync,
-    // {
-    //     create_device(self, create_info, tag)
+    // /// returns a new `impl PhysicalDevice` which indicates support for
+    // /// the requested Vulkan version if it is actually supported.
+    // fn check_device_version<C: vk::context::Context<Commands: vk::Version>>(
+    //     self,
+    //     properties: &PhysicalDeviceProperties<Self>,
+    //     context: C,
+    // ) -> Option<
+    //     impl PhysicalDevice<
+    //             Instance = Self::Instance,
+    //             Commands = Self::Commands,
+    //             DeviceVersion = C,
+    //             DeviceExtensions = Self::DeviceExtensions,
+    //         > + Captures<Self>,
+    // > {
+    //     let _ = context;
+    //     if properties.api_version() > <C::Commands as vk::Version>::VERSION {
+    //         Some(unsafe { self.convert_device_version(context) })
+    //     } else {
+    //         None
+    //     }
     // }
+
+    // /// Check if the actual Device supports the requested Vulkan extensions
+    // ///
+    // /// returns a new `impl PhysicalDevice` which indicates support for
+    // /// the requested Vulkan extensions if it is actually supported.
+    // fn check_device_extensions<C: vk::context::Extensions>(
+    //     self,
+    //     extension_properties: &[ExtensionProperties<Self>],
+    //     context: C,
+    // ) -> Option<
+    //     impl PhysicalDevice<
+    //             Instance = Self::Instance,
+    //             Commands = Self::Commands,
+    //             DeviceVersion = Self::DeviceVersion,
+    //             DeviceExtensions = C,
+    //         > + Captures<Self>,
+    // > {
+    //     let _ = context;
+
+    //     let requested_extensions = C::list_of_extensions();
+    //     let requested_extensions = requested_extensions.as_ref();
+
+    //     // TODO - FIX PERFORMANCE
+    //     // This is O(n^2) since we can end up comparing every element oif each list
+    //     // It would be nice if there is a standard about the order that extension names are
+    //     // listed, so we can reduce to O(n) ordered searching
+    //     for extension in requested_extensions {
+    //         if extension_properties
+    //             .iter()
+    //             .find(|e| {
+    //                 let e = unsafe { vk::VkStrRaw::new(e.extension_name.as_ptr()) };
+    //                 e == *extension
+    //             })
+    //             .is_none()
+    //         {
+    //             return None;
+    //         }
+    //     }
 }
 
 /// Handle for a PhysicalDevice
@@ -366,8 +135,12 @@ impl<I: Instance> PhysicalDeviceHandle<I> {
         self,
         instance: &'a I,
         tag: Tag<'t>,
-    ) -> impl PhysicalDevice<Instance = I, Commands = I::Commands> + Captures<(&'a I, Tag<'t>)>
-    {
+    ) -> impl PhysicalDevice<
+        Instance = I,
+        Commands = I::Commands,
+        DeviceVersion = (),
+        DeviceExtensions = (),
+    > + Captures<(&'a I, Tag<'t>)> {
         _PhysicalDevice::new(self.handle, instance, tag)
     }
 }
@@ -400,27 +173,39 @@ impl<I> fmt::Debug for PhysicalDeviceHandle<I> {
 }
 
 /// Hidden type which implements PhysicalDevice
-struct _PhysicalDevice<'a, I, T> {
+struct _PhysicalDevice<'a, I, T, V, E> {
     handle: vk::PhysicalDevice,
     instance: &'a I,
     tag: PhantomData<T>,
+    device_version: PhantomData<V>,
+    device_extensions: PhantomData<E>,
 }
 
-unsafe impl<I, T> Send for _PhysicalDevice<'_, I, T> {}
-unsafe impl<I, T> Sync for _PhysicalDevice<'_, I, T> {}
-impl<I, T> ThreadSafeHandle for _PhysicalDevice<'_, I, T> {}
+impl<'a, I, T, V, E> Copy for _PhysicalDevice<'a, I, T, V, E> {}
 
-impl<'a, I, T> _PhysicalDevice<'a, I, T> {
+impl<'a, I, T, V, E> Clone for _PhysicalDevice<'a, I, T, V, E> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+unsafe impl<'a, I, T, V, E> Send for _PhysicalDevice<'a, I, T, V, E> {}
+unsafe impl<'a, I, T, V, E> Sync for _PhysicalDevice<'a, I, T, V, E> {}
+impl<'a, I, T, V, E> ThreadSafeHandle for _PhysicalDevice<'a, I, T, V, E> {}
+
+impl<'a, I, T, V, E> _PhysicalDevice<'a, I, T, V, E> {
     fn new(handle: vk::PhysicalDevice, instance: &'a I, _tag: T) -> Self {
         Self {
             handle,
             instance,
             tag: PhantomData,
+            device_version: PhantomData,
+            device_extensions: PhantomData,
         }
     }
 }
 
-impl<I, T> fmt::Debug for _PhysicalDevice<'_, I, T> {
+impl<'a, I, T, V, E> fmt::Debug for _PhysicalDevice<'a, I, T, V, E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("_PhysicalDevice")
             .field("handle", &self.handle)
@@ -428,7 +213,7 @@ impl<I, T> fmt::Debug for _PhysicalDevice<'_, I, T> {
     }
 }
 
-impl<I, T> Handle for _PhysicalDevice<'_, I, T> {
+impl<'a, I, T, V, E> Handle for _PhysicalDevice<'a, I, T, V, E> {
     type RawHandle = vk::PhysicalDevice;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -436,7 +221,10 @@ impl<I, T> Handle for _PhysicalDevice<'_, I, T> {
     }
 }
 
-impl<I: Instance, T> vk::CommandWrapper for _PhysicalDevice<'_, I, T> {
+impl<'a, I, T, V, E> vk::Commands for _PhysicalDevice<'a, I, T, V, E>
+where
+    I: Instance,
+{
     type Commands = I::Commands;
 
     fn commands(&self) -> &Self::Commands {
@@ -444,8 +232,18 @@ impl<I: Instance, T> vk::CommandWrapper for _PhysicalDevice<'_, I, T> {
     }
 }
 
-impl<I: Instance, T> DispatchableHandle for _PhysicalDevice<'_, I, T> {}
+impl<'a, I, T, V, E> DispatchableHandle for _PhysicalDevice<'a, I, T, V, E> where I: Instance {}
 
-impl<I: Instance, T> PhysicalDevice for _PhysicalDevice<'_, I, T> {
+impl<'a, I, T, V, E> PhysicalDevice for _PhysicalDevice<'a, I, T, V, E>
+where
+    I: Instance,
+{
     type Instance = I;
+    type DeviceVersion = V;
+    type DeviceExtensions = E;
+}
+
+unsafe impl<'a, I, T, V, E> Support for _PhysicalDevice<'a, I, T, V, E> {
+    type Version = V;
+    type Extensions = E;
 }

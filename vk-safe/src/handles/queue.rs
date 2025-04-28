@@ -60,7 +60,7 @@ impl<'a, D, C, T> Handle for _Queue<'a, D, C, T> {
     }
 }
 
-impl<'a, D: Device, C, T> vk::CommandWrapper for _Queue<'a, D, C, T> {
+impl<'a, D: Device, C, T> vk::Commands for _Queue<'a, D, C, T> {
     type Commands = D::Commands;
 
     fn commands(&self) -> &Self::Commands {

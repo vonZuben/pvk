@@ -12,11 +12,11 @@ command_buffer;
 shader_module;
 );
 
-/// A handle which can dispatch Vulkan Commands
-///
-/// This is mostly an implementation detail and you are not
-/// intended to implement this yourself.
-pub trait DispatchableHandle: Handle + vk_safe_sys::CommandWrapper {}
+// /// A handle which can dispatch Vulkan Commands
+// ///
+// /// This is mostly an implementation detail and you are not
+// /// intended to implement this yourself.
+pub trait DispatchableHandle: Handle + vk_safe_sys::Commands {}
 
 /// A handle which represents a Vulkan object
 ///

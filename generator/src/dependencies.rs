@@ -27,7 +27,10 @@ pub(crate) fn dependencies_to_tokens<'a>(
                 #[marker]
                 pub trait {@feature} {}
                 {@*
-                    impl<T> {@feature} for T where T: crate::version::{@bounds} {}
+                    #[diagnostic::do_not_recommend]
+                    impl<T> {@feature} for T where T: crate::version::command_traits::{@bounds} {}
+                    #[diagnostic::do_not_recommend]
+                    impl<T> {@feature} for T where T: crate::Support<Version: {@bounds}> {}
                 }
             )
         }
@@ -40,7 +43,7 @@ pub(crate) fn dependencies_to_tokens<'a>(
                 krs_quote::to_tokens_closure!(tokens {
                     if extensions.find(promoted).is_some() {
                         krs_quote_with!(tokens <-
-                            crate::extension::{@promoted}
+                            crate::extension::command_traits::{@promoted}
                         )
                     }
                     else {
@@ -54,9 +57,15 @@ pub(crate) fn dependencies_to_tokens<'a>(
             krs_quote_with!(tokens <-
                 #[marker]
                 pub trait {@name} {}
-                impl<T> {@name} for T where T: crate::extension::{@name} {}
+                #[diagnostic::do_not_recommend]
+                impl<T> {@name} for T where T: crate::extension::command_traits::{@name} {}
+                #[diagnostic::do_not_recommend]
+                impl<T> {@name} for T where T: crate::Support<Extensions: {@name}> {}
                 {@*
+                    #[diagnostic::do_not_recommend]
                     impl<T> {@name} for T where T: {@promoted} {}
+                    #[diagnostic::do_not_recommend]
+                    impl<T> {@name} for T where T: crate::Support<Extensions: {@promoted}> {}
                 }
             )
         }

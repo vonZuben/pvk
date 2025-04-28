@@ -210,19 +210,83 @@ macro_rules! pub_use_modules {
     };
 }
 
+macro_rules! handle_command_collection_trait {
+    (
+        NAME( $command_trait_name:ident )
+        IMPL $implementor:tt
+        $(
+            #[cfg($cfg_trait_name:ident)] {
+                $($fn_trait_name:ident),*
+                $(,)?
+            }
+        )+
+    ) => {
+
+        mod commands {
+            #![allow(non_snake_case)]
+            $(
+                $(
+                    #[cfg($cfg_trait_name)]
+                    pub mod $fn_trait_name;
+                )*
+            )+
+        }
+
+        $(
+            $(
+                #[cfg($cfg_trait_name)]
+                pub use commands::$fn_trait_name::$fn_trait_name;
+                handle_command_collection_trait!(@IMPL $cfg_trait_name $fn_trait_name $implementor );
+            )*
+        )*
+
+        mod cfg_trait {
+            $(
+                #[cfg($cfg_trait_name)]
+                #[allow(non_camel_case_types)]
+                #[doc = concat!("Subtrait for ", stringify!($cfg_trait_name), " commands")]
+                pub trait $cfg_trait_name: $( super::$fn_trait_name + )* {}
+                #[cfg($cfg_trait_name)]
+                impl<T> $cfg_trait_name for T where T: $( super::$fn_trait_name + )* {}
+
+                #[cfg(not($cfg_trait_name))]
+                #[allow(non_camel_case_types)]
+                #[doc = concat!(stringify!($cfg_trait_name), " is not defined in the version of the Vulkan specification used ot build this")]
+                pub trait $cfg_trait_name {}
+                #[cfg(not($cfg_trait_name))]
+                impl<T> $cfg_trait_name for T {}
+            )*
+        }
+
+        pub trait $command_trait_name: $( cfg_trait::$cfg_trait_name + )+ {}
+        impl<T> $command_trait_name for T where T: $( cfg_trait::$cfg_trait_name + )+ {}
+
+    };
+    (
+        @IMPL
+        $cfg_trait_name:ident
+        $fn_trait_name:ident
+        ( $implementor_name:ident [ $($generics:tt)* ] $( $bounds:tt )* )
+    ) => {
+        #[cfg($cfg_trait_name)]
+        impl<$($generics)*> $fn_trait_name for $implementor_name<$($generics)*> $( $bounds )* {}
+    };
+}
+
 /// initialize sType and pNext for a pnext chain
 macro_rules! init_pnext {
     (
         $struct_extensions:ident: $p_next_ty:ident;
         $base:ident: $base_ty:ident $($generics:tt)*
     ) => {
-        let mut $struct_extensions = $p_next_ty::uninit();
+        let mut $struct_extensions = $p_next_ty::p_next_uninit();
         let struct_extensions_ptr = $struct_extensions.as_mut_ptr();
         let p_next_head = $crate::struct_extension::LinkMut::link_mut(struct_extensions_ptr);
 
         let mut $base = std::mem::MaybeUninit::<$base_ty $($generics)* >::uninit();
         let base_struct_ptr: *mut vk_safe_sys::$base_ty = $base.as_mut_ptr().to_c();
 
+        vk_safe_sys::BaseStructure::set_s_type(base_struct_ptr);
         vk_safe_sys::BaseStructureMut::p_next_mut(base_struct_ptr, p_next_head);
     };
 }

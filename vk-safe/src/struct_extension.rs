@@ -22,15 +22,15 @@ use vk::{BaseInStructure, BaseOutStructure};
 ///
 /// This is used to extend functionality in Vulkan by appending
 /// structs to a particular struct and forming a linked list.
-pub unsafe trait Pnext<S> {
+pub unsafe trait Pnext<S, Dep> {
     type Pnext<Tag>: LinkMut;
     #[doc(hidden)]
-    fn uninit<Tag>() -> std::mem::MaybeUninit<Self::Pnext<Tag>> {
+    fn p_next_uninit<Tag>() -> std::mem::MaybeUninit<Self::Pnext<Tag>> {
         std::mem::MaybeUninit::uninit()
     }
 }
 
-unsafe impl<S> Pnext<S> for () {
+unsafe impl<S, Dep> Pnext<S, Dep> for () {
     type Pnext<Tag> = ();
 }
 
@@ -160,19 +160,20 @@ macro_rules! p_next {
 
         impl<Tag> std::fmt::Debug for StructExtension<Tag> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.debug_list()
-                    .entries([
-                        $( &self.$name ),*
-                    ])
+                f.debug_tuple("pNext")
+                    $( .field(&self.$name) )*
                     .finish()
             }
         }
 
         struct Pnext;
 
-        unsafe impl<S> $crate::struct_extension::Pnext<S> for Pnext
+        unsafe impl<S, Dep> $crate::struct_extension::Pnext<S, Dep> for Pnext
         where
-            $($name: StructExtends<S>,)*
+            $(
+                $name: StructExtends<S>,
+                Dep: vk_structs::struct_dependencies::$name::HasDependency,
+            )*
         {
             type Pnext<Tag> = StructExtension<Tag>;
         }

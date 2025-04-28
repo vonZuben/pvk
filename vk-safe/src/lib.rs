@@ -236,8 +236,8 @@ pub mod enumerations {
 pub mod context {
     pub use vk_safe_sys::{device_context, instance_context};
 
-    pub use vk_safe_sys::extensions::*;
-    pub use vk_safe_sys::version::*;
+    pub use vk_safe_sys::extension::user_traits::*;
+    pub use vk_safe_sys::version::user_traits::*;
 }
 
 /// The main module for using this crate

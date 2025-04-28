@@ -1,7 +1,5 @@
-use super::physical_device::PhysicalDeviceHandle;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
-use crate::enumerator::Enumerator;
 use crate::scope::{Captures, Tag};
 use crate::VkVersion;
 
@@ -13,10 +11,12 @@ use vk_safe_sys as vk;
 use vk::has_command::DestroyInstance;
 use vk::Version;
 
-pub_use_modules!(
-#[cfg(VK_VERSION_1_0)] {
-    enumerate_physical_devices;
-};
+handle_command_collection_trait!(
+    NAME(InstanceCommands)
+    IMPL( _Instance[C, X, T] where C: DestroyInstance<X> )
+    #[cfg(VK_VERSION_1_0)] {
+        EnumeratePhysicalDevices,
+    }
 );
 
 /// Main Vulkan object
@@ -28,58 +28,34 @@ pub_use_modules!(
 /// Vulkan doc:
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkInstance.html>
 pub trait Instance:
-    DispatchableHandle<RawHandle = vk::Instance, Commands: Version> + ThreadSafeHandle
+    DispatchableHandle<RawHandle = vk::Instance, Commands: Version>
+    + ThreadSafeHandle
+    + InstanceCommands
 {
     const VERSION: VkVersion;
-
-    #[cfg(VK_VERSION_1_0)]
-    /// Enumerate PhysicalDevices on the system
-    ///
-    /// # Usage
-    /// Use the resulting [`Enumerator`] to retrieve an array of [`PhysicalDeviceHandle`].
-    /// Then you can iterate over the handles and tag each one that
-    /// you want to use with a [`Tag`].
-    ///
-    /// # Example
-    /// ```
-    /// # use vk_safe::vk;
-    /// # use vk::traits::*;
-    /// # fn tst(instance: impl Instance<Commands: vk::instance::VERSION_1_0>) {
-    /// let physical_devices = instance
-    ///     .enumerate_physical_devices()
-    ///     .auto_get_enumerate()
-    ///     .unwrap();
-    ///
-    /// for physical_device in physical_devices.iter() {
-    ///     vk::tag!(tag);
-    ///     let physical_device = physical_device.tag(&instance, tag);
-    /// }
-    /// # }
-    /// ```
-    ///
-    /// Vulkan docs:
-    /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkEnumeratePhysicalDevices.html>
-    fn enumerate_physical_devices<X>(&self) -> impl Enumerator<PhysicalDeviceHandle<Self>>
-    where
-        Self: vk::has_command::EnumeratePhysicalDevices<X>,
-    {
-        enumerate_physical_devices::enumerate_physical_devices(self)
-    }
 }
 
 // Hidden type which implements [Instance]
-struct _Instance<C: DestroyInstance<X>, X, T> {
+struct _Instance<C, X, T>
+where
+    C: DestroyInstance<X>,
+{
     handle: vk::Instance,
     commands: C,
     tag: PhantomData<T>,
     destroy: PhantomData<X>,
 }
 
-unsafe impl<C: DestroyInstance<X>, X, T> Send for _Instance<C, X, T> {}
-unsafe impl<C: DestroyInstance<X>, X, T> Sync for _Instance<C, X, T> {}
-impl<C: DestroyInstance<X>, X, T> ThreadSafeHandle for _Instance<C, X, T> {}
+// impl EnumeratePhysicalDevices
 
-impl<C: DestroyInstance<X>, X, T> fmt::Debug for _Instance<C, X, T> {
+unsafe impl<C, X, T> Send for _Instance<C, X, T> where C: DestroyInstance<X> {}
+unsafe impl<C, X, T> Sync for _Instance<C, X, T> where C: DestroyInstance<X> {}
+impl<C, X, T> ThreadSafeHandle for _Instance<C, X, T> where C: DestroyInstance<X> {}
+
+impl<C, X, T> fmt::Debug for _Instance<C, X, T>
+where
+    C: DestroyInstance<X>,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Instance")
             .field("handle", &self.handle)
@@ -88,7 +64,10 @@ impl<C: DestroyInstance<X>, X, T> fmt::Debug for _Instance<C, X, T> {
     }
 }
 
-impl<C: DestroyInstance<X>, X, T> _Instance<C, X, T> {
+impl<C, X, T> _Instance<C, X, T>
+where
+    C: DestroyInstance<X>,
+{
     fn new(handle: vk::Instance, commands: C, _tag: T) -> Self {
         Self {
             handle,
@@ -99,7 +78,10 @@ impl<C: DestroyInstance<X>, X, T> _Instance<C, X, T> {
     }
 }
 
-impl<C: DestroyInstance<X>, X, T> Handle for _Instance<C, X, T> {
+impl<C, X, T> Handle for _Instance<C, X, T>
+where
+    C: DestroyInstance<X>,
+{
     type RawHandle = vk::Instance;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -107,7 +89,10 @@ impl<C: DestroyInstance<X>, X, T> Handle for _Instance<C, X, T> {
     }
 }
 
-impl<C: DestroyInstance<X>, X, T> vk::CommandWrapper for _Instance<C, X, T> {
+impl<C, X, T> vk::Commands for _Instance<C, X, T>
+where
+    C: DestroyInstance<X>,
+{
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -115,9 +100,12 @@ impl<C: DestroyInstance<X>, X, T> vk::CommandWrapper for _Instance<C, X, T> {
     }
 }
 
-impl<C: DestroyInstance<X>, X, T> DispatchableHandle for _Instance<C, X, T> {}
+impl<C, X, T> DispatchableHandle for _Instance<C, X, T> where C: DestroyInstance<X> {}
 
-impl<C: DestroyInstance<X> + Version, X, T> Instance for _Instance<C, X, T> {
+impl<C, X, T> Instance for _Instance<C, X, T>
+where
+    C: DestroyInstance<X> + Version,
+{
     const VERSION: VkVersion = C::VERSION;
 }
 
@@ -130,7 +118,10 @@ pub(crate) fn make_instance<C: DestroyInstance<X> + Version, X>(
 }
 
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/vkDestroyInstance.html>
-impl<C: DestroyInstance<X>, X, T> Drop for _Instance<C, X, T> {
+impl<C, X, T> Drop for _Instance<C, X, T>
+where
+    C: DestroyInstance<X>,
+{
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyInstance);
 

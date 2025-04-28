@@ -64,7 +64,7 @@ macro_rules! instance_context {
 
             mod commands {
                 $(
-                    use $crate::version::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
+                    use $crate::version::command_traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
 
                     unsafe impl $v_provider for $name {
                         fn instance_commands(&self) -> &$crate::version::instance_command_structs::$v_provider {
@@ -78,7 +78,7 @@ macro_rules! instance_context {
                 )?
 
                 $(
-                    use $crate::extension::$e_provider; // this is here for autocomplete (see above)
+                    use $crate::extension::command_traits::$e_provider; // this is here for autocomplete (see above)
 
                     unsafe impl $e_provider for $name {
                         fn instance_commands(&self) -> &$crate::extension::instance_command_structs::$e_provider {
@@ -165,7 +165,7 @@ macro_rules! device_context {
 
             mod commands {
                 $(
-                    use $crate::version::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
+                    use $crate::version::command_traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
 
                     unsafe impl $v_provider for $name {
                         fn device_commands(&self) -> &$crate::version::device_command_structs::$v_provider {
@@ -179,7 +179,7 @@ macro_rules! device_context {
                 )?
 
                 $(
-                    use $crate::extension::$e_provider; // this is here for autocomplete (see above)
+                    use $crate::extension::command_traits::$e_provider; // this is here for autocomplete (see above)
 
                     unsafe impl $e_provider for $name {
                         fn device_commands(&self) -> &$crate::extension::device_command_structs::$e_provider {

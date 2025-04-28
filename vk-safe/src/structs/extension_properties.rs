@@ -6,7 +6,8 @@ struct_wrapper!(
 /// provides the name and version of the extension.
 ///
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkExtensionProperties.html>
-ExtensionProperties<S,>);
+ExtensionProperties<S,>
+impl Deref);
 
 impl<S> ExtensionProperties<S> {
     get_str!(

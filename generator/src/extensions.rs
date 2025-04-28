@@ -67,7 +67,11 @@ impl krs_quote::ToTokens for ExtensionCollection {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let extensions = self.extensions.iter();
 
-        let traits = extensions.clone().map(|e| ExtensionTrait {
+        let user_traits = extensions.clone().map(|e| ExtensionUserTrait {
+            name: e.extension_name,
+        });
+
+        let command_traits = extensions.clone().map(|e| ExtensionCommandTrait {
             name: e.extension_name,
         });
 
@@ -112,14 +116,30 @@ impl krs_quote::ToTokens for ExtensionCollection {
 
             #[doc(hidden)]
             pub mod extension {
-                {@* {@traits}}
+                pub mod user_traits {
+                    #![allow(non_camel_case_types)]
+
+                    {@* {@user_traits}}
+                }
+
+                pub mod command_traits {
+                    #![allow(non_camel_case_types)]
+
+                    {@* {@command_traits}}
+                }
 
                 pub mod instance_command_structs {
+                    #![allow(non_camel_case_types)]
+                    #![allow(non_snake_case)]
+
                     use crate::LoadCommands;
                     {@* {@instance_command_structs}}
                 }
 
                 pub mod device_command_structs {
+                    #![allow(non_camel_case_types)]
+                    #![allow(non_snake_case)]
+
                     use crate::LoadCommands;
                     {@* {@device_command_structs}}
                 }
@@ -160,8 +180,6 @@ impl krs_quote::ToTokens for ExtensionCommandStruct<'_> {
 
         krs_quote_with!(tokens <-
             #[doc(hidden)]
-            #[allow(non_camel_case_types)]
-            #[allow(non_snake_case)]
             pub struct {@name} {
                 {@*
                     pub {@command}: crate::{@command},
@@ -179,7 +197,7 @@ impl krs_quote::ToTokens for ExtensionCommandStruct<'_> {
 
             {@*
                 impl<T> crate::has_command::{@command}<{@name}> for T
-                    where T: super::{@name}
+                    where T: super::command_traits::{@name}
                 {
                     fn {@command}(&self) -> crate::{@command} {
                         self.{@command_method}().{@command}
@@ -190,33 +208,47 @@ impl krs_quote::ToTokens for ExtensionCommandStruct<'_> {
     }
 }
 
-struct ExtensionTrait {
+struct ExtensionUserTrait {
     name: ExtensionName,
 }
 
-impl krs_quote::ToTokens for ExtensionTrait {
+impl krs_quote::ToTokens for ExtensionUserTrait {
     fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
         let name = self.name;
 
         krs_quote_with!(tokens <-
-            #[allow(non_camel_case_types)]
+            pub unsafe trait {@name} : crate::Commands<Commands: super::command_traits::{@name}> {}
+            unsafe impl<T> {@name} for T where T: crate::Commands<Commands: super::command_traits::{@name}> {}
+        )
+    }
+}
+
+struct ExtensionCommandTrait {
+    name: ExtensionName,
+}
+
+impl krs_quote::ToTokens for ExtensionCommandTrait {
+    fn to_tokens(&self, tokens: &mut krs_quote::TokenStream) {
+        let name = self.name;
+
+        let name_str = name.name_as_str();
+        let message = format!("The extension '{name_str}' is not supported by your type");
+        let label = format!("{name_str} is needed here");
+        let note = format!("ensure {name_str} is enabled in the current scope");
+
+        krs_quote_with!(tokens <-
+            #[diagnostic::on_unimplemented(
+                message = {@message},
+                label = {@label},
+                note = {@note},
+            )]
             pub unsafe trait {@name} {
-                fn instance_commands(&self) -> &instance_command_structs::{@name} {
+                fn instance_commands(&self) -> &super::instance_command_structs::{@name} {
                     unreachable!();
                 }
 
-                fn device_commands(&self) -> &device_command_structs::{@name} {
+                fn device_commands(&self) -> &super::device_command_structs::{@name} {
                     unreachable!();
-                }
-            }
-
-            unsafe impl<T> {@name} for T where T: crate::CommandWrapper<Commands: {@name}> {
-                fn instance_commands(&self) -> &instance_command_structs::{@name} {
-                    self.commands().instance_commands()
-                }
-
-                fn device_commands(&self) -> &device_command_structs::{@name} {
-                    self.commands().device_commands()
                 }
             }
         );

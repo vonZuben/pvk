@@ -1,6 +1,5 @@
 use super::command_buffer::_CommandBuffers;
 use super::device_memory::{DeviceMemory, MappedMemory};
-use super::physical_device::PhysicalDevice;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::buffer::Buffer;
@@ -38,7 +37,7 @@ pub_use_modules!(
 pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle {
     const VERSION: VkVersion;
 
-    type PhysicalDevice: PhysicalDevice;
+    type PhysicalDevice: DispatchableHandle<RawHandle = vk::PhysicalDevice>;
     type QueueConfig;
 
     // ****TODO: if `use<>` becomes available in RPITIT, then this can be uncommented
@@ -315,7 +314,10 @@ pub trait Device: DispatchableHandle<RawHandle = vk::Device> + ThreadSafeHandle 
 // }
 
 /// [`Device`] implementor
-struct _Device<C: DestroyDevice<X>, P, Q, T, X> {
+struct _Device<C, P, Q, T, X>
+where
+    C: DestroyDevice<X>,
+{
     handle: vk::Device,
     commands: C,
     tag: PhantomData<T>,
@@ -324,7 +326,13 @@ struct _Device<C: DestroyDevice<X>, P, Q, T, X> {
     destroy: PhantomData<X>,
 }
 
-pub(crate) fn make_device<'t, C: DestroyDevice<X> + Version, P: PhysicalDevice, Q, X>(
+pub(crate) fn make_device<
+    't,
+    C: DestroyDevice<X> + Version,
+    P: DispatchableHandle<RawHandle = vk::PhysicalDevice>,
+    Q,
+    X,
+>(
     handle: vk::Device,
     commands: C,
     _tag: Tag<'t>,
@@ -339,11 +347,14 @@ pub(crate) fn make_device<'t, C: DestroyDevice<X> + Version, P: PhysicalDevice, 
     }
 }
 
-unsafe impl<C: DestroyDevice<X>, P, Q, T, X> Send for _Device<C, P, Q, T, X> {}
-unsafe impl<C: DestroyDevice<X>, P, Q, T, X> Sync for _Device<C, P, Q, T, X> {}
-impl<C: DestroyDevice<X>, P, Q, T, X> ThreadSafeHandle for _Device<C, P, Q, T, X> {}
+unsafe impl<C, P, Q, T, X> Send for _Device<C, P, Q, T, X> where C: DestroyDevice<X> {}
+unsafe impl<C, P, Q, T, X> Sync for _Device<C, P, Q, T, X> where C: DestroyDevice<X> {}
+impl<C, P, Q, T, X> ThreadSafeHandle for _Device<C, P, Q, T, X> where C: DestroyDevice<X> {}
 
-impl<C: DestroyDevice<X>, P, Q, T, X> fmt::Debug for _Device<C, P, Q, T, X> {
+impl<C, P, Q, T, X> fmt::Debug for _Device<C, P, Q, T, X>
+where
+    C: DestroyDevice<X>,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("_Device")
             .field("handle", &self.handle)
@@ -351,7 +362,10 @@ impl<C: DestroyDevice<X>, P, Q, T, X> fmt::Debug for _Device<C, P, Q, T, X> {
     }
 }
 
-impl<C: DestroyDevice<X>, P, Q, T, X> Handle for _Device<C, P, Q, T, X> {
+impl<C, P, Q, T, X> Handle for _Device<C, P, Q, T, X>
+where
+    C: DestroyDevice<X>,
+{
     type RawHandle = vk::Device;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -359,7 +373,10 @@ impl<C: DestroyDevice<X>, P, Q, T, X> Handle for _Device<C, P, Q, T, X> {
     }
 }
 
-impl<C: DestroyDevice<X>, P, Q, T, X> vk::CommandWrapper for _Device<C, P, Q, T, X> {
+impl<C, P, Q, T, X> vk::Commands for _Device<C, P, Q, T, X>
+where
+    C: DestroyDevice<X>,
+{
     type Commands = C;
 
     fn commands(&self) -> &Self::Commands {
@@ -367,16 +384,23 @@ impl<C: DestroyDevice<X>, P, Q, T, X> vk::CommandWrapper for _Device<C, P, Q, T,
     }
 }
 
-impl<C: DestroyDevice<X>, P, Q, T, X> DispatchableHandle for _Device<C, P, Q, T, X> {}
+impl<C, P, Q, T, X> DispatchableHandle for _Device<C, P, Q, T, X> where C: DestroyDevice<X> {}
 
-impl<C: DestroyDevice<X> + Version, P: PhysicalDevice, Q, T, X> Device for _Device<C, P, Q, T, X> {
+impl<C, P, Q, T, X> Device for _Device<C, P, Q, T, X>
+where
+    C: DestroyDevice<X> + Version,
+    P: DispatchableHandle<RawHandle = vk::PhysicalDevice>,
+{
     const VERSION: VkVersion = C::VERSION;
 
     type PhysicalDevice = P;
     type QueueConfig = Q;
 }
 
-impl<C: DestroyDevice<X>, P, Q, T, X> Drop for _Device<C, P, Q, T, X> {
+impl<C, P, Q, T, X> Drop for _Device<C, P, Q, T, X>
+where
+    C: DestroyDevice<X>,
+{
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyDevice);
 
