@@ -1,5 +1,6 @@
-use super::device::Device;
 use super::Handle;
+
+use crate::handles::DispatchableHandle;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -29,7 +30,7 @@ pub trait CommandPool: Handle<RawHandle = vk::CommandPool> + Send {
 
 pub(crate) fn make_command_pool<
     'a,
-    D: Device<Commands: DestroyCommandPool<X>>,
+    D: DispatchableHandle<Commands: DestroyCommandPool<X>, RawHandle = vk::Device>,
     F: CommandPoolCreateFlags,
     Q,
     X,
@@ -47,7 +48,10 @@ pub(crate) fn make_command_pool<
 }
 
 /// [`CommandPool`] implementor
-struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> {
+struct _CommandPool<'a, D, X, F, Q>
+where
+    D: DispatchableHandle<Commands: DestroyCommandPool<X>, RawHandle = vk::Device>,
+{
     handle: vk::CommandPool,
     device: &'a D,
     flags: PhantomData<F>,
@@ -55,13 +59,14 @@ struct _CommandPool<'a, D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> {
     destroy: PhantomData<X>,
 }
 
-unsafe impl<'a, D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> Send
-    for _CommandPool<'_, D, X, F, Q>
+unsafe impl<'a, D, X, F, Q> Send for _CommandPool<'a, D, X, F, Q> where
+    D: DispatchableHandle<Commands: DestroyCommandPool<X>, RawHandle = vk::Device>
 {
 }
 
-impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> fmt::Debug
-    for _CommandPool<'_, D, X, F, Q>
+impl<'a, D, X, F, Q> fmt::Debug for _CommandPool<'a, D, X, F, Q>
+where
+    D: DispatchableHandle<Commands: DestroyCommandPool<X>, RawHandle = vk::Device>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("_CommandPool")
@@ -70,7 +75,10 @@ impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> fmt::Debug
     }
 }
 
-impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> Handle for _CommandPool<'_, D, X, F, Q> {
+impl<'a, D, X, F, Q> Handle for _CommandPool<'a, D, X, F, Q>
+where
+    D: DispatchableHandle<Commands: DestroyCommandPool<X>, RawHandle = vk::Device>,
+{
     type RawHandle = vk::CommandPool;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -78,8 +86,10 @@ impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> Handle for _CommandPoo
     }
 }
 
-impl<D: Device<Commands: DestroyCommandPool<X>>, X, F: CommandPoolCreateFlags, Q> CommandPool
-    for _CommandPool<'_, D, X, F, Q>
+impl<'a, D, X, F, Q> CommandPool for _CommandPool<'a, D, X, F, Q>
+where
+    D: DispatchableHandle<Commands: DestroyCommandPool<X>, RawHandle = vk::Device>,
+    F: CommandPoolCreateFlags,
 {
     type Device = D;
 
@@ -88,7 +98,10 @@ impl<D: Device<Commands: DestroyCommandPool<X>>, X, F: CommandPoolCreateFlags, Q
     type QueueFamily = Q;
 }
 
-impl<D: Device<Commands: DestroyCommandPool<X>>, X, F, Q> Drop for _CommandPool<'_, D, X, F, Q> {
+impl<'a, D, X, F, Q> Drop for _CommandPool<'a, D, X, F, Q>
+where
+    D: DispatchableHandle<Commands: DestroyCommandPool<X>, RawHandle = vk::Device>,
+{
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyCommandPool);
 

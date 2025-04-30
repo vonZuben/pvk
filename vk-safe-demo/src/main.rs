@@ -167,7 +167,7 @@ fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
         )
         .unwrap();
     let alloc_info = vk::MemoryAllocateInfo::new(std::num::NonZeroU64::new(100).unwrap(), mem_type);
-    let mem = vk::allocate_memory(&device, &alloc_info).unwrap();
+    let mem = device.allocate_memory(&alloc_info).unwrap();
     println!("--Example allocated memory handle--");
     println!("{mem:?}");
 
@@ -182,14 +182,14 @@ fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
 
     for queue_config in queue_configs {
         vk::tag!(family_tag);
-        let (queue_family_marker, queues_iter) = vk::get_device_queues(
-            &device,
-            queue_config,
-            &queue_family_properties,
-            vk::flags!(QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT),
-            family_tag,
-        )
-        .unwrap();
+        let (queue_family_marker, queues_iter) = device
+            .get_device_queues(
+                &queue_config,
+                &queue_family_properties,
+                vk::flags!(QueueFlags + GRAPHICS_BIT + TRANSFER_BIT + COMPUTE_BIT),
+                family_tag,
+            )
+            .unwrap();
         println!("Configured Queue Family: {:#?}", queue_family_marker);
 
         let queues: Vec<_> = queues_iter.collect();
@@ -207,28 +207,26 @@ fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
             vk::SpirvBinary::load_from_file_path(build_dir.join("fragment.spv"))
                 .expect("could not load fragment shader from file")
         };
-        let vertex_shader = vk::create_shader_module(
-            &device,
-            &vk::ShaderModuleCreateInfo::from_spirv_binary(&vertex_shader_spirv),
-        )
-        .unwrap();
-        let fragment_shader = vk::create_shader_module(
-            &device,
-            &vk::ShaderModuleCreateInfo::from_spirv_binary(&fragment_shader_spirv),
-        )
-        .unwrap();
+        let vertex_shader = device
+            .create_shader_module(&vk::ShaderModuleCreateInfo::from_spirv_binary(
+                &vertex_shader_spirv,
+            ))
+            .unwrap();
+        let fragment_shader = device
+            .create_shader_module(&vk::ShaderModuleCreateInfo::from_spirv_binary(
+                &fragment_shader_spirv,
+            ))
+            .unwrap();
 
         println!("Vertex Shader: {vertex_shader:?}");
         println!("Fragment Shader: {fragment_shader:?}");
 
-        let command_pool = vk::create_command_pool(
-            &device,
-            &vk::CommandPoolCreateInfo::new(
+        let command_pool = device
+            .create_command_pool(&vk::CommandPoolCreateInfo::new(
                 vk::flags!(CommandPoolCreateFlags + RESET_COMMAND_BUFFER_BIT - PROTECTED_BIT),
                 &queue_family_marker,
-            ),
-        )
-        .unwrap();
+            ))
+            .unwrap();
 
         println!("{command_pool:#?}");
 

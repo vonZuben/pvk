@@ -1,5 +1,6 @@
-use super::device::Device;
 use super::{Handle, ThreadSafeHandle};
+
+use crate::handles::DispatchableHandle;
 
 use std::marker::PhantomData;
 
@@ -7,20 +8,26 @@ use vk::has_command::DestroyShaderModule;
 use vk_safe_sys as vk;
 
 pub trait ShaderModule: Handle<RawHandle = vk::ShaderModule> + ThreadSafeHandle {
-    type Device: Device;
+    type Device;
 }
 
 /// [`ShaderModule`] implementor
-struct _ShaderModule<'a, D: Device<Commands: DestroyShaderModule<X>>, X> {
+struct _ShaderModule<'a, D, X>
+where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>,
+{
     handle: vk::ShaderModule,
     device: &'a D,
     destroy: PhantomData<X>,
 }
 
-pub(crate) fn make_shader_module<'a, D: Device<Commands: DestroyShaderModule<X>>, X>(
+pub(crate) fn make_shader_module<'a, D, X>(
     device: &'a D,
     handle: vk::ShaderModule,
-) -> impl ShaderModule<Device = D> + use<'a, D, X> {
+) -> impl ShaderModule<Device = D> + use<'a, D, X>
+where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>,
+{
     _ShaderModule {
         handle,
         device,
@@ -28,18 +35,30 @@ pub(crate) fn make_shader_module<'a, D: Device<Commands: DestroyShaderModule<X>>
     }
 }
 
-impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> ShaderModule for _ShaderModule<'a, D, X> {
+impl<'a, D, X> ShaderModule for _ShaderModule<'a, D, X>
+where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>,
+{
     type Device = D;
 }
 
-unsafe impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> Send for _ShaderModule<'a, D, X> {}
-unsafe impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> Sync for _ShaderModule<'a, D, X> {}
-impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> ThreadSafeHandle
-    for _ShaderModule<'a, D, X>
+unsafe impl<'a, D, X> Send for _ShaderModule<'a, D, X> where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>
+{
+}
+unsafe impl<'a, D, X> Sync for _ShaderModule<'a, D, X> where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>
+{
+}
+impl<'a, D, X> ThreadSafeHandle for _ShaderModule<'a, D, X> where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>
 {
 }
 
-impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> Handle for _ShaderModule<'a, D, X> {
+impl<'a, D, X> Handle for _ShaderModule<'a, D, X>
+where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>,
+{
     type RawHandle = vk::ShaderModule;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -47,8 +66,9 @@ impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> Handle for _ShaderModul
     }
 }
 
-impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> std::fmt::Debug
-    for _ShaderModule<'a, D, X>
+impl<'a, D, X> std::fmt::Debug for _ShaderModule<'a, D, X>
+where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ShaderModule")
@@ -57,7 +77,10 @@ impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> std::fmt::Debug
     }
 }
 
-impl<'a, D: Device<Commands: DestroyShaderModule<X>>, X> Drop for _ShaderModule<'a, D, X> {
+impl<'a, D, X> Drop for _ShaderModule<'a, D, X>
+where
+    D: DispatchableHandle<Commands: DestroyShaderModule<X>, RawHandle = vk::Device>,
+{
     fn drop(&mut self) {
         check_vuids::check_vuids!(DestroyShaderModule);
 

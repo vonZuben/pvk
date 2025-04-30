@@ -1,4 +1,3 @@
-use super::device::Device;
 use super::{DispatchableHandle, Handle, ThreadSafeHandle};
 
 use crate::scope::{Captures, Tag};
@@ -16,11 +15,13 @@ pub trait Queue: DispatchableHandle<RawHandle = vk::Queue> + ThreadSafeHandle {
     type Family;
 }
 
-pub(crate) unsafe fn make_queue<'a, 't, D: Device, C: QueueFlags>(
+pub(crate) unsafe fn make_queue<'a, 't, D, C: QueueFlags>(
     handle: vk::Queue,
     device: &'a D,
     _family_tag: &Tag<'t>,
 ) -> impl Queue<Device = D, Capability = C, Commands = D::Commands, Family = Tag<'t>> + Captures<&'a D>
+where
+    D: DispatchableHandle,
 {
     _Queue::<'a, D, C, Tag<'t>> {
         handle,
@@ -60,7 +61,10 @@ impl<'a, D, C, T> Handle for _Queue<'a, D, C, T> {
     }
 }
 
-impl<'a, D: Device, C, T> vk::Commands for _Queue<'a, D, C, T> {
+impl<'a, D, C, T> vk::Commands for _Queue<'a, D, C, T>
+where
+    D: DispatchableHandle,
+{
     type Commands = D::Commands;
 
     fn commands(&self) -> &Self::Commands {
@@ -68,9 +72,12 @@ impl<'a, D: Device, C, T> vk::Commands for _Queue<'a, D, C, T> {
     }
 }
 
-impl<'a, D: Device, C, T> DispatchableHandle for _Queue<'a, D, C, T> {}
+impl<'a, D, C, T> DispatchableHandle for _Queue<'a, D, C, T> where D: DispatchableHandle {}
 
-impl<'a, D: Device, C: QueueFlags, T> Queue for _Queue<'a, D, C, T> {
+impl<'a, D, C: QueueFlags, T> Queue for _Queue<'a, D, C, T>
+where
+    D: DispatchableHandle,
+{
     type Device = D;
     type Capability = C;
     type Family = T;

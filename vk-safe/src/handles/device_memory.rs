@@ -3,7 +3,7 @@ use super::{Handle, ThreadSafeHandle};
 use std::fmt;
 use std::marker::PhantomData;
 
-use crate::handles::device::Device;
+use crate::handles::DispatchableHandle;
 
 use vk_safe_sys as vk;
 
@@ -20,7 +20,10 @@ pub trait DeviceMemory: Handle<RawHandle = vk::DeviceMemory> + ThreadSafeHandle 
 }
 
 /// [`DeviceMemory`] implementor
-struct _DeviceMemory<'a, D: Device<Commands: FreeMemory<X>>, P, H, X> {
+struct _DeviceMemory<'a, D, P, H, X>
+where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>,
+{
     handle: vk::DeviceMemory,
     device: &'a D,
     property_flags: PhantomData<P>,
@@ -30,7 +33,7 @@ struct _DeviceMemory<'a, D: Device<Commands: FreeMemory<X>>, P, H, X> {
 
 pub(crate) fn make_device_memory<
     'a,
-    D: Device<Commands: FreeMemory<X>>,
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>,
     P: MemoryPropertyFlags,
     H: MemoryHeapFlags,
     X,
@@ -47,14 +50,23 @@ pub(crate) fn make_device_memory<
     }
 }
 
-unsafe impl<D: Device<Commands: FreeMemory<X>>, P, H, X> Send for _DeviceMemory<'_, D, P, H, X> {}
-unsafe impl<D: Device<Commands: FreeMemory<X>>, P, H, X> Sync for _DeviceMemory<'_, D, P, H, X> {}
-impl<D: Device<Commands: FreeMemory<X>>, P, H, X> ThreadSafeHandle
-    for _DeviceMemory<'_, D, P, H, X>
+unsafe impl<'a, D, P, H, X> Send for _DeviceMemory<'a, D, P, H, X> where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>
+{
+}
+unsafe impl<'a, D, P, H, X> Sync for _DeviceMemory<'a, D, P, H, X> where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>
+{
+}
+impl<'a, D, P, H, X> ThreadSafeHandle for _DeviceMemory<'a, D, P, H, X> where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>
 {
 }
 
-impl<D: Device<Commands: FreeMemory<X>>, P, H, X> fmt::Debug for _DeviceMemory<'_, D, P, H, X> {
+impl<'a, D, P, H, X> fmt::Debug for _DeviceMemory<'a, D, P, H, X>
+where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("DeviceMemory")
             .field("handle", &self.handle)
@@ -63,7 +75,10 @@ impl<D: Device<Commands: FreeMemory<X>>, P, H, X> fmt::Debug for _DeviceMemory<'
     }
 }
 
-impl<D: Device<Commands: FreeMemory<X>>, P, H, X> Handle for _DeviceMemory<'_, D, P, H, X> {
+impl<'a, D, P, H, X> Handle for _DeviceMemory<'a, D, P, H, X>
+where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>,
+{
     type RawHandle = vk::DeviceMemory;
 
     fn raw_handle(&self) -> Self::RawHandle {
@@ -71,15 +86,21 @@ impl<D: Device<Commands: FreeMemory<X>>, P, H, X> Handle for _DeviceMemory<'_, D
     }
 }
 
-impl<D: Device<Commands: FreeMemory<X>>, P: MemoryPropertyFlags, H: MemoryHeapFlags, X> DeviceMemory
-    for _DeviceMemory<'_, D, P, H, X>
+impl<'a, D, P, H, X> DeviceMemory for _DeviceMemory<'a, D, P, H, X>
+where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>,
+    P: MemoryPropertyFlags,
+    H: MemoryHeapFlags,
 {
     type Device = D;
     type PropertyFlags = P;
     type HeapFlags = H;
 }
 
-impl<D: Device<Commands: FreeMemory<X>>, P, H, X> Drop for _DeviceMemory<'_, D, P, H, X> {
+impl<'a, D, P, H, X> Drop for _DeviceMemory<'a, D, P, H, X>
+where
+    D: DispatchableHandle<Commands: FreeMemory<X>, RawHandle = vk::Device>,
+{
     fn drop(&mut self) {
         check_vuids::check_vuids!(FreeMemory);
 
