@@ -25,12 +25,12 @@ pub(crate) fn dependencies_to_tokens<'a>(
             let bounds = previous_features.iter().map(|p|p.0);
             krs_quote_with!(tokens <-
                 #[marker]
-                pub trait {@feature} {}
+                pub unsafe trait {@feature} {}
                 {@*
                     #[diagnostic::do_not_recommend]
-                    impl<T> {@feature} for T where T: crate::version::command_traits::{@bounds} {}
+                    unsafe impl<T> {@feature} for T where T: crate::version::command_traits::{@bounds} {}
                     #[diagnostic::do_not_recommend]
-                    impl<T> {@feature} for T where T: crate::Support<Version: {@bounds}> {}
+                    unsafe impl<T> {@feature} for T where T: crate::Support<Version: {@bounds}> {}
                 }
             )
         }
@@ -56,16 +56,16 @@ pub(crate) fn dependencies_to_tokens<'a>(
 
             krs_quote_with!(tokens <-
                 #[marker]
-                pub trait {@name} {}
+                pub unsafe trait {@name} {}
                 #[diagnostic::do_not_recommend]
-                impl<T> {@name} for T where T: crate::extension::command_traits::{@name} {}
+                unsafe impl<T> {@name} for T where T: crate::extension::command_traits::{@name} {}
                 #[diagnostic::do_not_recommend]
-                impl<T> {@name} for T where T: crate::Support<Extensions: {@name}> {}
+                unsafe impl<T> {@name} for T where T: crate::Support<Extensions: {@name}> {}
                 {@*
                     #[diagnostic::do_not_recommend]
-                    impl<T> {@name} for T where T: {@promoted} {}
+                    unsafe impl<T> {@name} for T where T: {@promoted} {}
                     #[diagnostic::do_not_recommend]
-                    impl<T> {@name} for T where T: crate::Support<Extensions: {@promoted}> {}
+                    unsafe impl<T> {@name} for T where T: crate::Support<Extensions: {@promoted}> {}
                 }
             )
         }

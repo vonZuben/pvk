@@ -62,6 +62,7 @@ macro_rules! instance_context {
                 type Commands = commands::$name;
             }
 
+            // create a commands type with the desired commands, implement the command traits, and check that extension dependencies are met
             mod commands {
                 $(
                     use $crate::version::command_traits::$v_provider; // this is here so that rust analyzer auto complete can provide good suggestions see (https://blog.emi0x7d1.dev/improving-autocompletion-in-your-rust-macros/)
@@ -112,6 +113,10 @@ macro_rules! instance_context {
                     }
                 }
             }
+
+            // implement the dependency traits
+            $( unsafe impl $crate::dependency::$v_provider for $name {} )?
+            $( unsafe impl $crate::dependency::$e_provider for $name {} )*
 
             unsafe impl $crate::context::Extensions for $name {
                 fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {
@@ -217,6 +222,10 @@ macro_rules! device_context {
                     }
                 }
             }
+
+            // implement the dependency traits
+            $( unsafe impl $crate::dependency::$v_provider for $name {} )?
+            $( unsafe impl $crate::dependency::$e_provider for $name {} )*
 
             unsafe impl $crate::context::Extensions for $name {
                 fn list_of_extensions() -> impl AsRef<[$crate::VkStrRaw]> {

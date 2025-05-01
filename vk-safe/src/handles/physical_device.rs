@@ -70,43 +70,22 @@ pub trait PhysicalDevice:
     //     }
     // }
 
-    // /// Check if the actual Device supports the requested Vulkan extensions
-    // ///
-    // /// returns a new `impl PhysicalDevice` which indicates support for
-    // /// the requested Vulkan extensions if it is actually supported.
-    // fn check_device_extensions<C: vk::context::Extensions>(
-    //     self,
-    //     extension_properties: &[ExtensionProperties<Self>],
-    //     context: C,
-    // ) -> Option<
-    //     impl PhysicalDevice<
-    //             Instance = Self::Instance,
-    //             Commands = Self::Commands,
-    //             DeviceVersion = Self::DeviceVersion,
-    //             DeviceExtensions = C,
-    //         > + Captures<Self>,
-    // > {
-    //     let _ = context;
-
-    //     let requested_extensions = C::list_of_extensions();
-    //     let requested_extensions = requested_extensions.as_ref();
-
-    //     // TODO - FIX PERFORMANCE
-    //     // This is O(n^2) since we can end up comparing every element oif each list
-    //     // It would be nice if there is a standard about the order that extension names are
-    //     // listed, so we can reduce to O(n) ordered searching
-    //     for extension in requested_extensions {
-    //         if extension_properties
-    //             .iter()
-    //             .find(|e| {
-    //                 let e = unsafe { vk::VkStrRaw::new(e.extension_name.as_ptr()) };
-    //                 e == *extension
-    //             })
-    //             .is_none()
-    //         {
-    //             return None;
-    //         }
-    //     }
+    /// Check if the actual Device supports the requested Vulkan extensions
+    ///
+    /// returns a new `impl PhysicalDevice` which indicates support for
+    /// the requested Vulkan extensions if it is actually supported.
+    fn check_device_extensions<C: vk::context::Extensions>(
+        self,
+        extension_properties: &[crate::vk::ExtensionProperties<Self>],
+        context: C,
+    ) -> Option<
+        impl PhysicalDevice<
+                Instance = Self::Instance,
+                Commands = Self::Commands,
+                DeviceVersion = Self::DeviceVersion,
+                DeviceExtensions = C,
+            > + use<Self, C>,
+    >;
 }
 
 /// Handle for a PhysicalDevice
@@ -241,6 +220,43 @@ where
     type Instance = I;
     type DeviceVersion = V;
     type DeviceExtensions = E;
+
+    fn check_device_extensions<C: vk_safe_sys::context::Extensions>(
+        self,
+        extension_properties: &[crate::vk::ExtensionProperties<Self>],
+        context: C,
+    ) -> Option<
+        impl PhysicalDevice<
+                Instance = Self::Instance,
+                Commands = Self::Commands,
+                DeviceVersion = Self::DeviceVersion,
+                DeviceExtensions = C,
+            > + use<'a, I, T, V, E, C>,
+    > {
+        let _ = context;
+
+        let requested_extensions = C::list_of_extensions();
+        let requested_extensions = requested_extensions.as_ref();
+
+        // TODO - FIX PERFORMANCE
+        // This is O(n^2) since we can end up comparing every element to every element, of each list
+        // It would be nice if there is a standard about the order that extension names are
+        // listed, so we can reduce to O(n) ordered searching
+        for extension in requested_extensions {
+            if extension_properties
+                .iter()
+                .find(|e| {
+                    let e = unsafe { vk_safe_sys::VkStrRaw::new(e.extension_name.as_ptr()) };
+                    e == *extension
+                })
+                .is_none()
+            {
+                return None;
+            }
+        }
+
+        Some(_PhysicalDevice::new(self.handle, self.instance, self.tag))
+    }
 }
 
 unsafe impl<'a, I, T, V, E> Support for _PhysicalDevice<'a, I, T, V, E> {

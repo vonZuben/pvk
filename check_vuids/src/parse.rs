@@ -422,7 +422,7 @@ impl<'a> RustParser<'a> {
     }
 }
 
-/// call this function after finding a first '/' which indicates the beginning of a comment
+/// call this function after finding a first '/' which may indicate the beginning of a comment
 /// this function then determines how to eat the rest of the comment
 fn eat_comment(iter: &mut impl Iterator<Item = Byte>) -> Result<()> {
     let mut iter = MustNext::new(iter);
@@ -452,7 +452,8 @@ fn eat_comment(iter: &mut impl Iterator<Item = Byte>) -> Result<()> {
                 next_byte = iter.must_next(ERROR)?;
             }
         }
-        _ => Err("ERROR: improper comment syntax")?,
+        // Not a comment (i.e. probably a division operation)
+        _ => Ok(()),
     }
 }
 
