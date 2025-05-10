@@ -12,6 +12,7 @@ use crate::ctype;
 use crate::enumerations;
 use crate::extensions;
 use crate::features;
+use crate::struct_extras;
 use crate::types;
 
 #[derive(Copy, Clone)]
@@ -56,6 +57,8 @@ pub struct Generator {
     commands: commands::Commands2,
     feature_collection: features::FeatureCollection,
     extensions: extensions::ExtensionCollection,
+
+    struct_extras: struct_extras::StructExtras,
 }
 
 impl Generator {
@@ -126,7 +129,12 @@ impl Generator {
     /// C style struct definitions
     pub fn structs(&self) -> String {
         let structs = &self.types.structs_to_tokens();
-        krs_quote!({@structs}).to_string()
+        let extras = &self.struct_extras;
+        krs_quote!(
+            {@structs}
+            {@extras}
+        )
+        .to_string()
     }
 
     /// C style union definitions
@@ -343,6 +351,7 @@ impl<'a> VisitVkParse<'a> for Generator {
             }
         }
 
+        self.struct_extras.check_bespoke(&stct);
         self.types.insert_struct(stct);
 
         if generic_struct {

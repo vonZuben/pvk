@@ -119,6 +119,18 @@ impl Struct2 {
             None => self.dependencies = Some(term),
         }
     }
+
+    pub fn name(&self) -> VkTyName {
+        self.name
+    }
+
+    pub fn fields(&self) -> impl Iterator<Item = &ctype::Cfield> {
+        self.fields.iter()
+    }
+
+    pub fn extends(&self) -> impl Iterator<Item = VkTyName> + use<'_> {
+        self.extends.iter().copied()
+    }
 }
 
 struct StructToToken<'a> {

@@ -27,6 +27,7 @@ mod enumerations;
 mod extensions;
 mod features;
 mod static_code;
+mod struct_extras;
 mod traits;
 mod types;
 mod vk_parse_visitor;

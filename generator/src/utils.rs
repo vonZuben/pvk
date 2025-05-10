@@ -236,6 +236,18 @@ impl<'a, C: Into<std::borrow::Cow<'a, str>>> From<C> for VkTyName {
     }
 }
 
+impl std::cmp::PartialOrd for VkTyName {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.as_str().partial_cmp(&other.as_str())
+    }
+}
+
+impl std::cmp::Ord for VkTyName {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_str().cmp(&other.as_str())
+    }
+}
+
 pub fn ctype_to_rtype(type_name: &str) -> &str {
     match type_name {
         "uint8_t" => "u8",
