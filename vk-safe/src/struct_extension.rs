@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
-use std::ops::Deref;
 
-use crate::type_conversions::ConvertWrapper;
+use crate::type_conversions::{ConvertWrapper, Wrapper};
 
 use vk_safe_sys as vk;
 
@@ -23,15 +22,11 @@ use vk::{BaseInStructure, BaseOutStructure};
 /// This is used to extend functionality in Vulkan by appending
 /// structs to a particular struct and forming a linked list.
 pub unsafe trait Pnext<S, Dep> {
-    type Pnext<Tag>: LinkMut;
+    type Output<Tag>: LinkMut<S>;
     #[doc(hidden)]
-    fn p_next_uninit<Tag>() -> std::mem::MaybeUninit<Self::Pnext<Tag>> {
+    fn p_next_uninit<Tag>() -> std::mem::MaybeUninit<Self::Output<Tag>> {
         std::mem::MaybeUninit::uninit()
     }
-}
-
-unsafe impl<S, Dep> Pnext<S, Dep> for () {
-    type Pnext<Tag> = ();
 }
 
 /// Link a collection of extension structs
@@ -39,15 +34,10 @@ unsafe impl<S, Dep> Pnext<S, Dep> for () {
 /// ensure the sType is correctly set, and
 /// set pNext to link each individual struct together.
 #[doc(hidden)]
-pub unsafe trait LinkMut {
-    fn link_mut(this: *mut Self) -> *mut vk::BaseOutStructure;
-}
-
-/// `()` is used to represent an empty collection of extension structs
-unsafe impl LinkMut for () {
-    fn link_mut(_this: *mut Self) -> *mut vk::BaseOutStructure {
-        std::ptr::null_mut()
-    }
+pub unsafe trait LinkMut<S> {
+    fn link_mut(this: *mut Self) -> *mut S::Wrapped
+    where
+        S: Wrapper;
 }
 
 #[repr(transparent)]
@@ -76,47 +66,13 @@ impl<'a, T: ?Sized> LinkedMut<'a, T> {
 
 unsafe impl<T> ConvertWrapper<*mut BaseOutStructure> for LinkedMut<'_, T> {}
 
-/// A type that encapsulates a structure, and any extension structures
-///
-/// This type is returned from Vulkan commands which return a
-/// particular struct `T` and possible set of extension structs `P`
-pub struct Extended<T, P>(T, P);
-
-pub(crate) fn make_extended<T, P>(base: T, extend: P) -> Extended<T, P> {
-    Extended(base, extend)
-}
-
-impl<T, P> Deref for Extended<T, P> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T, P> Extended<T, P> {
-    /// access the collection of extension structs
-    pub fn p_next(&self) -> &P {
-        &self.1
-    }
-}
-
-impl<T: std::fmt::Debug, P: std::fmt::Debug> std::fmt::Debug for Extended<T, P> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Extended")
-            .field("base_struct", &self.0)
-            .field("p_next", &self.1)
-            .finish()
-    }
-}
-
 #[doc(hidden)]
 pub mod p_next_macro_prelude {
     pub use super::LinkMut;
-    pub use crate::type_conversions::ConvertWrapper;
+    pub use crate::type_conversions::{ConvertWrapper, Wrapper};
     pub use vk_safe_sys::structs as vk_structs;
     pub use vk_safe_sys::StructExtends;
-    pub use vk_safe_sys::{BaseStructure, BaseStructureMut};
+    pub use vk_safe_sys::{BaseOutStructure, BaseStructure, BaseStructureMut};
 }
 
 /// Make a list of types to be included in a p_next chain
@@ -129,6 +85,14 @@ pub mod p_next_macro_prelude {
 macro_rules! p_next {
     // When using p_next in the case of retrieving data output by the implementation,
     ( $($name:ident),+ $(,)? ) => {{
+        $crate::p_next_inner!(StructExtension, Pnext: $($name),* );
+        Pnext
+    }};
+}
+
+#[macro_export]
+macro_rules! p_next_inner {
+    ( $s_name:ident , $p_name:ident : $($name:ident),+ $(,)? ) => {
         use $crate::struct_extension::p_next_macro_prelude::*;
         $( use vk_structs::{$name}; )*
 
@@ -141,43 +105,52 @@ macro_rules! p_next {
         $( #[doc = stringify!($name)] )*
         #[doc = concat!("Defined at ", file!(), line!())]
         #[allow(non_snake_case)]
-        pub struct StructExtension<Tag> {
+        pub struct $s_name<S, Tag> {
+            pub base: S,
             $(pub $name: $crate::vk::$name<Tag>,)*
+            _phantom: std::marker::PhantomData<Tag>,
         }
 
-        unsafe impl<Tag> LinkMut for StructExtension<Tag> {
-            fn link_mut(this: *mut Self) -> *mut vk_structs::BaseOutStructure {
-                let mut ptr = std::ptr::null_mut();
+        unsafe impl<S: Wrapper, Tag> LinkMut<S> for $s_name<S, Tag> where S::Wrapped: BaseStructureMut {
+            fn link_mut(this: *mut Self) -> *mut S::Wrapped
+            where
+                S: Wrapper
+            {
+                let mut ptr: *mut BaseOutStructure = std::ptr::null_mut();
                 $(
                     let s: *mut $name = unsafe { (&raw mut (*this).$name) }.to_c();
                     BaseStructure::set_s_type(s);
                     BaseStructureMut::p_next_mut(s, ptr);
                     ptr = s.cast();
                 )*
-                ptr
+                let base: *mut S::Wrapped = unsafe { (&raw mut (*this).base) }.to_c();
+                BaseStructure::set_s_type(base);
+                BaseStructureMut::p_next_mut(base, ptr);
+                base
             }
         }
 
-        impl<Tag> std::fmt::Debug for StructExtension<Tag> {
+        impl<S: std::fmt::Debug, Tag> std::fmt::Debug for $s_name<S, Tag> {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.debug_tuple("pNext")
+                f.debug_tuple("")
+                    .field(&self.base)
                     $( .field(&self.$name) )*
                     .finish()
             }
         }
 
-        struct Pnext;
+        struct $p_name;
 
-        unsafe impl<S, Dep> $crate::struct_extension::Pnext<S, Dep> for Pnext
+        unsafe impl<S: Wrapper<Wrapped: BaseStructureMut>, Dep> $crate::struct_extension::Pnext<S, Dep> for $p_name
         where
             $(
-                $name: StructExtends<S>,
+                $name: StructExtends<S::Wrapped>,
                 Dep: vk_structs::struct_dependencies::$name::HasDependency,
             )*
         {
-            type Pnext<Tag> = StructExtension<Tag>;
+            type Output<Tag> = $s_name<S, Tag>;
         }
 
-        Pnext
-    }};
+        $p_name
+    };
 }

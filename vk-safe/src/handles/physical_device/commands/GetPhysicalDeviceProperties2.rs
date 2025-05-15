@@ -1,6 +1,5 @@
 use crate::handles::DispatchableHandle;
-use crate::struct_extension::{make_extended, Extended, Pnext};
-use crate::type_conversions::ConvertWrapper;
+use crate::struct_extension::{LinkMut, Pnext};
 use crate::vk::PhysicalDeviceProperties2;
 
 use vk_safe_sys as vk;
@@ -21,10 +20,10 @@ pub trait GetPhysicalDeviceProperties2: DispatchableHandle<RawHandle = vk::Physi
     ///
     /// Vulkan docs:
     /// <https://registry.khronos.org/VulkanSC/specs/1.0-extensions/man/html/vkGetPhysicalDeviceProperties2.html>
-    fn get_physical_device_properties2<Pn: Pnext<vk::PhysicalDeviceProperties2, Self>, X>(
+    fn get_physical_device_properties2<Pn: Pnext<PhysicalDeviceProperties2<Self>, Self>, X>(
         &self,
         _p_next: Pn,
-    ) -> Extended<PhysicalDeviceProperties2<Self>, Pn::Pnext<Self>>
+    ) -> Pn::Output<Self>
     where
         Self::Commands: vk::has_command::GetPhysicalDeviceProperties2<X>,
     {
@@ -49,21 +48,18 @@ pub trait GetPhysicalDeviceProperties2: DispatchableHandle<RawHandle = vk::Physi
             "pProperties must be a valid pointer to a VkPhysicalDeviceProperties2 structure"
             }
 
-            // init_pnext!
+            // Pnext::p_next_uninit
         }
 
-        init_pnext!(
-            extension: Pn;
-            properties: PhysicalDeviceProperties2<Self>
-        );
+        let mut properties = Pn::p_next_uninit();
 
         unsafe {
             self.commands().GetPhysicalDeviceProperties2().get_fptr()(
                 self.raw_handle(),
-                properties.as_mut_ptr().to_c(),
+                LinkMut::link_mut(properties.as_mut_ptr()),
             );
 
-            make_extended(properties.assume_init(), extension.assume_init())
+            properties.assume_init()
         }
     }
 }

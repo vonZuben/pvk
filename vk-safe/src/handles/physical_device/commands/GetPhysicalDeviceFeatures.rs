@@ -7,6 +7,9 @@ use std::mem::MaybeUninit;
 use vk_safe_sys as vk;
 
 pub trait GetPhysicalDeviceFeatures: DispatchableHandle<RawHandle = vk::PhysicalDevice> {
+    /// Reports capabilities of a physical device
+    ///
+    /// <https://registry.khronos.org/vulkan/specs/latest/man/html/vkGetPhysicalDeviceFeatures.html>
     fn get_physical_device_features<X>(&self) -> PhysicalDeviceFeatures<Self>
     where
         Self::Commands: vk::has_command::GetPhysicalDeviceFeatures<X>,

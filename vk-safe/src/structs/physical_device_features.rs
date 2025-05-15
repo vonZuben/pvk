@@ -4,3 +4,7 @@ struct_wrapper!(
 /// See Vulkan Docs for details about the different features
 /// <https://registry.khronos.org/vulkan/specs/1.3-extensions/man/html/VkPhysicalDeviceFeatures.html>
 PhysicalDeviceFeatures<S,> impl Debug, Deref);
+
+impl<S> vk_safe_sys::CheckPhysicalDeviceFeatures for PhysicalDeviceFeatures<S> {
+    vk_safe_sys::PhysicalDeviceFeatures!();
+}

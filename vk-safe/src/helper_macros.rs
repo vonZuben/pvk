@@ -75,6 +75,12 @@ macro_rules! struct_wrapper {
         unsafe impl<$( $lt , )* $( $ty , )*>
             crate::type_conversions::ConvertWrapper<vk_safe_sys::$name>
             for $name<$( $lt , )* $( $ty , )*> {}
+
+        unsafe impl<$( $lt , )* $( $ty , )*>
+            crate::type_conversions::Wrapper
+            for $name<$( $lt , )* $( $ty , )*> {
+                type Wrapped = vk_safe_sys::$name;
+            }
     };
 
     // generate any optional trait implementations
@@ -270,23 +276,5 @@ macro_rules! handle_command_collection_trait {
     ) => {
         #[cfg($cfg_trait_name)]
         impl<$($generics)*> $fn_trait_name for $implementor_name<$($generics)*> $( $bounds )* {}
-    };
-}
-
-/// initialize sType and pNext for a pnext chain
-macro_rules! init_pnext {
-    (
-        $struct_extensions:ident: $p_next_ty:ident;
-        $base:ident: $base_ty:ident $($generics:tt)*
-    ) => {
-        let mut $struct_extensions = $p_next_ty::p_next_uninit();
-        let struct_extensions_ptr = $struct_extensions.as_mut_ptr();
-        let p_next_head = $crate::struct_extension::LinkMut::link_mut(struct_extensions_ptr);
-
-        let mut $base = std::mem::MaybeUninit::<$base_ty $($generics)* >::uninit();
-        let base_struct_ptr: *mut vk_safe_sys::$base_ty = $base.as_mut_ptr().to_c();
-
-        vk_safe_sys::BaseStructure::set_s_type(base_struct_ptr);
-        vk_safe_sys::BaseStructureMut::p_next_mut(base_struct_ptr, p_next_head);
     };
 }

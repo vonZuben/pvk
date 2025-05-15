@@ -17,7 +17,6 @@ impl super::ExtrasDelegate for PhysicalDeviceFeatures {
         let s_names = self.features.iter().map(|f| f.struct_name);
         let s_features = self.features.iter().map(|f| {
             krs_quote::ToTokensClosure(|tokens: &mut krs_quote::TokenStream| {
-                let s_name = f.struct_name;
                 let features = f
                     .features
                     .iter()
@@ -27,8 +26,8 @@ impl super::ExtrasDelegate for PhysicalDeviceFeatures {
 
                 krs_quote::krs_quote_with!(tokens <-
                     {@*
-                        fn {@features}(&self) -> bool {
-                            self.{@s_name}.{@features}
+                        fn {@features}(&self) -> $crate::Bool32 {
+                            self.$( $accessor. )?{@features}
                         }
                     }
                 )
@@ -53,7 +52,7 @@ impl super::ExtrasDelegate for PhysicalDeviceFeatures {
             {@*
                 #[macro_export]
                 macro_rules! {@s_names} {
-                    () => {
+                    ( $( $accessor:ident )? ) => {
                         {@s_features}
                     }
                 }
@@ -61,8 +60,8 @@ impl super::ExtrasDelegate for PhysicalDeviceFeatures {
 
             pub trait CheckPhysicalDeviceFeatures {
                 {@*
-                    fn {@all_feature_names}(&self) -> bool {
-                        false
+                    fn {@all_feature_names}(&self) -> Bool32 {
+                        0
                     }
                 }
             }

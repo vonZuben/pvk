@@ -27,6 +27,7 @@ handle_command_collection_trait!(
     }
     #[cfg(VK_VERSION_1_1)] {
         GetPhysicalDeviceProperties2,
+        GetPhysicalDeviceFeatures2,
     }
 );
 

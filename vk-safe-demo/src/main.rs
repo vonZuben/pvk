@@ -88,7 +88,7 @@ fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
         .unwrap();
     println!("{:#?}", extensions);
 
-    vk::device_context!(ExternalMemoryHostProperties: + KHR_external_memory + EXT_external_memory_host);
+    vk::device_context!(ExternalMemoryHostProperties: + KHR_external_memory + EXT_external_memory_host + KHR_variable_pointers + KHR_storage_buffer_storage_class);
     let pd = pd
         .check_device_extensions(&extensions, ExternalMemoryHostProperties)
         .unwrap();
@@ -101,6 +101,12 @@ fn run_physical_device(pd: impl PhysicalDevice + vk::VERSION_1_1) {
 
     println!("-------");
     println!("{:#?}", pd.get_physical_device_features());
+
+    println!("-------PhysicalDeviceFeatures2----------");
+    let features2 = pd.get_physical_device_features2(vk_safe::check_physical_device_features!(
+        PhysicalDeviceVariablePointersFeatures
+    ));
+    println!("{features2:#?}");
 
     println!("--Available device layers (NOTE: device layers are depreciated by Vulkan)--");
     println!(

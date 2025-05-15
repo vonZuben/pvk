@@ -173,6 +173,9 @@ pub mod scope;
 #[doc(hidden)]
 pub mod struct_extension;
 
+#[doc(hidden)]
+pub mod check_physical_device_features;
+
 pub mod flags;
 
 // pub mod dispatchable_handles;
@@ -185,8 +188,8 @@ pub mod structs;
 pub mod enumerator;
 
 /// All raw vulkan types exported by vk-safe-sys
+#[doc(hidden)]
 pub mod raw {
-    #[doc(hidden)]
     pub use vk_safe_sys::*;
 }
 

@@ -25,6 +25,8 @@ pub_use_modules!(
     #[cfg(VK_VERSION_1_1)]
     {
         physical_device_properties2;
+        physical_device_features2;
+        physical_device_variable_pointer_features;
     };
 
     #[cfg(VK_EXT_external_memory_host)]

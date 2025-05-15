@@ -38,6 +38,11 @@ impl<'a, P> ToC<*const P> for Option<&'a P> {
     }
 }
 
+/// Indicates safe wrapper type for a raw Vulkan type
+pub unsafe trait Wrapper: ConvertWrapper<Self::Wrapped> {
+    type Wrapped;
+}
+
 // ******* disambiguation labels ************
 // for avoiding conflicting trait implementations
 // the labels can be inferred when the trait methods are called
