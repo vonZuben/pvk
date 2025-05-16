@@ -60,6 +60,8 @@ pub_use_structs!(
         LayerProperties;
         MappedMemoryRange;
         MemoryAllocateInfo;
+        MemoryHeap;
+        MemoryType;
         ShaderModuleCreateInfo;
         SparseImageFormatProperties;
         ImageParameters;

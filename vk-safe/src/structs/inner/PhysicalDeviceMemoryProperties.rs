@@ -2,14 +2,17 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::type_conversions::ConvertWrapper;
+use crate::vk::MemoryHeap;
+use crate::vk::MemoryType;
 
 use vk_safe_sys as vk;
 
-struct_wrapper!(PhysicalDeviceMemoryProperties<S,>);
-
-struct_wrapper!(MemoryType<S,> impl Debug, Deref, Clone, Copy);
-
-struct_wrapper!(MemoryHeap<S,> impl Debug, Deref, Clone, Copy);
+struct_wrapper!(
+/// Structure specifying physical device memory properties
+///
+/// <https://registry.khronos.org/vulkan/specs/latest/man/html/VkPhysicalDeviceMemoryProperties.html>
+PhysicalDeviceMemoryProperties<S,>
+);
 
 unit_error!(pub InvalidMemoryType);
 
@@ -107,6 +110,7 @@ impl<S> PhysicalDeviceMemoryProperties<S> {
     }
 }
 
+/// Represents a memory type with the desired attributes
 #[derive(Clone, Copy)]
 pub struct MemoryTypeChoice<S, P, H> {
     scope: PhantomData<S>,
