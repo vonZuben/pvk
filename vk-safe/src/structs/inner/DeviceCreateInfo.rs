@@ -1,4 +1,4 @@
-use super::DeviceQueueCreateInfo;
+use crate::vk::DeviceQueueCreateInfo;
 
 use crate::type_conversions::ConvertWrapper;
 

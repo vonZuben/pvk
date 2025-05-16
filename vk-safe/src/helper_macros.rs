@@ -188,34 +188,6 @@ macro_rules! pub_export_modules {
     };
 }
 
-/// Include a module, and publicly use the modules contents
-macro_rules! pub_use_modules {
-    (
-        $( #[cfg($feature:ident)] $block:tt );* $(;)?
-    ) => {
-        $( pub_use_modules!(@INNER $feature $block); )*
-    };
-    (
-        @INNER
-        $feature:ident
-        {
-            $(
-                $(#[$($attributes:tt)*])*
-                $name:ident
-            );*
-            $(;)?
-        }
-    ) => {
-        $(
-            #[cfg($feature)]
-            $(#[$($attributes)*])*
-            mod $name;
-            #[allow(unused_imports)]
-            pub use $name::*;
-        )*
-    };
-}
-
 macro_rules! handle_command_collection_trait {
     (
         NAME( $command_trait_name:ident )

@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use super::ApplicationInfo;
+use crate::vk::ApplicationInfo;
 
 use crate::type_conversions::ConvertWrapper;
 

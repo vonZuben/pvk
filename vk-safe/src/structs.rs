@@ -1,36 +1,83 @@
-pub_use_modules!(
+/// Include a module, and publicly use the modules contents
+macro_rules! pub_use_structs {
+    (
+        $( #[cfg($feature:ident)] $block:tt );* $(;)?
+    ) => {
+        mod inner {
+            $( pub_use_structs!(@MOD $feature $block); )*
+        }
+
+        $( pub_use_structs!(@USE $block); )*
+    };
+    (
+        @MOD
+        $feature:ident
+        {
+            $(
+                $(#[$($attributes:tt)*])*
+                $name:ident
+            );*
+            $(;)?
+        }
+    ) => {
+        $(
+            #[cfg($feature)]
+            #[allow(non_snake_case)]
+            $(#[$($attributes)*])*
+            pub mod $name;
+        )*
+    };
+
+    (
+        @USE
+        {
+            $(
+                $(#[$($attributes:tt)*])*
+                $name:ident
+            );*
+            $(;)?
+        }
+    ) => {
+        $(
+            #[allow(unused_imports)]
+            pub use inner::$name::*;
+        )*
+    };
+}
+
+pub_use_structs!(
     #[cfg(VK_VERSION_1_0)]
     {
-        extension_properties;
-        physical_device_features;
-        physical_device_properties;
-        layer_properties;
-        format_properties;
-        image_parameters;
-        image_format_properties;
-        instance_create_info;
-        application_info;
-        sparse_image_format_properties;
-        queue_families;
-        physical_device_memory_properties;
-        device_queue_create_info;
-        device_create_info;
-        memory_allocate_info;
-        mapped_memory_range;
-        command_pool_create_info;
-        command_buffer_alloc_info;
-        shader_module_create_info;
+        ApplicationInfo;
+        CommandBufferAllocInfo;
+        CommandPoolCreateInfo;
+        ExtensionProperties;
+        FormatProperties;
+        ImageFormatProperties;
+        InstanceCreateInfo;
+        LayerProperties;
+        MappedMemoryRange;
+        MemoryAllocateInfo;
+        QueueFamilies;
+        ShaderModuleCreateInfo;
+        SparseImageFormatProperties;
+        ImageParameters;
+        DeviceCreateInfo;
+        DeviceQueueCreateInfo;
+        PhysicalDeviceFeatures;
+        PhysicalDeviceMemoryProperties;
+        PhysicalDeviceProperties;
     };
 
     #[cfg(VK_VERSION_1_1)]
     {
-        physical_device_properties2;
-        physical_device_features2;
-        physical_device_variable_pointer_features;
+        PhysicalDeviceProperties2;
+        PhysicalDeviceFeatures2;
+        PhysicalDeviceVariablePointerFeatures;
     };
 
     #[cfg(VK_EXT_external_memory_host)]
     {
-        physical_device_external_memory_host_properties_ext
+        PhysicalDeviceExternalMemoryHostPropertiesExt;
     };
 );

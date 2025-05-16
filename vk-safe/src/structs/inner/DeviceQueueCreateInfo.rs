@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::QueueFamilyProperties;
+use crate::vk::QueueFamilyProperties;
 
 use crate::type_conversions::ConvertWrapper;
 

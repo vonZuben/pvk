@@ -1,6 +1,6 @@
 use crate::type_conversions::convert_wrapper_from_c;
 
-use super::physical_device_memory_properties::MemoryTypeChoice;
+use crate::vk::MemoryTypeChoice;
 
 use vk_safe_sys as vk;
 
