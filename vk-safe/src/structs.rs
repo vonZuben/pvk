@@ -7,7 +7,7 @@ macro_rules! pub_use_structs {
             $( pub_use_structs!(@MOD $feature $block); )*
         }
 
-        $( pub_use_structs!(@USE $block); )*
+        $( pub_use_structs!(@USE $feature $block); )*
     };
     (
         @MOD
@@ -30,6 +30,7 @@ macro_rules! pub_use_structs {
 
     (
         @USE
+        $feature:ident
         {
             $(
                 $(#[$($attributes:tt)*])*
@@ -39,6 +40,7 @@ macro_rules! pub_use_structs {
         }
     ) => {
         $(
+            #[cfg($feature)]
             #[allow(unused_imports)]
             pub use inner::$name::*;
         )*
@@ -49,7 +51,7 @@ pub_use_structs!(
     #[cfg(VK_VERSION_1_0)]
     {
         ApplicationInfo;
-        CommandBufferAllocInfo;
+        CommandBufferAllocateInfo;
         CommandPoolCreateInfo;
         ExtensionProperties;
         FormatProperties;
@@ -58,7 +60,6 @@ pub_use_structs!(
         LayerProperties;
         MappedMemoryRange;
         MemoryAllocateInfo;
-        QueueFamilies;
         ShaderModuleCreateInfo;
         SparseImageFormatProperties;
         ImageParameters;
@@ -67,17 +68,20 @@ pub_use_structs!(
         PhysicalDeviceFeatures;
         PhysicalDeviceMemoryProperties;
         PhysicalDeviceProperties;
+
+        // bespoke structs
+        QueueFamilies;
     };
 
     #[cfg(VK_VERSION_1_1)]
     {
         PhysicalDeviceProperties2;
         PhysicalDeviceFeatures2;
-        PhysicalDeviceVariablePointerFeatures;
+        PhysicalDeviceVariablePointersFeatures;
     };
 
     #[cfg(VK_EXT_external_memory_host)]
     {
-        PhysicalDeviceExternalMemoryHostPropertiesExt;
+        PhysicalDeviceExternalMemoryHostPropertiesEXT;
     };
 );
